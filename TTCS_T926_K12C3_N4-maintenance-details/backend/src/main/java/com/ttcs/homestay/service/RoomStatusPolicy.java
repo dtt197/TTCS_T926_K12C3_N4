@@ -1,6 +1,7 @@
 package com.ttcs.homestay.service;
-import java.time.LocalDate;
+
 import com.ttcs.homestay.entity.RoomStatus;
+import java.time.LocalDate;
 
 public final class RoomStatusPolicy {
 
@@ -12,7 +13,11 @@ public final class RoomStatusPolicy {
     }
 
     public static boolean canChangeTo(RoomStatus currentStatus, RoomStatus targetStatus) {
-        return !(currentStatus == RoomStatus.DANG_O && targetStatus == RoomStatus.BAO_TRI);
+        return currentStatus != RoomStatus.DANG_O || targetStatus != RoomStatus.BAO_TRI;
+    }
+
+    public static boolean hasValidMaintenancePeriod(LocalDate startDate, LocalDate endDate) {
+        return startDate != null && endDate != null && !endDate.isBefore(startDate);
     }
 
     public static String displayName(RoomStatus status) {
@@ -23,12 +28,4 @@ public final class RoomStatusPolicy {
             case BAO_TRI -> "Bảo trì";
         };
     }
-    public static boolean hasValidMaintenancePeriod(
-        LocalDate startDate,
-        LocalDate endDate
-) {
-    return startDate != null
-            && endDate != null
-            && !endDate.isBefore(startDate);
-}
 }

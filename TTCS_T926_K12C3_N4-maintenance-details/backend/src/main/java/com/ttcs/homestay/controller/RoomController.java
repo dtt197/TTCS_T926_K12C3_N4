@@ -40,19 +40,19 @@ public class RoomController {
         return roomService.updateStatus(roomId, request.status());
     }
 
-    @PatchMapping("/{roomId}/maintenance")
-    public RoomResponse putIntoMaintenance(
-            @PathVariable Long roomId,
-            @Valid @RequestBody MaintenanceRequest request
-    ) {
-        return roomService.putIntoMaintenance(roomId, request);
-    }
-
     @PostMapping("/{roomId}/check-in")
     public ResponseEntity<CheckInResponse> checkIn(
             @PathVariable Long roomId,
             @Valid @RequestBody CheckInRequest request
     ) {
         return ResponseEntity.ok(roomService.checkIn(roomId, request));
+    }
+
+    @PatchMapping("/{roomId}/maintenance")
+    public RoomResponse putIntoMaintenance(
+            @PathVariable Long roomId,
+            @Valid @RequestBody MaintenanceRequest request
+    ) {
+        return roomService.putIntoMaintenance(roomId, request);
     }
 }

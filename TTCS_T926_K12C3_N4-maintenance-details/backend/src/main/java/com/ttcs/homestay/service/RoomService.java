@@ -43,15 +43,15 @@ public class RoomService {
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
 
-        if (targetStatus == RoomStatus.BAO_TRI) {
-            throw new RoomStatusConflictException(
-                    "Vui lòng dùng biểu mẫu bảo trì để nhập lý do và khoảng ngày.");
-        }
-
         if (!RoomStatusPolicy.canChangeTo(room.getStatus(), targetStatus)) {
             throw new RoomStatusConflictException(
                     "Không thể chuyển phòng " + room.getRoomNumber()
                             + " từ Đang ở sang Bảo trì. Hãy trả phòng trước.");
+        }
+
+        if (targetStatus == RoomStatus.BAO_TRI) {
+            throw new RoomStatusConflictException(
+                    "Hãy dùng biểu mẫu bảo trì để nhập lý do, ngày bắt đầu và ngày kết thúc.");
         }
 
         room.setStatus(targetStatus);

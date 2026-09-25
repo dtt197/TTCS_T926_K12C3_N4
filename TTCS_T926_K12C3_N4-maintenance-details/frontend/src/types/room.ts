@@ -1,8 +1,3 @@
-export type MaintenanceDraft = {
-  reason: string
-  startDate: string
-  endDate: string
-}
 export type RoomStatus =
   | 'TRONG_SACH'
   | 'TRONG_BAN'
@@ -19,6 +14,12 @@ export type Room = {
   maintenanceReason: string | null
   maintenanceStartDate: string | null
   maintenanceEndDate: string | null
+}
+
+export type MaintenanceDraft = {
+  reason: string
+  startDate: string
+  endDate: string
 }
 
 export const ROOM_STATUS_LABELS: Record<RoomStatus, string> = {
