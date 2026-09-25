@@ -1,11 +1,9 @@
 package com.ttcs.homestay.dto.auth;
 
-public record LoginResponse(
+public record InternalUserResponse(
 		Long userId,
 		String fullName,
 		String email,
-		String role,
-		String accessToken,
-		long expiresIn
+		String role
 ) {
 }

@@ -1,13 +1,16 @@
-import { useState } from 'react'
 import './App.css'
+import { useAuth } from './hooks/useAuth'
 import { AppRoutes } from './routes/AppRoutes'
-import type { LoginResponse } from './types/auth'
 
 function App() {
-  const [user, setUser] = useState<LoginResponse | null>(null)
+  const { user, status, handleLogin, handleLogout } = useAuth()
+
+  if (status === 'loading') {
+    return <main className="app-shell" aria-busy="true" />
+  }
 
   return (
-    <AppRoutes user={user} onLogin={setUser} onLogout={() => setUser(null)} />
+    <AppRoutes user={user} onLogin={handleLogin} onLogout={handleLogout} />
   )
 }
 

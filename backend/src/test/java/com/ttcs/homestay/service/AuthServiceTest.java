@@ -2,10 +2,12 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.auth.LoginRequest;
 import com.ttcs.homestay.dto.auth.LoginResponse;
+import com.ttcs.homestay.dto.auth.LoginResult;
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.exception.InvalidCredentialsException;
 import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.security.JwtTokenService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +33,9 @@ class AuthServiceTest {
 	@Mock
 	private PasswordEncoder passwordEncoder;
 
+	@Mock
+	private JwtTokenService jwtTokenService;
+
 	@InjectMocks
 	private AuthService authService;
 
@@ -47,11 +52,18 @@ class AuthServiceTest {
 		when(user.getFullName()).thenReturn("Demo Administrator");
 		when(user.getEmail()).thenReturn("admin.demo@homestay.local");
 		when(role.getCode()).thenReturn("ADMIN");
+		when(jwtTokenService.issueTokens(user)).thenReturn(
+				new JwtTokenService.IssuedTokens("access-token", "refresh-token"));
+		when(jwtTokenService.accessTtlSeconds()).thenReturn(1800L);
 
-		LoginResponse response = authService.login(new LoginRequest("  ADMIN.DEMO@HOMESTAY.LOCAL ", "password"));
+		LoginResult result = authService.login(new LoginRequest("  ADMIN.DEMO@HOMESTAY.LOCAL ", "password"));
+		LoginResponse response = result.response();
 
 		assertThat(response.email()).isEqualTo("admin.demo@homestay.local");
 		assertThat(response.role()).isEqualTo("ADMIN");
+		assertThat(response.accessToken()).isEqualTo("access-token");
+		assertThat(response.expiresIn()).isEqualTo(1800L);
+		assertThat(result.refreshToken()).isEqualTo("refresh-token");
 		assertThat(response).extracting("userId", "fullName", "email", "role")
 				.containsExactly(1L, "Demo Administrator", "admin.demo@homestay.local", "ADMIN");
 	}
