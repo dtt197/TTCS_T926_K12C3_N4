@@ -1,8 +1,7 @@
-import type { Room, RoomStatus, MaintenanceDraft } from '../types/room'
+import type { MaintenanceDraft, Room, RoomStatus } from '../types/room'
 
-const API_BASE_URL = 
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) 
-  ?? 'http://localhost:8080/api'
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api'
 
 type ApiError = {
   message?: string
@@ -35,6 +34,13 @@ export function updateRoomStatus(roomId: number, status: RoomStatus) {
   })
 }
 
+export function putRoomIntoMaintenance(roomId: number, maintenance: MaintenanceDraft) {
+  return request<Room>(`/rooms/${roomId}/maintenance`, {
+    method: 'PATCH',
+    body: JSON.stringify(maintenance),
+  })
+}
+
 export function checkIn(roomId: number, guestName: string) {
   return request<{ id: number; roomId: number; roomNumber: string; guestName: string }>(
     `/rooms/${roomId}/check-in`,
@@ -43,14 +49,4 @@ export function checkIn(roomId: number, guestName: string) {
       body: JSON.stringify({ guestName }),
     },
   )
-}
-
-export function putRoomIntoMaintenance(
-  roomId: number,
-  maintenance: MaintenanceDraft,
-) {
-  return request<Room>(`/rooms/${roomId}/maintenance`, {
-    method: 'PATCH',
-    body: JSON.stringify(maintenance),
-  })
 }
