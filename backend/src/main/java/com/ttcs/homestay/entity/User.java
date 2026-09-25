@@ -13,6 +13,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 @Entity
@@ -41,6 +42,15 @@ public class User {
 
 	@Column(name = "is_active", nullable = false)
 	private boolean active = true;
+
+	@Column(name = "failed_login_count", nullable = false)
+	private int failedLoginCount;
+
+	@Column(name = "first_failed_login_at")
+	private LocalDateTime firstFailedLoginAt;
+
+	@Column(name = "locked_until")
+	private LocalDateTime lockedUntil;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private OffsetDateTime createdAt;
@@ -93,5 +103,40 @@ public class User {
 
 	public boolean isActive() {
 		return active;
+	}
+
+	public boolean isLockedAt(LocalDateTime now) {
+		return lockedUntil != null && now.isBefore(lockedUntil);
+	}
+
+	public void recordFailedLogin(LocalDateTime now) {
+		if (firstFailedLoginAt == null || !now.isBefore(firstFailedLoginAt.plusMinutes(30))) {
+			failedLoginCount = 0;
+			firstFailedLoginAt = now;
+			lockedUntil = null;
+		}
+
+		failedLoginCount++;
+		if (failedLoginCount >= 5) {
+			lockedUntil = now.plusMinutes(30);
+		}
+	}
+
+	public void resetLoginFailures() {
+		failedLoginCount = 0;
+		firstFailedLoginAt = null;
+		lockedUntil = null;
+	}
+
+	public int getFailedLoginCount() {
+		return failedLoginCount;
+	}
+
+	public LocalDateTime getFirstFailedLoginAt() {
+		return firstFailedLoginAt;
+	}
+
+	public LocalDateTime getLockedUntil() {
+		return lockedUntil;
 	}
 }

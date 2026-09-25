@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,6 +68,8 @@ class AuthServiceTest {
 		assertThat(result.refreshToken()).isEqualTo("refresh-token");
 		assertThat(response).extracting("userId", "fullName", "email", "role")
 				.containsExactly(1L, "Demo Administrator", "admin.demo@homestay.local", "ADMIN");
+		verify(user).resetLoginFailures();
+		verify(userRepository).save(user);
 	}
 
 	@Test
@@ -85,6 +89,24 @@ class AuthServiceTest {
 				new LoginRequest("admin.demo@homestay.local", "wrong-password"));
 
 		assertThat(missingEmail.getMessage()).isEqualTo(wrongPassword.getMessage());
+		verify(user).recordFailedLogin(org.mockito.ArgumentMatchers.any());
+		verify(userRepository).save(user);
+		verifyNoTokenIssued();
+	}
+
+	@Test
+	void lockedAccountReturnsGenericErrorWithoutCheckingPasswordOrIssuingToken() {
+		User user = mock(User.class);
+		when(userRepository.findByEmailIgnoreCase("admin.demo@homestay.local")).thenReturn(Optional.of(user));
+		when(user.isActive()).thenReturn(true);
+		when(user.isLockedAt(org.mockito.ArgumentMatchers.any())).thenReturn(true);
+
+		InvalidCredentialsException exception = catchInvalidCredentials(
+				new LoginRequest("admin.demo@homestay.local", "password"));
+
+		assertThat(exception.getMessage()).isEqualTo("Email hoặc mật khẩu không chính xác");
+		verify(passwordEncoder, never()).matches(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+		verifyNoTokenIssued();
 	}
 
 	@Test
@@ -101,5 +123,9 @@ class AuthServiceTest {
 		return (InvalidCredentialsException) assertThatThrownBy(() -> authService.login(request))
 				.isInstanceOf(InvalidCredentialsException.class)
 				.actual();
+	}
+
+	private void verifyNoTokenIssued() {
+		verify(jwtTokenService, never()).issueTokens(org.mockito.ArgumentMatchers.any());
 	}
 }
