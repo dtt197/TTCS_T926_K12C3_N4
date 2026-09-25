@@ -89,6 +89,26 @@ h2 { font-size: 25px; }
 .status-badge.occupied { background: var(--blue-soft); color: var(--blue); }
 .status-badge.maintenance { background: var(--red-soft); color: var(--red); }
 .room-meta { margin: 24px 0 14px; color: var(--muted); font-size: 12px; }
+.maintenance-fields {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.maintenance-fields .form-label { font-size: 11px; }
+.maintenance-date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.maintenance-summary {
+  display: grid;
+  gap: 3px;
+  margin: 0 0 14px;
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--red-soft);
+  color: var(--red);
+  font-size: 11px;
+}
+.maintenance-summary span { color: #8e5f5b; }
 .status-select {
   min-width: 138px; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px;
   background: #fbfcfa; color: var(--ink); font-size: 12px;

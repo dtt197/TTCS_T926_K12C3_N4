@@ -14,12 +14,14 @@
 - Hiển thị danh sách phòng và trạng thái hiện tại.
 - Có đủ bốn trạng thái: `TRONG_SACH`, `TRONG_BAN`, `DANG_O`, `BAO_TRI`.
 - Lễ tân đổi được trạng thái phòng.
+- Khi chuyển sang `BAO_TRI`, bắt buộc nhập lý do, ngày bắt đầu và ngày kết thúc.
+- Danh sách phòng hiển thị lại chính xác lý do và khoảng ngày bảo trì.
 - Chỉ phòng `TRONG_SACH` mới nhận phòng được.
 - Trả lỗi HTTP 409 bằng tiếng Việt khi trạng thái không phù hợp.
 - Không cho chuyển trực tiếp phòng `DANG_O` sang `BAO_TRI`; cần trả phòng trước.
 - Có dữ liệu mẫu bốn phòng trong `database/001_room_status.sql`.
 
-> Theo phạm vi story hiện tại, chưa lưu lý do/khoảng ngày bảo trì và lịch sử thay đổi trạng thái. Đây là phần mở rộng cho story sau.
+> Theo phạm vi story hiện tại, chưa có lịch sử thay đổi trạng thái. Lý do và khoảng ngày bảo trì đã được bổ sung trong story này.
 
 ### Chạy backend
 
@@ -49,6 +51,7 @@
 
    - `GET /api/rooms`
    - `PATCH /api/rooms/{roomId}/status`
+   - `PATCH /api/rooms/{roomId}/maintenance`
    - `POST /api/rooms/{roomId}/check-in`
 
 ### Chạy frontend
@@ -69,6 +72,8 @@ Mặc định frontend gọi `http://localhost:8080/api`. Nếu backend chưa ch
 3. Chọn phòng `Trống sạch`, nhập tên khách, bấm **Xác nhận nhận phòng**. Kết quả thành công: phòng chuyển sang `Đang ở`.
 4. Chọn phòng `Trống bẩn`, `Đang ở` hoặc `Bảo trì`. Nút nhận phòng bị khoá và hiển thị lý do; nếu gọi API trực tiếp vẫn nhận HTTP 409.
 5. Thử chuyển phòng `Đang ở` sang `Bảo trì`; API từ chối và yêu cầu trả phòng trước.
+6. Chọn phòng `Trống sạch` hoặc `Trống bẩn`, chọn `Bảo trì`, nhập lý do và khoảng ngày, sau đó lưu. Danh sách phải hiển thị lại đủ ba thông tin này.
+7. Thử lưu khi thiếu lý do, thiếu một trong hai ngày hoặc ngày kết thúc trước ngày bắt đầu; hệ thống phải chặn lưu.
 
 ### Quy trình Git
 

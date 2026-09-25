@@ -10,7 +10,11 @@ function App() {
   }
 
   return (
-    <AppRoutes user={user} onLogin={handleLogin} onLogout={handleLogout} />
+    <AppRoutes
+      user={user}
+      onLogin={handleLogin}
+      onLogout={handleLogout}
+    />
   )
 }
 
