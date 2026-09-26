@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import com.ttcs.homestay.dto.user.UpdateUserStatusRequest;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PutMapping;
+import com.ttcs.homestay.dto.user.UpdateUserRequest;
 
 /** S1-02: quản trị hệ thống quản lý tài khoản nhân viên. Chỉ vai trò ADMIN gọi được (xem SecurityConfig). */
 @RestController
@@ -46,5 +48,16 @@ public class UserController {
 			@Valid @RequestBody UpdateUserStatusRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
 		return userService.updateStatus(id, request, Long.valueOf(jwt.getSubject()));
+	}
+	@PutMapping("/{id}")
+	public UserResponse updateUser(@PathVariable Long id,
+			@Valid @RequestBody UpdateUserRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		return userService.updateUser(id, request, Long.valueOf(jwt.getSubject()));
+	}
+
+	@PostMapping("/{id}/resend-temporary-password")
+	public UserResponse resendTemporaryPassword(@PathVariable Long id) {
+		return userService.resendTemporaryPassword(id);
 	}
 }

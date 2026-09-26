@@ -19,6 +19,9 @@ import com.ttcs.homestay.repository.UserRepository;
 import com.ttcs.homestay.exception.SelfDeactivationException;
 import com.ttcs.homestay.exception.UserNotFoundException;
 import com.ttcs.homestay.dto.user.UpdateUserStatusRequest;
+import com.ttcs.homestay.dto.user.UpdateUserRequest;
+import com.ttcs.homestay.exception.ResendPasswordNotAllowedException;
+import com.ttcs.homestay.exception.SelfRoleChangeException;
 
 @Service
 public class UserService {
@@ -83,6 +86,35 @@ public class UserService {
 		}
 		user.updateActive(request.active());
 		return UserResponse.from(userRepository.save(user));
+	}
+	/** Lát 4: sửa họ tên, số điện thoại, vai trò. Đổi vai trò → AccountStatusFilter bắt đăng nhập lại. */
+	@Transactional
+	public UserResponse updateUser(Long userId, UpdateUserRequest request, Long currentAdminId) {
+		User user = userRepository.findWithRoleById(userId)
+				.orElseThrow(UserNotFoundException::new);
+		Role role = roleRepository.findByCode(request.role())
+				.orElseThrow(() -> new InvalidRoleException(request.role()));
+		if (userId.equals(currentAdminId) && !user.getRole().getCode().equals(role.getCode())) {
+			throw new SelfRoleChangeException();
+		}
+		String phone = request.phone() == null || request.phone().isBlank() ? null : request.phone().trim();
+		user.updateProfile(request.fullName().trim(), phone, role);
+		return UserResponse.from(userRepository.save(user));
+	}
+
+	/** Lát 4: gửi lại mật khẩu tạm mới (vd email lần trước không tới). Mật khẩu tạm cũ hết dùng được. */
+	@Transactional
+	public UserResponse resendTemporaryPassword(Long userId) {
+		User user = userRepository.findWithRoleById(userId)
+				.orElseThrow(UserNotFoundException::new);
+		if (!user.isMustChangePassword()) {
+			throw new ResendPasswordNotAllowedException();
+		}
+		String temporaryPassword = generateTemporaryPassword();
+		user.resetTemporaryPassword(passwordEncoder.encode(temporaryPassword));
+		User saved = userRepository.save(user);
+		mailService.sendTemporaryPassword(saved, temporaryPassword);
+		return UserResponse.from(saved);
 	}
 	/** 10 ký tự, luôn có cả chữ và số. */
 	String generateTemporaryPassword() {

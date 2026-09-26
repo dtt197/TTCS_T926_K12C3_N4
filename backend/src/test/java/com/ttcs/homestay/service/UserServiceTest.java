@@ -37,6 +37,9 @@ import jakarta.validation.Validator;
 import com.ttcs.homestay.dto.user.UpdateUserStatusRequest;
 import com.ttcs.homestay.exception.SelfDeactivationException;
 import com.ttcs.homestay.exception.UserNotFoundException;
+import com.ttcs.homestay.dto.user.UpdateUserRequest;
+import com.ttcs.homestay.exception.ResendPasswordNotAllowedException;
+import com.ttcs.homestay.exception.SelfRoleChangeException;
 
 /** S1-02 Lát 1: tạo tài khoản nhân viên. */
 @ExtendWith(MockitoExtension.class)
@@ -158,5 +161,63 @@ class UserServiceTest {
 
 		assertThatThrownBy(() -> userService.updateStatus(99L, new UpdateUserStatusRequest(false), 1L))
 				.isInstanceOf(UserNotFoundException.class);
+	}
+	@Test
+	void suaThongTin_doiVaiTro_emailGiuNguyen() {
+		User staff = User.createStaff("Le tan", "letan@homestay.local", "0912345678", mock(Role.class), true, "HASH");
+		Role owner = mock(Role.class);
+		when(owner.getCode()).thenReturn("OWNER");
+		when(userRepository.findWithRoleById(2L)).thenReturn(Optional.of(staff));
+		when(roleRepository.findByCode("OWNER")).thenReturn(Optional.of(owner));
+		when(userRepository.save(staff)).thenReturn(staff);
+
+		UserResponse response = userService.updateUser(2L, new UpdateUserRequest("Nguyen Van Chu", "", "OWNER"), 1L);
+
+		assertThat(response.fullName()).isEqualTo("Nguyen Van Chu");
+		assertThat(response.phone()).isNull();
+		assertThat(response.role()).isEqualTo("OWNER");
+		assertThat(response.email()).isEqualTo("letan@homestay.local");
+	}
+
+	@Test
+	void adminTuDoiVaiTroCuaMinh_biChan() {
+		Role adminRole = mock(Role.class);
+		when(adminRole.getCode()).thenReturn("ADMIN");
+		Role owner = mock(Role.class);
+		when(owner.getCode()).thenReturn("OWNER");
+		User admin = User.createStaff("Admin", "admin@homestay.local", null, adminRole, true, "HASH");
+		when(userRepository.findWithRoleById(1L)).thenReturn(Optional.of(admin));
+		when(roleRepository.findByCode("OWNER")).thenReturn(Optional.of(owner));
+
+		assertThatThrownBy(() -> userService.updateUser(1L, new UpdateUserRequest("Admin", null, "OWNER"), 1L))
+				.isInstanceOf(SelfRoleChangeException.class);
+		verify(userRepository, never()).save(any());
+	}
+
+	@Test
+	void guiLaiMatKhauTam_khiChuaDoi_capMatKhauMoiVaGuiEmail() {
+		Role receptionist = mock(Role.class);
+		when(receptionist.getCode()).thenReturn("RECEPTIONIST");
+		User staff = User.createStaff("Le tan", "letan@homestay.local", null, receptionist, true, "HASH_CU");
+		when(userRepository.findWithRoleById(2L)).thenReturn(Optional.of(staff));
+		when(passwordEncoder.encode(anyString())).thenReturn("HASH_MOI");
+		when(userRepository.save(staff)).thenReturn(staff);
+
+		userService.resendTemporaryPassword(2L);
+
+		assertThat(staff.getPasswordHash()).isEqualTo("HASH_MOI");
+		assertThat(staff.isMustChangePassword()).isTrue();
+		verify(mailService).sendTemporaryPassword(eq(staff), anyString());
+	}
+
+	@Test
+	void guiLaiMatKhauTam_khiDaTuDoiMatKhau_biChan() {
+		User staff = User.createStaff("Le tan", "letan@homestay.local", null, mock(Role.class), true, "HASH");
+		staff.changePassword("HASH_DA_DOI");
+		when(userRepository.findWithRoleById(2L)).thenReturn(Optional.of(staff));
+
+		assertThatThrownBy(() -> userService.resendTemporaryPassword(2L))
+				.isInstanceOf(ResendPasswordNotAllowedException.class);
+		verify(mailService, never()).sendTemporaryPassword(any(), anyString());
 	}
 }

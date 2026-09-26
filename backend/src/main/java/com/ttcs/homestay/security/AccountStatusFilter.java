@@ -40,14 +40,19 @@ public class AccountStatusFilter extends OncePerRequestFilter {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication instanceof JwtAuthenticationToken jwtAuthentication) {
 			Long userId = Long.valueOf(jwtAuthentication.getToken().getSubject());
-			Optional<User> user = userRepository.findById(userId);
+			Optional<User> user = userRepository.findWithRoleById(userId);
 
 			if (user.isEmpty() || !user.get().isActive()) {
 				writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "ACCOUNT_DISABLED",
 						"Tài khoản đã bị vô hiệu hoá. Vui lòng liên hệ quản trị viên");
 				return;
 			}
-
+			String tokenRole = jwtAuthentication.getToken().getClaimAsString("role");
+			if (!user.get().getRole().getCode().equals(tokenRole)) {
+				writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "ROLE_CHANGED",
+						"Vai trò của bạn vừa được thay đổi. Vui lòng đăng nhập lại");
+				return;
+			}
 			String path = request.getRequestURI();
 			if (user.get().isMustChangePassword()
 					&& !path.startsWith("/api/auth/")

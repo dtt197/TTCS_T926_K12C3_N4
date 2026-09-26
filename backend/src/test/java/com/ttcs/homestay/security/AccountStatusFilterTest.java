@@ -15,10 +15,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
+import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.repository.UserRepository;
 
-/** S1-02 AC4 (bắt đổi mật khẩu tạm) và AC5 (vô hiệu hoá làm hết hiệu lực phiên). */
+/** S1-02 AC4 (bắt đổi mật khẩu tạm), AC5 (vô hiệu hoá làm hết hiệu lực phiên), Lát 4 (đổi vai trò → đăng nhập lại). */
 class AccountStatusFilterTest {
 
 	private final UserRepository userRepository = mock(UserRepository.class);
@@ -29,13 +30,22 @@ class AccountStatusFilterTest {
 		SecurityContextHolder.clearContext();
 	}
 
-	private void loginAs(long userId, boolean active, boolean mustChangePassword) {
+	/** Giả lập: trong database tài khoản có vai trò dbRole; token đăng nhập ghi vai trò tokenRole. */
+	private void loginAs(long userId, boolean active, boolean mustChangePassword, String dbRole, String tokenRole) {
+		Role role = mock(Role.class);
+		when(role.getCode()).thenReturn(dbRole);
 		User user = mock(User.class);
 		when(user.isActive()).thenReturn(active);
 		when(user.isMustChangePassword()).thenReturn(mustChangePassword);
-		when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-		Jwt jwt = Jwt.withTokenValue("token").header("alg", "HS256").subject(String.valueOf(userId)).build();
+		when(user.getRole()).thenReturn(role);
+		when(userRepository.findWithRoleById(userId)).thenReturn(Optional.of(user));
+		Jwt jwt = Jwt.withTokenValue("token").header("alg", "HS256")
+				.subject(String.valueOf(userId)).claim("role", tokenRole).build();
 		SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+	}
+
+	private void loginAs(long userId, boolean active, boolean mustChangePassword) {
+		loginAs(userId, active, mustChangePassword, "RECEPTIONIST", "RECEPTIONIST");
 	}
 
 	private MockFilterChain call(String path, MockHttpServletResponse response) throws Exception {
@@ -68,6 +78,16 @@ class AccountStatusFilterTest {
 		loginAs(6L, true, true);
 		MockFilterChain chain = call("/api/account/change-password", new MockHttpServletResponse());
 		assertThat(chain.getRequest()).isNotNull();
+	}
+
+	@Test
+	void vaiTroTrongTokenKhacDatabase_batDangNhapLai401() throws Exception {
+		loginAs(8L, true, false, "HOUSEKEEPING", "RECEPTIONIST");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		MockFilterChain chain = call("/api/internal/me", response);
+		assertThat(response.getStatus()).isEqualTo(401);
+		assertThat(response.getContentAsString()).contains("ROLE_CHANGED");
+		assertThat(chain.getRequest()).isNull();
 	}
 
 	@Test

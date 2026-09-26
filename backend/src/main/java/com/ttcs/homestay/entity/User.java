@@ -107,6 +107,18 @@ public class User {
 	public void updateActive(boolean active) {
 		this.active = active;
 	}
+	/** S1-02 Lát 4: quản trị sửa họ tên, số điện thoại, vai trò (email không đổi). */
+	public void updateProfile(String fullName, String phone, Role role) {
+		this.fullName = fullName;
+		this.phone = phone;
+		this.role = role;
+	}
+
+	/** S1-02 Lát 4: cấp lại mật khẩu tạm cho tài khoản chưa tự đổi mật khẩu. */
+	public void resetTemporaryPassword(String temporaryPasswordHash) {
+		this.passwordHash = temporaryPasswordHash;
+		this.mustChangePassword = true;
+	}
 	public String getPhone() {
 		return phone;
 	}

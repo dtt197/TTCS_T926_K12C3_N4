@@ -32,7 +32,15 @@ public class UserAdminExceptionHandler {
 	public ResponseEntity<ApiError> handleSelfDeactivation(SelfDeactivationException exception) {
 		return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
 	}
+	@ExceptionHandler(ResendPasswordNotAllowedException.class)
+	public ResponseEntity<ApiError> handleResendNotAllowed(ResendPasswordNotAllowedException exception) {
+		return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
+	}
 
+	@ExceptionHandler(SelfRoleChangeException.class)
+	public ResponseEntity<ApiError> handleSelfRoleChange(SelfRoleChangeException exception) {
+		return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
+	}
 	@ExceptionHandler(InvalidRoleException.class)
 	public ResponseEntity<ApiError> handleInvalidRole(InvalidRoleException exception) {
 		return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
