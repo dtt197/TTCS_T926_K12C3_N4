@@ -55,6 +55,9 @@ export async function apiRequest<T>(
       const body = (await response.json().catch(() => null)) as { message?: string } | null
       throw new Error(body?.message ?? `API request failed with status ${response.status}`)
     }
+    if (response.status === 204) {
+      return undefined as T
+    }
     return (await response.json()) as T
   }
 

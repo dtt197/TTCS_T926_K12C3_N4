@@ -3,7 +3,7 @@ import { useAuth } from './hooks/useAuth'
 import { AppRoutes } from './routes/AppRoutes'
 
 function App() {
-  const { user, status, handleLogin, handleLogout } = useAuth()
+  const { user, status, handleLogin, handleLogout, handlePasswordChanged } = useAuth()
 
   if (status === 'loading') {
     return <main className="app-shell" aria-busy="true" />
@@ -14,6 +14,7 @@ function App() {
       user={user}
       onLogin={handleLogin}
       onLogout={handleLogout}
+      onPasswordChanged={handlePasswordChanged}
     />
   )
 }
