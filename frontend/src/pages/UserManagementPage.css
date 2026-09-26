@@ -15,3 +15,8 @@
 .form-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
 .view-tabs { display: flex; gap: 8px; }
 .user-tag.off { background: var(--red-soft); color: var(--red); }
+.user-search { margin-bottom: 14px; }
+.user-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.user-actions .secondary-button { padding: 6px 10px; font-size: 12px; }
+.user-pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 14px; font-size: 13px; }
+.user-table td:nth-child(2) { white-space: nowrap; }

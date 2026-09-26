@@ -26,3 +26,8 @@ export type CreateUserPayload = {
   role: StaffRole
   active: boolean
 }
+export type UpdateUserPayload = {
+  fullName: string
+  phone: string
+  role: StaffRole
+}
