@@ -14,3 +14,4 @@
 .user-tag.warn { background: #fff4e0; color: #9a6700; }
 .form-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
 .view-tabs { display: flex; gap: 8px; }
+.user-tag.off { background: var(--red-soft); color: var(--red); }

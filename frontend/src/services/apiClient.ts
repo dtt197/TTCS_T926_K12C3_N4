@@ -51,6 +51,11 @@ export async function apiRequest<T>(
   })
 
   if (response.status !== 401 || hasRetried) {
+    if (response.status === 401) {
+      // Đã làm mới token mà vẫn bị từ chối (vd tài khoản bị vô hiệu hoá) → đăng xuất
+      notifySessionExpired()
+      throw new AuthSessionExpiredError()
+    }
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { message?: string } | null
       throw new Error(body?.message ?? `API request failed with status ${response.status}`)

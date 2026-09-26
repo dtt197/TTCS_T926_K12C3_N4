@@ -13,3 +13,10 @@ export function createUser(payload: CreateUserPayload) {
     body: JSON.stringify({ ...payload, phone: payload.phone.trim() || null }),
   })
 }
+export function updateUserStatus(id: number, active: boolean) {
+  return apiRequest<StaffUser>(`/api/admin/users/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active }),
+  })
+}
