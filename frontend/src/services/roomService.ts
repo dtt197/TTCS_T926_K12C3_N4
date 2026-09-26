@@ -34,9 +34,7 @@ export function getRoomHistory(roomId: number) {
 export function updateRoomStatus(roomId: number, status: RoomStatus) {
   return request<Room>(`/rooms/${roomId}/status`, {
     method: 'PATCH',
-    headers: {
-      'X-Operator-Name': 'Lễ tân',
-    },
+   
     body: JSON.stringify({ status }),
   })
 }
@@ -46,9 +44,7 @@ export function checkIn(roomId: number, guestName: string) {
     `/rooms/${roomId}/check-in`,
     {
       method: 'POST',
-      headers: {
-        'X-Operator-Name': 'Lễ tân',
-      },
+     
       body: JSON.stringify({ guestName }),
     },
   )
@@ -59,9 +55,7 @@ export function putRoomIntoMaintenance(
 ) {
   return request<Room>(`/rooms/${roomId}/maintenance`, {
     method: 'PATCH',
-    headers: {
-      'X-Operator-Name': 'Lễ tân',
-    },
+    
     body: JSON.stringify(maintenance),
   })
 }

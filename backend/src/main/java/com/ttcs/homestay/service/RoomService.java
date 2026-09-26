@@ -39,7 +39,13 @@ public class RoomService {
         this.checkInRepository = checkInRepository;
         this.roomStatusHistoryRepository = roomStatusHistoryRepository;
     }
-
+        @Transactional(readOnly = true)
+    public List<RoomResponse> getRooms() {
+        return roomRepository.findAllByActiveTrueOrderByRoomNumberAsc()
+                .stream()
+                .map(RoomResponse::from)
+                .toList();
+    }
     @Transactional(readOnly = true)
 public List<RoomStatusHistoryResponse> getHistory(
         Long roomId
