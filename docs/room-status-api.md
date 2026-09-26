@@ -49,3 +49,28 @@ Nếu phòng không ở trạng thái `TRONG_SACH`, backend trả `409 Conflict`
 ```
 
 Khi nhận phòng thành công, backend lưu bản ghi `check_ins` và chuyển phòng sang `DANG_O` trong cùng transaction.
+
+## `POST /api/rooms/{roomId}/check-out`
+
+Thực hiện trả phòng cho phòng đang ở (`DANG_O`).
+Khi trả phòng thành công:
+- Chuyển trạng thái phòng sang `TRONG_BAN` (Trống bẩn).
+- Xóa các thông tin bảo trì liên quan.
+- Lưu bản ghi lịch sử trạng thái: `DANG_O` → `TRONG_BAN`.
+
+Nếu phòng không ở trạng thái `DANG_O`, backend trả `409 Conflict`:
+
+```json
+{
+  "message": "Không thể trả phòng 101 vì phòng không ở trạng thái Đang ở."
+}
+```
+
+## Quy tắc chuyển sang Bảo trì (`BAO_TRI`)
+
+- Chặn chuyển trực tiếp phòng `DANG_O` (Đang ở) sang `BAO_TRI` (Bảo trì).
+- Yêu cầu phải hoàn tất trả phòng (`check-out`) trước khi đưa phòng vào bảo trì.
+- Khi bị từ chối, backend trả `409 Conflict`:
+  `"Không thể đưa phòng 201 đang ở vào bảo trì. Hãy trả phòng trước."`
+- Giữ nguyên trạng thái phòng và không ghi lịch sử khi thao tác bị từ chối.
+- Sau khi trả phòng (phòng chuyển sang `TRONG_BAN`), được phép chuyển phòng sang `BAO_TRI` với thông tin bắt buộc: lý do bảo trì, ngày bắt đầu, ngày kết thúc.

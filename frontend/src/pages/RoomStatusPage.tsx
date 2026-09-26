@@ -3,6 +3,7 @@ import '../App.css'
 
 import {
   checkIn,
+  checkOut,
   getRoomHistory,
   getRooms,
   putRoomIntoMaintenance,
@@ -298,6 +299,13 @@ export function RoomStatusPage() {
       return
     }
 
+    if (room.status === 'DANG_O' && targetStatus === 'BAO_TRI') {
+      showError(
+        `Không thể chuyển phòng ${room.roomNumber} đang ở sang bảo trì. Vui lòng hoàn tất trả phòng trước khi đưa phòng vào bảo trì.`,
+      )
+      return
+    }
+
     const maintenance =
       maintenanceDrafts[room.id] ?? {
         reason: '',
@@ -486,6 +494,72 @@ export function RoomStatusPage() {
         error instanceof Error
           ? error.message
           : 'Không thể thực hiện nhận phòng.',
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleCheckOut(room: Room) {
+    if (room.status !== 'DANG_O') {
+      showError(`Phòng ${room.roomNumber} không ở trạng thái Đang ở.`)
+      return
+    }
+
+    setIsSaving(true)
+    setNotice(null)
+
+    try {
+      const savedRoom = isDemoMode
+        ? {
+            ...room,
+            status: 'TRONG_BAN' as RoomStatus,
+            maintenanceReason: null,
+            maintenanceStartDate: null,
+            maintenanceEndDate: null,
+          }
+        : await checkOut(room.id)
+
+      setRooms((current) =>
+        current.map((item) => (item.id === room.id ? savedRoom : item)),
+      )
+
+      setDraftStatuses((current) => ({
+        ...current,
+        [room.id]: 'TRONG_BAN',
+      }))
+
+      if (isDemoMode) {
+        const historyRecord: RoomStatusHistory = {
+          id: Date.now(),
+          roomId: room.id,
+          roomNumber: room.roomNumber,
+          previousStatus: 'DANG_O',
+          newStatus: 'TRONG_BAN',
+          changedBy: 'Lễ tân',
+          changedAt: new Date().toISOString(),
+          maintenanceReason: null,
+          maintenanceStartDate: null,
+          maintenanceEndDate: null,
+        }
+        setHistoryByRoom((current) => ({
+          ...current,
+          [room.id]: [
+            ...(current[room.id] ?? DEMO_HISTORY[room.id] ?? []),
+            historyRecord,
+          ],
+        }))
+      }
+
+      setNotice({
+        type: 'success',
+        text: `Đã trả phòng ${room.roomNumber} thành công. Trạng thái chuyển sang Trống bẩn.`,
+      })
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể thực hiện trả phòng.',
       )
     } finally {
       setIsSaving(false)
@@ -692,6 +766,21 @@ export function RoomStatusPage() {
 
                       {currentDraftStatus === 'BAO_TRI' && (
                         <div className="maintenance-fields">
+                          {room.status === 'DANG_O' && (
+                            <div
+                              style={{
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                marginBottom: '10px',
+                                border: '1px solid #fde68a',
+                              }}
+                            >
+                              ⚠️ Phòng đang có khách ở. Cần hoàn tất trả phòng trước khi chuyển sang bảo trì.
+                            </div>
+                          )}
                           <label className="form-label">
                             Lý do bảo trì
 
@@ -792,6 +881,17 @@ export function RoomStatusPage() {
                             ? '✕ Đóng lịch sử'
                             : 'Xem lịch sử'}
                         </button>
+
+                        {room.status === 'DANG_O' && (
+                          <button
+                            className="secondary-button checkout-button"
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => void handleCheckOut(room)}
+                          >
+                            Trả phòng
+                          </button>
+                        )}
 
                         <button
                           className="secondary-button"
