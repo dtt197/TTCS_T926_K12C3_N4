@@ -103,6 +103,10 @@ public class User {
 		this.passwordHash = newPasswordHash;
 		this.mustChangePassword = false;
 	}
+	/** S1-02 AC5: bật/tắt trạng thái hoạt động của tài khoản. */
+	public void updateActive(boolean active) {
+		this.active = active;
+	}
 	public String getPhone() {
 		return phone;
 	}

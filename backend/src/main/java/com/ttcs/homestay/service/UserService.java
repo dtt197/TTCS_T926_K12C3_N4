@@ -16,6 +16,9 @@ import com.ttcs.homestay.exception.EmailAlreadyUsedException;
 import com.ttcs.homestay.exception.InvalidRoleException;
 import com.ttcs.homestay.repository.RoleRepository;
 import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.exception.SelfDeactivationException;
+import com.ttcs.homestay.exception.UserNotFoundException;
+import com.ttcs.homestay.dto.user.UpdateUserStatusRequest;
 
 @Service
 public class UserService {
@@ -70,7 +73,17 @@ public class UserService {
 		mailService.sendTemporaryPassword(saved, temporaryPassword);
 		return UserResponse.from(saved);
 	}
-
+	/** S1-02 AC5: vô hiệu hoá / kích hoạt lại. Phiên đang dùng bị chặn ngay bởi AccountStatusFilter. */
+	@Transactional
+	public UserResponse updateStatus(Long userId, UpdateUserStatusRequest request, Long currentAdminId) {
+		User user = userRepository.findWithRoleById(userId)
+				.orElseThrow(UserNotFoundException::new);
+		if (!request.active() && userId.equals(currentAdminId)) {
+			throw new SelfDeactivationException();
+		}
+		user.updateActive(request.active());
+		return UserResponse.from(userRepository.save(user));
+	}
 	/** 10 ký tự, luôn có cả chữ và số. */
 	String generateTemporaryPassword() {
 		while (true) {

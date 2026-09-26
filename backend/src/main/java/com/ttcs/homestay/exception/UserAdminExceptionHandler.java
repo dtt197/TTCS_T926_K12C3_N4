@@ -23,7 +23,16 @@ public class UserAdminExceptionHandler {
 	public ResponseEntity<ApiError> handlePasswordChange(PasswordChangeException exception) {
 		return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
 	}
-	
+	@ExceptionHandler(UserNotFoundException.class)
+	public ResponseEntity<ApiError> handleUserNotFound(UserNotFoundException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(exception.getMessage()));
+	}
+
+	@ExceptionHandler(SelfDeactivationException.class)
+	public ResponseEntity<ApiError> handleSelfDeactivation(SelfDeactivationException exception) {
+		return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
+	}
+
 	@ExceptionHandler(InvalidRoleException.class)
 	public ResponseEntity<ApiError> handleInvalidRole(InvalidRoleException exception) {
 		return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));

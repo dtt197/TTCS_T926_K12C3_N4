@@ -34,6 +34,10 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
+import com.ttcs.homestay.dto.user.UpdateUserStatusRequest;
+import com.ttcs.homestay.exception.SelfDeactivationException;
+import com.ttcs.homestay.exception.UserNotFoundException;
+
 /** S1-02 Lát 1: tạo tài khoản nhân viên. */
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -122,5 +126,37 @@ class UserServiceTest {
 				validator.validate(new CreateUserRequest("", "khong-phai-email", "12345", "", true));
 
 		assertThat(errors).hasSize(4);
+	}
+	@Test
+	void adminTuVoHieuHoaChinhMinh_biChan() {
+		User admin = User.createStaff("Admin", "admin@homestay.local", null, mock(Role.class), true, "HASH");
+		when(userRepository.findWithRoleById(1L)).thenReturn(Optional.of(admin));
+
+		assertThatThrownBy(() -> userService.updateStatus(1L, new UpdateUserStatusRequest(false), 1L))
+				.isInstanceOf(SelfDeactivationException.class);
+		assertThat(admin.isActive()).isTrue();
+	}
+
+	@Test
+	void voHieuHoaTaiKhoanKhac_luuTrangThaiTat_roiKichHoatLai() {
+		Role receptionist = mock(Role.class);
+		when(receptionist.getCode()).thenReturn("RECEPTIONIST");
+		User staff = User.createStaff("Le tan", "letan@homestay.local", null, receptionist, true, "HASH");
+		when(userRepository.findWithRoleById(2L)).thenReturn(Optional.of(staff));
+		when(userRepository.save(staff)).thenReturn(staff);
+
+		UserResponse off = userService.updateStatus(2L, new UpdateUserStatusRequest(false), 1L);
+		assertThat(off.active()).isFalse();
+
+		UserResponse on = userService.updateStatus(2L, new UpdateUserStatusRequest(true), 1L);
+		assertThat(on.active()).isTrue();
+	}
+
+	@Test
+	void taiKhoanKhongTonTai_bao404() {
+		when(userRepository.findWithRoleById(99L)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> userService.updateStatus(99L, new UpdateUserStatusRequest(false), 1L))
+				.isInstanceOf(UserNotFoundException.class);
 	}
 }

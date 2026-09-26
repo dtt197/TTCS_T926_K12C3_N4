@@ -13,7 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ttcs.homestay.dto.user.CreateUserRequest;
 import com.ttcs.homestay.dto.user.UserResponse;
 import com.ttcs.homestay.service.UserService;
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import com.ttcs.homestay.dto.user.UpdateUserStatusRequest;
 import jakarta.validation.Valid;
 
 /** S1-02: quản trị hệ thống quản lý tài khoản nhân viên. Chỉ vai trò ADMIN gọi được (xem SecurityConfig). */
@@ -36,5 +40,11 @@ public class UserController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
 		return userService.createUser(request);
+	}
+	@PatchMapping("/{id}/status")
+	public UserResponse updateStatus(@PathVariable Long id,
+			@Valid @RequestBody UpdateUserStatusRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		return userService.updateStatus(id, request, Long.valueOf(jwt.getSubject()));
 	}
 }
