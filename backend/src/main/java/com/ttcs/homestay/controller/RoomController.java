@@ -28,7 +28,10 @@ public class RoomController {
     public RoomController(RoomService roomService) {
         this.roomService = roomService;
     }
-
+    @GetMapping
+    public List<RoomResponse> getRooms() {
+        return roomService.getRooms();
+    }
     @GetMapping("/{roomId}/history")
     public List<RoomStatusHistoryResponse> getHistory(
             @PathVariable Long roomId

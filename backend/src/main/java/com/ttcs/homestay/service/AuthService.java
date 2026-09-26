@@ -55,7 +55,8 @@ public class AuthService {
 				user.getEmail(),
 				user.getRole().getCode(),
 				issuedTokens.accessToken(),
-				jwtTokenService.accessTtlSeconds()
+				jwtTokenService.accessTtlSeconds(),
+				user.isMustChangePassword()
 		);
 		return new LoginResult(response, issuedTokens.refreshToken());
 	}

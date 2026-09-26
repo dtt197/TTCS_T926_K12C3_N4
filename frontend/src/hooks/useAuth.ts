@@ -58,6 +58,10 @@ export function useAuth() {
     setStatus('authenticated')
   }
 
+  function handlePasswordChanged() {
+    setUser((current) => (current ? { ...current, mustChangePassword: false } : current))
+  }
+
   async function handleLogout() {
   await logout()
   clearAccessToken()
@@ -65,5 +69,5 @@ export function useAuth() {
   setStatus('unauthenticated')
 }
 
-  return { user, status, handleLogin, handleLogout }
+  return { user, status, handleLogin, handleLogout, handlePasswordChanged }
 }
