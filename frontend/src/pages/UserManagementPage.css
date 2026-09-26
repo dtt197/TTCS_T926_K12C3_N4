@@ -1,0 +1,16 @@
+/* S1-02: trang quản lý tài khoản nhân viên */
+.user-table-wrapper { overflow-x: auto; }
+.user-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.user-table th {
+  text-align: left; color: var(--muted); font-size: 12px; font-weight: 600;
+  padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.user-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.user-table small { display: block; color: var(--muted); font-size: 12px; }
+.user-tag {
+  display: inline-block; margin: 2px 4px 2px 0; padding: 2px 8px;
+  border-radius: 999px; font-size: 12px; background: #eef1ed;
+}
+.user-tag.warn { background: #fff4e0; color: #9a6700; }
+.form-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+.view-tabs { display: flex; gap: 8px; }
