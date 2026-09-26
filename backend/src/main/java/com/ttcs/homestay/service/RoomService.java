@@ -1,5 +1,5 @@
 package com.ttcs.homestay.service;
-
+import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
 import com.ttcs.homestay.dto.CheckInRequest;
 import com.ttcs.homestay.dto.CheckInResponse;
 import com.ttcs.homestay.dto.MaintenanceRequest;
@@ -7,13 +7,18 @@ import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.entity.CheckIn;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
+import com.ttcs.homestay.entity.RoomStatusHistory;
 import com.ttcs.homestay.exception.RoomNotFoundException;
 import com.ttcs.homestay.exception.RoomStatusConflictException;
 import com.ttcs.homestay.repository.CheckInRepository;
 import com.ttcs.homestay.repository.RoomRepository;
+import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
+
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,22 +29,34 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final CheckInRepository checkInRepository;
+    private final RoomStatusHistoryRepository roomStatusHistoryRepository;
 
-    public RoomService(RoomRepository roomRepository, CheckInRepository checkInRepository) {
+    public RoomService(
+            RoomRepository roomRepository,
+            CheckInRepository checkInRepository,
+            RoomStatusHistoryRepository roomStatusHistoryRepository) {
         this.roomRepository = roomRepository;
         this.checkInRepository = checkInRepository;
+        this.roomStatusHistoryRepository = roomStatusHistoryRepository;
     }
 
     @Transactional(readOnly = true)
-    public List<RoomResponse> getRooms() {
-        return roomRepository.findAllByActiveTrueOrderByRoomNumberAsc()
-                .stream()
-                .map(RoomResponse::from)
-                .toList();
+public List<RoomStatusHistoryResponse> getHistory(
+        Long roomId
+) {
+    if (!roomRepository.existsById(roomId)) {
+        throw new RoomNotFoundException(roomId);
     }
 
+    return roomStatusHistoryRepository
+            .findByRoomIdInChronologicalOrder(roomId)
+            .stream()
+            .map(RoomStatusHistoryResponse::from)
+            .toList();
+}
+
     @Transactional
-    public RoomResponse updateStatus(Long roomId, RoomStatus targetStatus) {
+    public RoomResponse updateStatus(Long roomId, RoomStatus targetStatus, String operatorName) {
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
 
@@ -54,15 +71,29 @@ public class RoomService {
                             + " từ Đang ở sang Bảo trì. Hãy trả phòng trước.");
         }
 
+        RoomStatus previousStatus = room.getStatus();
+
         room.setStatus(targetStatus);
         room.setMaintenanceReason(null);
         room.setMaintenanceStartDate(null);
         room.setMaintenanceEndDate(null);
-        return RoomResponse.from(roomRepository.save(room));
+
+        Room savedRoom = roomRepository.save(room);
+
+        saveHistory(
+                savedRoom,
+                previousStatus,
+                targetStatus,
+                operatorName,
+                null,
+                null,
+                null);
+
+        return RoomResponse.from(savedRoom);
     }
 
     @Transactional
-    public RoomResponse putIntoMaintenance(Long roomId, MaintenanceRequest request) {
+    public RoomResponse putIntoMaintenance(Long roomId, MaintenanceRequest request, String operatorName) {
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
 
@@ -76,15 +107,29 @@ public class RoomService {
                     "Khoảng ngày bảo trì không hợp lệ. Ngày kết thúc phải từ ngày bắt đầu trở đi.");
         }
 
+        RoomStatus previousStatus = room.getStatus();
+
         room.setStatus(RoomStatus.BAO_TRI);
         room.setMaintenanceReason(request.reason().trim());
         room.setMaintenanceStartDate(request.startDate());
         room.setMaintenanceEndDate(request.endDate());
-        return RoomResponse.from(roomRepository.save(room));
+
+        Room savedRoom = roomRepository.save(room);
+
+        saveHistory(
+                savedRoom,
+                previousStatus,
+                RoomStatus.BAO_TRI,
+                operatorName,
+                savedRoom.getMaintenanceReason(),
+                savedRoom.getMaintenanceStartDate(),
+                savedRoom.getMaintenanceEndDate());
+
+        return RoomResponse.from(savedRoom);
     }
 
     @Transactional
-    public CheckInResponse checkIn(Long roomId, CheckInRequest request) {
+    public CheckInResponse checkIn(Long roomId, CheckInRequest request, String operatorName) {
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
 
@@ -95,13 +140,57 @@ public class RoomService {
                             + ". Chỉ phòng Trống sạch mới được gán khi nhận phòng.");
         }
 
+        RoomStatus previousStatus = room.getStatus();
+
         room.setStatus(RoomStatus.DANG_O);
-        roomRepository.save(room);
+        Room savedRoom = roomRepository.save(room);
 
         CheckIn checkIn = new CheckIn();
-        checkIn.setRoom(room);
+        checkIn.setRoom(savedRoom);
         checkIn.setGuestName(request.guestName().trim());
         checkIn.setCheckedInAt(OffsetDateTime.now(BUSINESS_ZONE));
-        return CheckInResponse.from(checkInRepository.save(checkIn));
+        CheckInResponse response = CheckInResponse.from(checkInRepository.save(checkIn));
+
+        saveHistory(
+                savedRoom,
+                previousStatus,
+                RoomStatus.DANG_O,
+                operatorName,
+                null,
+                null,
+                null);
+
+        return response;
+    }
+
+    private void saveHistory(
+            Room room,
+            RoomStatus previousStatus,
+            RoomStatus newStatus,
+            String operatorName,
+            String maintenanceReason,
+            LocalDate maintenanceStartDate,
+            LocalDate maintenanceEndDate) {
+        RoomStatusHistory history = new RoomStatusHistory();
+
+        history.setRoom(room);
+        history.setPreviousStatus(previousStatus);
+        history.setNewStatus(newStatus);
+
+        if (operatorName == null || operatorName.isBlank()) {
+            history.setChangedBy("Lễ tân");
+        } else {
+            history.setChangedBy(operatorName.trim());
+        }
+
+        history.setChangedAt(
+                OffsetDateTime.now(BUSINESS_ZONE)
+        );
+
+        history.setMaintenanceReason(maintenanceReason);
+        history.setMaintenanceStartDate(maintenanceStartDate);
+        history.setMaintenanceEndDate(maintenanceEndDate);
+
+        roomStatusHistoryRepository.save(history);
     }
 }
