@@ -14,6 +14,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	Optional<User> findByEmailIgnoreCase(String email);
 
+	@EntityGraph(attributePaths = "role")
+	Optional<User> findWithRoleById(Long id);
 	boolean existsByEmailIgnoreCase(String email);
 
 	@EntityGraph(attributePaths = "role")

@@ -98,6 +98,11 @@ public class User {
 		return user;
 	}
 
+	/** Đổi mật khẩu (dùng cho S1-02 và S1-03): lưu mật khẩu mới đã mã hoá, gỡ cờ bắt buộc đổi. */
+	public void changePassword(String newPasswordHash) {
+		this.passwordHash = newPasswordHash;
+		this.mustChangePassword = false;
+	}
 	public String getPhone() {
 		return phone;
 	}
