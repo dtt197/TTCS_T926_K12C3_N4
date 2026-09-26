@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../services/apiClient'
-import { refreshAccessToken } from '../services/authService'
+import { logout, refreshAccessToken } from '../services/authService'
 import { clearAccessToken, getAccessToken } from '../services/tokenStore'
 import type { LoginResponse, UserProfile } from '../types/auth'
 
@@ -58,11 +58,12 @@ export function useAuth() {
     setStatus('authenticated')
   }
 
-  function handleLogout() {
-    clearAccessToken()
-    setUser(null)
-    setStatus('unauthenticated')
-  }
+  async function handleLogout() {
+  await logout()
+  clearAccessToken()
+  setUser(null)
+  setStatus('unauthenticated')
+}
 
   return { user, status, handleLogin, handleLogout }
 }

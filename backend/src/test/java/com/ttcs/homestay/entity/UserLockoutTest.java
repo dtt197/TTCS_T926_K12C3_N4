@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UserLockoutTest {
 
 	@Test
-	void locksAfterFiveFailuresWithinThirtyMinutes() {
+	void locksAfterFiveFailuresWithinFifteenMinutes(){
 		User user = new User();
 		LocalDateTime firstFailure = LocalDateTime.of(2026, 9, 25, 10, 0);
 
@@ -24,15 +24,15 @@ class UserLockoutTest {
 	}
 
 	@Test
-	void resetsFailureWindowAfterThirtyMinutes() {
+	void resetsFailureWindowAfterFifteenMinutes(){
 		User user = new User();
 		LocalDateTime firstFailure = LocalDateTime.of(2026, 9, 25, 10, 0);
 
 		user.recordFailedLogin(firstFailure);
-		user.recordFailedLogin(firstFailure.plusMinutes(31));
+		user.recordFailedLogin(firstFailure.plusMinutes(16));
 
 		assertThat(user.getFailedLoginCount()).isEqualTo(1);
-		assertThat(user.getFirstFailedLoginAt()).isEqualTo(firstFailure.plusMinutes(31));
+		assertThat(user.getFirstFailedLoginAt()).isEqualTo(firstFailure.plusMinutes(16));
 		assertThat(user.getLockedUntil()).isNull();
 	}
 
