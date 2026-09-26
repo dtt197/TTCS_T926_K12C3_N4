@@ -52,6 +52,9 @@ public class User {
 	@Column(name = "locked_until")
 	private LocalDateTime lockedUntil;
 
+		@Column(name = "must_change_password", nullable = false)
+	private boolean mustChangePassword;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
@@ -81,7 +84,31 @@ public class User {
 		}
 	}
 
-	public Long getId() {
+	/** S1-02: quản trị tạo tài khoản nhân viên với mật khẩu tạm (bắt buộc đổi lần đầu). */
+	public static User createStaff(String fullName, String email, String phone, Role role,
+			boolean active, String passwordHash) {
+		User user = new User();
+		user.fullName = fullName;
+		user.email = email;
+		user.phone = phone;
+		user.role = role;
+		user.active = active;
+		user.passwordHash = passwordHash;
+		user.mustChangePassword = true;
+		return user;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public boolean isMustChangePassword() {
+		return mustChangePassword;
+	}
+
+	public OffsetDateTime getCreatedAt() {
+		return createdAt;
+	}public Long getId() {
 		return id;
 	}
 
