@@ -1,5 +1,5 @@
 import type { LoginResponse } from '../types/auth'
-
+import './AuthPages.css'
 type InternalHomePageProps = {
   user: LoginResponse
   onLogout: () => void
