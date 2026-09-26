@@ -38,6 +38,7 @@ public class AuthController {
 				.body(result.response());
 	}
 
+
 	@PostMapping("/refresh")
 	public ResponseEntity<RefreshResponse> refresh(
 				@CookieValue(name = "${app.jwt.refresh-cookie-name}", required = false) String refreshToken) {
@@ -45,7 +46,16 @@ public class AuthController {
 			throw new InvalidRefreshTokenException();
 		}
 		return ResponseEntity.ok(jwtTokenService.refreshAccessToken(refreshToken));
-	}
+				}
+@PostMapping("/logout")
+public ResponseEntity<Void> logout() {
+    return ResponseEntity.noContent()
+            .header("Set-Cookie", clearRefreshCookie().toString())
+            .build();
+		}
+	
+
+
 
 	private ResponseCookie refreshCookie(String token) {
 		return ResponseCookie.from(jwtProperties.getRefreshCookieName(), token)
@@ -56,4 +66,13 @@ public class AuthController {
 				.maxAge(jwtProperties.getRefreshTtl())
 				.build();
 	}
+	private ResponseCookie clearRefreshCookie() {
+    return ResponseCookie.from(jwtProperties.getRefreshCookieName(), "")
+            .httpOnly(true)
+            .secure(jwtProperties.isRefreshCookieSecure())
+            .sameSite("Lax")
+            .path("/api/auth")
+            .maxAge(0)
+            .build();
+}
 }

@@ -110,7 +110,7 @@ public class User {
 	}
 
 	public void recordFailedLogin(LocalDateTime now) {
-		if (firstFailedLoginAt == null || !now.isBefore(firstFailedLoginAt.plusMinutes(30))) {
+		if (firstFailedLoginAt == null || !now.isBefore(firstFailedLoginAt.plusMinutes(15))) {
 			failedLoginCount = 0;
 			firstFailedLoginAt = now;
 			lockedUntil = null;
