@@ -21,6 +21,19 @@ export type Room = {
   maintenanceEndDate: string | null
 }
 
+export type RoomStatusHistory = {
+  id: number
+  roomId: number
+  roomNumber: string
+  previousStatus: RoomStatus
+  newStatus: RoomStatus
+  changedBy: string
+  changedAt: string
+  maintenanceReason?: string | null
+  maintenanceStartDate?: string | null
+  maintenanceEndDate?: string | null
+}
+
 export const ROOM_STATUS_LABELS: Record<RoomStatus, string> = {
   TRONG_SACH: 'Trống sạch',
   TRONG_BAN: 'Trống bẩn',
