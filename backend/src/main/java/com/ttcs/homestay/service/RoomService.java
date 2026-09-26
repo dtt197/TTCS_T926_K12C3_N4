@@ -169,6 +169,38 @@ public List<RoomStatusHistoryResponse> getHistory(
         return response;
     }
 
+    @Transactional
+    public RoomResponse checkOut(Long roomId, String operatorName) {
+        Room room = roomRepository.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new RoomNotFoundException(roomId));
+
+        if (room.getStatus() != RoomStatus.DANG_O) {
+            throw new RoomStatusConflictException(
+                    "Không thể trả phòng " + room.getRoomNumber()
+                            + " vì phòng không ở trạng thái Đang ở.");
+        }
+
+        RoomStatus previousStatus = room.getStatus();
+
+        room.setStatus(RoomStatus.TRONG_BAN);
+        room.setMaintenanceReason(null);
+        room.setMaintenanceStartDate(null);
+        room.setMaintenanceEndDate(null);
+
+        Room savedRoom = roomRepository.save(room);
+
+        saveHistory(
+                savedRoom,
+                previousStatus,
+                RoomStatus.TRONG_BAN,
+                operatorName,
+                null,
+                null,
+                null);
+
+        return RoomResponse.from(savedRoom);
+    }
+
     private void saveHistory(
             Room room,
             RoomStatus previousStatus,

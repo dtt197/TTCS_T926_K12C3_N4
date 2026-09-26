@@ -60,3 +60,9 @@ export function putRoomIntoMaintenance(
   })
 }
 
+export function checkOut(roomId: number) {
+  return request<Room>(`/rooms/${roomId}/check-out`, {
+    method: 'POST',
+  })
+}
+

@@ -65,4 +65,12 @@ public class RoomController {
     ) {
         return ResponseEntity.ok(roomService.checkIn(roomId, request, operatorName));
     }
+
+    @PostMapping("/{roomId}/check-out")
+    public ResponseEntity<RoomResponse> checkOut(
+            @PathVariable Long roomId,
+            @RequestHeader(value = "X-Operator-Name", defaultValue = "Lễ tân") String operatorName
+    ) {
+        return ResponseEntity.ok(roomService.checkOut(roomId, operatorName));
+    }
 }

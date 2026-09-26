@@ -99,6 +99,8 @@ h2 { font-size: 25px; }
 }
 .primary-button { background: var(--green); color: white; }
 .secondary-button { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+.checkout-button { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.checkout-button:hover:not(:disabled) { background: #fde68a; color: #78350f; box-shadow: 0 7px 18px rgba(180, 83, 9, .15); }
 .primary-button:hover:not(:disabled), .secondary-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(35, 122, 99, .15); }
 button:disabled { cursor: not-allowed; opacity: .5; }
 
