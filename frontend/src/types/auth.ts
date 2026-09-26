@@ -8,8 +8,9 @@ export type LoginResponse = {
   fullName: string
   email: string
   role: string
-  accessToken: string
+accessToken: string
   expiresIn: number
+  mustChangePassword: boolean
 }
 
 export type RefreshResponse = {

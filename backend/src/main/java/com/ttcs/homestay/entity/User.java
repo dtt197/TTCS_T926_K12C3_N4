@@ -52,6 +52,9 @@ public class User {
 	@Column(name = "locked_until")
 	private LocalDateTime lockedUntil;
 
+		@Column(name = "must_change_password", nullable = false)
+	private boolean mustChangePassword;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
@@ -81,7 +84,52 @@ public class User {
 		}
 	}
 
-	public Long getId() {
+	/** S1-02: quản trị tạo tài khoản nhân viên với mật khẩu tạm (bắt buộc đổi lần đầu). */
+	public static User createStaff(String fullName, String email, String phone, Role role,
+			boolean active, String passwordHash) {
+		User user = new User();
+		user.fullName = fullName;
+		user.email = email;
+		user.phone = phone;
+		user.role = role;
+		user.active = active;
+		user.passwordHash = passwordHash;
+		user.mustChangePassword = true;
+		return user;
+	}
+
+	/** Đổi mật khẩu (dùng cho S1-02 và S1-03): lưu mật khẩu mới đã mã hoá, gỡ cờ bắt buộc đổi. */
+	public void changePassword(String newPasswordHash) {
+		this.passwordHash = newPasswordHash;
+		this.mustChangePassword = false;
+	}
+	/** S1-02 AC5: bật/tắt trạng thái hoạt động của tài khoản. */
+	public void updateActive(boolean active) {
+		this.active = active;
+	}
+	/** S1-02 Lát 4: quản trị sửa họ tên, số điện thoại, vai trò (email không đổi). */
+	public void updateProfile(String fullName, String phone, Role role) {
+		this.fullName = fullName;
+		this.phone = phone;
+		this.role = role;
+	}
+
+	/** S1-02 Lát 4: cấp lại mật khẩu tạm cho tài khoản chưa tự đổi mật khẩu. */
+	public void resetTemporaryPassword(String temporaryPasswordHash) {
+		this.passwordHash = temporaryPasswordHash;
+		this.mustChangePassword = true;
+	}
+	public String getPhone() {
+		return phone;
+	}
+
+	public boolean isMustChangePassword() {
+		return mustChangePassword;
+	}
+
+	public OffsetDateTime getCreatedAt() {
+		return createdAt;
+	}public Long getId() {
 		return id;
 	}
 
