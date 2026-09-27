@@ -53,6 +53,12 @@ public class AccountStatusFilter extends OncePerRequestFilter {
 						"Vai trò của bạn vừa được thay đổi. Vui lòng đăng nhập lại");
 				return;
 			}
+						Integer tokenVersionClaim = jwtAuthentication.getToken().getClaim("tv");
+			if (tokenVersionClaim == null || tokenVersionClaim != user.get().getTokenVersion()) {
+				writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "SESSION_INVALIDATED",
+						"Mật khẩu của bạn vừa được thay đổi. Vui lòng đăng nhập lại");
+				return;
+			}
 			String path = request.getRequestURI();
 			if (user.get().isMustChangePassword()
 					&& !path.startsWith("/api/auth/")

@@ -4,6 +4,7 @@ import com.ttcs.homestay.config.JwtProperties;
 import com.ttcs.homestay.dto.auth.RefreshResponse;
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.exception.InvalidRefreshTokenException;
+import com.ttcs.homestay.repository.UserRepository; 
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -45,18 +46,21 @@ public class JwtTokenService {
 	private final JwtEncoder refreshEncoder;
 	private final JwtDecoder refreshDecoder;
 
+		private final UserRepository userRepository;
+
 	@Autowired
-	public JwtTokenService(JwtProperties properties) {
-		this(properties, Clock.systemUTC());
+	public JwtTokenService(JwtProperties properties, UserRepository userRepository) {
+		this(properties, userRepository, Clock.systemUTC());
 	}
 
-	JwtTokenService(JwtProperties properties, Clock clock) {
+	JwtTokenService(JwtProperties properties, UserRepository userRepository, Clock clock) {
 		this.properties = properties;
+		this.userRepository = userRepository;
 		this.clock = clock;
 		this.accessEncoder = encoder(properties.getAccessSecret());
 		this.refreshEncoder = encoder(properties.getRefreshSecret());
 		this.refreshDecoder = decoder(properties.getRefreshSecret());
-	}
+	} 
 
 	public IssuedTokens issueTokens(User user) {
 		Instant issuedAt = clock.instant();
@@ -69,7 +73,7 @@ public class JwtTokenService {
 		return properties.getAccessTtl().toSeconds();
 	}
 
-	public RefreshResponse refreshAccessToken(String token) {
+		public RefreshResponse refreshAccessToken(String token) {
 		try {
 			Jwt refresh = refreshDecoder.decode(token);
 			if (!REFRESH_TYPE.equals(refresh.getClaimAsString("typ"))
@@ -77,17 +81,31 @@ public class JwtTokenService {
 				throw new InvalidRefreshTokenException();
 			}
 
+			User user = userRepository.findWithRoleById(Long.valueOf(refresh.getSubject()))
+					.orElseThrow(InvalidRefreshTokenException::new);
+
+			if (!user.isActive()) {
+				throw new InvalidRefreshTokenException();
+			}
+
+			Integer tokenVersionClaim = refresh.getClaim("tv");
+			if (tokenVersionClaim == null || tokenVersionClaim != user.getTokenVersion()) {
+				throw new InvalidRefreshTokenException();
+			}
+
 			Instant issuedAt = clock.instant();
 			JwtClaimsSet claims = JwtClaimsSet.builder()
 					.issuer("homestay")
-					.subject(refresh.getSubject())
+					.subject(user.getId().toString())
 					.audience(List.of(ACCESS_AUDIENCE))
 					.issuedAt(issuedAt)
 					.expiresAt(issuedAt.plus(properties.getAccessTtl()))
 					.id(UUID.randomUUID().toString())
 					.claim("typ", ACCESS_TYPE)
-					.claim("email", refresh.getClaimAsString("email"))
-					.claim("role", refresh.getClaimAsString("role"))
+					.claim("fullName", user.getFullName())
+					.claim("email", user.getEmail())
+					.claim("role", user.getRole().getCode())
+					.claim("tv", user.getTokenVersion())
 					.build();
 			return new RefreshResponse(encode(accessEncoder, claims), properties.getAccessTtl().toSeconds());
 		} catch (InvalidRefreshTokenException exception) {
@@ -95,7 +113,7 @@ public class JwtTokenService {
 		} catch (Exception exception) {
 			throw new InvalidRefreshTokenException();
 		}
-	}
+	} 
 
 	private String accessToken(User user, Instant issuedAt) {
 		JwtClaimsSet claims = baseClaims(user, issuedAt, ACCESS_AUDIENCE, ACCESS_TYPE, properties.getAccessTtl());
@@ -119,6 +137,7 @@ public class JwtTokenService {
 				.claim("fullName", user.getFullName())
 				.claim("email", user.getEmail())
 				.claim("role", user.getRole().getCode())
+				.claim("tv", user.getTokenVersion())
 				.build();
 	}
 
