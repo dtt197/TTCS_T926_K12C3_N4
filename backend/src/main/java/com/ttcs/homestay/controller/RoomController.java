@@ -1,14 +1,7 @@
 package com.ttcs.homestay.controller;
 
-import com.ttcs.homestay.dto.CheckInRequest;
-import com.ttcs.homestay.dto.CheckInResponse;
-import com.ttcs.homestay.dto.MaintenanceRequest;
-import com.ttcs.homestay.dto.RoomResponse;
-import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
-import com.ttcs.homestay.dto.UpdateRoomStatusRequest;
-import com.ttcs.homestay.service.RoomService;
-import jakarta.validation.Valid;
 import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,6 +11,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.ttcs.homestay.dto.CheckInRequest;
+import com.ttcs.homestay.dto.CheckInResponse;
+import com.ttcs.homestay.dto.MaintenanceRequest;
+import com.ttcs.homestay.dto.RoomResponse;
+import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
+import com.ttcs.homestay.dto.UpdateRoomStatusRequest;
+import com.ttcs.homestay.service.RoomService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/rooms")
