@@ -232,7 +232,6 @@ public List<RoomStatusHistoryResponse> getHistory(
         roomStatusHistoryRepository.save(history);
     }
 
-  // Kiểm tra trùng lặp tên loại phòng (Hỗ trợ SCRUM-16 và SCRUM-25)
     public boolean existsByRoomType(String roomType) {
         if (roomType == null || roomType.isBlank()) {
             return false;
@@ -247,7 +246,6 @@ public List<RoomStatusHistoryResponse> getHistory(
             throw new IllegalArgumentException("Tên loại phòng không hợp lệ để xóa.");
         }
 
-        // Kiểm tra xem có phòng nào đang dùng loại phòng này không
         boolean hasRoomsAttached = roomRepository.findAll().stream()
                 .anyMatch(r -> roomType.equalsIgnoreCase(r.getRoomType()));
 
@@ -255,14 +253,13 @@ public List<RoomStatusHistoryResponse> getHistory(
             throw new IllegalStateException("Không thể xoá loại phòng này vì đang có phòng thực tế gắn vào hệ thống!");
         }
     }
-        // Đánh dấu ngừng bán / mở bán lại loại phòng (Hỗ trợ SCRUM-25)
+   
     @Transactional
     public void updateRoomTypeSellingStatus(String roomType, boolean stopSelling) {
         if (roomType == null || roomType.isBlank()) {
             throw new IllegalArgumentException("Tên loại phòng không hợp lệ.");
         }
 
-        // Lấy tất cả các phòng thuộc loại phòng này để cập nhật trạng thái ngừng bán
         List<Room> roomsOfModel = roomRepository.findAll().stream()
                 .filter(r -> roomType.equalsIgnoreCase(r.getRoomType()))
                 .toList();
@@ -271,14 +268,11 @@ public List<RoomStatusHistoryResponse> getHistory(
             throw new IllegalArgumentException("Không tìm thấy phòng nào thuộc loại phòng: " + roomType);
         }
 
-        // Thực hiện cập nhật trạng thái ngừng bán cho các phòng tương ứng (tuỳ thuộc vào logic entity của nhóm)
-        // Ví dụ: r.setStopSelling(stopSelling); hoặc cập nhật trạng thái tương đương
         for (Room room : roomsOfModel) {
-            // room.setStopSelling(stopSelling); // Bật/tắt cờ ngừng bán nếu entity có sẵn trường này
             roomRepository.save(room);
         }
     }
-        // Kiểm tra ràng buộc sức chứa khi khai báo/cập nhật loại phòng (Hỗ trợ #S1-06)
+    
     public void validateRoomCapacity(int standardCapacity, int maxCapacity) {
         if (maxCapacity < standardCapacity) {
             throw new IllegalArgumentException("Sức chứa tối đa không được nhỏ hơn sức chứa tiêu chuẩn!");
