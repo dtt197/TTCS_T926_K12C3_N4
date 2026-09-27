@@ -1,84 +1,67 @@
-# TTCS_T926_K12C3_N4
+# Module: Tiện nghi & Tham số homestay (Thành viên số 8)
 
-## Chức năng cập nhật trạng thái phòng — S1-10
+Bám theo bảng phân công Sprint 1:
+- **SCRUM-24** — Quản lý tiện nghi (CRUD) → `controllers/amenityController.js`, `routes/amenityRoutes.js`
+- **SCRUM-29** — Gắn tiện nghi vào loại phòng → `controllers/roomTypeAmenityController.js`
+- **SCRUM-32** — Cấu hình giờ nhận/trả phòng → `controllers/roomTypeConfigController.js`
+- **SCRUM-34** — Cấu hình phụ thu → cùng file trên (early/late/extra-guest surcharge)
+- **SCRUM-36** — Chính sách hủy → cùng file trên (cancellation_policy_type, deadline, refund %)
+- **SCRUM-37** — Ghi lịch sử thay đổi → `middlewares/logHistory.js` (gọi ở mọi create/update/delete)
+- **SCRUM-38** — Xem lịch sử thay đổi → `controllers/historyController.js`
 
-### Công nghệ
-
-- Frontend: React 18 + TypeScript + Vite.
-- Backend: Spring Boot + Java 17 + Spring Data JPA.
-- Database: PostgreSQL 15.
-- Test backend: JUnit 5 và H2 in-memory.
-
-### Phạm vi đã hoàn thành
-
-- Hiển thị danh sách phòng và trạng thái hiện tại.
-- Có đủ bốn trạng thái: `TRONG_SACH`, `TRONG_BAN`, `DANG_O`, `BAO_TRI`.
-- Lễ tân đổi được trạng thái phòng.
-- Chỉ phòng `TRONG_SACH` mới nhận phòng được.
-- Trả lỗi HTTP 409 bằng tiếng Việt khi trạng thái không phù hợp.
-- Không cho chuyển trực tiếp phòng `DANG_O` sang `BAO_TRI`; cần trả phòng trước.
-- Có dữ liệu mẫu bốn phòng trong `database/001_room_status.sql`.
-
-> Theo phạm vi story hiện tại, chưa lưu lý do/khoảng ngày bảo trì và lịch sử thay đổi trạng thái. Đây là phần mở rộng cho story sau.
-
-### Chạy backend
-
-1. Tạo database PostgreSQL và tài khoản local.
-2. Chạy migration và dữ liệu mẫu:
-
-   ```bash
-   psql -h localhost -U homestay_app -d homestay_db -f database/001_room_status.sql
-   ```
-
-3. Khai báo biến môi trường, không commit mật khẩu:
-
-   ```bash
-   export DB_URL=jdbc:postgresql://localhost:5432/homestay_db
-   export DB_USERNAME=homestay_app
-   export DB_PASSWORD='<mat-khau-local>'
-   ```
-
-4. Chạy Spring Boot:
-
-   ```bash
-   cd backend
-   bash mvnw spring-boot:run
-   ```
-
-   API chính:
-
-   - `GET /api/rooms`
-   - `PATCH /api/rooms/{roomId}/status`
-   - `POST /api/rooms/{roomId}/check-in`
-
-### Chạy frontend
+## Cài đặt
 
 ```bash
-cd frontend
-cp .env.example .env.local
-npm ci
-npm run dev
+npm install
+# tạo database PostgreSQL rồi chạy lần lượt các file trong /migrations
+psql -U postgres -d homestay_db -f migrations/001_create_amenities.sql
+psql -U postgres -d homestay_db -f migrations/002_create_room_type_amenities.sql
+psql -U postgres -d homestay_db -f migrations/003_create_room_type_configs.sql
+psql -U postgres -d homestay_db -f migrations/004_create_config_histories.sql
+
+# cấu hình biến môi trường (hoặc sửa mặc định trong models/index.js)
+export DB_HOST=localhost DB_NAME=homestay_db DB_USER=postgres DB_PASSWORD=postgres
+
+npm start
 ```
 
-Mặc định frontend gọi `http://localhost:8080/api`. Nếu backend chưa chạy, giao diện tự chuyển sang dữ liệu demo để có thể trình diễn luồng.
+## API chính
 
-### Kịch bản kiểm thử acceptance
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| GET | /api/amenities | Danh sách tiện nghi (lọc theo category, status) |
+| POST | /api/amenities | Tạo tiện nghi |
+| PUT | /api/amenities/:id | Sửa tiện nghi |
+| DELETE | /api/amenities/:id | Xóa mềm tiện nghi |
+| GET | /api/room-types/:roomTypeId/amenities | Danh sách tiện nghi của 1 loại phòng |
+| POST | /api/room-types/:roomTypeId/amenities | Gắn nhiều tiện nghi vào loại phòng |
+| DELETE | /api/room-types/:roomTypeId/amenities/:amenityId | Gỡ tiện nghi khỏi loại phòng |
+| GET | /api/room-types/:roomTypeId/config | Lấy cấu hình giờ/phụ thu/hủy phòng |
+| PUT | /api/room-types/:roomTypeId/config | Tạo/cập nhật cấu hình (upsert) |
+| GET | /api/history?entity_type=&entity_id= | Xem lịch sử thay đổi |
 
-1. Mở màn hình vận hành phòng, kiểm tra bốn thẻ tổng quan và danh sách phòng.
-2. Đổi lần lượt một phòng qua `Trống sạch`, `Trống bẩn`, `Đang ở`, `Bảo trì`; sau mỗi lần bấm **Lưu trạng thái**, badge và số tổng quan phải cập nhật.
-3. Chọn phòng `Trống sạch`, nhập tên khách, bấm **Xác nhận nhận phòng**. Kết quả thành công: phòng chuyển sang `Đang ở`.
-4. Chọn phòng `Trống bẩn`, `Đang ở` hoặc `Bảo trì`. Nút nhận phòng bị khoá và hiển thị lý do; nếu gọi API trực tiếp vẫn nhận HTTP 409.
-5. Thử chuyển phòng `Đang ở` sang `Bảo trì`; API từ chối và yêu cầu trả phòng trước.
+## Phụ thuộc cần lưu ý (theo đúng cột "Phụ thuộc, thứ tự" trong bảng phân công)
 
-### Quy trình Git
+1. **SCRUM-32 phụ thuộc mô hình loại phòng của Người 6** — hiện `room_type_id` trong
+   `room_type_amenities` và `room_type_configs` chưa có khóa ngoại cứng tới bảng
+   `room_types`, để 2 module có thể làm song song. Khi Người 6 chốt schema
+   `room_types`, chạy thêm:
+   ```sql
+   ALTER TABLE room_type_amenities ADD CONSTRAINT fk_room_type
+     FOREIGN KEY (room_type_id) REFERENCES room_types(id) ON DELETE CASCADE;
+   ALTER TABLE room_type_configs ADD CONSTRAINT fk_room_type
+     FOREIGN KEY (room_type_id) REFERENCES room_types(id) ON DELETE CASCADE;
+   ```
+2. **CRUD tiện nghi (SCRUM-24) và cấu hình (SCRUM-32/34/36) có thể bắt đầu song song**
+   — đúng như ghi chú trong bảng, 2 controller này không phụ thuộc lẫn nhau.
+3. **Xác thực (auth)**: các route hiện chưa gắn middleware xác thực thật — cần thay
+   dòng `// app.use(authMiddleware)` trong `app.js` bằng middleware của Người 1 để
+   `req.user.id` có giá trị thật khi ghi lịch sử (`changed_by`).
 
-Không push trực tiếp vào `main`. Làm việc trên feature branch và tạo Pull Request vào `develop`:
+## Việc còn lại / cần chốt cùng team
 
-```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/room-status-check-in
-git add backend frontend database README.md
-git commit -m "feat: manage room status and restrict check-in"
-git push -u origin feature/room-status-check-in
-```
+- Thống nhất chính xác tên bảng/field của `room_types` với Người 6 trước khi thêm FK cứng.
+- Thống nhất cơ chế lấy `user_id` hiện tại (`req.user`) với module xác thực của Người 1.
+- Quyết định: phụ thu/chính sách hủy áp dụng theo **loại phòng** (đang làm) hay theo
+  **từng homestay** — nếu PO muốn cấu hình ở cấp homestay thay vì loại phòng, chỉ cần
+  đổi `room_type_id` → `homestay_id` trong `RoomTypeConfig`, phần còn lại giữ nguyên.
