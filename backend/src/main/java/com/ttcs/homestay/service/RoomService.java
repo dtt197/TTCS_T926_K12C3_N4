@@ -1,9 +1,17 @@
 package com.ttcs.homestay.service;
-import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.ttcs.homestay.dto.CheckInRequest;
 import com.ttcs.homestay.dto.CheckInResponse;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
+import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
 import com.ttcs.homestay.entity.CheckIn;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
@@ -13,14 +21,6 @@ import com.ttcs.homestay.exception.RoomStatusConflictException;
 import com.ttcs.homestay.repository.CheckInRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
-
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RoomService {
@@ -230,5 +230,52 @@ public List<RoomStatusHistoryResponse> getHistory(
         history.setMaintenanceEndDate(maintenanceEndDate);
 
         roomStatusHistoryRepository.save(history);
+    }
+
+    public boolean existsByRoomType(String roomType) {
+        if (roomType == null || roomType.isBlank()) {
+            return false;
+        }
+        return roomRepository.findAll().stream()
+                .anyMatch(r -> r.getRoomType() != null && r.getRoomType().equalsIgnoreCase(roomType.trim()));
+    }
+
+    @Transactional
+    public void deleteRoomType(String roomType) {
+        if (roomType == null || roomType.isBlank()) {
+            throw new IllegalArgumentException("Tên loại phòng không hợp lệ để xóa.");
+        }
+
+        boolean hasRoomsAttached = roomRepository.findAll().stream()
+                .anyMatch(r -> roomType.equalsIgnoreCase(r.getRoomType()));
+
+        if (hasRoomsAttached) {
+            throw new IllegalStateException("Không thể xoá loại phòng này vì đang có phòng thực tế gắn vào hệ thống!");
+        }
+    }
+   
+    @Transactional
+    public void updateRoomTypeSellingStatus(String roomType, boolean stopSelling) {
+        if (roomType == null || roomType.isBlank()) {
+            throw new IllegalArgumentException("Tên loại phòng không hợp lệ.");
+        }
+
+        List<Room> roomsOfModel = roomRepository.findAll().stream()
+                .filter(r -> roomType.equalsIgnoreCase(r.getRoomType()))
+                .toList();
+
+        if (roomsOfModel.isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy phòng nào thuộc loại phòng: " + roomType);
+        }
+
+        for (Room room : roomsOfModel) {
+            roomRepository.save(room);
+        }
+    }
+    
+    public void validateRoomCapacity(int standardCapacity, int maxCapacity) {
+        if (maxCapacity < standardCapacity) {
+            throw new IllegalArgumentException("Sức chứa tối đa không được nhỏ hơn sức chứa tiêu chuẩn!");
+        }
     }
 }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thêm mới Loại Phòng</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="mb-4">Thêm mới Loại Phòng</h2>
+
+            <!-- Hiển thị lỗi nếu thiếu trường bắt buộc -->
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+            <form th:action="@{/room-types/add}" th:object="${roomType}" method="post">
+                <div class="mb-3">
+                    <label class="form-label">Mã loại phòng (*):</label>
+                    <input type="text" th:field="*{code}" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Tên loại phòng (*):</label>
+                    <input type="text" th:field="*{name}" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Sức chứa tiêu chuẩn (*):</label>
+                    <input type="number" th:field="*{standardCapacity}" class="form-control" required min="1">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Sức chứa tối đa (*):</label>
+                    <input type="number" th:field="*{maxCapacity}" class="form-control" required min="1">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Số giường (*):</label>
+                    <input type="number" th:field="*{numberOfBeds}" class="form-control" required min="1">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Mô tả (Không bắt buộc):</label>
+                    <textarea th:field="*{description}" class="form-control" rows="3"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-success">Lưu loại phòng</button>
+                <a href="/room-types" class="btn btn-secondary">Quay lại</a>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
