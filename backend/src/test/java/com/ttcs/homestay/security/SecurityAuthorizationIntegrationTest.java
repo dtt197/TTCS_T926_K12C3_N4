@@ -431,4 +431,41 @@ void ownerThemTienNghi_quaPhanQuyen() throws Exception {
     ).andExpect(status().isBadRequest());
 }
 
+@Test
+void adminSuaThamSo_biChan403() throws Exception {
+    // S1-09: ma trận "Bảng giá và chính sách huỷ" cho Admin chỉ xem (R)
+    mockMvc.perform(
+            put("/api/settings")
+                    .header("Authorization", "Bearer admin-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void leTanXemLichSuThamSo_biChan403() throws Exception {
+    mockMvc.perform(
+            get("/api/settings/history")
+                    .header("Authorization", "Bearer receptionist-test-token")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void buongPhongXemThamSo_biChan403() throws Exception {
+    mockMvc.perform(
+            get("/api/settings")
+                    .header("Authorization", "Bearer housekeeping-test-token")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void ownerSuaThamSo_quaPhanQuyen() throws Exception {
+    // Qua được phân quyền, bị chặn ở bước kiểm tra dữ liệu trống (400) chứ không phải 403.
+    mockMvc.perform(
+            put("/api/settings")
+                    .header("Authorization", "Bearer owner-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isBadRequest());
+}
 }
