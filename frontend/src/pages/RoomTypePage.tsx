@@ -27,16 +27,19 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [editing, setEditing] = useState<RoomType | null>(null)
 
-  const load = useCallback(async () => {
-    try {
-      setRoomTypes(await getRoomTypes())
-      setLoadError(null)
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Không tải được danh sách loại phòng')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+  const load = useCallback(() =>
+    getRoomTypes()
+      .then((items) => {
+        setRoomTypes(items)
+        setLoadError(null)
+      })
+      .catch((err: unknown) => {
+        setLoadError(err instanceof Error ? err.message : 'Không tải được danh sách loại phòng')
+      })
+      .finally(() => {
+        setIsLoading(false)
+      }),
+  [])
 
   useEffect(() => {
     void load()
