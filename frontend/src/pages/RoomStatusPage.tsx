@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import '../App.css'
+import { hasPermission } from '../permissions/rolePermissions'
 
 import {
   checkIn,
@@ -136,6 +137,10 @@ type RoomStatusPageProps = {
 
 export function RoomStatusPage({ role }: RoomStatusPageProps) {
   const isHousekeeping = role === 'HOUSEKEEPING'
+    // S1-04: ẩn nút theo quyền của vai trò (Chủ homestay chỉ xem). Quyền khai báo ở rolePermissions.ts.
+  const canChangeStatus = hasPermission(role, 'rooms:status:update') || hasPermission(role, 'rooms:clean')
+  const canUseCheckIn = hasPermission(role, 'rooms:check-in')
+  const canUseCheckOut = hasPermission(role, 'rooms:check-out')
   const [rooms, setRooms] = useState<Room[]>([])
   const [draftStatuses, setDraftStatuses] = useState<
     Record<number, RoomStatus>
@@ -581,25 +586,7 @@ const counts = useMemo(
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">H</span>
 
-          <div>
-            <strong>HomeStay</strong>
-            <small>{isHousekeeping ? 'Housekeeping desk' : 'Reception desk'}</small>
-          </div>
-        </div>
-
-        <div className="user-chip">
-          <span>
-  {isHousekeeping ? 'Nhân viên buồng phòng' : 'Lễ tân đang trực'}
-</span>
-          <span className="user-avatar">
-  {isHousekeeping ? 'BP' : 'LT'}
-</span>
-        </div>
-      </header>
 
       <main className="main-content">
         <section className="intro">
@@ -788,6 +775,7 @@ const counts = useMemo(
 
                         <select
                           className="status-select"
+                          disabled={!canChangeStatus}
                           value={currentDraftStatus}
                           onChange={(event) => {
                             setNotice(null)
@@ -938,7 +926,7 @@ const counts = useMemo(
                             : 'Xem lịch sử'}
                         </button>
 
-                       {!isHousekeeping && room.status === 'DANG_O' && (
+                          {canUseCheckOut && room.status === 'DANG_O' && (
                           <button
                             className="secondary-button checkout-button"
                             type="button"
@@ -949,16 +937,18 @@ const counts = useMemo(
                           </button>
                         )}
 
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          disabled={isSaving}
-                          onClick={() =>
-                            void handleStatusUpdate(room)
-                          }
-                        >
-                          Lưu trạng thái
-                        </button>
+                          {canChangeStatus && (
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() =>
+                              void handleStatusUpdate(room)
+                            }
+                          >
+                            Lưu trạng thái
+                          </button>
+                        )}
                       </div>
                     </article>
                   )
@@ -966,7 +956,7 @@ const counts = useMemo(
               </div>
             )}
           </div>
-          {!isHousekeeping && (
+          {canUseCheckIn && (
           <aside className="panel">
             <div className="panel-heading">
               <div>

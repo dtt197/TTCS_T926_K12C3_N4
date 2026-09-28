@@ -1,27 +1,32 @@
 package com.ttcs.homestay.controller;
 
-import java.util.List;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.ttcs.homestay.dto.CheckInRequest;
 import com.ttcs.homestay.dto.CheckInResponse;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
 import com.ttcs.homestay.dto.UpdateRoomStatusRequest;
+import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.service.RoomService;
-import org.springframework.security.core.Authentication;
 import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * S1-10: trạng thái phòng. Quyền khai báo trong SecurityConfig (S1-04).
+ * AC5: người thao tác lưu vào lịch sử lấy từ tài khoản đang đăng nhập (họ tên trong token).
+ */
 @RestController
 @RequestMapping("/api/rooms")
 public class RoomController {
@@ -31,81 +36,82 @@ public class RoomController {
     public RoomController(RoomService roomService) {
         this.roomService = roomService;
     }
-  @GetMapping
-public List<RoomResponse> getRooms(Authentication authentication) {
-    List<RoomResponse> rooms = roomService.getRooms();
 
-    if (authentication.getAuthorities().stream()
-            .anyMatch(authority ->
-                    authority.getAuthority().equals("ROLE_HOUSEKEEPING"))) {
-        return rooms.stream()
-                .filter(room -> room.status() == com.ttcs.homestay.entity.RoomStatus.TRONG_BAN)
-                .toList();
+    /** S1-04: Buồng phòng chỉ thấy phòng Trống bẩn (cần dọn). */
+    @GetMapping
+    public List<RoomResponse> getRooms(Authentication authentication) {
+        List<RoomResponse> rooms = roomService.getRooms();
+        if (isHousekeeping(authentication)) {
+            return rooms.stream()
+                    .filter(room -> room.status() == RoomStatus.TRONG_BAN)
+                    .toList();
+        }
+        return rooms;
     }
 
-    return rooms;
-}
     @GetMapping("/{roomId}/history")
-    public List<RoomStatusHistoryResponse> getHistory(
-            @PathVariable Long roomId
-    ) {
+    public List<RoomStatusHistoryResponse> getHistory(@PathVariable Long roomId) {
         return roomService.getHistory(roomId);
     }
 
-   @PatchMapping("/{roomId}/status")
-public RoomResponse updateStatus(
-        @PathVariable Long roomId,
-        @Valid @RequestBody UpdateRoomStatusRequest request,
-        @RequestHeader(value = "X-Operator-Name", defaultValue = "Lễ tân") String operatorName,
-        Authentication authentication
-) {
-    boolean isHousekeeping = authentication.getAuthorities().stream()
-            .anyMatch(authority ->
-                    "ROLE_HOUSEKEEPING".equals(authority.getAuthority()));
-
-    if (isHousekeeping) {
-        RoomResponse room = roomService.getRooms().stream()
-                .filter(r -> r.id().equals(roomId))
-                .findFirst()
-                .orElseThrow(() ->
-                        new org.springframework.web.server.ResponseStatusException(
-                                org.springframework.http.HttpStatus.FORBIDDEN,
-                                "Không có quyền thao tác phòng này"));
-
-       if (room.status() != com.ttcs.homestay.entity.RoomStatus.TRONG_BAN
-        || request.status() != com.ttcs.homestay.entity.RoomStatus.TRONG_SACH) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN,
-                    "Housekeeping chỉ được chuyển phòng Trống bẩn sang Trống sạch");
+    @PatchMapping("/{roomId}/status")
+    public RoomResponse updateStatus(
+            @PathVariable Long roomId,
+            @Valid @RequestBody UpdateRoomStatusRequest request,
+            Authentication authentication) {
+        if (isHousekeeping(authentication)) {
+            RoomResponse room = roomService.getRooms().stream()
+                    .filter(candidate -> candidate.id().equals(roomId))
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.FORBIDDEN, "Không có quyền thao tác phòng này"));
+            // S1-04: Buồng phòng chỉ được báo phòng Trống bẩn đã dọn xong (sang Trống sạch).
+            if (room.status() != RoomStatus.TRONG_BAN || request.status() != RoomStatus.TRONG_SACH) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN, "Housekeeping chỉ được chuyển phòng Trống bẩn sang Trống sạch");
+            }
         }
+        return roomService.updateStatus(roomId, request.status(), operatorName(authentication));
     }
-
-    return roomService.updateStatus(roomId, request.status(), operatorName);
-}
 
     @PatchMapping("/{roomId}/maintenance")
     public RoomResponse putIntoMaintenance(
             @PathVariable Long roomId,
             @Valid @RequestBody MaintenanceRequest request,
-            @RequestHeader(value = "X-Operator-Name", defaultValue = "Lễ tân") String operatorName
-    ) {
-        return roomService.putIntoMaintenance(roomId, request, operatorName);
+            Authentication authentication) {
+        return roomService.putIntoMaintenance(roomId, request, operatorName(authentication));
     }
 
     @PostMapping("/{roomId}/check-in")
     public ResponseEntity<CheckInResponse> checkIn(
             @PathVariable Long roomId,
             @Valid @RequestBody CheckInRequest request,
-            @RequestHeader(value = "X-Operator-Name", defaultValue = "Lễ tân") String operatorName
-    ) {
-        return ResponseEntity.ok(roomService.checkIn(roomId, request, operatorName));
+            Authentication authentication) {
+        return ResponseEntity.ok(roomService.checkIn(roomId, request, operatorName(authentication)));
     }
 
     @PostMapping("/{roomId}/check-out")
-    public ResponseEntity<RoomResponse> checkOut(
-            @PathVariable Long roomId,
-            @RequestHeader(value = "X-Operator-Name", defaultValue = "Lễ tân") String operatorName
-    ) {
-        return ResponseEntity.ok(roomService.checkOut(roomId, operatorName));
+    public ResponseEntity<RoomResponse> checkOut(@PathVariable Long roomId, Authentication authentication) {
+        return ResponseEntity.ok(roomService.checkOut(roomId, operatorName(authentication)));
+    }
+
+    private static boolean isHousekeeping(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_HOUSEKEEPING".equals(authority.getAuthority()));
+    }
+
+    /** AC5: họ tên người đang đăng nhập; token không có họ tên thì dùng email. */
+    static String operatorName(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken token) {
+            String fullName = token.getToken().getClaimAsString("fullName");
+            if (fullName != null && !fullName.isBlank()) {
+                return fullName;
+            }
+            String email = token.getToken().getClaimAsString("email");
+            if (email != null && !email.isBlank()) {
+                return email;
+            }
+        }
+        return authentication.getName();
     }
 }
