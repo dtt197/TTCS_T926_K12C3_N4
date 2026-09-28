@@ -4,6 +4,7 @@ import { hasPermission, type Permission } from '../permissions/rolePermissions'
 import type { LoginResponse } from '../types/auth'
 import { AuditLogPage } from './AuditLogPage'
 import { AmenityPage } from './AmenityPage'
+import { SettingsPage } from './SettingsPage'
 import { RoomStatusPage } from './RoomStatusPage'
 import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
@@ -14,13 +15,14 @@ type InternalHomePageProps = {
   onLogout: () => void
 }
 
-type View = 'rooms' | 'roomTypes' | 'amenities' | 'users' | 'audit-logs'
+type View = 'rooms' | 'roomTypes' | 'amenities' | 'settings' | 'users' | 'audit-logs'
 
 /** S1-04 + S1-05 + S1-06: menu sinh theo quyền của vai trò (quyền khai báo ở rolePermissions.ts). */
 const TABS: ReadonlyArray<{ view: View; label: string; permission: Permission }> = [
   { view: 'rooms', label: 'Phòng', permission: 'rooms:view' },
   { view: 'roomTypes', label: 'Loại phòng', permission: 'roomTypes:view' },
   { view: 'amenities', label: 'Tiện nghi', permission: 'amenities:view' },
+  { view: 'settings', label: 'Tham số', permission: 'settings:view' },
   { view: 'users', label: 'Tài khoản', permission: 'accounts:view' },
   { view: 'audit-logs', label: 'Nhật ký', permission: 'auditLogs:view' },
 ]
@@ -104,6 +106,8 @@ export function InternalHomePage({
         <RoomTypePage role={user.role} />
               ) : activeView === 'amenities' ? (
         <AmenityPage role={user.role} />
+        ) : activeView === 'settings' ? (
+        <SettingsPage role={user.role} />
       ) : (
         <RoomStatusPage role={user.role} />
       )}
