@@ -35,13 +35,15 @@ public class UserService {
 	private final RoleRepository roleRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final MailService mailService;
+	private final AuditLogService auditLogService;
 
 	public UserService(UserRepository userRepository, RoleRepository roleRepository,
-			PasswordEncoder passwordEncoder, MailService mailService) {
+			PasswordEncoder passwordEncoder, MailService mailService, AuditLogService auditLogService) {
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.mailService = mailService;
+		this.auditLogService = auditLogService;
 	}
 
 	@Transactional(readOnly = true)
@@ -79,19 +81,38 @@ public class UserService {
 	/** S1-02 AC5: vô hiệu hoá / kích hoạt lại. Phiên đang dùng bị chặn ngay bởi AccountStatusFilter. */
 	@Transactional
 	public UserResponse updateStatus(Long userId, UpdateUserStatusRequest request, Long currentAdminId) {
+		return updateStatus(userId, request, currentAdminId, null, null);
+	}
+
+	@Transactional
+	public UserResponse updateStatus(Long userId, UpdateUserStatusRequest request, Long currentAdminId,
+			String actorEmail, String ipAddress) {
 		User user = userRepository.findWithRoleById(userId)
 				.orElseThrow(UserNotFoundException::new);
 		if (!request.active() && userId.equals(currentAdminId)) {
 			throw new SelfDeactivationException();
 		}
+		boolean wasActive = user.isActive();
 		user.updateActive(request.active());
-		return UserResponse.from(userRepository.save(user));
+		User saved = userRepository.save(user);
+		if (wasActive && !request.active()) {
+			auditLogService.recordSensitiveAction(currentAdminId, actorEmail, saved.getId(),
+					saved.getEmail(), "ACCOUNT_DISABLED", ipAddress);
+		}
+		return UserResponse.from(saved);
 	}
 	/** Lát 4: sửa họ tên, số điện thoại, vai trò. Đổi vai trò → AccountStatusFilter bắt đăng nhập lại. */
 	@Transactional
 	public UserResponse updateUser(Long userId, UpdateUserRequest request, Long currentAdminId) {
+		return updateUser(userId, request, currentAdminId, null, null);
+	}
+
+	@Transactional
+	public UserResponse updateUser(Long userId, UpdateUserRequest request, Long currentAdminId,
+			String actorEmail, String ipAddress) {
 		User user = userRepository.findWithRoleById(userId)
 				.orElseThrow(UserNotFoundException::new);
+		String previousRole = user.getRole().getCode();
 		Role role = roleRepository.findByCode(request.role())
 				.orElseThrow(() -> new InvalidRoleException(request.role()));
 		if (userId.equals(currentAdminId) && !user.getRole().getCode().equals(role.getCode())) {
@@ -99,7 +120,12 @@ public class UserService {
 		}
 		String phone = request.phone() == null || request.phone().isBlank() ? null : request.phone().trim();
 		user.updateProfile(request.fullName().trim(), phone, role);
-		return UserResponse.from(userRepository.save(user));
+		User saved = userRepository.save(user);
+		if (!java.util.Objects.equals(previousRole, role.getCode())) {
+			auditLogService.recordSensitiveAction(currentAdminId, actorEmail, saved.getId(),
+					saved.getEmail(), "ROLE_CHANGED", ipAddress);
+		}
+		return UserResponse.from(saved);
 	}
 
 	/** Lát 4: gửi lại mật khẩu tạm mới (vd email lần trước không tới). Mật khẩu tạm cũ hết dùng được. */

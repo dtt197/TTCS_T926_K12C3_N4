@@ -7,6 +7,9 @@ import com.ttcs.homestay.config.JwtProperties;
 import com.ttcs.homestay.exception.InvalidRefreshTokenException;
 import com.ttcs.homestay.security.JwtTokenService;
 import com.ttcs.homestay.service.AuthService;
+import com.ttcs.homestay.service.AuditLogService;
+import com.ttcs.homestay.exception.InvalidCredentialsException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.ResponseCookie;
@@ -16,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CookieValue;
 
+import java.util.Locale;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -23,16 +28,29 @@ public class AuthController {
 	private final AuthService authService;
 	private final JwtTokenService jwtTokenService;
 	private final JwtProperties jwtProperties;
+	private final AuditLogService auditLogService;
 
-	public AuthController(AuthService authService, JwtTokenService jwtTokenService, JwtProperties jwtProperties) {
+	public AuthController(AuthService authService, JwtTokenService jwtTokenService, JwtProperties jwtProperties,
+			AuditLogService auditLogService) {
 		this.authService = authService;
 		this.jwtTokenService = jwtTokenService;
 		this.jwtProperties = jwtProperties;
+		this.auditLogService = auditLogService;
 	}
 
 	@PostMapping("/login")
-	public ResponseEntity<com.ttcs.homestay.dto.auth.LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-		LoginResult result = authService.login(request);
+	public ResponseEntity<com.ttcs.homestay.dto.auth.LoginResponse> login(@Valid @RequestBody LoginRequest request,
+			HttpServletRequest httpRequest) {
+		LoginResult result;
+		try {
+			result = authService.login(request);
+		} catch (InvalidCredentialsException exception) {
+			auditLogService.recordLogin(null, null, null,
+					request.email().trim().toLowerCase(Locale.ROOT), "FAILURE", httpRequest.getRemoteAddr());
+			throw exception;
+		}
+		auditLogService.recordLogin(result.response().userId(), result.response().email(),
+				result.response().userId(), result.response().email(), "SUCCESS", httpRequest.getRemoteAddr());
 		return ResponseEntity.ok()
 				.header("Set-Cookie", refreshCookie(result.refreshToken()).toString())
 				.body(result.response());
