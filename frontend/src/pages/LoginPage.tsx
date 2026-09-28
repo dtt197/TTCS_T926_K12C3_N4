@@ -74,10 +74,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               required
             />
           </div>
+          <p style={{ textAlign: 'right' }}>
+            <a href="/forgot-password">Quên mật khẩu?</a>
+          </p>
 
           <button className="submit-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
+
         </form>
       </section>
     </main>
