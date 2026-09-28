@@ -21,10 +21,16 @@ public class RoomTypeController {
     public String listRoomTypes(Model model) {
         model.addAttribute("roomTypes", roomTypesService.getAllRoomTypes());
         model.addAttribute("roomType", new RoomType());
-        return "room-types";
+        return "room-types/list"; 
     }
 
-    @PostMapping("/add")
+    @GetMapping("/room-types/add")
+    public String showAddForm(Model model) {
+        model.addAttribute("roomType", new RoomType()); 
+        return "room-types/add"; 
+    }
+
+    @PostMapping("/room-types/add")
     public String createRoomType(@ModelAttribute("roomType") RoomType roomType, Model model) {
         try {
             roomTypesService.createRoomType(roomType);
@@ -32,7 +38,7 @@ public class RoomTypeController {
         } catch (RuntimeException e) {
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("roomTypes", roomTypesService.getAllRoomTypes());
-            return "room-types";
+            return "room-types/list"; 
         }
     }
 
