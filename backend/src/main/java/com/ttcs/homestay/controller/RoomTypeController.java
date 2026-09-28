@@ -6,22 +6,30 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.service.RoomTypesService;
 
 @Controller
+@RequestMapping("/room-types") 
 public class RoomTypeController {
 
     @Autowired
     private RoomTypesService roomTypesService;
 
-    @GetMapping("/room-types")
+    @GetMapping
     public String listRoomTypes(Model model) {
         model.addAttribute("roomTypes", roomTypesService.getAllRoomTypes());
         model.addAttribute("roomType", new RoomType());
-        return "room-types";
+        return "room-types/list"; 
+    }
+
+    @GetMapping("/add")
+    public String showAddForm(Model model) {
+        model.addAttribute("roomType", new RoomType()); 
+        return "room-types/add"; 
     }
 
     @PostMapping("/add")
@@ -32,12 +40,12 @@ public class RoomTypeController {
         } catch (RuntimeException e) {
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("roomTypes", roomTypesService.getAllRoomTypes());
-            return "room-types";
+            return "room-types/list"; 
         }
     }
 
     // 1. Xử lý xóa loại phòng
-    @GetMapping("/room-types/delete/{id}")
+    @GetMapping("/delete/{id}")
     public String deleteRoomType(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         try {
             roomTypesService.deleteRoomType(id);
@@ -49,7 +57,7 @@ public class RoomTypeController {
     }
 
     // 2. Xử lý chuyển đổi trạng thái (Ngừng bán / Đang bán)
-    @GetMapping("/room-types/toggle-status/{id}")
+    @GetMapping("/toggle-status/{id}")
     public String toggleStatus(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         try {
             roomTypesService.toggleStatus(id);
