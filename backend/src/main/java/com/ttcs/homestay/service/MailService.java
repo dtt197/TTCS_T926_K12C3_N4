@@ -45,4 +45,19 @@ public class MailService {
 			log.warn("Không gửi được email mật khẩu tạm tới {}: {}", user.getEmail(), e.getMessage());
 		}
 	}
+	public void sendPasswordResetLink(User user, String rawToken) {
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(from);
+		message.setTo(user.getEmail());
+		message.setSubject("Yêu cầu đặt lại mật khẩu - HomeStay");
+		message.setText("Xin chào " + user.getFullName() + ",\n\n"
+				+ "Nhấn vào liên kết sau để đặt mật khẩu mới (hết hạn sau 30 phút):\n"
+				+ frontendUrl + "/reset-password?token=" + rawToken + "\n\n"
+				+ "Nếu bạn không yêu cầu điều này, hãy bỏ qua email này.");
+		try {
+			mailSender.send(message);
+		} catch (MailException e) {
+			log.warn("Không gửi được email đặt lại mật khẩu tới {}: {}", user.getEmail(), e.getMessage());
+		}
+	}
 }

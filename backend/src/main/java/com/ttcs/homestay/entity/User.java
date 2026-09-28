@@ -54,6 +54,8 @@ public class User {
 
 		@Column(name = "must_change_password", nullable = false)
 	private boolean mustChangePassword;
+		@Column(name = "token_version", nullable = false)
+	private int tokenVersion = 1;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private OffsetDateTime createdAt;
@@ -102,6 +104,7 @@ public class User {
 	public void changePassword(String newPasswordHash) {
 		this.passwordHash = newPasswordHash;
 		this.mustChangePassword = false;
+		this.tokenVersion++;
 	}
 	/** S1-02 AC5: bật/tắt trạng thái hoạt động của tài khoản. */
 	public void updateActive(boolean active) {
@@ -118,6 +121,7 @@ public class User {
 	public void resetTemporaryPassword(String temporaryPasswordHash) {
 		this.passwordHash = temporaryPasswordHash;
 		this.mustChangePassword = true;
+		this.tokenVersion++;
 	}
 	public String getPhone() {
 		return phone;
@@ -125,6 +129,10 @@ public class User {
 
 	public boolean isMustChangePassword() {
 		return mustChangePassword;
+	}
+	
+	public int getTokenVersion() {
+		return tokenVersion;
 	}
 
 	public OffsetDateTime getCreatedAt() {
