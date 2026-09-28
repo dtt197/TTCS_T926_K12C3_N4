@@ -10,6 +10,9 @@ import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;
+import com.ttcs.homestay.dto.amenity.AmenitySummary;
+import com.ttcs.homestay.entity.Amenity;
+import com.ttcs.homestay.repository.AmenityRepository;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.InvalidRoomTypeCapacityException;
 import com.ttcs.homestay.exception.RoomTypeConflictException;
@@ -30,6 +33,9 @@ class RoomTypeServiceTest {
 
     @Mock
     private RoomRepository roomRepository;
+    
+    @Mock
+    private AmenityRepository amenityRepository;
 
     @InjectMocks
     private RoomTypeService roomTypeService;
@@ -130,6 +136,55 @@ class RoomTypeServiceTest {
         assertThatThrownBy(() -> roomTypeService.updateRoomType(1L, request("don", "Phòng đôi", 2, 3)))
                 .isInstanceOf(RoomTypeConflictException.class);
         verify(roomRepository, never()).renameRoomType(anyString(), anyString());
+    }
+        @Test
+    void ganTienNghi_hopLe_themVaoLoaiPhong() {
+        RoomType roomType = roomType(1L, "DOI", "Phòng đôi");
+        Amenity wifi = AmenityServiceTest.amenity(10L, "WIFI", "Wi-Fi", true);
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(roomType));
+        when(amenityRepository.findById(10L)).thenReturn(Optional.of(wifi));
+
+        RoomTypeResponse response = roomTypeService.addAmenity(1L, 10L);
+
+        assertThat(response.amenities()).extracting(AmenitySummary::code).containsExactly("WIFI");
+    }
+
+    @Test
+    void ganTienNghi_trung_biChan() {
+        // S1-08 AC2: gắn trùng cùng một tiện nghi bị chặn
+        RoomType roomType = roomType(1L, "DOI", "Phòng đôi");
+        Amenity wifi = AmenityServiceTest.amenity(10L, "WIFI", "Wi-Fi", true);
+        roomType.getAmenities().add(wifi);
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(roomType));
+        when(amenityRepository.findById(10L)).thenReturn(Optional.of(wifi));
+
+        assertThatThrownBy(() -> roomTypeService.addAmenity(1L, 10L))
+                .isInstanceOf(RoomTypeConflictException.class)
+                .hasMessageContaining("đã có tiện nghi");
+    }
+
+    @Test
+    void ganTienNghi_daNgungDung_biChan() {
+        RoomType roomType = roomType(1L, "DOI", "Phòng đôi");
+        Amenity tivi = AmenityServiceTest.amenity(11L, "TIVI", "Tivi", false);
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(roomType));
+        when(amenityRepository.findById(11L)).thenReturn(Optional.of(tivi));
+
+        assertThatThrownBy(() -> roomTypeService.addAmenity(1L, 11L))
+                .isInstanceOf(RoomTypeConflictException.class)
+                .hasMessageContaining("ngừng dùng");
+    }
+
+    @Test
+    void danhSachLoaiPhong_anTienNghiDaNgungDung() {
+        // S1-08 AC4
+        RoomType roomType = roomType(1L, "DOI", "Phòng đôi");
+        roomType.getAmenities().add(AmenityServiceTest.amenity(10L, "WIFI", "Wi-Fi", true));
+        roomType.getAmenities().add(AmenityServiceTest.amenity(11L, "TIVI", "Tivi", false));
+
+        RoomTypeResponse response = RoomTypeResponse.from(roomType, 0);
+
+        assertThat(response.amenities()).extracting(AmenitySummary::code).containsExactly("WIFI");
     }
 
     private static RoomTypeRequest request(String code, String name, int standardCapacity, int maxCapacity) {

@@ -5,7 +5,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -41,4 +46,12 @@ public class RoomType {
 
     @Column(name = "status")
     private Boolean status = true; // true: Đang bán, false: Ngừng bán
+
+    /** S1-08 AC2: một loại phòng gắn được nhiều tiện nghi (bảng nối room_type_amenities). */
+    @ManyToMany
+    @JoinTable(
+            name = "room_type_amenities",
+            joinColumns = @JoinColumn(name = "room_type_id"),
+            inverseJoinColumns = @JoinColumn(name = "amenity_id"))
+    private Set<Amenity> amenities = new HashSet<>();
 }
