@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { RoomTypeAmenityEditor } from '../components/RoomTypeAmenityEditor'
 import { RoomTypeForm } from '../components/RoomTypeForm'
 import { hasPermission } from '../permissions/rolePermissions'
+import { getAmenities } from '../services/amenityService'
 import {
   createRoomType,
   deleteRoomType,
@@ -8,6 +10,7 @@ import {
   updateRoomType,
   updateRoomTypeStatus,
 } from '../services/roomTypeService'
+import type { Amenity } from '../types/amenity'
 import type { RoomType, RoomTypePayload } from '../types/roomType'
 import '../App.css'
 import './UserManagementPage.css'
@@ -18,10 +21,14 @@ type RoomTypePageProps = {
 
 type Notice = { type: 'success' | 'error'; text: string }
 
-/** S1-06: Chủ homestay và Quản trị thêm/sửa/ngừng bán/xoá loại phòng, Lễ tân chỉ xem. */
+/**
+ * S1-06: Chủ homestay và Quản trị thêm/sửa/ngừng bán/xoá loại phòng, Lễ tân chỉ xem.
+ * S1-08: gắn / bỏ tiện nghi khi sửa loại phòng; danh sách chỉ hiện tiện nghi đang dùng.
+ */
 export function RoomTypePage({ role }: RoomTypePageProps) {
   const canManage = hasPermission(role, 'roomTypes:manage')
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
+  const [amenities, setAmenities] = useState<Amenity[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -45,6 +52,14 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
     void load()
   }, [load])
 
+  // S1-08: danh mục tiện nghi để chọn khi gắn (chỉ người quản lý mới cần).
+  useEffect(() => {
+    if (!canManage) return
+    void getAmenities()
+      .then(setAmenities)
+      .catch(() => setAmenities([]))
+  }, [canManage])
+
   async function handleCreate(payload: RoomTypePayload) {
     const created = await createRoomType(payload)
     setNotice({ type: 'success', text: `Đã thêm loại phòng ${created.name}` })
@@ -57,6 +72,11 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
     setEditing(null)
     setNotice({ type: 'success', text: `Đã lưu loại phòng ${updated.name}` })
     await load()
+  }
+
+  function handleAmenitiesChanged(updated: RoomType) {
+    setEditing(updated)
+    setRoomTypes((current) => current.map((item) => (item.id === updated.id ? updated : item)))
   }
 
   async function handleToggle(roomType: RoomType) {
@@ -90,12 +110,12 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
       <main className="main-content">
         <section className="intro">
           <div>
-            <p className="eyebrow">Danh mục phòng · S1-06</p>
+            <p className="eyebrow">Danh mục phòng · S1-06 · S1-08</p>
             <h1>Loại phòng</h1>
             <p>
               {canManage
-                ? 'Khai báo loại phòng để mọi người cùng gọi tên và bán theo cùng một mô tả.'
-                : 'Xem các loại phòng homestay đang bán.'}
+                ? 'Khai báo loại phòng và tiện nghi để mọi người cùng gọi tên và bán theo cùng một mô tả.'
+                : 'Xem các loại phòng homestay đang bán và tiện nghi của từng loại.'}
             </p>
           </div>
         </section>
@@ -142,6 +162,11 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                         <td>
                           {roomType.name}
                           {roomType.description && <small>{roomType.description}</small>}
+                          {roomType.amenities.length > 0 && (
+                            <small>
+                              {roomType.amenities.map((amenity) => `${amenity.icon} ${amenity.name}`).join(' · ')}
+                            </small>
+                          )}
                         </td>
                         <td>
                           {roomType.standardCapacity} – {roomType.maxCapacity} người
@@ -191,12 +216,19 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                 </div>
               </div>
               {editing ? (
-                <RoomTypeForm
-                  key={editing.id}
-                  initial={editing}
-                  onSubmit={handleUpdate}
-                  onCancel={() => setEditing(null)}
-                />
+                <>
+                  <RoomTypeForm
+                    key={editing.id}
+                    initial={editing}
+                    onSubmit={handleUpdate}
+                    onCancel={() => setEditing(null)}
+                  />
+                  <RoomTypeAmenityEditor
+                    roomType={editing}
+                    amenities={amenities}
+                    onChanged={handleAmenitiesChanged}
+                  />
+                </>
               ) : (
                 <RoomTypeForm onSubmit={handleCreate} />
               )}

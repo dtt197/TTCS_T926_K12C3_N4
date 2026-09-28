@@ -19,5 +19,8 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     boolean existsByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+        /** S1-08 AC3: đếm số loại phòng đang gắn một tiện nghi (để chặn xoá). */
+    long countByAmenitiesId(Long amenityId);
+
     List<RoomType> findAllByOrderByCodeAsc();
 }

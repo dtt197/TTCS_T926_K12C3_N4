@@ -58,4 +58,16 @@ public class RoomTypeController {
         roomTypeService.deleteRoomType(id);
         return ResponseEntity.noContent().build();
     }
+    
+    /** S1-08 AC2: gắn một tiện nghi cho loại phòng (gắn trùng bị chặn, trả 409). */
+    @PostMapping("/{id}/amenities/{amenityId}")
+    public RoomTypeResponse addAmenity(@PathVariable Long id, @PathVariable Long amenityId) {
+        return roomTypeService.addAmenity(id, amenityId);
+    }
+
+    /** S1-08: bỏ một tiện nghi khỏi loại phòng. */
+    @DeleteMapping("/{id}/amenities/{amenityId}")
+    public RoomTypeResponse removeAmenity(@PathVariable Long id, @PathVariable Long amenityId) {
+        return roomTypeService.removeAmenity(id, amenityId);
+    }
 }
