@@ -394,5 +394,41 @@ void adminTruyCapApiChuaDuocCapQuyen_biChan403() throws Exception {
     ).andExpect(status().isForbidden());
 }
 
+@Test
+void leTanThemTienNghi_biChan403() throws Exception {
+    mockMvc.perform(
+            post("/api/amenities")
+                    .header("Authorization", "Bearer receptionist-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void buongPhongBoTienNghiKhoiLoaiPhong_biChan403() throws Exception {
+    mockMvc.perform(
+            delete("/api/room-types/1/amenities/1")
+                    .header("Authorization", "Bearer housekeeping-test-token")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void leTanXemDanhSachTienNghi_duoc200() throws Exception {
+    mockMvc.perform(
+            get("/api/amenities")
+                    .header("Authorization", "Bearer receptionist-test-token")
+    ).andExpect(status().isOk());
+}
+
+@Test
+void ownerThemTienNghi_quaPhanQuyen() throws Exception {
+    // Qua được phân quyền, bị chặn ở bước kiểm tra dữ liệu trống (400) chứ không phải 403.
+    mockMvc.perform(
+            post("/api/amenities")
+                    .header("Authorization", "Bearer owner-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isBadRequest());
+}
 
 }

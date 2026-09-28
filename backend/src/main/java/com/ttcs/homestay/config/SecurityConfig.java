@@ -132,6 +132,21 @@ public class SecurityConfig {
                         // S1-06: thêm/sửa/ngừng bán/xoá loại phòng (ma trận: Chủ homestay và Admin = F)
                         .requestMatchers("/api/room-types/**")
                         .hasAnyRole("ADMIN", "OWNER")
+                                                // S1-08: xem tiện nghi cho 4 vai trò nội bộ (ma trận: R)
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/amenities",
+                                "/api/amenities/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "OWNER",
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // S1-08: thêm/sửa/ngừng dùng/xoá tiện nghi (ma trận: Chủ homestay và Admin = F)
+                        .requestMatchers("/api/amenities/**")
+                        .hasAnyRole("ADMIN", "OWNER")
 
                         // API chưa khai báo quyền sẽ bị từ chối
                         .requestMatchers("/api/**").denyAll()
