@@ -15,6 +15,7 @@ import com.ttcs.homestay.dto.user.UserResponse;
 import com.ttcs.homestay.service.UserService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import com.ttcs.homestay.dto.user.UpdateUserStatusRequest;
@@ -45,14 +46,16 @@ public class UserController {
 	@PatchMapping("/{id}/status")
 	public UserResponse updateStatus(@PathVariable Long id,
 			@Valid @RequestBody UpdateUserStatusRequest request,
-			@AuthenticationPrincipal Jwt jwt) {
-		return userService.updateStatus(id, request, Long.valueOf(jwt.getSubject()));
+			@AuthenticationPrincipal Jwt jwt, HttpServletRequest httpRequest) {
+		return userService.updateStatus(id, request, Long.valueOf(jwt.getSubject()),
+				jwt.getClaimAsString("email"), httpRequest.getRemoteAddr());
 	}
 	@PutMapping("/{id}")
 	public UserResponse updateUser(@PathVariable Long id,
 			@Valid @RequestBody UpdateUserRequest request,
-			@AuthenticationPrincipal Jwt jwt) {
-		return userService.updateUser(id, request, Long.valueOf(jwt.getSubject()));
+			@AuthenticationPrincipal Jwt jwt, HttpServletRequest httpRequest) {
+		return userService.updateUser(id, request, Long.valueOf(jwt.getSubject()),
+				jwt.getClaimAsString("email"), httpRequest.getRemoteAddr());
 	}
 
 	@PostMapping("/{id}/resend-temporary-password")

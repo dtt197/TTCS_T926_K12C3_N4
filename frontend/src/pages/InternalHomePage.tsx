@@ -5,6 +5,7 @@ import { hasPermission } from '../permissions/rolePermissions'
 import type { LoginResponse } from '../types/auth'
 import { RoomStatusPage } from './RoomStatusPage'
 import { UserManagementPage } from './UserManagementPage'
+import { AuditLogPage } from './AuditLogPage'
 import './AuthPages.css'
 
 type InternalHomePageProps = {
@@ -12,14 +13,14 @@ type InternalHomePageProps = {
   onLogout: () => void
 }
 
-type View = 'rooms' | 'users'
+type View = 'rooms' | 'users' | 'audit-logs'
 
 const SESSION_CHECK_INTERVAL_MS = 30_000
 const VIEW_STORAGE_KEY = 'homestay_internal_view'
 
 function getInitialView(): View {
   const savedView = window.sessionStorage.getItem(VIEW_STORAGE_KEY)
-  return savedView === 'users' ? 'users' : 'rooms'
+  return savedView === 'users' || savedView === 'audit-logs' ? savedView : 'rooms'
 }
 
 export function InternalHomePage({
@@ -30,10 +31,13 @@ export function InternalHomePage({
 
   // S1-04: Kiểm tra quyền từ ma trận phân quyền tập trung.
   const canViewAccounts = hasPermission(user.role, 'accounts:view')
+  const canViewAuditLogs = user.role === 'ADMIN'
 
   // Người không có quyền xem tài khoản sẽ được chuyển về trang Phòng.
   const activeView: View =
-    view === 'users' && !canViewAccounts ? 'rooms' : view
+    (view === 'users' && !canViewAccounts) || (view === 'audit-logs' && !canViewAuditLogs)
+      ? 'rooms'
+      : view
 
   // Lưu tab đang mở khi tải lại trang.
   useEffect(() => {
@@ -81,6 +85,16 @@ export function InternalHomePage({
             >
               Tài khoản
             </button>
+
+            {canViewAuditLogs && (
+              <button
+                type="button"
+                className={activeView === 'audit-logs' ? 'primary-button' : 'secondary-button'}
+                onClick={() => setView('audit-logs')}
+              >
+                Nhật ký
+              </button>
+            )}
           </nav>
         )}
 
@@ -97,7 +111,9 @@ export function InternalHomePage({
         </button>
       </header>
 
-      {canViewAccounts && activeView === 'users' ? (
+      {canViewAuditLogs && activeView === 'audit-logs' ? (
+        <AuditLogPage />
+      ) : canViewAccounts && activeView === 'users' ? (
         <UserManagementPage
           currentUserId={user.userId}
           role={user.role}
