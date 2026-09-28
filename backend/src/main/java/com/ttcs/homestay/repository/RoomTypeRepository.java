@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
 
-    boolean existsByCode(String code);
+   
 
     /** S1-06 AC3: mã loại phòng duy nhất, không phân biệt hoa thường. */
     boolean existsByCodeIgnoreCase(String code);

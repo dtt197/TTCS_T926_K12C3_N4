@@ -114,11 +114,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/room-management/**")
                         .hasAnyRole("ADMIN", "OWNER")
 
-                        // S1-04: Xem danh sách loại phòng
+                        // S1-06: xem loại phòng cho 4 vai trò nội bộ (ma trận: R)
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/room-types",
-                                "/room-types/"
+                                "/api/room-types",
+                                "/api/room-types/**"
                         ).hasAnyRole(
                                 "ADMIN",
                                 "OWNER",
@@ -126,8 +126,8 @@ public class SecurityConfig {
                                 "HOUSEKEEPING"
                         )
 
-                        // Quản lý loại phòng
-                        .requestMatchers("/room-types/**")
+                        // S1-06: thêm/sửa/ngừng bán/xoá loại phòng (ma trận: Chủ homestay và Admin = F)
+                        .requestMatchers("/api/room-types/**")
                         .hasAnyRole("ADMIN", "OWNER")
 
                         // API chưa khai báo quyền sẽ bị từ chối

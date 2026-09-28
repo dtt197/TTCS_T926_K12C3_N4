@@ -1,70 +1,61 @@
 package com.ttcs.homestay.controller;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+
+import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
+import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;
+import com.ttcs.homestay.dto.roomtype.UpdateRoomTypeStatusRequest;
+import com.ttcs.homestay.service.RoomTypeService;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.bind.annotation.RestController;
 
-import com.ttcs.homestay.entity.RoomType;
-import com.ttcs.homestay.service.RoomTypesService;
-
-@Controller
-@RequestMapping("/room-types") 
+/**
+ * S1-06: API loại phòng. Quyền khai báo trong SecurityConfig:
+ * xem cho 4 vai trò nội bộ, thêm/sửa/ngừng bán/xoá cho Chủ homestay và Quản trị.
+ */
+@RestController
+@RequestMapping("/api/room-types")
 public class RoomTypeController {
 
-    @Autowired
-    private RoomTypesService roomTypesService;
+    private final RoomTypeService roomTypeService;
+
+    public RoomTypeController(RoomTypeService roomTypeService) {
+        this.roomTypeService = roomTypeService;
+    }
 
     @GetMapping
-    public String listRoomTypes(Model model) {
-        model.addAttribute("roomTypes", roomTypesService.getAllRoomTypes());
-        model.addAttribute("roomType", new RoomType());
-        return "room-types/list"; 
+    public List<RoomTypeResponse> listRoomTypes() {
+        return roomTypeService.listRoomTypes();
     }
 
-    @GetMapping("/add")
-    public String showAddForm(Model model) {
-        model.addAttribute("roomType", new RoomType()); 
-        return "room-types/add"; 
+    @PostMapping
+    public ResponseEntity<RoomTypeResponse> createRoomType(@Valid @RequestBody RoomTypeRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(roomTypeService.createRoomType(request));
     }
 
-    @PostMapping("/add")
-    public String createRoomType(@ModelAttribute("roomType") RoomType roomType, Model model) {
-        try {
-            roomTypesService.createRoomType(roomType);
-            return "redirect:/room-types?success";
-        } catch (RuntimeException e) {
-            model.addAttribute("errorMessage", e.getMessage());
-            model.addAttribute("roomTypes", roomTypesService.getAllRoomTypes());
-            return "room-types/list"; 
-        }
+    @PutMapping("/{id}")
+    public RoomTypeResponse updateRoomType(@PathVariable Long id, @Valid @RequestBody RoomTypeRequest request) {
+        return roomTypeService.updateRoomType(id, request);
     }
 
-    // 1. Xử lý xóa loại phòng
-    @GetMapping("/delete/{id}")
-    public String deleteRoomType(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
-        try {
-            roomTypesService.deleteRoomType(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Xóa loại phòng thành công!");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/room-types";
+    @PatchMapping("/{id}/status")
+    public RoomTypeResponse updateStatus(@PathVariable Long id,
+            @Valid @RequestBody UpdateRoomTypeStatusRequest request) {
+        return roomTypeService.updateStatus(id, request.active());
     }
 
-    // 2. Xử lý chuyển đổi trạng thái (Ngừng bán / Đang bán)
-    @GetMapping("/toggle-status/{id}")
-    public String toggleStatus(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
-        try {
-            roomTypesService.toggleStatus(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Cập nhật trạng thái thành công!");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        }
-        return "redirect:/room-types";
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRoomType(@PathVariable Long id) {
+        roomTypeService.deleteRoomType(id);
+        return ResponseEntity.noContent().build();
     }
 }

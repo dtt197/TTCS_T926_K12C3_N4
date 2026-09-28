@@ -232,50 +232,5 @@ public List<RoomStatusHistoryResponse> getHistory(
         roomStatusHistoryRepository.save(history);
     }
 
-    public boolean existsByRoomType(String roomType) {
-        if (roomType == null || roomType.isBlank()) {
-            return false;
-        }
-        return roomRepository.findAll().stream()
-                .anyMatch(r -> r.getRoomType() != null && r.getRoomType().equalsIgnoreCase(roomType.trim()));
-    }
-
-    @Transactional
-    public void deleteRoomType(String roomType) {
-        if (roomType == null || roomType.isBlank()) {
-            throw new IllegalArgumentException("Tên loại phòng không hợp lệ để xóa.");
-        }
-
-        boolean hasRoomsAttached = roomRepository.findAll().stream()
-                .anyMatch(r -> roomType.equalsIgnoreCase(r.getRoomType()));
-
-        if (hasRoomsAttached) {
-            throw new IllegalStateException("Không thể xoá loại phòng này vì đang có phòng thực tế gắn vào hệ thống!");
-        }
-    }
-   
-    @Transactional
-    public void updateRoomTypeSellingStatus(String roomType, boolean stopSelling) {
-        if (roomType == null || roomType.isBlank()) {
-            throw new IllegalArgumentException("Tên loại phòng không hợp lệ.");
-        }
-
-        List<Room> roomsOfModel = roomRepository.findAll().stream()
-                .filter(r -> roomType.equalsIgnoreCase(r.getRoomType()))
-                .toList();
-
-        if (roomsOfModel.isEmpty()) {
-            throw new IllegalArgumentException("Không tìm thấy phòng nào thuộc loại phòng: " + roomType);
-        }
-
-        for (Room room : roomsOfModel) {
-            roomRepository.save(room);
-        }
-    }
     
-    public void validateRoomCapacity(int standardCapacity, int maxCapacity) {
-        if (maxCapacity < standardCapacity) {
-            throw new IllegalArgumentException("Sức chứa tối đa không được nhỏ hơn sức chứa tiêu chuẩn!");
-        }
-    }
 }
