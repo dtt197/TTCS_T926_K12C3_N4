@@ -35,3 +35,13 @@ export function updateRoomTypeStatus(id: number, active: boolean) {
 export function deleteRoomType(id: number) {
   return apiRequest<void>(`/api/room-types/${id}`, { method: 'DELETE' })
 }
+
+/** S1-08 AC2: gắn tiện nghi cho loại phòng (gắn trùng bị máy chủ chặn). */
+export function addRoomTypeAmenity(roomTypeId: number, amenityId: number) {
+  return apiRequest<RoomType>(`/api/room-types/${roomTypeId}/amenities/${amenityId}`, { method: 'POST' })
+}
+
+/** S1-08: bỏ tiện nghi khỏi loại phòng. */
+export function removeRoomTypeAmenity(roomTypeId: number, amenityId: number) {
+  return apiRequest<RoomType>(`/api/room-types/${roomTypeId}/amenities/${amenityId}`, { method: 'DELETE' })
+}
