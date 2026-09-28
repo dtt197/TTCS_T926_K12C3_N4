@@ -9,7 +9,6 @@ import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.exception.PasswordChangeException;
 import com.ttcs.homestay.repository.UserRepository;
 
-/** Người dùng tự đổi mật khẩu của mình (S1-02 Lát 2, dùng lại cho S1-03). */
 @Service
 public class AccountService {
 

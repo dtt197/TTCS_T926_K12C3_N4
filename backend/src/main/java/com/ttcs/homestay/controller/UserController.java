@@ -22,7 +22,6 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PutMapping;
 import com.ttcs.homestay.dto.user.UpdateUserRequest;
 
-/** S1-02: quản trị hệ thống quản lý tài khoản nhân viên. Chỉ vai trò ADMIN gọi được (xem SecurityConfig). */
 @RestController
 @RequestMapping("/api/admin/users")
 public class UserController {

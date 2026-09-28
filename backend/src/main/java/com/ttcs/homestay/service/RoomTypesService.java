@@ -33,14 +33,12 @@ public class RoomTypesService {
         return roomTypeRepository.findById(id).orElse(null);
     }
 
-    // 1. Chặn xoá nếu cần thiết
     public void deleteRoomType(Long id) {
         RoomType roomType = roomTypeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phòng cần xóa!"));
         roomTypeRepository.deleteById(id);
     }
 
-    // 2. Chức năng đánh dấu ngừng bán / mở bán lại
     public void toggleStatus(Long id) {
         RoomType roomType = roomTypeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy loại phòng!"));

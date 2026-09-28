@@ -10,7 +10,6 @@
         <div class="col-md-6">
             <h2 class="mb-4">Thêm mới Loại Phòng</h2>
 
-            <!-- Hiển thị lỗi nếu thiếu trường bắt buộc -->
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
             <form th:action="@{/room-types/add}" th:object="${roomType}" method="post">
