@@ -334,31 +334,44 @@ void housekeepingTruyCapApiCheckOut_biChan403() throws Exception {
 @Test
 void leTanThemLoaiPhong_biChan403() throws Exception {
     mockMvc.perform(
-            post("/room-types/add")
+            post("/api/room-types")
                     .header("Authorization", "Bearer receptionist-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
     ).andExpect(status().isForbidden());
 }
 
 @Test
 void housekeepingXoaLoaiPhong_biChan403() throws Exception {
     mockMvc.perform(
-            get("/room-types/delete/1")
+            delete("/api/room-types/1")
                     .header("Authorization", "Bearer housekeeping-test-token")
     ).andExpect(status().isForbidden());
 }
 
 @Test
-void ownerDuocTruyCapQuanLyLoaiPhong() throws Exception {
+void leTanXemDanhSachLoaiPhong_duoc200() throws Exception {
     mockMvc.perform(
-            get("/room-types/add")
-                    .header("Authorization", "Bearer owner-test-token")
+            get("/api/room-types")
+                    .header("Authorization", "Bearer receptionist-test-token")
     ).andExpect(status().isOk());
 }
 
 @Test
-void adminDuocTruyCapQuanLyLoaiPhong() throws Exception {
+void ownerDuocThemLoaiPhong_quaPhanQuyen() throws Exception {
+    // Qua được phân quyền, bị chặn ở bước kiểm tra dữ liệu trống (400) chứ không phải 403.
     mockMvc.perform(
-            get("/room-types/add")
+            post("/api/room-types")
+                    .header("Authorization", "Bearer owner-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isBadRequest());
+}
+
+@Test
+void adminDuocXemDanhSachLoaiPhong() throws Exception {
+    mockMvc.perform(
+            get("/api/room-types")
                     .header("Authorization", "Bearer admin-test-token")
     ).andExpect(status().isOk());
 }
