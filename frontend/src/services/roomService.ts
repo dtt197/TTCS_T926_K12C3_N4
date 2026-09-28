@@ -1,3 +1,4 @@
+import { getAccessToken } from './tokenStore'
 import type { Room, RoomStatus, MaintenanceDraft, RoomStatusHistory } from '../types/room'
 
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/api`
@@ -7,19 +8,32 @@ type ApiError = {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getAccessToken()
+
+  const headers = new Headers(options?.headers)
+
+  headers.set('Content-Type', 'application/json')
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
     ...options,
+    headers,
   })
 
   const body: unknown = await response.json().catch(() => null)
+
   if (!response.ok) {
     const errorBody = body as ApiError | null
-    throw new Error(errorBody?.message ?? 'Không thể kết nối với máy chủ.')
+
+    throw new Error(
+      errorBody?.message ??
+        `Yêu cầu thất bại (${response.status})`
+    )
   }
+
   return body as T
 }
 

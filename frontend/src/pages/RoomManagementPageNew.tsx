@@ -8,7 +8,7 @@ import {
   searchManagedRooms,
   updateManagedRoom,
   type ManagedRoom,
-} from '../services/roomManagementService.old'
+}  from '../services/roomManagementService'
 
 const STATUS_OPTIONS: RoomStatus[] = ['TRONG_SACH', 'TRONG_BAN', 'DANG_O', 'BAO_TRI']
 const STATUS_LABELS: Record<RoomStatus, string> = {
