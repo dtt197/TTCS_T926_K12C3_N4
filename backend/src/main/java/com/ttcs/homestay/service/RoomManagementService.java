@@ -12,12 +12,15 @@ import com.ttcs.homestay.repository.RoomManagementRepository;
 import com.ttcs.homestay.repository.RoomNoteRepository;
 import java.time.LocalDate;
 import java.util.List;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RoomManagementService {
+
+    private static final String ROOM_NUMBER_UNIQUE_CONSTRAINT = "rooms_room_number_key";
 
     private final RoomManagementRepository roomRepository;
     private final RoomNoteRepository roomNoteRepository;
@@ -46,17 +49,20 @@ public class RoomManagementService {
         room.setFloor(request.floor());
         room.setRoomType(roomType);
         room.setStatus(request.status() == null ? RoomStatus.TRONG_SACH : request.status());
-        room.setActive(true);
+        room.setActive(request.active() == null || request.active());
 
+        Room saved;
         try {
-            return RoomResponse.from(roomRepository.saveAndFlush(room));
+            saved = roomRepository.saveAndFlush(room);
         } catch (DataIntegrityViolationException exception) {
             throw new IllegalArgumentException("Số phòng " + roomNumber + " đã tồn tại trong hệ thống.");
         }
+        saveNote(saved, request.note() == null ? "" : request.note().trim());
+        return RoomResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
-    public RoomSearchResponse search(String roomType, Integer floor, RoomStatus status) {
+    public RoomSearchResponse search(String roomType, Integer floor, RoomStatus status, Boolean active) {
         String normalizedRoomType = roomType == null || roomType.isBlank()
                 ? null
                 : roomType.trim();
@@ -66,7 +72,7 @@ public class RoomManagementService {
         }
 
         List<RoomResponse> rooms = roomRepository
-                .searchActiveRooms(normalizedRoomType, floor, status)
+            .searchRooms(normalizedRoomType, floor, status, active)
                 .stream()
                 .map(RoomResponse::from)
                 .toList();
@@ -76,15 +82,15 @@ public class RoomManagementService {
 
     @Transactional
     public RoomUpdateResponse update(Long roomId, UpdatePhysicalRoomRequest request) {
-        Room room = roomRepository.findByIdAndActiveTrue(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng đang hoạt động với ID " + roomId + "."));
+        Room room = roomRepository.findById(roomId)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng với ID " + roomId + "."));
 
         String newRoomNumber = normalize(request.roomNumber());
         String newRoomType = normalize(request.roomType());
         String newNote = request.note() == null ? "" : request.note().trim();
 
         if (roomRepository.existsByRoomNumberIgnoreCaseAndIdNot(newRoomNumber, roomId)) {
-            throw new IllegalArgumentException("Số phòng " + newRoomNumber + " đã được sử dụng bởi phòng khác.");
+            throw new IllegalArgumentException("Số phòng " + newRoomNumber + " đã tồn tại trong hệ thống.");
         }
 
         FutureBookingImpactChecker.FutureBookingImpact impact = bookingImpactChecker.check(
@@ -131,7 +137,17 @@ public class RoomManagementService {
             room.setStatus(request.status());
         }
 
-        Room saved = roomRepository.saveAndFlush(room);
+        Room saved;
+        try {
+            saved = roomRepository.saveAndFlush(room);
+        } catch (DataIntegrityViolationException exception) {
+            if (!isRoomNumberUniqueConstraintViolation(exception)) {
+                throw exception;
+            }
+            throw new IllegalArgumentException(
+                    "Số phòng " + newRoomNumber + " đã tồn tại trong hệ thống.",
+                    exception);
+        }
         saveNote(saved, newNote);
 
         return new RoomUpdateResponse(
@@ -164,5 +180,14 @@ public class RoomManagementService {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private boolean isRoomNumberUniqueConstraintViolation(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException constraintViolation) {
+                return ROOM_NUMBER_UNIQUE_CONSTRAINT.equalsIgnoreCase(constraintViolation.getConstraintName());
+            }
+        }
+        return false;
     }
 }

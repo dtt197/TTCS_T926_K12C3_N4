@@ -43,6 +43,8 @@ export type CreateRoomRequest = {
   roomNumber: string
   floor: number
   roomType: string
+  note?: string
+  active?: boolean
   status?: RoomStatus
 }
 
@@ -68,11 +70,13 @@ export async function searchManagedRooms(filters: {
   roomType?: string
   floor?: number
   status?: RoomStatus
+  active?: boolean
 }) {
   const params = new URLSearchParams()
   if (filters.roomType?.trim()) params.set('roomType', filters.roomType.trim())
   if (filters.floor !== undefined) params.set('floor', String(filters.floor))
   if (filters.status) params.set('status', filters.status)
+  if (filters.active !== undefined) params.set('active', String(filters.active))
 
   const query = params.toString()
   return apiRequest<RoomSearchResponse>(
