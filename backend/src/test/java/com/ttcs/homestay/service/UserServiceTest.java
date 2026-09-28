@@ -57,6 +57,9 @@ class UserServiceTest {
 	@Mock
 	MailService mailService;
 
+	@Mock
+	AuditLogService auditLogService;
+
 	@InjectMocks
 	UserService userService;
 
@@ -150,6 +153,8 @@ class UserServiceTest {
 
 		UserResponse off = userService.updateStatus(2L, new UpdateUserStatusRequest(false), 1L);
 		assertThat(off.active()).isFalse();
+		verify(auditLogService).recordSensitiveAction(eq(1L), eq(null), eq(null),
+				eq("letan@homestay.local"), eq("ACCOUNT_DISABLED"), eq(null));
 
 		UserResponse on = userService.updateStatus(2L, new UpdateUserStatusRequest(true), 1L);
 		assertThat(on.active()).isTrue();
@@ -164,7 +169,9 @@ class UserServiceTest {
 	}
 	@Test
 	void suaThongTin_doiVaiTro_emailGiuNguyen() {
-		User staff = User.createStaff("Le tan", "letan@homestay.local", "0912345678", mock(Role.class), true, "HASH");
+		Role receptionist = mock(Role.class);
+		when(receptionist.getCode()).thenReturn("RECEPTIONIST");
+		User staff = User.createStaff("Le tan", "letan@homestay.local", "0912345678", receptionist, true, "HASH");
 		Role owner = mock(Role.class);
 		when(owner.getCode()).thenReturn("OWNER");
 		when(userRepository.findWithRoleById(2L)).thenReturn(Optional.of(staff));
@@ -177,6 +184,8 @@ class UserServiceTest {
 		assertThat(response.phone()).isNull();
 		assertThat(response.role()).isEqualTo("OWNER");
 		assertThat(response.email()).isEqualTo("letan@homestay.local");
+		verify(auditLogService).recordSensitiveAction(eq(1L), eq(null), eq(null),
+				eq("letan@homestay.local"), eq("ROLE_CHANGED"), eq(null));
 	}
 
 	@Test

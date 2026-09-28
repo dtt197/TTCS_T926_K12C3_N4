@@ -57,6 +57,9 @@ public class SecurityConfig {
                         // Thông tin phiên đăng nhập
                         .requestMatchers("/api/internal/**").authenticated()
 
+                        // S1-05: nhật ký chỉ ADMIN được xem
+                        .requestMatchers("/api/admin/audit-logs/**").hasRole("ADMIN")
+
                         // S1-04: ADMIN và OWNER được xem danh sách tài khoản
                         .requestMatchers(
                                 HttpMethod.GET,

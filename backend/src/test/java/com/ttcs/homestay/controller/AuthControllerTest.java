@@ -7,6 +7,7 @@ import com.ttcs.homestay.exception.GlobalExceptionHandler;
 import com.ttcs.homestay.exception.InvalidCredentialsException;
 import com.ttcs.homestay.security.JwtTokenService;
 import com.ttcs.homestay.service.AuthService;
+import com.ttcs.homestay.service.AuditLogService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -18,6 +19,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Duration;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -39,6 +44,9 @@ class AuthControllerTest {
 
 	@MockitoBean
 	private JwtProperties jwtProperties;
+
+	@MockitoBean
+	private AuditLogService auditLogService;
 
 	@Test
 	void loginReturnsOneRoleWithoutPasswordFields() throws Exception {
@@ -63,6 +71,8 @@ class AuthControllerTest {
 				.andExpect(jsonPath("$.roles").doesNotExist())
 				.andExpect(jsonPath("$.password").doesNotExist())
 				.andExpect(jsonPath("$.passwordHash").doesNotExist());
+		verify(auditLogService).recordLogin(eq(1L), eq("admin.demo@homestay.local"), eq(1L),
+				eq("admin.demo@homestay.local"), eq("SUCCESS"), anyString());
 	}
 
 	@Test
@@ -74,6 +84,8 @@ class AuthControllerTest {
 				.content("{\"email\":\"missing@homestay.local\",\"password\":\"wrong\"}"))
 				.andExpect(status().isUnauthorized())
 				.andExpect(content().json("{\"code\":\"INVALID_CREDENTIALS\",\"message\":\"Email hoặc mật khẩu không chính xác\"}"));
+		verify(auditLogService).recordLogin(isNull(), isNull(), isNull(), eq("missing@homestay.local"),
+				eq("FAILURE"), anyString());
 	}
 
 	@Test

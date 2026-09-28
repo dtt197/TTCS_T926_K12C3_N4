@@ -16,6 +16,7 @@ export type Permission =
   | 'rooms:check-out'
   | 'roomTypes:view'
   | 'roomTypes:manage'
+  | 'auditLogs:view'
 
 /** S1-04: ma trận quyền tập trung. S1-06: loại phòng (Chủ homestay, Admin = F; Lễ tân = R). */
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
@@ -31,6 +32,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'rooms:check-out',
     'roomTypes:view',
     'roomTypes:manage',
+    'auditLogs:view',
   ],
   OWNER: [
     'accounts:view',
