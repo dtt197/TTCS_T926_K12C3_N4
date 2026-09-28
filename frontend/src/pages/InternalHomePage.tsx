@@ -1,9 +1,9 @@
-
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../services/apiClient'
-import { hasPermission } from '../permissions/rolePermissions'
+import { hasPermission, type Permission } from '../permissions/rolePermissions'
 import type { LoginResponse } from '../types/auth'
 import { RoomStatusPage } from './RoomStatusPage'
+import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
 import './AuthPages.css'
 
@@ -12,14 +12,21 @@ type InternalHomePageProps = {
   onLogout: () => void
 }
 
-type View = 'rooms' | 'users'
+type View = 'rooms' | 'roomTypes' | 'users'
+
+/** S1-04 + S1-06: menu sinh theo quyền của vai trò (quyền khai báo ở rolePermissions.ts). */
+const TABS: ReadonlyArray<{ view: View; label: string; permission: Permission }> = [
+  { view: 'rooms', label: 'Phòng', permission: 'rooms:view' },
+  { view: 'roomTypes', label: 'Loại phòng', permission: 'roomTypes:view' },
+  { view: 'users', label: 'Tài khoản', permission: 'accounts:view' },
+]
 
 const SESSION_CHECK_INTERVAL_MS = 30_000
 const VIEW_STORAGE_KEY = 'homestay_internal_view'
 
 function getInitialView(): View {
   const savedView = window.sessionStorage.getItem(VIEW_STORAGE_KEY)
-  return savedView === 'users' ? 'users' : 'rooms'
+  return TABS.find((tab) => tab.view === savedView)?.view ?? 'rooms'
 }
 
 export function InternalHomePage({
@@ -28,12 +35,10 @@ export function InternalHomePage({
 }: InternalHomePageProps) {
   const [view, setView] = useState<View>(getInitialView)
 
-  // S1-04: Kiểm tra quyền từ ma trận phân quyền tập trung.
-  const canViewAccounts = hasPermission(user.role, 'accounts:view')
+  const visibleTabs = TABS.filter((tab) => hasPermission(user.role, tab.permission))
 
-  // Người không có quyền xem tài khoản sẽ được chuyển về trang Phòng.
-  const activeView: View =
-    view === 'users' && !canViewAccounts ? 'rooms' : view
+  // Tab không còn quyền (ví dụ vừa bị đổi vai trò) thì quay về trang Phòng.
+  const activeView: View = visibleTabs.some((tab) => tab.view === view) ? view : 'rooms'
 
   // Lưu tab đang mở khi tải lại trang.
   useEffect(() => {
@@ -56,31 +61,18 @@ export function InternalHomePage({
           HomeStay / Operations
         </div>
 
-        {canViewAccounts && (
+        {visibleTabs.length > 1 && (
           <nav className="view-tabs" aria-label="Chọn màn hình">
-            <button
-              type="button"
-              className={
-                activeView === 'rooms'
-                  ? 'primary-button'
-                  : 'secondary-button'
-              }
-              onClick={() => setView('rooms')}
-            >
-              Phòng
-            </button>
-
-            <button
-              type="button"
-              className={
-                activeView === 'users'
-                  ? 'primary-button'
-                  : 'secondary-button'
-              }
-              onClick={() => setView('users')}
-            >
-              Tài khoản
-            </button>
+            {visibleTabs.map((tab) => (
+              <button
+                key={tab.view}
+                type="button"
+                className={activeView === tab.view ? 'primary-button' : 'secondary-button'}
+                onClick={() => setView(tab.view)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </nav>
         )}
 
@@ -97,11 +89,13 @@ export function InternalHomePage({
         </button>
       </header>
 
-      {canViewAccounts && activeView === 'users' ? (
+      {activeView === 'users' ? (
         <UserManagementPage
           currentUserId={user.userId}
           role={user.role}
         />
+      ) : activeView === 'roomTypes' ? (
+        <RoomTypePage role={user.role} />
       ) : (
         <RoomStatusPage role={user.role} />
       )}
