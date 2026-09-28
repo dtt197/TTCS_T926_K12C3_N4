@@ -43,8 +43,9 @@ public class RoomManagementController {
     public RoomSearchResponse searchRooms(
             @RequestParam(required = false) String roomType,
             @RequestParam(required = false) Integer floor,
-            @RequestParam(required = false) RoomStatus status) {
-        return roomManagementService.search(roomType, floor, status);
+            @RequestParam(required = false) RoomStatus status,
+            @RequestParam(required = false) Boolean active) {
+        return roomManagementService.search(roomType, floor, status, active);
     }
 
     /** SCRUM-12: cập nhật thông tin phòng; trả warning trước khi lưu nếu chưa kiểm tra được booking. */

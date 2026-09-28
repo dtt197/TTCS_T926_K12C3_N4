@@ -19,6 +19,11 @@ public record CreatePhysicalRoomRequest(
         @Size(max = 80, message = "Loại phòng tối đa 80 ký tự")
         String roomType,
 
+        @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
+        String note,
+
+        Boolean active,
+
         RoomStatus status
 ) {
 }
