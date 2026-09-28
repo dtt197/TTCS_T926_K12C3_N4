@@ -130,7 +130,12 @@ const statusClassName: Record<RoomStatus, string> = {
   BAO_TRI: 'maintenance',
 }
 
-export function RoomStatusPage() {
+type RoomStatusPageProps = {
+  role: string
+}
+
+export function RoomStatusPage({ role }: RoomStatusPageProps) {
+  const isHousekeeping = role === 'HOUSEKEEPING'
   const [rooms, setRooms] = useState<Room[]>([])
   const [draftStatuses, setDraftStatuses] = useState<
     Record<number, RoomStatus>
@@ -171,7 +176,7 @@ export function RoomStatusPage() {
                 startDate: room.maintenanceStartDate ?? '',
                 endDate: room.maintenanceEndDate ?? '',
               },
-            ]),
+            ]), 
           ),
         )
 
@@ -208,20 +213,28 @@ export function RoomStatusPage() {
       })
   }, [])
 
-  const counts = useMemo(
-    () =>
-      STATUS_OPTIONS.reduce(
-        (result, status) => {
-          result[status] = rooms.filter(
-            (room) => room.status === status,
-          ).length
+  const visibleRooms = useMemo(
+  () =>
+    isHousekeeping
+      ? rooms.filter((room) => room.status === 'TRONG_BAN')
+      : rooms,
+  [rooms, isHousekeeping],
+)
 
-          return result
-        },
-        {} as Record<RoomStatus, number>,
-      ),
-    [rooms],
-  )
+const counts = useMemo(
+  () =>
+    STATUS_OPTIONS.reduce(
+      (result, status) => {
+        result[status] = rooms.filter(
+          (room) => room.status === status,
+        ).length
+
+        return result
+      },
+      {} as Record<RoomStatus, number>,
+    ),
+  [rooms],
+)
 
   const selectedRoom = rooms.find(
     (room) => room.id === selectedRoomId,
@@ -574,13 +587,17 @@ export function RoomStatusPage() {
 
           <div>
             <strong>HomeStay</strong>
-            <small>Reception desk</small>
+            <small>{isHousekeeping ? 'Housekeeping desk' : 'Reception desk'}</small>
           </div>
         </div>
 
         <div className="user-chip">
-          <span>Lễ tân đang trực</span>
-          <span className="user-avatar">LT</span>
+          <span>
+  {isHousekeeping ? 'Nhân viên buồng phòng' : 'Lễ tân đang trực'}
+</span>
+          <span className="user-avatar">
+  {isHousekeeping ? 'BP' : 'LT'}
+</span>
         </div>
       </header>
 
@@ -591,16 +608,27 @@ export function RoomStatusPage() {
               Vận hành phòng · S1-10
             </p>
 
-            <h1>
-              Phòng hôm nay,
-              <br />
-              sẵn sàng đón khách.
-            </h1>
+           <h1>
+  {isHousekeeping ? (
+    <>
+      Danh sách phòng
+      <br />
+      cần buồng phòng dọn.
+    </>
+  ) : (
+    <>
+      Phòng hôm nay,
+      <br />
+      sẵn sàng đón khách.
+    </>
+  )}
+</h1>
 
             <p>
-              Theo dõi trạng thái phòng và quản lý
-              thông tin bảo trì.
-            </p>
+  {isHousekeeping
+    ? 'Theo dõi danh sách phòng cần dọn và cập nhật trạng thái sau khi vệ sinh.'
+    : 'Theo dõi trạng thái phòng và quản lý thông tin bảo trì.'}
+</p>
           </div>
 
           <div className="live-pill">
@@ -609,50 +637,66 @@ export function RoomStatusPage() {
           </div>
         </section>
 
-        <section
-          className="summary-grid"
-          aria-label="Tổng quan trạng thái phòng"
-        >
-          <div className="summary-card clean">
-            <span className="summary-label">
-              Trống sạch
-            </span>
+        
+<section
+  className="summary-grid"
+  aria-label="Tổng quan trạng thái phòng"
+>
+  {isHousekeeping ? (
+    <div className="summary-card dirty">
+      <span className="summary-label">
+        Phòng cần dọn
+      </span>
 
-            <span className="summary-number">
-              {counts.TRONG_SACH ?? 0}
-            </span>
-          </div>
+      <span className="summary-number">
+        {counts.TRONG_BAN ?? 0}
+      </span>
+    </div>
+  ) : (
+    <>
+      <div className="summary-card clean">
+        <span className="summary-label">
+          Trống sạch
+        </span>
 
-          <div className="summary-card dirty">
-            <span className="summary-label">
-              Trống bẩn
-            </span>
+        <span className="summary-number">
+          {counts.TRONG_SACH ?? 0}
+        </span>
+      </div>
 
-            <span className="summary-number">
-              {counts.TRONG_BAN ?? 0}
-            </span>
-          </div>
+      <div className="summary-card dirty">
+        <span className="summary-label">
+          Trống bẩn
+        </span>
 
-          <div className="summary-card occupied">
-            <span className="summary-label">
-              Đang ở
-            </span>
+        <span className="summary-number">
+          {counts.TRONG_BAN ?? 0}
+        </span>
+      </div>
 
-            <span className="summary-number">
-              {counts.DANG_O ?? 0}
-            </span>
-          </div>
+      <div className="summary-card occupied">
+        <span className="summary-label">
+          Đang ở
+        </span>
 
-          <div className="summary-card maintenance">
-            <span className="summary-label">
-              Bảo trì
-            </span>
+        <span className="summary-number">
+          {counts.DANG_O ?? 0}
+        </span>
+      </div>
 
-            <span className="summary-number">
-              {counts.BAO_TRI ?? 0}
-            </span>
-          </div>
-        </section>
+      <div className="summary-card maintenance">
+        <span className="summary-label">
+          Bảo trì
+        </span>
+
+        <span className="summary-number">
+          {counts.BAO_TRI ?? 0}
+        </span>
+      </div>
+    </>
+  )}
+</section>
+
 
         {notice && (
           <div
@@ -671,27 +715,33 @@ export function RoomStatusPage() {
               <div>
                 <h2>Danh sách phòng</h2>
 
-                <p>
-                  Chọn trạng thái mới rồi lưu cho từng phòng.
-                </p>
+               <p>
+  {isHousekeeping
+    ? 'Cập nhật phòng sang Trống sạch sau khi hoàn tất vệ sinh.'
+    : 'Chọn trạng thái mới rồi lưu cho từng phòng.'}
+</p>
               </div>
 
               <span className="room-floor">
-                {rooms.length} phòng hoạt động
-              </span>
+  {isHousekeeping
+    ? `${visibleRooms.length} phòng cần dọn`
+    : `${rooms.length} phòng hoạt động`}
+</span>
             </div>
 
             {isLoading ? (
               <div className="empty-state">
                 Đang tải danh sách phòng...
               </div>
-            ) : rooms.length === 0 ? (
-              <div className="empty-state">
-                Chưa có phòng nào trong hệ thống.
-              </div>
+            )  : visibleRooms.length === 0 ? (
+             <div className="empty-state">
+  {isHousekeeping
+    ? 'Hiện không có phòng nào cần dọn.'
+    : 'Chưa có phòng nào trong hệ thống.'}
+</div>
             ) : (
               <div className="room-grid">
-                {rooms.map((room) => {
+                {visibleRooms.map((room) => {
                   const currentDraftStatus =
                     draftStatuses[room.id] ?? room.status
 
@@ -753,7 +803,13 @@ export function RoomStatusPage() {
                             `${room.roomNumber}`
                           }
                         >
-                          {STATUS_OPTIONS.map((status) => (
+                          {(isHousekeeping
+  ? STATUS_OPTIONS.filter(
+      (status) =>
+        status === 'TRONG_BAN' || status === 'TRONG_SACH',
+    )
+  : STATUS_OPTIONS
+).map((status) => (
                             <option
                               value={status}
                               key={status}
@@ -882,7 +938,7 @@ export function RoomStatusPage() {
                             : 'Xem lịch sử'}
                         </button>
 
-                        {room.status === 'DANG_O' && (
+                       {!isHousekeeping && room.status === 'DANG_O' && (
                           <button
                             className="secondary-button checkout-button"
                             type="button"
@@ -910,7 +966,7 @@ export function RoomStatusPage() {
               </div>
             )}
           </div>
-
+          {!isHousekeeping && (
           <aside className="panel">
             <div className="panel-heading">
               <div>
@@ -998,6 +1054,7 @@ export function RoomStatusPage() {
               </p>
             )}
           </aside>
+          )}
         </section>
 
         {selectedHistoryRoomId !== null && (

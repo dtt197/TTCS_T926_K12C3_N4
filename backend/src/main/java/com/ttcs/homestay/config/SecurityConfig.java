@@ -1,3 +1,4 @@
+
 package com.ttcs.homestay.config;
 
 import java.time.Duration;
@@ -5,6 +6,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -14,13 +16,14 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+
 import com.ttcs.homestay.repository.UserRepository;
 import com.ttcs.homestay.security.AccountStatusFilter;
 
@@ -28,7 +31,11 @@ import com.ttcs.homestay.security.AccountStatusFilter;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, UserRepository userRepository) throws Exception {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            UserRepository userRepository
+    ) throws Exception {
+
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
@@ -37,39 +44,140 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/auth/refresh").permitAll()
-                        						.requestMatchers("/api/auth/forgot-password").permitAll()
-						.requestMatchers("/api/auth/reset-password").permitAll()
+
+                        // API xác thực công khai
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/refresh",
+                                "/api/auth/logout",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password"
+                        ).permitAll()
+
+                        // Thông tin phiên đăng nhập
                         .requestMatchers("/api/internal/**").authenticated()
+
+                        // S1-04: ADMIN và OWNER được xem danh sách tài khoản
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/admin/users"
+                        ).hasAnyRole("ADMIN", "OWNER")
+
+                        // Các thao tác quản lý tài khoản chỉ dành cho ADMIN
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Tài khoản cá nhân
                         .requestMatchers("/api/account/**").authenticated()
-                        .anyRequest().permitAll())
+
+                        // S1-04: Xem danh sách và thông tin phòng
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/rooms",
+                                "/api/rooms/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "OWNER",
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // Cập nhật trạng thái phòng
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/rooms/*/status"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // Cập nhật bảo trì phòng
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/rooms/*/maintenance"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "RECEPTIONIST"
+                        )
+
+                        // Check-in và check-out
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/rooms/*/check-in",
+                                "/api/rooms/*/check-out"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "RECEPTIONIST"
+                        )
+
+                        // Quản lý thông tin phòng
+                        .requestMatchers("/api/room-management/**")
+                        .hasAnyRole("ADMIN", "OWNER")
+
+                        // S1-04: Xem danh sách loại phòng
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/room-types",
+                                "/room-types/"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "OWNER",
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // Quản lý loại phòng
+                        .requestMatchers("/room-types/**")
+                        .hasAnyRole("ADMIN", "OWNER")
+
+                        // API chưa khai báo quyền sẽ bị từ chối
+                        .requestMatchers("/api/**").denyAll()
+
+                        .anyRequest().permitAll()
+                )
                 .oauth2ResourceServer(oauth2 ->
-                        oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))) .addFilterAfter(new AccountStatusFilter(userRepository), BearerTokenAuthenticationFilter.class);
+                        oauth2.jwt(jwt ->
+                                jwt.jwtAuthenticationConverter(
+                                        jwtAuthenticationConverter()
+                                )
+                        )
+                )
+                .addFilterAfter(
+                        new AccountStatusFilter(userRepository),
+                        BearerTokenAuthenticationFilter.class
+                );
 
         return http.build();
     }
 
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        JwtGrantedAuthoritiesConverter authoritiesConverter =
+                new JwtGrantedAuthoritiesConverter();
+
         authoritiesConverter.setAuthoritiesClaimName("role");
         authoritiesConverter.setAuthorityPrefix("ROLE_");
 
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        JwtAuthenticationConverter converter =
+                new JwtAuthenticationConverter();
+
         converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+
         return converter;
     }
+
     @Bean
     JwtDecoder jwtDecoder(JwtProperties properties) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(
                         new javax.crypto.spec.SecretKeySpec(
                                 properties.getAccessSecret()
                                         .getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                                "HmacSHA256"))
+                                "HmacSHA256"
+                        )
+                )
                 .macAlgorithm(
-                        org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256)
+                        org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256
+                )
                 .build();
 
         decoder.setJwtValidator(
@@ -84,22 +192,28 @@ public class SecurityConfig {
                                                 new OAuth2Error(
                                                         "invalid_token",
                                                         "Invalid audience",
-                                                        null))));
+                                                        null
+                                                )
+                                        )
+                        )
+        );
 
         return decoder;
     }
 
     private OAuth2TokenValidator<Jwt> claimValidator(
             String claim,
-            String expectedValue) {
-
+            String expectedValue
+    ) {
         return jwt -> expectedValue.equals(jwt.getClaimAsString(claim))
                 ? OAuth2TokenValidatorResult.success()
                 : OAuth2TokenValidatorResult.failure(
                         new OAuth2Error(
                                 "invalid_token",
                                 "Invalid JWT claim",
-                                null));
+                                null
+                        )
+                );
     }
 
     @Bean
