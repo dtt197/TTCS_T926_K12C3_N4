@@ -1,8 +1,10 @@
+
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../services/apiClient'
 import { hasPermission, type Permission } from '../permissions/rolePermissions'
 import type { LoginResponse } from '../types/auth'
 import { AuditLogPage } from './AuditLogPage'
+import { RoomManagementPage } from './RoomManagementPage'
 import { AmenityPage } from './AmenityPage'
 import { SettingsPage } from './SettingsPage'
 import { RoomStatusPage } from './RoomStatusPage'
@@ -15,11 +17,23 @@ type InternalHomePageProps = {
   onLogout: () => void
 }
 
-type View = 'rooms' | 'roomTypes' | 'amenities' | 'settings' | 'users' | 'audit-logs'
+type View =
+  | 'rooms'
+  | 'roomManagement'
+  | 'roomTypes'
+  | 'amenities'
+  | 'settings'
+  | 'users'
+  | 'audit-logs'
 
-/** S1-04 + S1-05 + S1-06: menu sinh theo quyền của vai trò (quyền khai báo ở rolePermissions.ts). */
-const TABS: ReadonlyArray<{ view: View; label: string; permission: Permission }> = [
+/** S1-04 + S1-05 + S1-06 + S1-07 + S1-08: menu theo quyền của vai trò. */
+const TABS: ReadonlyArray<{
+  view: View
+  label: string
+  permission: Permission
+}> = [
   { view: 'rooms', label: 'Phòng', permission: 'rooms:view' },
+  { view: 'roomManagement', label: 'Quản lý phòng', permission: 'rooms:manage' },
   { view: 'roomTypes', label: 'Loại phòng', permission: 'roomTypes:view' },
   { view: 'amenities', label: 'Tiện nghi', permission: 'amenities:view' },
   { view: 'settings', label: 'Tham số', permission: 'settings:view' },
@@ -41,10 +55,16 @@ export function InternalHomePage({
 }: InternalHomePageProps) {
   const [view, setView] = useState<View>(getInitialView)
 
-  const visibleTabs = TABS.filter((tab) => hasPermission(user.role, tab.permission))
+  const visibleTabs = TABS.filter((tab) =>
+    hasPermission(user.role, tab.permission)
+  )
 
-  // Tab không còn quyền (ví dụ vừa bị đổi vai trò) thì quay về trang Phòng.
-  const activeView: View = visibleTabs.some((tab) => tab.view === view) ? view : 'rooms'
+  // Tab không còn quyền thì quay về trang Phòng.
+  const activeView: View = visibleTabs.some(
+    (tab) => tab.view === view
+  )
+    ? view
+    : 'rooms'
 
   // Lưu tab đang mở khi tải lại trang.
   useEffect(() => {
@@ -73,7 +93,11 @@ export function InternalHomePage({
               <button
                 key={tab.view}
                 type="button"
-                className={activeView === tab.view ? 'primary-button' : 'secondary-button'}
+                className={
+                  activeView === tab.view
+                    ? 'primary-button'
+                    : 'secondary-button'
+                }
                 onClick={() => setView(tab.view)}
               >
                 {tab.label}
@@ -97,6 +121,8 @@ export function InternalHomePage({
 
       {activeView === 'audit-logs' ? (
         <AuditLogPage />
+      ) : activeView === 'roomManagement' ? (
+        <RoomManagementPage />
       ) : activeView === 'users' ? (
         <UserManagementPage
           currentUserId={user.userId}
@@ -104,7 +130,7 @@ export function InternalHomePage({
         />
       ) : activeView === 'roomTypes' ? (
         <RoomTypePage role={user.role} />
-              ) : activeView === 'amenities' ? (
+      ) : activeView === 'amenities' ? (
         <AmenityPage role={user.role} />
         ) : activeView === 'settings' ? (
         <SettingsPage role={user.role} />

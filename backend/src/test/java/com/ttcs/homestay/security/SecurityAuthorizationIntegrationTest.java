@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -162,6 +163,385 @@ void setUp() {
                                 "Bearer admin-test-token"
                         )
         ).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void roomManagementApiChiAdminVaOwnerDuocTruyCap() throws Exception {
+        mockMvc.perform(get("/api/room-management/rooms")
+                        .header("Authorization", "Bearer admin-test-token"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/room-management/rooms")
+                        .header("Authorization", "Bearer receptionist-test-token"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/room-management/rooms")
+                        .header("Authorization", "Bearer housekeeping-test-token"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer admin-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer receptionist-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer housekeeping-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void locPhongTheoActiveVaKetHopLoaiTangTrangThaiVanHanh() throws Exception {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String roomType = "AC4-" + suffix;
+        String activeRoomNumber = "AC4-" + suffix + "-A";
+        String inactiveRoomNumber = "AC4-" + suffix + "-B";
+        String otherFloorRoomNumber = "AC4-" + suffix + "-C";
+        String otherStatusRoomNumber = "AC4-" + suffix + "-D";
+
+        insertRoom(activeRoomNumber, 3, roomType, "TRONG_BAN", true);
+        insertRoom(inactiveRoomNumber, 3, roomType, "TRONG_BAN", false);
+        insertRoom(otherFloorRoomNumber, 4, roomType, "TRONG_BAN", true);
+        insertRoom(otherStatusRoomNumber, 3, roomType, "TRONG_SACH", true);
+
+        JsonNode activeRooms = objectMapper.readTree(mockMvc.perform(get("/api/room-management/rooms")
+                                .param("roomType", roomType)
+                                .param("active", "true")
+                                .header("Authorization", "Bearer owner-test-token"))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString())
+                .path("rooms");
+        assertThat(activeRooms.size()).isEqualTo(3);
+        activeRooms.forEach(room -> assertThat(room.path("active").asBoolean()).isTrue());
+
+        JsonNode inactiveRooms = objectMapper.readTree(mockMvc.perform(get("/api/room-management/rooms")
+                                .param("roomType", roomType)
+                                .param("active", "false")
+                                .header("Authorization", "Bearer owner-test-token"))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString())
+                .path("rooms");
+        assertThat(inactiveRooms.size()).isEqualTo(1);
+        assertThat(inactiveRooms.get(0).path("roomNumber").asString()).isEqualTo(inactiveRoomNumber);
+        assertThat(inactiveRooms.get(0).path("active").asBoolean()).isFalse();
+
+        JsonNode allRooms = objectMapper.readTree(mockMvc.perform(get("/api/room-management/rooms")
+                                .param("roomType", roomType)
+                                .header("Authorization", "Bearer owner-test-token"))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString())
+                .path("rooms");
+        assertThat(allRooms.size()).isEqualTo(4);
+        assertThat(allRooms.toString()).contains("\"active\":true", "\"active\":false");
+
+        JsonNode combinedRooms = objectMapper.readTree(mockMvc.perform(get("/api/room-management/rooms")
+                                .param("roomType", roomType)
+                                .param("floor", "3")
+                                .param("status", "TRONG_BAN")
+                                .param("active", "true")
+                                .header("Authorization", "Bearer owner-test-token"))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString())
+                .path("rooms");
+        assertThat(combinedRooms.size()).isEqualTo(1);
+        assertThat(combinedRooms.get(0).path("roomNumber").asString()).isEqualTo(activeRoomNumber);
+    }
+
+    private void insertRoom(String roomNumber, int floor, String roomType, String status, boolean active) {
+        jdbcTemplate.update(
+                "INSERT INTO rooms (room_number, floor, room_type, status, active) VALUES (?, ?, ?, ?, ?)",
+                roomNumber, floor, roomType, status, active);
+    }
+
+    @Test
+    void ownerTaoXemVaKichHoatLaiPhongVatLyKemGhiChu() throws Exception {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String roomNumber = "S107" + suffix;
+        String roomType = "AC1-" + suffix;
+        String originalNote = "Gần thang máy";
+        String updatedNote = "Đã đổi ghi chú";
+        String createRequest = """
+                {"roomNumber":"%s","floor":3,"roomType":"%s","note":"%s","active":false,"status":"TRONG_SACH"}
+                """.formatted(roomNumber, roomType, originalNote);
+
+        String createResponse = mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.active").value(false))
+                .andReturn().getResponse().getContentAsString();
+        long roomId = objectMapper.readTree(createResponse).path("id").asLong();
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT note FROM room_notes WHERE room_id = ?", String.class, roomId))
+                .isEqualTo(originalNote);
+
+        mockMvc.perform(get("/api/room-management/rooms")
+                        .param("roomType", roomType)
+                        .header("Authorization", "Bearer owner-test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rooms.length()").value(1))
+                .andExpect(jsonPath("$.rooms[0].id").value(roomId))
+                .andExpect(jsonPath("$.rooms[0].active").value(false));
+
+        String updateRequest = """
+                {"roomNumber":"%s","floor":4,"roomType":"%s","note":"%s","active":true,"status":"TRONG_SACH","confirmWhenBookingCheckUnavailable":true}
+                """.formatted(roomNumber, roomType, updatedNote);
+        mockMvc.perform(patch("/api/room-management/rooms/{roomId}", roomId)
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.room.active").value(true))
+                .andExpect(jsonPath("$.room.floor").value(4))
+                .andExpect(jsonPath("$.note").value(updatedNote));
+
+        mockMvc.perform(get("/api/room-management/rooms/{roomId}/note", roomId)
+                        .header("Authorization", "Bearer owner-test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.note").value(updatedNote));
+
+        String deactivateRequest = """
+                {"roomNumber":"%s","floor":4,"roomType":"%s","note":"%s","active":false,"status":"TRONG_SACH","confirmWhenBookingCheckUnavailable":false}
+                """.formatted(roomNumber, roomType, updatedNote);
+        mockMvc.perform(patch("/api/room-management/rooms/{roomId}", roomId)
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(deactivateRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.room.active").value(false));
+
+        String reactivateRequest = """
+                {"roomNumber":"%s","floor":4,"roomType":"%s","note":"%s","active":true,"status":"TRONG_SACH","confirmWhenBookingCheckUnavailable":false}
+                """.formatted(roomNumber, roomType, updatedNote);
+        mockMvc.perform(patch("/api/room-management/rooms/{roomId}", roomId)
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reactivateRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.room.active").value(true));
+
+        mockMvc.perform(get("/api/room-management/rooms")
+                        .param("roomType", roomType)
+                        .header("Authorization", "Bearer owner-test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rooms[0].floor").value(4))
+                .andExpect(jsonPath("$.rooms[0].active").value(true));
+    }
+
+    @Test
+    void doiLoaiPhongKhongCoBookingModuleCanXacNhanTruocKhiLuu() throws Exception {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String roomNumber = "AC3-" + suffix;
+        String originalRoomType = "Loại cũ " + suffix;
+        String newRoomType = "Loại mới " + suffix;
+        String originalNote = "Ghi chú ban đầu";
+        String updatedNote = "Ghi chú sau xác nhận";
+        String createRequest = """
+                {"roomNumber":"%s","floor":3,"roomType":"%s","note":"%s","active":true}
+                """.formatted(roomNumber, originalRoomType, originalNote);
+        String createResponse = mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createRequest))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long roomId = objectMapper.readTree(createResponse).path("id").asLong();
+
+        String unconfirmedUpdate = """
+                {"roomNumber":"%s","floor":3,"roomType":"%s","note":"%s","active":true,"confirmWhenBookingCheckUnavailable":false}
+                """.formatted(roomNumber, newRoomType, updatedNote);
+        String warningResponse = mockMvc.perform(patch("/api/room-management/rooms/{roomId}", roomId)
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(unconfirmedUpdate))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bookingCheckAvailable").value(false))
+                .andExpect(jsonPath("$.warningRequired").value(true))
+                .andExpect(jsonPath("$.affectedFutureBookings").value(0))
+                .andExpect(jsonPath("$.room.roomType").value(originalRoomType))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(objectMapper.readTree(warningResponse).path("warningMessage").asText())
+                .contains("Chưa có module Booking")
+                .contains("Hãy xác nhận tiếp tục");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT room_type FROM rooms WHERE id = ?", String.class, roomId))
+                .isEqualTo(originalRoomType);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT note FROM room_notes WHERE room_id = ?", String.class, roomId))
+                .isEqualTo(originalNote);
+
+        String confirmedUpdate = """
+                {"roomNumber":"%s","floor":3,"roomType":"%s","note":"%s","active":true,"confirmWhenBookingCheckUnavailable":true}
+                """.formatted(roomNumber, newRoomType, updatedNote);
+        mockMvc.perform(patch("/api/room-management/rooms/{roomId}", roomId)
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(confirmedUpdate))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.room.roomType").value(newRoomType));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT room_type FROM rooms WHERE id = ?", String.class, roomId))
+                .isEqualTo(newRoomType);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT note FROM room_notes WHERE room_id = ?", String.class, roomId))
+                .isEqualTo(updatedNote);
+    }
+
+    @Test
+    void taoPhongTuChoiTruongBatBuocThieuHoacKhongHopLe() throws Exception {
+        String missingRequiredField = """
+                {"floor":1,"roomType":"Phòng đôi","note":"Ghi chú","active":true}
+                """;
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(missingRequiredField))
+                .andExpect(status().isBadRequest());
+
+        String invalidFloor = """
+                {"roomNumber":"INVALID-FLOOR","floor":-1,"roomType":"Phòng đôi","note":"Ghi chú","active":true}
+                """;
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidFloor))
+                .andExpect(status().isBadRequest());
+
+        String oversizedNote = "x".repeat(501);
+        String invalidNote = """
+                {"roomNumber":"INVALID-NOTE","floor":1,"roomType":"Phòng đôi","note":"%s","active":true}
+                """.formatted(oversizedNote);
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidNote))
+                .andExpect(status().isBadRequest());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM rooms WHERE room_number IN ('INVALID-FLOOR', 'INVALID-NOTE')", Integer.class))
+                .isZero();
+    }
+
+    @Test
+    void taoPhongTrungSoPhongBoQuaInactiveVaKhongPhanBietHoaThuongBiTuChoi() throws Exception {
+        String roomNumber = "AC2-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String originalRequest = """
+                {"roomNumber":"  %s  ","floor":2,"roomType":"Phòng đôi","note":"Inactive","active":false,"status":"TRONG_SACH"}
+                """.formatted(roomNumber);
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(originalRequest))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roomNumber").value(roomNumber))
+                .andExpect(jsonPath("$.active").value(false));
+
+        String exactDuplicate = """
+                {"roomNumber":"%s","floor":2,"roomType":"Phòng đôi","active":true}
+                """.formatted(roomNumber);
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(exactDuplicate))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ROOM_MANAGEMENT_ERROR"))
+                .andExpect(jsonPath("$.message").value("Số phòng " + roomNumber + " đã tồn tại trong hệ thống."));
+
+        String caseAndWhitespaceDuplicate = """
+                {"roomNumber":"  %s  ","floor":2,"roomType":"Phòng đôi","active":true}
+                """.formatted(roomNumber.toLowerCase(java.util.Locale.ROOT));
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(caseAndWhitespaceDuplicate))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ROOM_MANAGEMENT_ERROR"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM rooms WHERE LOWER(room_number) = LOWER(?)", Integer.class, roomNumber))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void capNhatTrungSoPhongKhacBiTuChoiVaGiuNguyenDuLieuCu() throws Exception {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String firstRoomNumber = "AC2-A-" + suffix;
+        String secondRoomNumber = "AC2-B-" + suffix;
+        String firstCreate = """
+                {"roomNumber":"%s","floor":1,"roomType":"Phòng đôi","note":"Note gốc","active":true}
+                """.formatted(firstRoomNumber);
+        String secondCreate = """
+                {"roomNumber":"%s","floor":2,"roomType":"Phòng đôi","note":"Phòng inactive","active":false}
+                """.formatted(secondRoomNumber);
+        long firstRoomId = objectMapper.readTree(mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(firstCreate))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).path("id").asLong();
+        mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(secondCreate))
+                .andExpect(status().isCreated());
+
+        String updateRequest = """
+                {"roomNumber":"%s","floor":9,"roomType":"Phòng đôi","note":"Không được lưu","active":true,"confirmWhenBookingCheckUnavailable":true}
+                """.formatted(secondRoomNumber);
+        mockMvc.perform(patch("/api/room-management/rooms/{roomId}", firstRoomId)
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequest))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Số phòng " + secondRoomNumber + " đã tồn tại trong hệ thống."));
+
+        var firstRoom = jdbcTemplate.queryForMap(
+                "SELECT room_number, floor, active FROM rooms WHERE id = ?", firstRoomId);
+        assertThat(firstRoom).containsEntry("ROOM_NUMBER", firstRoomNumber)
+                .containsEntry("FLOOR", 1)
+                .containsEntry("ACTIVE", true);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT note FROM room_notes WHERE room_id = ?", String.class, firstRoomId))
+                .isEqualTo("Note gốc");
+    }
+
+    @Test
+    void capNhatGiuNguyenSoPhongCuaChinhPhongDuocChapNhan() throws Exception {
+        String roomNumber = "AC2S-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String createRequest = """
+                {"roomNumber":"%s","floor":3,"roomType":"Phòng đôi","note":"Cũ","active":true}
+                """.formatted(roomNumber);
+        long roomId = objectMapper.readTree(mockMvc.perform(post("/api/room-management/rooms")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createRequest))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString()).path("id").asLong();
+
+        String updateRequest = """
+                {"roomNumber":"  %s  ","floor":3,"roomType":"Phòng đôi","note":"Mới","active":true,"confirmWhenBookingCheckUnavailable":false}
+                """.formatted(roomNumber);
+        mockMvc.perform(patch("/api/room-management/rooms/{roomId}", roomId)
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.room.roomNumber").value(roomNumber))
+                .andExpect(jsonPath("$.note").value("Mới"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM rooms WHERE LOWER(room_number) = LOWER(?)", Integer.class, roomNumber))
+                .isEqualTo(1);
     }
 
         @Test
