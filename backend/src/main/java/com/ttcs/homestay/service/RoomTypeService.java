@@ -2,10 +2,13 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;
+import com.ttcs.homestay.entity.Amenity;
 import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.exception.AmenityNotFoundException;
 import com.ttcs.homestay.exception.InvalidRoomTypeCapacityException;
 import com.ttcs.homestay.exception.RoomTypeConflictException;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
+import com.ttcs.homestay.repository.AmenityRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.util.List;
@@ -14,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * S1-06: quản lý loại phòng.
+ * S1-06: quản lý loại phòng. S1-08: gắn / bỏ tiện nghi cho loại phòng.
  * Phòng gắn với loại phòng qua tên (rooms.room_type = room_types.name, không phân biệt hoa thường).
  */
 @Service
@@ -22,10 +25,13 @@ public class RoomTypeService {
 
     private final RoomTypeRepository roomTypeRepository;
     private final RoomRepository roomRepository;
+    private final AmenityRepository amenityRepository;
 
-    public RoomTypeService(RoomTypeRepository roomTypeRepository, RoomRepository roomRepository) {
+    public RoomTypeService(RoomTypeRepository roomTypeRepository, RoomRepository roomRepository,
+            AmenityRepository amenityRepository) {
         this.roomTypeRepository = roomTypeRepository;
         this.roomRepository = roomRepository;
+        this.amenityRepository = amenityRepository;
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +99,33 @@ public class RoomTypeService {
                     + " phòng gắn vào nên không xoá được. Bạn có thể đánh dấu ngừng bán.");
         }
         roomTypeRepository.delete(roomType);
+    }
+
+    /** S1-08 AC2: gắn tiện nghi cho loại phòng; gắn trùng hoặc gắn tiện nghi đã ngừng dùng bị chặn. */
+    @Transactional
+    public RoomTypeResponse addAmenity(Long roomTypeId, Long amenityId) {
+        RoomType roomType = findOrThrow(roomTypeId);
+        Amenity amenity = amenityRepository.findById(amenityId).orElseThrow(AmenityNotFoundException::new);
+        if (!amenity.isActive()) {
+            throw new RoomTypeConflictException(
+                    "Tiện nghi \"" + amenity.getName() + "\" đã ngừng dùng nên không gắn được");
+        }
+        boolean alreadyAttached = roomType.getAmenities().stream()
+                .anyMatch(existing -> existing.getId().equals(amenityId));
+        if (alreadyAttached) {
+            throw new RoomTypeConflictException("Loại phòng \"" + roomType.getName()
+                    + "\" đã có tiện nghi \"" + amenity.getName() + "\"");
+        }
+        roomType.getAmenities().add(amenity);
+        return toResponse(roomType);
+    }
+
+    /** S1-08: bỏ một tiện nghi khỏi loại phòng. */
+    @Transactional
+    public RoomTypeResponse removeAmenity(Long roomTypeId, Long amenityId) {
+        RoomType roomType = findOrThrow(roomTypeId);
+        roomType.getAmenities().removeIf(existing -> existing.getId().equals(amenityId));
+        return toResponse(roomType);
     }
 
     private RoomType findOrThrow(Long id) {
