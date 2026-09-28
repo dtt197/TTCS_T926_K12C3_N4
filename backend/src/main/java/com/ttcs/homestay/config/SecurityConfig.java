@@ -147,6 +147,17 @@ public class SecurityConfig {
                         // S1-08: thêm/sửa/ngừng dùng/xoá tiện nghi (ma trận: Chủ homestay và Admin = F)
                         .requestMatchers("/api/amenities/**")
                         .hasAnyRole("ADMIN", "OWNER")
+                        // S1-09: lịch sử thay đổi tham số (Chủ homestay, Quản trị)
+                        .requestMatchers(HttpMethod.GET, "/api/settings/history")
+                        .hasAnyRole("OWNER", "ADMIN")
+
+                        // S1-09: xem tham số (ma trận "Bảng giá và chính sách huỷ": Lễ tân R, Admin R)
+                        .requestMatchers(HttpMethod.GET, "/api/settings")
+                        .hasAnyRole("OWNER", "ADMIN", "RECEPTIONIST")
+
+                        // S1-09: sửa tham số chỉ Chủ homestay (ma trận: F)
+                        .requestMatchers(HttpMethod.PUT, "/api/settings")
+                        .hasRole("OWNER")
 
                         // API chưa khai báo quyền sẽ bị từ chối
                         .requestMatchers("/api/**").denyAll()
