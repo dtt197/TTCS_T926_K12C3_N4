@@ -38,4 +38,7 @@ public class RoomType {
 
     @Column(name = "description", length = 500)
     private String description;
+
+    @Column(name = "status")
+    private Boolean status = true; // true: Đang bán, false: Ngừng bán
 }

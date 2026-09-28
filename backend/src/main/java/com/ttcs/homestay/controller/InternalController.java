@@ -21,7 +21,6 @@ public class InternalController {
 		this.userRepository = userRepository;
 	}
 
-	/** Đọc thông tin mới nhất từ database (vd đã đổi mật khẩu tạm chưa), không chỉ dựa vào token. */
 	@GetMapping("/me")
 	public ResponseEntity<InternalUserResponse> me(@AuthenticationPrincipal Jwt jwt) {
 		return userRepository.findWithRoleById(Long.valueOf(jwt.getSubject()))
