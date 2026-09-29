@@ -1,47 +1,536 @@
-/* Shared page, heading, card and form styles are defined in App.css. */
-.management-count { padding:10px 14px; border:1px solid #d6ded7; border-radius:999px; background:#fff; white-space:nowrap; }
-.management-notice { margin-bottom:18px; padding:12px 15px; border-radius:10px; }
-.management-notice.success { background:#e8f6ed; color:#166534; }
-.management-notice.error { background:#fff0ed; color:#9f2d1d; }
-.management-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-items:start; gap:var(--layout-gap); margin-bottom:var(--layout-gap); }
-.management-card h2 { margin:0 0 20px; }
-.management-form.two-columns { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-.management-grid > .management-card:first-child .management-form { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-.management-grid > .management-card:first-child .management-form > button { grid-column:1 / -1; }
-.management-form textarea { min-height:90px; resize:vertical; }
-.management-filters { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
-.filter-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; flex-wrap:wrap; }
-.section-title-row { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:20px; }
-.section-title-row h2 { margin-bottom:4px; }
-.section-title-row p { margin:0; color:#6a726c; }
-.managed-room-list { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
-.managed-room { min-width:0; border:1px solid var(--line); border-radius:12px; padding:18px; display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:12px; overflow-wrap:anywhere; }
-.managed-room strong { display:block; font-size:18px; }
-.managed-room > div:first-child span { display:block; margin-top:3px; color:#68716b; font-size:13px; }
-.managed-room .room-meta { grid-column:1 / -1; color:var(--muted); font-size:13px; margin:4px 0 0; }
-.room-status-badge { padding:5px 9px; border-radius:999px; font-size:12px; font-weight:700; height:max-content; }
-.room-status-badge.trong_sach { background:#e7f6ec; color:#166534; }
-.room-status-badge.trong_ban { background:#fff4dd; color:#92400e; }
-.room-status-badge.dang_o { background:#e7f0ff; color:#1d4ed8; }
-.room-status-badge.bao_tri { background:#ffe8e8; color:#b91c1c; }
-.empty-result { padding:28px; text-align:center; color:#68716b; border:1px dashed #ccd5cf; border-radius:12px; }
-.full-width { grid-column:1 / -1; }
-.management-form .checkbox-row { display:flex; flex-direction:row; align-items:center; gap:8px; }
-.checkbox-row input { width:auto; min-height:0; flex-shrink:0; }
-.management-modal-backdrop { position:fixed; inset:0; background:rgba(16,25,20,.38); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
-.management-modal { width:min(720px, 100%); max-height:90vh; overflow:auto; background:#fff; border-radius:18px; padding:24px; box-shadow:0 24px 70px rgba(0,0,0,.2); }
-.modal-close { border:0; background:transparent; font-size:28px; cursor:pointer; line-height:1; }
-.booking-warning { margin-top:18px; padding:16px; border-radius:12px; border:1px solid #e6b84f; background:#fff8df; color:#684b00; }
-.booking-warning p { margin:8px 0; }
-@media (max-width: 850px) {
-  .management-grid, .managed-room-list, .management-filters, .management-form.two-columns,
-  .management-grid > .management-card:first-child .management-form { grid-template-columns:1fr; }
+/* =========================================================
+   ROOM MANAGEMENT PAGE - MODERN HOMESTAY UI
+   Chỉ áp dụng cho trang Quản lý phòng.
+   Không thay đổi background tổng / sidebar / header / logic.
+   ========================================================= */
+
+.room-management-page {
+  --rm-green-900: #0d4f3b;
+  --rm-green-800: #176f53;
+  --rm-green-700: #238161;
+  --rm-text: #17362d;
+  --rm-muted: #74817b;
+  --rm-line: rgba(37, 92, 71, 0.12);
+  --rm-shadow: 0 14px 34px rgba(31, 78, 59, 0.07);
+  --rm-shadow-strong: 0 20px 48px rgba(31, 78, 59, 0.10);
+  width: 100%;
 }
-.affected-bookings { margin-top: 12px; }
-.affected-booking-list { display: grid; gap: 8px; margin-top: 8px; max-height: 220px; overflow: auto; }
-.affected-booking { display: grid; grid-template-columns: 1.1fr 1.3fr 1fr 1fr; gap: 8px; padding: 10px; border: 1px solid #ead9a5; border-radius: 9px; background: #fffdf2; font-size: 13px; }
-@media (max-width: 700px) { .affected-booking { grid-template-columns: 1fr 1fr; } }
+
+.room-management-page .management-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.room-management-page .management-kicker,
+.room-management-page .management-card-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: #2b7c5f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.room-management-page .management-heading h1 {
+  margin: 0;
+  color: var(--rm-text);
+}
+
+.room-management-page .management-heading p:not(.management-kicker) {
+  margin: 7px 0 0;
+  color: var(--rm-muted);
+  line-height: 1.6;
+}
+
+.room-management-page .management-count,
+.room-management-page .room-list-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 82px;
+  padding: 9px 13px;
+  border: 1px solid rgba(35, 92, 70, 0.12);
+  border-radius: 999px;
+  color: #286f57;
+  background: linear-gradient(145deg, #fff, #eef6f0);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.room-management-page .management-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.room-management-page .management-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 92px;
+  padding: 16px 18px;
+  border: 1px solid var(--rm-line);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(248,251,247,.96));
+  box-shadow: var(--rm-shadow);
+}
+
+.room-management-page .management-summary-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 12px;
+  color: #237a5d;
+  background: #eaf5ee;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.room-management-page .management-summary-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--rm-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.room-management-page .management-summary-card strong {
+  color: var(--rm-text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.room-management-page .management-notice {
+  margin-bottom: 18px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.room-management-page .management-notice.success { background:#eaf7ee; color:#166534; }
+.room-management-page .management-notice.error { background:#fff1ee; color:#9f2d1d; }
+
+.room-management-page .management-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  align-items: start;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.room-management-page .management-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--rm-line);
+  border-radius: 18px;
+  padding: 22px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(249,251,247,.97));
+  box-shadow: var(--rm-shadow);
+}
+
+.room-management-page .management-card::after {
+  content: '';
+  position: absolute;
+  right: -48px;
+  bottom: -58px;
+  width: 180px;
+  height: 130px;
+  pointer-events: none;
+  border-radius: 58% 42% 66% 34% / 50% 56% 44% 50%;
+  background: linear-gradient(145deg, rgba(174,205,179,.11), rgba(232,211,170,.08));
+  transform: rotate(-10deg);
+}
+
+.room-management-page .management-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.room-management-page .management-card-heading {
+  margin-bottom: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(37,92,71,.08);
+}
+
+.room-management-page .management-card-heading h2,
+.room-management-page .section-title-row h2 {
+  margin: 0;
+  color: var(--rm-text);
+  font-size: 19px;
+}
+
+.room-management-page .management-card-heading p,
+.room-management-page .section-title-row p {
+  margin: 5px 0 0;
+  color: var(--rm-muted);
+  font-size: 11px;
+}
+
+.room-management-page .management-form,
+.room-management-page .management-form.two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+}
+
+.room-management-page .management-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+}
+
+.room-management-page .management-form label,
+.room-management-page .management-filters label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #53685f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.room-management-page .management-form input,
+.room-management-page .management-form select,
+.room-management-page .management-form textarea,
+.room-management-page .management-filters select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(48,94,75,.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--rm-text);
+  background: rgba(250,251,247,.98);
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.room-management-page .management-form input:focus,
+.room-management-page .management-form select:focus,
+.room-management-page .management-form textarea:focus,
+.room-management-page .management-filters select:focus {
+  border-color: #75aa91;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(68,137,107,.12);
+}
+
+.room-management-page .management-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.room-management-page .full-width { grid-column: 1 / -1; }
+
+.room-management-page .management-form .checkbox-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  font-size: 12px;
+}
+
+.room-management-page .checkbox-row input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  accent-color: var(--rm-green-700);
+}
+
+.room-management-page .management-grid > .management-card:first-child .management-form > button {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-width: 132px;
+}
+
+.room-management-page .filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.room-management-page .primary-button,
+.room-management-page .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 8px 13px;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.room-management-page .primary-button {
+  border: 1px solid transparent;
+  color: #fff;
+  background: linear-gradient(135deg, #238161, #135943);
+  box-shadow: 0 8px 20px rgba(23,98,73,.18);
+}
+
+.room-management-page .secondary-button {
+  border: 1px solid rgba(48,94,75,.14);
+  color: var(--rm-text);
+  background: rgba(255,255,255,.94);
+}
+
+.room-management-page .primary-button:hover:not(:disabled),
+.room-management-page .secondary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.room-management-page button:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.room-management-page .room-list-card {
+  padding: 22px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(248,251,247,.97));
+  box-shadow: var(--rm-shadow-strong);
+}
+
+.room-management-page .section-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(37,92,71,.08);
+}
+
+.room-management-page .managed-room-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 14px;
+}
+
+.room-management-page .managed-room {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 11px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(37,92,71,.11);
+  border-radius: 14px;
+  padding: 16px;
+  background: linear-gradient(150deg, rgba(255,255,255,.995), rgba(247,250,246,.97));
+  box-shadow: 0 6px 20px rgba(31,78,59,.05);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.room-management-page .managed-room::after {
+  content: '';
+  position: absolute;
+  right: -34px;
+  bottom: -44px;
+  width: 130px;
+  height: 100px;
+  pointer-events: none;
+  border-radius: 60% 40% 65% 35% / 52% 42% 58% 48%;
+  background: linear-gradient(145deg, rgba(168,199,175,.12), rgba(232,211,170,.08));
+  transform: rotate(-10deg);
+}
+
+.room-management-page .managed-room > * { position: relative; z-index: 1; }
+
+.room-management-page .managed-room:hover {
+  transform: translateY(-2px);
+  border-color: rgba(50,132,98,.20);
+  box-shadow: 0 12px 26px rgba(31,78,59,.08);
+}
+
+.room-management-page .managed-room strong {
+  display: block;
+  color: var(--rm-text);
+  font-size: 15px;
+}
+
+.room-management-page .managed-room > div:first-child span {
+  display: block;
+  margin-top: 4px;
+  color: #7a8781;
+  font-size: 10px;
+}
+
+.room-management-page .managed-room .room-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 7px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(37,92,71,.07);
+  color: var(--rm-muted);
+  font-size: 10px;
+}
+
+.room-management-page .room-status-badge {
+  display: inline-flex;
+  align-items: center;
+  height: max-content;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.room-management-page .room-status-badge.trong_sach { background:#e7f6ec; color:#166534; }
+.room-management-page .room-status-badge.trong_ban { background:#fff4dd; color:#92400e; }
+.room-management-page .room-status-badge.dang_o { background:#e8f1fb; color:#315f91; }
+.room-management-page .room-status-badge.bao_tri { background:#fbe9e7; color:#a33d37; }
+
+.room-management-page .empty-result {
+  padding: 32px 22px;
+  text-align: center;
+  color: var(--rm-muted);
+  border: 1px dashed rgba(64,111,91,.26);
+  border-radius: 14px;
+  background: rgba(248,251,247,.72);
+}
+
+.room-management-page .management-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10,38,29,.46);
+  backdrop-filter: blur(5px);
+}
+
+.room-management-page .management-modal {
+  width: min(760px,100%);
+  max-height: 90vh;
+  overflow: auto;
+  border: 1px solid rgba(37,92,71,.10);
+  border-radius: 20px;
+  padding: 24px;
+  background: linear-gradient(145deg,#fff,#fafbf7);
+  box-shadow: 0 28px 80px rgba(0,0,0,.24);
+}
+
+.room-management-page .modal-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(48,94,75,.10);
+  border-radius: 10px;
+  color: #52675e;
+  background: rgba(247,249,245,.94);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.room-management-page .booking-warning {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(196,145,43,.26);
+  border-radius: 13px;
+  color: #6d5216;
+  background: linear-gradient(145deg,#fff9e9,#fffdf5);
+}
+
+.room-management-page .booking-warning p { margin: 8px 0; }
+
+.room-management-page .affected-bookings { margin-top: 12px; }
+.room-management-page .affected-booking-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.room-management-page .affected-booking {
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #ead9a5;
+  border-radius: 9px;
+  background: #fffdf2;
+  font-size: 13px;
+}
+
+@media (max-width: 1280px) {
+  .room-management-page .managed-room-list {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .room-management-page .management-summary,
+  .room-management-page .management-grid,
+  .room-management-page .management-filters,
+  .room-management-page .management-form,
+  .room-management-page .management-form.two-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .room-management-page .management-grid > .management-card:first-child .management-form > button {
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 760px) {
+  .room-management-page .management-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .room-management-page .management-card,
+  .room-management-page .room-list-card {
+    padding: 18px;
+  }
+
+  .room-management-page .managed-room-list {
+    grid-template-columns: 1fr;
+  }
+
+  .room-management-page .managed-room .room-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .room-management-page .managed-room .room-meta button {
+    width: 100%;
+  }
+
+  .room-management-page .affected-booking {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 480px) {
-  .managed-room { grid-template-columns:minmax(0, 1fr); }
-  .room-status-badge { justify-self:start; }
+  .room-management-page .managed-room {
+    grid-template-columns: minmax(0,1fr);
+  }
+
+  .room-management-page .room-status-badge {
+    justify-self: start;
+  }
+
+  .room-management-page .affected-booking {
+    grid-template-columns: 1fr;
+  }
 }
