@@ -110,7 +110,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
       <main className="main-content">
         <section className="intro">
           <div>
-            <p className="eyebrow">Danh mục phòng · S1-06 · S1-08</p>
+
             <h1>Loại phòng</h1>
             <p>
               {canManage

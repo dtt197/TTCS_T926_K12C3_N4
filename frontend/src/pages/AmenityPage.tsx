@@ -90,7 +90,7 @@ export function AmenityPage({ role }: AmenityPageProps) {
       <main className="main-content">
         <section className="intro">
           <div>
-            <p className="eyebrow">Danh mục phòng · S1-08</p>
+
             <h1>Tiện nghi</h1>
             <p>
               {canManage

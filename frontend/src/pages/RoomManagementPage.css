@@ -1,29 +1,24 @@
-.room-management-page { max-width: 1120px; margin: 0 auto; padding: 28px 0 60px; }
-.management-heading { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; margin-bottom:20px; }
-.management-heading h1 { margin:4px 0 8px; font-size:42px; line-height:1; }
-.management-heading p { margin:0; }
+/* Shared page, heading, card and form styles are defined in App.css. */
 .management-count { padding:10px 14px; border:1px solid #d6ded7; border-radius:999px; background:#fff; white-space:nowrap; }
 .management-notice { margin-bottom:18px; padding:12px 15px; border-radius:10px; }
 .management-notice.success { background:#e8f6ed; color:#166534; }
 .management-notice.error { background:#fff0ed; color:#9f2d1d; }
-.management-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
-.management-card { background:#fff; border:1px solid #e2e2db; border-radius:16px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.04); }
-.management-card h2 { margin:0 0 16px; font-size:21px; }
-.management-form { display:grid; gap:12px; }
-.management-form.two-columns { grid-template-columns:1fr 1fr; }
-.management-form label, .management-filters label { display:flex; flex-direction:column; gap:6px; font-weight:600; font-size:14px; }
-.management-form input, .management-form select, .management-form textarea, .management-filters select { border:1px solid #ccd5cf; border-radius:9px; padding:10px 11px; font:inherit; background:#fff; box-sizing:border-box; }
+.management-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); align-items:start; gap:var(--layout-gap); margin-bottom:var(--layout-gap); }
+.management-card h2 { margin:0 0 20px; }
+.management-form.two-columns { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+.management-grid > .management-card:first-child .management-form { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+.management-grid > .management-card:first-child .management-form > button { grid-column:1 / -1; }
 .management-form textarea { min-height:90px; resize:vertical; }
-.management-filters { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.management-filters { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
 .filter-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; flex-wrap:wrap; }
-.section-title-row { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+.section-title-row { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:20px; }
 .section-title-row h2 { margin-bottom:4px; }
 .section-title-row p { margin:0; color:#6a726c; }
-.managed-room-list { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.managed-room { border:1px solid #e0e5e0; border-radius:12px; padding:15px; display:grid; grid-template-columns:1fr auto; gap:8px; }
+.managed-room-list { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
+.managed-room { min-width:0; border:1px solid var(--line); border-radius:12px; padding:18px; display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:12px; overflow-wrap:anywhere; }
 .managed-room strong { display:block; font-size:18px; }
 .managed-room > div:first-child span { display:block; margin-top:3px; color:#68716b; font-size:13px; }
-.room-meta { grid-column:1 / -1; display:flex; justify-content:space-between; align-items:center; color:#68716b; font-size:13px; margin-top:4px; }
+.managed-room .room-meta { grid-column:1 / -1; color:var(--muted); font-size:13px; margin:4px 0 0; }
 .room-status-badge { padding:5px 9px; border-radius:999px; font-size:12px; font-weight:700; height:max-content; }
 .room-status-badge.trong_sach { background:#e7f6ec; color:#166534; }
 .room-status-badge.trong_ban { background:#fff4dd; color:#92400e; }
@@ -31,15 +26,22 @@
 .room-status-badge.bao_tri { background:#ffe8e8; color:#b91c1c; }
 .empty-result { padding:28px; text-align:center; color:#68716b; border:1px dashed #ccd5cf; border-radius:12px; }
 .full-width { grid-column:1 / -1; }
-.checkbox-row { flex-direction:row !important; align-items:center; gap:8px !important; }
-.checkbox-row input { width:auto; }
+.management-form .checkbox-row { display:flex; flex-direction:row; align-items:center; gap:8px; }
+.checkbox-row input { width:auto; min-height:0; flex-shrink:0; }
 .management-modal-backdrop { position:fixed; inset:0; background:rgba(16,25,20,.38); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
 .management-modal { width:min(720px, 100%); max-height:90vh; overflow:auto; background:#fff; border-radius:18px; padding:24px; box-shadow:0 24px 70px rgba(0,0,0,.2); }
 .modal-close { border:0; background:transparent; font-size:28px; cursor:pointer; line-height:1; }
 .booking-warning { margin-top:18px; padding:16px; border-radius:12px; border:1px solid #e6b84f; background:#fff8df; color:#684b00; }
 .booking-warning p { margin:8px 0; }
-@media (max-width: 850px) { .management-grid, .managed-room-list, .management-filters, .management-form.two-columns { grid-template-columns:1fr; } .management-heading { align-items:flex-start; flex-direction:column; } .management-heading h1 { font-size:34px; } }
+@media (max-width: 850px) {
+  .management-grid, .managed-room-list, .management-filters, .management-form.two-columns,
+  .management-grid > .management-card:first-child .management-form { grid-template-columns:1fr; }
+}
 .affected-bookings { margin-top: 12px; }
 .affected-booking-list { display: grid; gap: 8px; margin-top: 8px; max-height: 220px; overflow: auto; }
 .affected-booking { display: grid; grid-template-columns: 1.1fr 1.3fr 1fr 1fr; gap: 8px; padding: 10px; border: 1px solid #ead9a5; border-radius: 9px; background: #fffdf2; font-size: 13px; }
 @media (max-width: 700px) { .affected-booking { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) {
+  .managed-room { grid-template-columns:minmax(0, 1fr); }
+  .room-status-badge { justify-self:start; }
+}

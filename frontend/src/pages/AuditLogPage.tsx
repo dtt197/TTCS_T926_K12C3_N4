@@ -71,7 +71,7 @@ export function AuditLogPage() {
     <main className="audit-page">
       <header className="audit-heading">
         <div>
-          <p className="eyebrow">Quản trị · S1-05</p>
+
           <h1>Nhật ký hoạt động</h1>
         </div>
         <p className="audit-total">{data.totalElements} bản ghi</p>
