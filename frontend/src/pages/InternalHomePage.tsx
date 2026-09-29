@@ -33,8 +33,8 @@ const TABS: ReadonlyArray<{
 }> = [
   {
     view: 'rooms',
-    label: 'Dashboard',
-    icon: '◕',
+    label: 'Phòng',
+    icon: '▣',
     permission: 'rooms:view',
   },
   {
@@ -192,23 +192,13 @@ export function InternalHomePage({
               HOMESTAY MANAGER
             </p>
 
-            {activeView === 'rooms' ? (
-              <>
-                <h1>Dashboard</h1>
+            <h1>
+              {activeTab?.label ?? 'HomeStay'}
+            </h1>
 
-                <p className="dashboard-subtitle">
-                  Tổng quan hoạt động homestay của bạn
-                </p>
-              </>
-            ) : (
-              <>
-                <h1>{activeTab?.label ?? 'HomeStay'}</h1>
-
-                <p className="dashboard-subtitle">
-                  Quản lý hoạt động homestay của bạn
-                </p>
-              </>
-            )}
+            <p className="dashboard-subtitle">
+              Quản lý hoạt động homestay của bạn
+            </p>
           </div>
 
           <div className="dashboard-account">

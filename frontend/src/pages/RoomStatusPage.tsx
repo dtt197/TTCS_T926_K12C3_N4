@@ -584,105 +584,75 @@ const counts = useMemo(
     }
   }
 
-  return (
-    <div className="app-shell">
-
-
+    return (
+    <div className="app-shell room-status-modern">
       <main className="main-content">
-        <section className="intro">
-          <div>
 
+        {/* =========================
+            TỔNG QUAN TRẠNG THÁI
+           ========================= */}
+        <section
+          className="summary-grid"
+          aria-label="Tổng quan trạng thái phòng"
+        >
+          {isHousekeeping ? (
+            <div className="summary-card dirty">
+              <span className="summary-label">
+                Phòng cần dọn
+              </span>
 
-           <h1>
-  {isHousekeeping ? (
-    <>
-      Danh sách phòng
-      <br />
-      cần buồng phòng dọn.
-    </>
-  ) : (
-    <>
-      Phòng hôm nay,
-      <br />
-      sẵn sàng đón khách.
-    </>
-  )}
-</h1>
+              <span className="summary-number">
+                {counts.TRONG_BAN ?? 0}
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="summary-card clean">
+                <span className="summary-label">
+                  Trống sạch
+                </span>
 
-            <p>
-  {isHousekeeping
-    ? 'Theo dõi danh sách phòng cần dọn và cập nhật trạng thái sau khi vệ sinh.'
-    : 'Theo dõi trạng thái phòng và quản lý thông tin bảo trì.'}
-</p>
-          </div>
+                <span className="summary-number">
+                  {counts.TRONG_SACH ?? 0}
+                </span>
+              </div>
 
-          <div className="live-pill">
-            <span className="live-dot" />
-            Cập nhật trực tiếp
-          </div>
+              <div className="summary-card dirty">
+                <span className="summary-label">
+                  Trống bẩn
+                </span>
+
+                <span className="summary-number">
+                  {counts.TRONG_BAN ?? 0}
+                </span>
+              </div>
+
+              <div className="summary-card occupied">
+                <span className="summary-label">
+                  Đang ở
+                </span>
+
+                <span className="summary-number">
+                  {counts.DANG_O ?? 0}
+                </span>
+              </div>
+
+              <div className="summary-card maintenance">
+                <span className="summary-label">
+                  Bảo trì
+                </span>
+
+                <span className="summary-number">
+                  {counts.BAO_TRI ?? 0}
+                </span>
+              </div>
+            </>
+          )}
         </section>
 
-
-<section
-  className="summary-grid"
-  aria-label="Tổng quan trạng thái phòng"
->
-  {isHousekeeping ? (
-    <div className="summary-card dirty">
-      <span className="summary-label">
-        Phòng cần dọn
-      </span>
-
-      <span className="summary-number">
-        {counts.TRONG_BAN ?? 0}
-      </span>
-    </div>
-  ) : (
-    <>
-      <div className="summary-card clean">
-        <span className="summary-label">
-          Trống sạch
-        </span>
-
-        <span className="summary-number">
-          {counts.TRONG_SACH ?? 0}
-        </span>
-      </div>
-
-      <div className="summary-card dirty">
-        <span className="summary-label">
-          Trống bẩn
-        </span>
-
-        <span className="summary-number">
-          {counts.TRONG_BAN ?? 0}
-        </span>
-      </div>
-
-      <div className="summary-card occupied">
-        <span className="summary-label">
-          Đang ở
-        </span>
-
-        <span className="summary-number">
-          {counts.DANG_O ?? 0}
-        </span>
-      </div>
-
-      <div className="summary-card maintenance">
-        <span className="summary-label">
-          Bảo trì
-        </span>
-
-        <span className="summary-number">
-          {counts.BAO_TRI ?? 0}
-        </span>
-      </div>
-    </>
-  )}
-</section>
-
-
+        {/* =========================
+            THÔNG BÁO
+           ========================= */}
         {notice && (
           <div
             className={`alert ${
@@ -694,82 +664,199 @@ const counts = useMemo(
           </div>
         )}
 
-        <section className="workspace-grid">
-          <div className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Danh sách phòng</h2>
-
-               <p>
-  {isHousekeeping
-    ? 'Cập nhật phòng sang Trống sạch sau khi hoàn tất vệ sinh.'
-    : 'Chọn trạng thái mới rồi lưu cho từng phòng.'}
-</p>
+        {/* =========================
+            NHẬN PHÒNG NHANH
+           ========================= */}
+        {canUseCheckIn && (
+          <section className="quick-checkin-panel">
+            <div className="quick-checkin-heading">
+              <div className="quick-checkin-icon">
+                ↳
               </div>
 
-              <span className="room-floor">
-  {isHousekeeping
-    ? `${visibleRooms.length} phòng cần dọn`
-    : `${rooms.length} phòng hoạt động`}
-</span>
+              <div>
+                <h2>Nhận phòng nhanh</h2>
+
+                <p>
+                  Chỉ phòng Trống sạch mới có thể nhận khách.
+                </p>
+              </div>
             </div>
 
-            {isLoading ? (
-              <div className="empty-state">
-                Đang tải danh sách phòng...
-              </div>
-            )  : visibleRooms.length === 0 ? (
-             <div className="empty-state">
-  {isHousekeeping
-    ? 'Hiện không có phòng nào cần dọn.'
-    : 'Chưa có phòng nào trong hệ thống.'}
-</div>
-            ) : (
-              <div className="room-grid">
-                {visibleRooms.map((room) => {
-                  const currentDraftStatus =
-                    draftStatuses[room.id] ?? room.status
+            <form
+              className="quick-checkin-form"
+              onSubmit={handleCheckIn}
+            >
+              <label className="form-label">
+                Phòng
 
-                  const maintenance =
-                    maintenanceDrafts[room.id] ?? {
-                      reason: room.maintenanceReason ?? '',
-                      startDate:
-                        room.maintenanceStartDate ?? '',
-                      endDate:
-                        room.maintenanceEndDate ?? '',
-                    }
+                <select
+                  className="form-control"
+                  value={selectedRoomId}
+                  onChange={(event) =>
+                    setSelectedRoomId(
+                      event.target.value
+                        ? Number(event.target.value)
+                        : '',
+                    )
+                  }
+                >
+                  <option value="">
+                    Chọn phòng
+                  </option>
 
-                  return (
-                    <article
-                      className="room-card"
+                  {rooms.map((room) => (
+                    <option
+                      value={room.id}
                       key={room.id}
                     >
-                      <div className="room-card-header">
+                      Phòng {room.roomNumber} ·{' '}
+                      {ROOM_STATUS_LABELS[room.status]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-label">
+                Tên khách
+
+                <input
+                  className="form-control"
+                  value={guestName}
+                  placeholder="Ví dụ: Nguyễn Minh Anh"
+                  onChange={(event) =>
+                    setGuestName(event.target.value)
+                  }
+                />
+              </label>
+
+              <button
+                className="primary-button quick-checkin-button"
+                type="submit"
+                disabled={!canCheckIn || isSaving}
+              >
+                {isSaving
+                  ? 'Đang xử lý...'
+                  : 'Xác nhận nhận phòng'}
+              </button>
+            </form>
+
+            {selectedRoom &&
+              selectedRoom.status !== 'TRONG_SACH' && (
+                <p className="checkin-note">
+                  Phòng đang là{' '}
+                  <strong>
+                    {
+                      ROOM_STATUS_LABELS[
+                        selectedRoom.status
+                      ]
+                    }
+                  </strong>
+                  , không thể nhận khách. Hãy chọn phòng Trống sạch.
+                </p>
+              )}
+
+            {isDemoMode && (
+              <p className="demo-note">
+                Đang ở chế độ demo vì backend chưa kết nối.
+                Thay đổi không được lưu vào PostgreSQL.
+              </p>
+            )}
+          </section>
+        )}
+
+        {/* =========================
+            DANH SÁCH PHÒNG
+           ========================= */}
+        <section className="rooms-section">
+          <div className="rooms-section-header">
+            <div>
+              <span className="section-kicker">
+                QUẢN LÝ TRẠNG THÁI
+              </span>
+
+              <h2>Danh sách phòng</h2>
+
+              <p>
+                {isHousekeeping
+                  ? 'Cập nhật phòng sang Trống sạch sau khi hoàn tất vệ sinh.'
+                  : 'Theo dõi và cập nhật trạng thái của từng phòng.'}
+              </p>
+            </div>
+
+            <span className="room-count-badge">
+              {isHousekeeping
+                ? `${visibleRooms.length} phòng cần dọn`
+                : `${rooms.length} phòng hoạt động`}
+            </span>
+          </div>
+
+          {isLoading ? (
+            <div className="empty-state">
+              Đang tải danh sách phòng...
+            </div>
+          ) : visibleRooms.length === 0 ? (
+            <div className="empty-state">
+              {isHousekeeping
+                ? 'Hiện không có phòng nào cần dọn.'
+                : 'Chưa có phòng nào trong hệ thống.'}
+            </div>
+          ) : (
+            <div className="modern-room-grid">
+              {visibleRooms.map((room) => {
+                const currentDraftStatus =
+                  draftStatuses[room.id] ?? room.status
+
+                const maintenance =
+                  maintenanceDrafts[room.id] ?? {
+                    reason: room.maintenanceReason ?? '',
+                    startDate:
+                      room.maintenanceStartDate ?? '',
+                    endDate:
+                      room.maintenanceEndDate ?? '',
+                  }
+
+                return (
+                  <article
+                    className="modern-room-card"
+                    key={room.id}
+                  >
+                    <div className="modern-room-card-top">
+                      <div className="room-identity">
+                        <span className="room-icon">
+                          ▣
+                        </span>
+
                         <div>
                           <div className="room-number">
                             Phòng {room.roomNumber}
                           </div>
 
                           <div className="room-floor">
-                            Tầng {room.floor} · {room.roomType}
+                            Tầng {room.floor} ·{' '}
+                            {room.roomType}
                           </div>
                         </div>
-
-                        <span
-                          className={
-                            `status-badge ${
-                              statusClassName[room.status]
-                            }`
-                          }
-                        >
-                          {ROOM_STATUS_LABELS[room.status]}
-                        </span>
                       </div>
 
-                      <div className="room-meta">
-                        <span>
-                          {ROOM_STATUS_HELP[room.status]}
-                        </span>
+                      <span
+                        className={
+                          `status-badge ${
+                            statusClassName[room.status]
+                          }`
+                        }
+                      >
+                        {ROOM_STATUS_LABELS[room.status]}
+                      </span>
+                    </div>
+
+                    <div className="modern-room-status">
+                      <span className="status-help">
+                        {ROOM_STATUS_HELP[room.status]}
+                      </span>
+
+                      <label>
+                        <span>Trạng thái</span>
 
                         <select
                           className="status-select"
@@ -790,12 +877,13 @@ const counts = useMemo(
                           }
                         >
                           {(isHousekeeping
-  ? STATUS_OPTIONS.filter(
-      (status) =>
-        status === 'TRONG_BAN' || status === 'TRONG_SACH',
-    )
-  : STATUS_OPTIONS
-).map((status) => (
+                            ? STATUS_OPTIONS.filter(
+                                (status) =>
+                                  status === 'TRONG_BAN' ||
+                                  status === 'TRONG_SACH',
+                              )
+                            : STATUS_OPTIONS
+                          ).map((status) => (
                             <option
                               value={status}
                               key={status}
@@ -804,40 +892,56 @@ const counts = useMemo(
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </label>
+                    </div>
 
-                      {currentDraftStatus === 'BAO_TRI' && (
-                        <div className="maintenance-fields">
-                          {room.status === 'DANG_O' && (
-                            <div
-                              style={{
-                                background: '#fef3c7',
-                                color: '#92400e',
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                marginBottom: '10px',
-                                border: '1px solid #fde68a',
-                              }}
-                            >
-                              ⚠️ Phòng đang có khách ở. Cần hoàn tất trả phòng trước khi chuyển sang bảo trì.
-                            </div>
-                          )}
+                    {currentDraftStatus === 'BAO_TRI' && (
+                      <div className="maintenance-fields">
+                        {room.status === 'DANG_O' && (
+                          <div className="maintenance-warning">
+                            ⚠ Phòng đang có khách ở. Cần hoàn tất
+                            trả phòng trước khi chuyển sang bảo trì.
+                          </div>
+                        )}
+
+                        <label className="form-label">
+                          Lý do bảo trì
+
+                          <input
+                            className="form-control"
+                            value={maintenance.reason}
+                            maxLength={500}
+                            placeholder="Ví dụ: Sửa điều hòa"
+                            onChange={(event) =>
+                              setMaintenanceDrafts(
+                                (current) => ({
+                                  ...current,
+                                  [room.id]: {
+                                    ...maintenance,
+                                    reason:
+                                      event.target.value,
+                                  },
+                                }),
+                              )
+                            }
+                          />
+                        </label>
+
+                        <div className="maintenance-date-fields">
                           <label className="form-label">
-                            Lý do bảo trì
+                            Ngày bắt đầu
 
                             <input
                               className="form-control"
-                              value={maintenance.reason}
-                              maxLength={500}
-                              placeholder="Ví dụ: Sửa điều hòa"
+                              type="date"
+                              value={maintenance.startDate}
                               onChange={(event) =>
                                 setMaintenanceDrafts(
                                   (current) => ({
                                     ...current,
                                     [room.id]: {
                                       ...maintenance,
-                                      reason:
+                                      startDate:
                                         event.target.value,
                                     },
                                   }),
@@ -846,217 +950,124 @@ const counts = useMemo(
                             />
                           </label>
 
-                          <div className="maintenance-date-fields">
-                            <label className="form-label">
-                              Ngày bắt đầu
+                          <label className="form-label">
+                            Ngày kết thúc
 
-                              <input
-                                className="form-control"
-                                type="date"
-                                value={maintenance.startDate}
-                                onChange={(event) =>
-                                  setMaintenanceDrafts(
-                                    (current) => ({
-                                      ...current,
-                                      [room.id]: {
-                                        ...maintenance,
-                                        startDate:
-                                          event.target.value,
-                                      },
-                                    }),
-                                  )
-                                }
-                              />
-                            </label>
+                            <input
+                              className="form-control"
+                              type="date"
+                              min={
+                                maintenance.startDate ||
+                                undefined
+                              }
+                              value={maintenance.endDate}
+                              onChange={(event) =>
+                                setMaintenanceDrafts(
+                                  (current) => ({
+                                    ...current,
+                                    [room.id]: {
+                                      ...maintenance,
+                                      endDate:
+                                        event.target.value,
+                                    },
+                                  }),
+                                )
+                              }
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
 
-                            <label className="form-label">
-                              Ngày kết thúc
+                    {room.status === 'BAO_TRI' &&
+                      room.maintenanceReason && (
+                        <div className="maintenance-summary">
+                          <strong>
+                            {room.maintenanceReason}
+                          </strong>
 
-                              <input
-                                className="form-control"
-                                type="date"
-                                min={
-                                  maintenance.startDate ||
-                                  undefined
-                                }
-                                value={maintenance.endDate}
-                                onChange={(event) =>
-                                  setMaintenanceDrafts(
-                                    (current) => ({
-                                      ...current,
-                                      [room.id]: {
-                                        ...maintenance,
-                                        endDate:
-                                          event.target.value,
-                                      },
-                                    }),
-                                  )
-                                }
-                              />
-                            </label>
-                          </div>
+                          <span>
+                            {room.maintenanceStartDate}
+                            {' → '}
+                            {room.maintenanceEndDate}
+                          </span>
                         </div>
                       )}
 
-                      {room.status === 'BAO_TRI' &&
-                        room.maintenanceReason && (
-                          <div className="maintenance-summary">
-                            <strong>
-                              {room.maintenanceReason}
-                            </strong>
+                    <div className="modern-room-actions">
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() =>
+                          void handleViewHistory(room)
+                        }
+                      >
+                        {selectedHistoryRoomId === room.id
+                          ? '✕ Đóng lịch sử'
+                          : 'Xem lịch sử'}
+                      </button>
 
-                            <span>
-                              {room.maintenanceStartDate}
-                              {' → '}
-                              {room.maintenanceEndDate}
-                            </span>
-                          </div>
-                        )}
-
-                      <div className="room-actions">
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          onClick={() => void handleViewHistory(room)}
-                        >
-                          {selectedHistoryRoomId === room.id
-                            ? '✕ Đóng lịch sử'
-                            : 'Xem lịch sử'}
-                        </button>
-
-                          {canUseCheckOut && room.status === 'DANG_O' && (
+                      {canUseCheckOut &&
+                        room.status === 'DANG_O' && (
                           <button
                             className="secondary-button checkout-button"
                             type="button"
                             disabled={isSaving}
-                            onClick={() => void handleCheckOut(room)}
+                            onClick={() =>
+                              void handleCheckOut(room)
+                            }
                           >
                             Trả phòng
                           </button>
                         )}
 
-                          {canChangeStatus && (
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            disabled={isSaving}
-                            onClick={() =>
-                              void handleStatusUpdate(room)
-                            }
-                          >
-                            Lưu trạng thái
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          {canUseCheckIn && (
-          <aside className="panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Nhận phòng</h2>
-
-                <p>
-                  Chỉ phòng Trống sạch mới được gán.
-                </p>
-              </div>
+                      {canChangeStatus && (
+                        <button
+                          className="primary-button room-save-button"
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() =>
+                            void handleStatusUpdate(room)
+                          }
+                        >
+                          Lưu trạng thái
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
             </div>
-
-            <form
-              className="checkin-form"
-              onSubmit={handleCheckIn}
-            >
-              <label className="form-label">
-                Phòng gán cho khách
-
-                <select
-                  className="form-control"
-                  value={selectedRoomId}
-                  onChange={(event) =>
-                    setSelectedRoomId(
-                      event.target.value
-                        ? Number(event.target.value)
-                        : '',
-                    )
-                  }
-                >
-                  <option value="">Chọn phòng</option>
-
-                  {rooms.map((room) => (
-                    <option
-                      value={room.id}
-                      key={room.id}
-                    >
-                      {room.roomNumber} ·{' '}
-                      {ROOM_STATUS_LABELS[room.status]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="form-label">
-                Tên khách
-
-                <input
-                  className="form-control"
-                  value={guestName}
-                  placeholder="Ví dụ: Nguyễn Minh Anh"
-                  onChange={(event) =>
-                    setGuestName(event.target.value)
-                  }
-                />
-              </label>
-
-              {selectedRoom &&
-                selectedRoom.status !== 'TRONG_SACH' && (
-                  <p className="checkin-note">
-                    Phòng đang là{' '}
-                    <strong>
-                      {ROOM_STATUS_LABELS[
-                        selectedRoom.status
-                      ]}
-                    </strong>
-                    , không thể gán. Hãy chọn phòng Trống sạch.
-                  </p>
-                )}
-
-              <button
-                className="primary-button"
-                type="submit"
-                disabled={!canCheckIn || isSaving}
-              >
-                {isSaving
-                  ? 'Đang xử lý...'
-                  : 'Xác nhận nhận phòng'}
-              </button>
-            </form>
-
-            {isDemoMode && (
-              <p className="demo-note">
-                Đang ở chế độ demo vì backend chưa kết nối.
-                Thay đổi không được lưu vào PostgreSQL.
-              </p>
-            )}
-          </aside>
           )}
         </section>
 
+        {/* =========================
+            LỊCH SỬ
+           ========================= */}
         {selectedHistoryRoomId !== null && (
           <section className="history-panel">
             <div className="history-header">
-              <h2>
-                Lịch sử chuyển đổi phòng{' '}
-                {rooms.find((r) => r.id === selectedHistoryRoomId)?.roomNumber ??
-                  selectedHistoryRoomId}
-              </h2>
+              <div>
+                <span className="section-kicker">
+                  LỊCH SỬ HOẠT ĐỘNG
+                </span>
+
+                <h2>
+                  Phòng{' '}
+                  {rooms.find(
+                    (room) =>
+                      room.id === selectedHistoryRoomId,
+                  )?.roomNumber ??
+                    selectedHistoryRoomId}
+                </h2>
+              </div>
+
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => setSelectedHistoryRoomId(null)}
+                onClick={() =>
+                  setSelectedHistoryRoomId(null)
+                }
               >
                 ✕ Đóng
               </button>
@@ -1064,37 +1075,62 @@ const counts = useMemo(
 
             {isHistoryLoading ? (
               <p>Đang tải lịch sử...</p>
-            ) : (historyByRoom[selectedHistoryRoomId] ?? []).length === 0 ? (
-              <p className="empty-state">
-                Chưa có lịch sử thay đổi trạng thái cho phòng này.
-              </p>
             ) : (
-              <ol className="history-list">
-                {(historyByRoom[selectedHistoryRoomId] ?? []).map((item) => (
-                  <li className="history-item" key={item.id}>
-                    <div className="history-item-top">
-                      <strong>
-                        {item.previousStatus && ROOM_STATUS_LABELS[item.previousStatus]
-                          ? `${ROOM_STATUS_LABELS[item.previousStatus]} → `
-                          : ''}
-                        {ROOM_STATUS_LABELS[item.newStatus] ?? item.newStatus}
-                      </strong>
-                      <span className="history-item-time">
-                        {new Date(item.changedAt).toLocaleString('vi-VN')}
+              (
+                historyByRoom[selectedHistoryRoomId] ?? []
+              ).length === 0 ? (
+                <p className="empty-state">
+                  Chưa có lịch sử thay đổi trạng thái cho phòng này.
+                </p>
+              ) : (
+                <ol className="history-list">
+                  {(
+                    historyByRoom[selectedHistoryRoomId] ?? []
+                  ).map((item) => (
+                    <li
+                      className="history-item"
+                      key={item.id}
+                    >
+                      <div className="history-item-top">
+                        <strong>
+                          {item.previousStatus &&
+                          ROOM_STATUS_LABELS[item.previousStatus]
+                            ? `${
+                                ROOM_STATUS_LABELS[
+                                  item.previousStatus
+                                ]
+                              } → `
+                            : ''}
+
+                          {ROOM_STATUS_LABELS[item.newStatus] ??
+                            item.newStatus}
+                        </strong>
+
+                        <span className="history-item-time">
+                          {new Date(
+                            item.changedAt,
+                          ).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+
+                      <span>
+                        Người thao tác: {item.changedBy}
                       </span>
-                    </div>
 
-                    <span>Người thao tác: {item.changedBy}</span>
-
-                    {item.newStatus === 'BAO_TRI' && item.maintenanceReason && (
-                      <span className="history-item-maintenance">
-                        Lý do bảo trì: {item.maintenanceReason} ({item.maintenanceStartDate} → {item.maintenanceEndDate})
-                      </span>
-
-                    )}
-                  </li>
-                ))}
-              </ol>
+                      {item.newStatus === 'BAO_TRI' &&
+                        item.maintenanceReason && (
+                          <span className="history-item-maintenance">
+                            Lý do bảo trì:{' '}
+                            {item.maintenanceReason} (
+                            {item.maintenanceStartDate}
+                            {' → '}
+                            {item.maintenanceEndDate})
+                          </span>
+                        )}
+                    </li>
+                  ))}
+                </ol>
+              )
             )}
           </section>
         )}
@@ -1102,4 +1138,3 @@ const counts = useMemo(
     </div>
   )
 }
-
