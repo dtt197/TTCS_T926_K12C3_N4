@@ -205,11 +205,7 @@ export function UserManagementPage({
       <main className="main-content">
         <section className="intro">
           <div>
-            <p className="eyebrow">
-              {canManageAccounts
-                ? 'Quản trị · S1-02'
-                : 'Phân quyền · S1-04'}
-            </p>
+
 
             <h1>Tài khoản nhân viên</h1>
 

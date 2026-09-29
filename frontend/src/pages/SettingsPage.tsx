@@ -74,7 +74,7 @@ export function SettingsPage({ role }: SettingsPageProps) {
       <main className="main-content">
         <section className="intro">
           <div>
-            <p className="eyebrow">Vận hành · S1-09</p>
+
             <h1>Tham số vận hành</h1>
             <p>Giờ nhận – trả phòng, phụ thu và chính sách huỷ áp thống nhất cho mọi lễ tân.</p>
           </div>

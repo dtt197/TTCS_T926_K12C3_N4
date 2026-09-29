@@ -157,38 +157,7 @@
 
 /* INTERNAL PAGE */
 
-.internal-layout {
-  min-height: 100vh;
-  padding: 28px clamp(22px, 6vw, 84px);
-  background: var(--auth-paper);
-  color: var(--auth-ink);
-}
-
-.internal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  border-bottom: 1px solid var(--auth-line);
-  padding-bottom: 22px;
-}
-
-.internal-brand {
-  color: var(--auth-teal);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.65rem;
-}
-
-.logout-button {
-  border: 0;
-  border-radius: 6px;
-  padding: 14px 18px;
-  background: var(--auth-teal);
-  color: white;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
+/* Shared operations shell and navigation are defined in App.css. */
 
 .internal-panel {
   max-width: 760px;

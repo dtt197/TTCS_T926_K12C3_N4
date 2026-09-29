@@ -181,7 +181,7 @@ export function RoomStatusPage({ role }: RoomStatusPageProps) {
                 startDate: room.maintenanceStartDate ?? '',
                 endDate: room.maintenanceEndDate ?? '',
               },
-            ]), 
+            ]),
           ),
         )
 
@@ -591,9 +591,7 @@ const counts = useMemo(
       <main className="main-content">
         <section className="intro">
           <div>
-            <p className="eyebrow">
-              Vận hành phòng · S1-10
-            </p>
+
 
            <h1>
   {isHousekeeping ? (
@@ -624,7 +622,7 @@ const counts = useMemo(
           </div>
         </section>
 
-        
+
 <section
   className="summary-grid"
   aria-label="Tổng quan trạng thái phòng"
