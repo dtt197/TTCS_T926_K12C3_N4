@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react'
 import { apiRequest } from '../services/apiClient'
 import { hasPermission, type Permission } from '../permissions/rolePermissions'
@@ -26,19 +25,54 @@ type View =
   | 'users'
   | 'audit-logs'
 
-/** S1-04 + S1-05 + S1-06 + S1-07 + S1-08: menu theo quyền của vai trò. */
 const TABS: ReadonlyArray<{
   view: View
   label: string
+  icon: string
   permission: Permission
 }> = [
-  { view: 'rooms', label: 'Phòng', permission: 'rooms:view' },
-  { view: 'roomManagement', label: 'Quản lý phòng', permission: 'rooms:manage' },
-  { view: 'roomTypes', label: 'Loại phòng', permission: 'roomTypes:view' },
-  { view: 'amenities', label: 'Tiện nghi', permission: 'amenities:view' },
-  { view: 'settings', label: 'Tham số', permission: 'settings:view' },
-  { view: 'users', label: 'Tài khoản', permission: 'accounts:view' },
-  { view: 'audit-logs', label: 'Nhật ký', permission: 'auditLogs:view' },
+  {
+    view: 'rooms',
+    label: 'Phòng',
+    icon: '▣',
+    permission: 'rooms:view',
+  },
+  {
+    view: 'roomManagement',
+    label: 'Quản lý phòng',
+    icon: '▤',
+    permission: 'rooms:manage',
+  },
+  {
+    view: 'roomTypes',
+    label: 'Loại phòng',
+    icon: '▦',
+    permission: 'roomTypes:view',
+  },
+  {
+    view: 'amenities',
+    label: 'Tiện nghi',
+    icon: '✦',
+    permission: 'amenities:view',
+  },
+  {
+    view: 'settings',
+    label: 'Tham số',
+    icon: '⚙',
+    permission: 'settings:view',
+  },
+  {
+    view: 'users',
+    label: 'Tài khoản',
+    icon: '●',
+    permission: 'accounts:view',
+  },
+  {
+    view: 'audit-logs',
+    label: 'Nhật ký',
+    icon: '☷',
+    permission: 'auditLogs:view',
+  },
 ]
 
 const SESSION_CHECK_INTERVAL_MS = 30_000
@@ -46,6 +80,7 @@ const VIEW_STORAGE_KEY = 'homestay_internal_view'
 
 function getInitialView(): View {
   const savedView = window.sessionStorage.getItem(VIEW_STORAGE_KEY)
+
   return TABS.find((tab) => tab.view === savedView)?.view ?? 'rooms'
 }
 
@@ -56,22 +91,26 @@ export function InternalHomePage({
   const [view, setView] = useState<View>(getInitialView)
 
   const visibleTabs = TABS.filter((tab) =>
-    hasPermission(user.role, tab.permission)
+    hasPermission(user.role, tab.permission),
   )
 
-  // Tab không còn quyền thì quay về trang Phòng.
   const activeView: View = visibleTabs.some(
-    (tab) => tab.view === view
+    (tab) => tab.view === view,
   )
     ? view
     : 'rooms'
 
-  // Lưu tab đang mở khi tải lại trang.
+  const activeTab =
+    visibleTabs.find((tab) => tab.view === activeView) ??
+    visibleTabs[0]
+
   useEffect(() => {
-    window.sessionStorage.setItem(VIEW_STORAGE_KEY, activeView)
+    window.sessionStorage.setItem(
+      VIEW_STORAGE_KEY,
+      activeView,
+    )
   }, [activeView])
 
-  // S1-02 AC5: Kiểm tra phiên đăng nhập mỗi 30 giây.
   useEffect(() => {
     const timer = window.setInterval(() => {
       apiRequest('/api/internal/me').catch(() => {})
@@ -82,61 +121,122 @@ export function InternalHomePage({
 
   return (
     <main className="internal-layout">
-      <header className="internal-header">
-        <div className="internal-brand">
-          HomeStay / Operations
+      <aside className="app-sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">
+            <span className="sidebar-house">⌂</span>
+          </div>
+
+          <div>
+            <strong>HomeStay</strong>
+            <span>Manager</span>
+          </div>
         </div>
 
-        {visibleTabs.length > 1 && (
-          <nav className="view-tabs" aria-label="Chọn màn hình">
+        <div className="sidebar-divider" />
+
+        {visibleTabs.length > 0 && (
+          <nav
+            className="sidebar-navigation"
+            aria-label="Chọn màn hình"
+          >
             {visibleTabs.map((tab) => (
               <button
                 key={tab.view}
                 type="button"
                 className={
                   activeView === tab.view
-                    ? 'primary-button'
-                    : 'secondary-button'
+                    ? 'sidebar-nav-item active'
+                    : 'sidebar-nav-item'
                 }
                 onClick={() => setView(tab.view)}
               >
-                {tab.label}
+                <span className="sidebar-nav-icon">
+                  {tab.icon}
+                </span>
+
+                <span>{tab.label}</span>
               </button>
             ))}
           </nav>
         )}
 
-        <span className="role-badge">
-          {user.fullName} · {user.role}
-        </span>
+        <div className="sidebar-spacer" />
+
+        <div className="sidebar-welcome">
+          <span className="sidebar-welcome-label">
+            Xin chào
+          </span>
+
+          <strong>{user.fullName}</strong>
+
+          <small>
+            Quản lý homestay dễ dàng và hiệu quả hơn.
+          </small>
+        </div>
 
         <button
-          className="logout-button"
+          className="sidebar-logout"
           type="button"
           onClick={onLogout}
         >
+          <span>↪</span>
           Đăng xuất
         </button>
-      </header>
+      </aside>
 
-      {activeView === 'audit-logs' ? (
-        <AuditLogPage />
-      ) : activeView === 'roomManagement' ? (
-        <RoomManagementPage />
-      ) : activeView === 'users' ? (
-        <UserManagementPage
-          currentUserId={user.userId}
-          role={user.role}
-        />
-      ) : activeView === 'roomTypes' ? (
-        <RoomTypePage role={user.role} />
-      ) : activeView === 'amenities' ? (
-        <AmenityPage role={user.role} />
-        ) : activeView === 'settings' ? (
-        <SettingsPage role={user.role} />
-      ) : (
-        <RoomStatusPage role={user.role} />
-      )}
+      <section className="internal-main">
+        <header className="dashboard-header">
+          <div>
+            <p className="dashboard-eyebrow">
+              HOMESTAY MANAGER
+            </p>
+
+            <h1>
+              {activeTab?.label ?? 'HomeStay'}
+            </h1>
+
+            <p className="dashboard-subtitle">
+              Quản lý hoạt động homestay của bạn
+            </p>
+          </div>
+
+          <div className="dashboard-account">
+            <div className="dashboard-avatar">
+              {user.fullName
+                ?.trim()
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+
+            <div className="dashboard-user-info">
+              <strong>{user.fullName}</strong>
+              <span>{user.role}</span>
+            </div>
+          </div>
+        </header>
+
+        <div className="internal-page-content">
+          {activeView === 'audit-logs' ? (
+            <AuditLogPage />
+          ) : activeView === 'roomManagement' ? (
+            <RoomManagementPage />
+          ) : activeView === 'users' ? (
+            <UserManagementPage
+              currentUserId={user.userId}
+              role={user.role}
+            />
+          ) : activeView === 'roomTypes' ? (
+            <RoomTypePage role={user.role} />
+          ) : activeView === 'amenities' ? (
+            <AmenityPage role={user.role} />
+          ) : activeView === 'settings' ? (
+            <SettingsPage role={user.role} />
+          ) : (
+            <RoomStatusPage role={user.role} />
+          )}
+        </div>
+      </section>
     </main>
   )
 }

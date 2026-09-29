@@ -1,0 +1,489 @@
+/* =========================================================
+   AMENITY PAGE - MODERN HOMESTAY UI
+   Chỉ áp dụng cho trang Tiện nghi.
+   ========================================================= */
+
+.amenity-page {
+  --am-green-900: #0d4f3b;
+  --am-green-800: #176f53;
+  --am-green-700: #238161;
+  --am-text: #17362d;
+  --am-muted: #74817b;
+  --am-line: rgba(37, 92, 71, 0.12);
+  --am-shadow: 0 14px 34px rgba(31, 78, 59, 0.07);
+  --am-shadow-strong: 0 22px 52px rgba(31, 78, 59, 0.10);
+
+  width: 100%;
+}
+
+.amenity-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.amenity-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: #2b7c5f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.amenity-heading h1,
+.amenity-section-heading h2 {
+  margin: 0;
+  color: var(--am-text);
+}
+
+.amenity-heading h1 {
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.05;
+}
+
+.amenity-heading p,
+.amenity-section-heading p {
+  margin: 7px 0 0;
+  color: var(--am-muted);
+  line-height: 1.6;
+}
+
+.amenity-heading p {
+  max-width: 720px;
+}
+
+.amenity-count,
+.amenity-list-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 9px 13px;
+  border: 1px solid rgba(35, 92, 70, 0.12);
+  border-radius: 999px;
+  color: #286f57;
+  background: linear-gradient(145deg, #fff, #eef6f0);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.amenity-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.amenity-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 92px;
+  padding: 16px 18px;
+  border: 1px solid var(--am-line);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(248,251,247,.96));
+  box-shadow: var(--am-shadow);
+}
+
+.amenity-summary-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 12px;
+  color: #237a5d;
+  background: #eaf5ee;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.amenity-summary-card span:not(.amenity-summary-icon) {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--am-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.amenity-summary-card strong {
+  color: var(--am-text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.amenity-notice {
+  margin-bottom: 18px;
+  padding: 13px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.amenity-notice.success {
+  color: #166534;
+  border-color: rgba(22, 101, 52, 0.12);
+  background: #eaf7ee;
+}
+
+.amenity-notice.error {
+  color: #9f2d1d;
+  border-color: rgba(159, 45, 29, 0.12);
+  background: #fff1ee;
+}
+
+.amenity-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(330px, .7fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.amenity-workspace.readonly {
+  grid-template-columns: 1fr;
+}
+
+.amenity-list-panel,
+.amenity-form-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--am-line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(249,251,247,.97));
+  box-shadow: var(--am-shadow-strong);
+}
+
+.amenity-list-panel {
+  padding: 22px;
+}
+
+.amenity-form-panel {
+  position: sticky;
+  top: 20px;
+  padding: 22px;
+}
+
+.amenity-list-panel::after,
+.amenity-form-panel::after {
+  content: '';
+  position: absolute;
+  right: -50px;
+  bottom: -60px;
+  width: 190px;
+  height: 145px;
+  pointer-events: none;
+  border-radius: 58% 42% 66% 34% / 50% 56% 44% 50%;
+  background: linear-gradient(145deg, rgba(174,205,179,.11), rgba(232,211,170,.08));
+  transform: rotate(-10deg);
+}
+
+.amenity-list-panel > *,
+.amenity-form-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.amenity-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(37,92,71,.08);
+}
+
+.amenity-section-heading.compact {
+  display: block;
+}
+
+.amenity-section-heading h2 {
+  font-size: 20px;
+}
+
+.amenity-section-heading p {
+  font-size: 11px;
+}
+
+.amenity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+}
+
+.amenity-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid rgba(37,92,71,.11);
+  border-radius: 15px;
+  padding: 17px;
+  background: linear-gradient(150deg, rgba(255,255,255,.995), rgba(247,250,246,.97));
+  box-shadow: 0 6px 20px rgba(31,78,59,.05);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.amenity-card::after {
+  content: '';
+  position: absolute;
+  right: -42px;
+  bottom: -52px;
+  width: 150px;
+  height: 105px;
+  pointer-events: none;
+  border-radius: 60% 40% 65% 35% / 52% 42% 58% 48%;
+  background: linear-gradient(145deg, rgba(168,199,175,.12), rgba(232,211,170,.08));
+  transform: rotate(-10deg);
+}
+
+.amenity-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.amenity-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(50,132,98,.20);
+  box-shadow: 0 12px 26px rgba(31,78,59,.08);
+}
+
+.amenity-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.amenity-identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.amenity-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 13px;
+  color: #217759;
+  background: linear-gradient(145deg, #eaf5ef, #dff0e6);
+  font-size: 21px;
+}
+
+.amenity-code {
+  display: block;
+  margin-bottom: 3px;
+  color: #789087;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .07em;
+}
+
+.amenity-card h3 {
+  margin: 0;
+  color: var(--am-text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.amenity-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.amenity-status.active {
+  color: #166534;
+  background: #e7f6ec;
+}
+
+.amenity-status.inactive {
+  color: #8a4b16;
+  background: #fff1dc;
+}
+
+.amenity-meta {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 13px 0;
+  border-top: 1px solid rgba(37,92,71,.07);
+  border-bottom: 1px solid rgba(37,92,71,.07);
+}
+
+.amenity-meta > div {
+  min-width: 74px;
+}
+
+.amenity-meta span {
+  display: block;
+  margin-bottom: 3px;
+  color: #819089;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.amenity-meta strong {
+  color: var(--am-text);
+  font-size: 19px;
+}
+
+.amenity-meta p {
+  margin: 0;
+  color: var(--am-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.amenity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.amenity-actions .secondary-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 10px;
+}
+
+.amenity-actions .secondary-button.danger {
+  color: #a33d37;
+  border-color: rgba(163,61,55,.14);
+}
+
+.amenity-actions .secondary-button.danger:hover {
+  background: #fff5f3;
+  border-color: rgba(163,61,55,.24);
+}
+
+.amenity-empty {
+  padding: 34px 24px;
+  text-align: center;
+  color: var(--am-muted);
+  border: 1px dashed rgba(64,111,91,.26);
+  border-radius: 14px;
+  background: rgba(248,251,247,.72);
+}
+
+/* AmenityForm hiện dùng checkin-form / form-label / form-control.
+   Scope tại panel để không ảnh hưởng trang khác. */
+.amenity-form-panel .checkin-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 13px;
+}
+
+.amenity-form-panel .checkin-form > .alert,
+.amenity-form-panel .checkin-form > .checkin-note {
+  grid-column: 1 / -1;
+}
+
+.amenity-form-panel .form-label {
+  display: grid;
+  gap: 7px;
+  color: #53685f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.amenity-form-panel .form-control {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(48,94,75,.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--am-text);
+  background: rgba(250,251,247,.98);
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.amenity-form-panel .form-control:focus {
+  border-color: #75aa91;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(68,137,107,.12);
+}
+
+.amenity-form-panel .checkin-form > .user-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0,1fr));
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid rgba(37,92,71,.08);
+  border-radius: 12px;
+  background: rgba(247,250,247,.82);
+}
+
+.amenity-form-panel .checkin-form > .user-actions button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px;
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.amenity-form-panel .checkin-form > .primary-button,
+.amenity-form-panel .checkin-form > .secondary-button {
+  width: 100%;
+  min-height: 38px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+@media (max-width: 1260px) {
+  .amenity-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .amenity-form-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .amenity-summary,
+  .amenity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .amenity-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .amenity-list-panel,
+  .amenity-form-panel {
+    padding: 18px;
+  }
+
+  .amenity-card-top {
+    flex-direction: column;
+  }
+
+  .amenity-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .amenity-form-panel .checkin-form > .user-actions {
+    grid-template-columns: repeat(4, minmax(0,1fr));
+  }
+}
