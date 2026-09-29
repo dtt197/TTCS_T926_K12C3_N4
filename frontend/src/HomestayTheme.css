@@ -1,31 +1,39 @@
 /* =========================================================
    HOMESTAY MODERN HOSPITALITY THEME
+   Modern dashboard + warm homestay atmosphere
    ========================================================= */
 
 :root {
+  --hs-green-950: #08382d;
   --hs-green-900: #0b3d31;
+  --hs-green-850: #0e4738;
   --hs-green-800: #10513f;
   --hs-green-700: #17684f;
   --hs-green-600: #23805f;
 
+  --hs-sage-50: #f6faf7;
   --hs-sage-100: #edf5ef;
   --hs-sage-200: #dceade;
+  --hs-sage-300: #c7ddcc;
 
-  --hs-ivory: #faf8f1;
-  --hs-cream: #f5efe2;
+  --hs-ivory: #fbf8f1;
+  --hs-cream: #f6efe2;
+  --hs-sand: #e7d6b4;
 
   --hs-text: #17362d;
   --hs-muted: #73827b;
-
   --hs-border: rgba(37, 92, 71, 0.12);
 
   --hs-shadow:
     0 14px 40px rgba(28, 70, 53, 0.08);
+
+  --hs-shadow-strong:
+    0 22px 60px rgba(25, 67, 51, 0.13);
 }
 
 
 /* =========================================================
-   TOÀN BỘ APP
+   APP BACKGROUND
    ========================================================= */
 
 .internal-layout {
@@ -34,19 +42,19 @@
 
   background:
     radial-gradient(
-      circle at 88% 8%,
+      circle at 88% 7%,
       rgba(130, 174, 139, 0.28),
+      transparent 27%
+    ),
+    radial-gradient(
+      circle at 68% 16%,
+      rgba(234, 204, 151, 0.20),
+      transparent 23%
+    ),
+    radial-gradient(
+      circle at 8% 86%,
+      rgba(98, 150, 115, 0.15),
       transparent 28%
-    ),
-    radial-gradient(
-      circle at 65% 18%,
-      rgba(232, 206, 157, 0.20),
-      transparent 24%
-    ),
-    radial-gradient(
-      circle at 12% 84%,
-      rgba(102, 151, 117, 0.14),
-      transparent 30%
     ),
     linear-gradient(
       135deg,
@@ -58,6 +66,23 @@
   isolation: isolate;
 }
 
+.internal-layout::before {
+  content: '';
+
+  position: fixed;
+  inset: 0;
+
+  z-index: -1;
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      115deg,
+      transparent 0 60%,
+      rgba(255, 255, 255, 0.25) 60% 100%
+    );
+}
+
 
 /* =========================================================
    SIDEBAR
@@ -65,67 +90,94 @@
 
 .app-sidebar {
   position: fixed;
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(22, 107, 81, 0.98) 0%,
+      rgba(14, 78, 61, 0.99) 52%,
+      rgba(7, 54, 44, 1) 100%
+    );
+
+  box-shadow:
+    14px 0 42px rgba(12, 57, 44, 0.18);
+}
+
+/* soft ambient glow */
+.app-sidebar::after {
+  content: '';
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
 
   background:
     radial-gradient(
-      circle at 15% 7%,
+      circle at 24% 8%,
       rgba(255, 255, 255, 0.12),
       transparent 24%
     ),
     linear-gradient(
       180deg,
-      #176c52 0%,
-      #105441 52%,
-      #0a3c31 100%
+      transparent 0 62%,
+      rgba(0, 0, 0, 0.12) 100%
     );
-
-  box-shadow:
-    12px 0 38px rgba(12, 57, 44, 0.16);
 }
 
-
-/* Họa tiết lá mềm ở cuối sidebar */
-
+/* botanical / interior-inspired detail */
 .app-sidebar::before {
   content: '';
 
   position: absolute;
 
-  left: -40px;
-  bottom: 70px;
+  left: -44px;
+  bottom: 92px;
 
-  width: 260px;
+  width: 270px;
   height: 300px;
 
   pointer-events: none;
-
-  opacity: 0.9;
+  opacity: 0.78;
 
   background:
     radial-gradient(
-      ellipse at 28% 65%,
-      rgba(154, 196, 162, 0.16) 0 18%,
-      transparent 19%
+      ellipse at 18% 72%,
+      rgba(151, 196, 159, 0.18) 0 13%,
+      transparent 14%
     ),
     radial-gradient(
-      ellipse at 58% 48%,
-      rgba(173, 205, 177, 0.12) 0 18%,
-      transparent 19%
+      ellipse at 39% 58%,
+      rgba(173, 208, 179, 0.15) 0 12%,
+      transparent 13%
     ),
     radial-gradient(
-      ellipse at 54% 78%,
-      rgba(141, 186, 151, 0.12) 0 16%,
-      transparent 17%
+      ellipse at 61% 72%,
+      rgba(124, 178, 137, 0.14) 0 13%,
+      transparent 14%
+    ),
+    radial-gradient(
+      ellipse at 68% 44%,
+      rgba(184, 211, 179, 0.12) 0 11%,
+      transparent 12%
+    ),
+    linear-gradient(
+      74deg,
+      transparent 0 46%,
+      rgba(208, 224, 205, 0.10) 47% 49%,
+      transparent 50% 100%
     );
 }
 
 .app-sidebar > * {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
-
 .sidebar-logo {
+  border-color: rgba(255, 255, 255, 0.24);
+
   background:
     linear-gradient(
       145deg,
@@ -134,9 +186,14 @@
     );
 
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 24px rgba(0, 0, 0, 0.10);
 }
 
+.sidebar-nav-item {
+  position: relative;
+  overflow: hidden;
+}
 
 .sidebar-nav-item.active {
   color: #124737;
@@ -144,14 +201,34 @@
   background:
     linear-gradient(
       135deg,
-      #fffdf7,
-      #f3f2e9
+      #fffdf8,
+      #f2efe5
     );
 
   box-shadow:
     0 10px 26px rgba(5, 45, 34, 0.18);
 }
 
+.sidebar-nav-item.active::after {
+  content: '';
+
+  position: absolute;
+  right: -22px;
+  top: -18px;
+
+  width: 64px;
+  height: 64px;
+
+  border-radius: 50%;
+
+  background:
+    rgba(115, 167, 132, 0.10);
+}
+
+.sidebar-nav-icon {
+  position: relative;
+  z-index: 1;
+}
 
 .sidebar-welcome {
   border:
@@ -160,12 +237,12 @@
   background:
     linear-gradient(
       145deg,
-      #fffaf0,
-      #f2e5c9
+      rgba(255, 250, 240, 0.98),
+      rgba(242, 229, 201, 0.97)
     );
 
   box-shadow:
-    0 14px 28px rgba(4, 42, 32, 0.16);
+    0 14px 28px rgba(4, 42, 32, 0.17);
 }
 
 
@@ -179,8 +256,8 @@
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.14),
-      rgba(241, 246, 239, 0.18)
+      rgba(255, 255, 255, 0.10),
+      rgba(241, 246, 239, 0.16)
     );
 }
 
@@ -192,106 +269,123 @@
 .dashboard-header {
   position: relative;
 
-  min-height: 155px;
+  min-height: 164px;
 
   overflow: hidden;
 
   background:
-    radial-gradient(
-      ellipse at 92% 22%,
-      rgba(130, 172, 138, 0.30),
-      transparent 28%
-    ),
-    radial-gradient(
-      ellipse at 78% -20%,
-      rgba(229, 199, 143, 0.28),
-      transparent 30%
-    ),
     linear-gradient(
-      100deg,
+      90deg,
       rgba(255, 255, 255, 0.98) 0%,
-      rgba(252, 249, 240, 0.96) 52%,
-      rgba(231, 242, 233, 0.94) 100%
+      rgba(252, 248, 238, 0.96) 47%,
+      rgba(227, 240, 229, 0.92) 100%
     );
 }
 
-
-/* Họa tiết lá trên header */
-
+/* faux window / warm daylight */
 .dashboard-header::before {
   content: '';
 
   position: absolute;
 
-  right: 90px;
-  top: -35px;
+  right: -6px;
+  top: 0;
 
-  width: 300px;
-  height: 190px;
+  width: 42%;
+  height: 100%;
 
   pointer-events: none;
 
-  opacity: 0.72;
-
   background:
-    radial-gradient(
-      ellipse at 74% 24%,
-      rgba(79, 137, 95, 0.16) 0 15%,
-      transparent 16%
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 246, 220, 0.10)
+    ),
+    linear-gradient(
+      90deg,
+      transparent 0 64%,
+      rgba(255, 255, 255, 0.40) 64% 67%,
+      transparent 67% 82%,
+      rgba(255, 255, 255, 0.30) 82% 85%,
+      transparent 85%
     ),
     radial-gradient(
-      ellipse at 62% 52%,
-      rgba(91, 151, 104, 0.14) 0 17%,
-      transparent 18%
+      ellipse at 82% 44%,
+      rgba(112, 171, 126, 0.30),
+      transparent 36%
     ),
     radial-gradient(
-      ellipse at 88% 55%,
-      rgba(112, 162, 120, 0.13) 0 16%,
-      transparent 17%
+      ellipse at 94% 70%,
+      rgba(228, 200, 147, 0.22),
+      transparent 28%
     );
+
+  opacity: 0.95;
 }
 
-
-/* đường cong organic */
-
+/* botanical canopy */
 .dashboard-header::after {
   content: '';
 
   position: absolute;
 
-  right: -80px;
-  bottom: -110px;
+  right: 38px;
+  top: -56px;
 
-  width: 470px;
-  height: 230px;
+  width: 390px;
+  height: 220px;
 
   pointer-events: none;
 
-  border-radius:
-    65% 35% 58% 42%
-    / 48% 58% 42% 52%;
-
   background:
+    radial-gradient(
+      ellipse at 22% 44%,
+      rgba(76, 137, 91, 0.22) 0 10%,
+      transparent 11%
+    ),
+    radial-gradient(
+      ellipse at 36% 34%,
+      rgba(94, 150, 104, 0.20) 0 11%,
+      transparent 12%
+    ),
+    radial-gradient(
+      ellipse at 49% 24%,
+      rgba(111, 162, 118, 0.18) 0 10%,
+      transparent 11%
+    ),
+    radial-gradient(
+      ellipse at 61% 18%,
+      rgba(126, 173, 132, 0.16) 0 9%,
+      transparent 10%
+    ),
+    radial-gradient(
+      ellipse at 72% 13%,
+      rgba(149, 188, 150, 0.15) 0 8%,
+      transparent 9%
+    ),
     linear-gradient(
-      145deg,
-      rgba(118, 166, 128, 0.13),
-      rgba(220, 199, 155, 0.08)
+      21deg,
+      transparent 0 48%,
+      rgba(63, 116, 80, 0.15) 49% 50%,
+      transparent 51% 100%
     );
 
-  transform: rotate(-7deg);
+  transform: rotate(-8deg);
 }
-
 
 .dashboard-header > * {
   position: relative;
   z-index: 2;
 }
 
-
 .dashboard-header h1 {
   color: var(--hs-text);
 }
 
+.dashboard-eyebrow {
+  color: #2a7a5d;
+}
 
 .dashboard-account {
   border:
@@ -304,7 +398,7 @@
     blur(14px);
 
   box-shadow:
-    0 14px 34px rgba(29, 71, 54, 0.10);
+    0 16px 40px rgba(29, 71, 54, 0.11);
 }
 
 
@@ -317,25 +411,25 @@
 
   background:
     radial-gradient(
-      circle at 98% 12%,
-      rgba(152, 188, 157, 0.16),
+      circle at 97% 10%,
+      rgba(152, 188, 157, 0.18),
       transparent 24%
     ),
     radial-gradient(
-      circle at 4% 92%,
-      rgba(224, 198, 149, 0.12),
+      circle at 8% 90%,
+      rgba(224, 198, 149, 0.13),
       transparent 22%
     ),
     linear-gradient(
       180deg,
-      rgba(248, 248, 242, 0.92),
-      rgba(238, 245, 238, 0.94)
+      rgba(248, 248, 242, 0.94),
+      rgba(238, 245, 238, 0.96)
     );
 }
 
 
 /* =========================================================
-   CARDS
+   SHARED CARDS
    ========================================================= */
 
 .summary-card,
@@ -347,7 +441,7 @@
     var(--hs-border);
 
   background:
-    rgba(255, 255, 255, 0.92);
+    rgba(255, 255, 255, 0.93);
 
   backdrop-filter:
     blur(10px);
@@ -357,15 +451,104 @@
 }
 
 
-/* KPI cards */
+/* =========================================================
+   KPI CARDS
+   ========================================================= */
 
 .internal-page-content .summary-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+
+  min-height: 118px;
+
   background:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(249, 251, 247, 0.94)
+      rgba(255, 255, 255, 0.99),
+      rgba(249, 251, 247, 0.95)
     );
+}
+
+.internal-page-content .summary-card::before {
+  content: '';
+
+  position: absolute;
+  inset: auto -24px -34px auto;
+
+  width: 115px;
+  height: 115px;
+
+  border-radius: 42% 58% 65% 35% / 50% 38% 62% 50%;
+
+  background:
+    rgba(160, 196, 169, 0.08);
+
+  transform: rotate(-18deg);
+}
+
+.summary-icon {
+  position: relative;
+  z-index: 2;
+
+  display: grid;
+  place-items: center;
+
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  border-radius: 14px;
+
+  background:
+    #eef6f1;
+
+  color:
+    #237a5d;
+}
+
+.summary-content {
+  position: relative;
+  z-index: 2;
+
+  min-width: 0;
+}
+
+.internal-page-content .summary-card.clean .summary-icon {
+  color: #237a5d;
+  background: #eaf5ee;
+}
+
+.internal-page-content .summary-card.dirty .summary-icon {
+  color: #b97822;
+  background: #fff3df;
+}
+
+.internal-page-content .summary-card.occupied .summary-icon {
+  color: #3f6f9d;
+  background: #eaf2fb;
+}
+
+.internal-page-content .summary-card.maintenance .summary-icon {
+  color: #b9524c;
+  background: #fbeceb;
+}
+
+.internal-page-content .summary-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.internal-page-content .summary-number {
+  margin-top: 6px;
+
+  font-size: 30px;
+}
+
+.summary-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 
@@ -374,14 +557,44 @@
    ========================================================= */
 
 .quick-checkin-panel {
+  position: relative;
+  overflow: hidden;
+
   background:
     linear-gradient(
       115deg,
-      rgba(255, 255, 255, 0.97),
-      rgba(242, 248, 242, 0.94)
+      rgba(255, 255, 255, 0.98),
+      rgba(242, 248, 242, 0.95)
     );
 }
 
+.quick-checkin-panel::after {
+  content: '';
+
+  position: absolute;
+
+  right: -90px;
+  top: -70px;
+
+  width: 260px;
+  height: 180px;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(159, 196, 166, 0.13),
+      transparent 68%
+    );
+}
+
+.quick-checkin-panel > * {
+  position: relative;
+  z-index: 1;
+}
 
 .quick-checkin-icon {
   background:
@@ -395,37 +608,76 @@
     0 8px 20px rgba(26, 106, 78, 0.24);
 }
 
+.quick-checkin-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
 
 /* =========================================================
-   DANH SÁCH PHÒNG
+   ROOMS SECTION
    ========================================================= */
 
 .rooms-section {
   position: relative;
-
   overflow: hidden;
 
   background:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.97),
-      rgba(249, 250, 245, 0.95)
+      rgba(255, 255, 255, 0.98),
+      rgba(249, 250, 245, 0.96)
+    );
+
+  box-shadow:
+    var(--hs-shadow-strong);
+}
+
+/* botanical flourish top-right */
+.rooms-section::before {
+  content: '';
+
+  position: absolute;
+
+  right: 22px;
+  top: 2px;
+
+  width: 170px;
+  height: 90px;
+
+  pointer-events: none;
+
+  opacity: 0.78;
+
+  background:
+    radial-gradient(
+      ellipse at 80% 25%,
+      rgba(91, 151, 104, 0.15) 0 11%,
+      transparent 12%
+    ),
+    radial-gradient(
+      ellipse at 68% 40%,
+      rgba(118, 169, 123, 0.13) 0 10%,
+      transparent 11%
+    ),
+    radial-gradient(
+      ellipse at 92% 50%,
+      rgba(132, 177, 134, 0.12) 0 9%,
+      transparent 10%
     );
 }
 
-
-/* Mảng organic phía dưới phải */
-
+/* soft landscape shape bottom */
 .rooms-section::after {
   content: '';
 
   position: absolute;
 
-  right: -110px;
+  right: -90px;
   bottom: -135px;
 
-  width: 430px;
-  height: 270px;
+  width: 470px;
+  height: 275px;
 
   pointer-events: none;
 
@@ -436,8 +688,8 @@
   background:
     linear-gradient(
       140deg,
-      rgba(163, 197, 168, 0.17),
-      rgba(226, 203, 158, 0.10)
+      rgba(163, 197, 168, 0.19),
+      rgba(226, 203, 158, 0.11)
     );
 
   transform:
@@ -451,31 +703,123 @@
 
 
 /* =========================================================
-   ROOM CARD
+   ROOM CARDS
    ========================================================= */
 
 .modern-room-card {
+  position: relative;
+  overflow: hidden;
+
   background:
     linear-gradient(
       150deg,
-      rgba(255, 255, 255, 0.99),
-      rgba(247, 250, 246, 0.96)
+      rgba(255, 255, 255, 0.995),
+      rgba(247, 250, 246, 0.97)
     );
 
   border:
     1px solid rgba(35, 92, 70, 0.11);
+
+  box-shadow:
+    0 6px 22px rgba(31, 78, 59, 0.055);
 }
 
+.modern-room-card::before {
+  content: '';
+
+  position: absolute;
+
+  right: -42px;
+  bottom: -58px;
+
+  width: 170px;
+  height: 120px;
+
+  pointer-events: none;
+
+  border-radius:
+    62% 38% 58% 42%
+    / 55% 44% 56% 45%;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(155, 194, 163, 0.10),
+      rgba(233, 213, 171, 0.06)
+    );
+
+  transform:
+    rotate(-12deg);
+}
+
+.modern-room-card::after {
+  content: '';
+
+  position: absolute;
+
+  right: 14px;
+  bottom: 16px;
+
+  width: 66px;
+  height: 66px;
+
+  pointer-events: none;
+
+  opacity: 0.48;
+
+  background:
+    radial-gradient(
+      ellipse at 40% 65%,
+      rgba(77, 142, 93, 0.13) 0 13%,
+      transparent 14%
+    ),
+    radial-gradient(
+      ellipse at 66% 39%,
+      rgba(90, 151, 102, 0.11) 0 13%,
+      transparent 14%
+    );
+}
+
+.modern-room-card > * {
+  position: relative;
+  z-index: 1;
+}
 
 .modern-room-card:hover {
   transform:
-    translateY(-2px);
+    translateY(-3px);
 
   border-color:
     rgba(50, 132, 98, 0.24);
 
   box-shadow:
-    0 14px 34px rgba(31, 78, 59, 0.10);
+    0 16px 36px rgba(31, 78, 59, 0.10);
+}
+
+.room-icon {
+  width: 38px;
+  height: 38px;
+
+  flex: 0 0 38px;
+
+  border-radius: 11px;
+
+  color: #217759;
+
+  background:
+    linear-gradient(
+      145deg,
+      #eaf5ef,
+      #dff0e6
+    );
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.room-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 
@@ -486,12 +830,11 @@
 .form-control,
 .status-select {
   background:
-    rgba(250, 251, 247, 0.96);
+    rgba(250, 251, 247, 0.97);
 
   border-color:
     rgba(48, 94, 75, 0.15);
 }
-
 
 .form-control:focus,
 .status-select:focus {
@@ -507,8 +850,17 @@
 
 
 /* =========================================================
-   BUTTON
+   BUTTONS
    ========================================================= */
+
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+}
 
 .primary-button {
   background:
@@ -522,10 +874,75 @@
     0 8px 20px rgba(23, 98, 73, 0.19);
 }
 
-
 .primary-button:hover:not(:disabled) {
   box-shadow:
     0 12px 26px rgba(23, 98, 73, 0.27);
+}
+
+.secondary-button {
+  background:
+    rgba(255, 255, 255, 0.90);
+
+  backdrop-filter:
+    blur(8px);
+}
+
+.button-icon {
+  display: inline-grid;
+  place-items: center;
+
+  flex: 0 0 auto;
+}
+
+.button-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.room-save-button {
+  padding-inline: 13px;
+}
+
+
+/* =========================================================
+   MAINTENANCE
+   ========================================================= */
+
+.maintenance-fields {
+  position: relative;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      #fbf8f2,
+      #fffaf3
+    );
+}
+
+.maintenance-fields::after {
+  content: '';
+
+  position: absolute;
+
+  right: -22px;
+  bottom: -26px;
+
+  width: 92px;
+  height: 92px;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  background:
+    rgba(222, 191, 138, 0.09);
+}
+
+.maintenance-fields > * {
+  position: relative;
+  z-index: 1;
 }
 
 
@@ -533,11 +950,31 @@
    MOBILE
    ========================================================= */
 
+@media (max-width: 1000px) {
+  .dashboard-header::after {
+    right: -40px;
+    opacity: 0.58;
+  }
+}
+
 @media (max-width: 760px) {
   .dashboard-header::before,
   .dashboard-header::after,
+  .rooms-section::before,
   .rooms-section::after,
-  .app-sidebar::before {
-    opacity: 0.35;
+  .app-sidebar::before,
+  .modern-room-card::before,
+  .modern-room-card::after {
+    opacity: 0.30;
+  }
+
+  .internal-page-content .summary-card {
+    align-items: flex-start;
+  }
+
+  .summary-icon {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
   }
 }
