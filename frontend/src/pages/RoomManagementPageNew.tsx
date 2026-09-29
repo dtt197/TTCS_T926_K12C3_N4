@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import '../App.css'
 import './RoomManagementPage.css'
 import type { RoomStatus } from '../types/room'
@@ -38,7 +38,7 @@ export function RoomManagementPage() {
   const [editRoom, setEditRoom] = useState<ManagedRoom | null>(null)
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null)
   const [warning, setWarning] = useState<{ message: string; affected: number } | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -51,26 +51,27 @@ export function RoomManagementPage() {
     [rooms],
   )
 
-  async function loadRooms() {
+  const fetchRooms = useCallback((filters: Parameters<typeof searchManagedRooms>[0]) =>
+    searchManagedRooms(filters)
+      .then((result) => setRooms(result.rooms))
+      .catch((error: unknown) => {
+        setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Không thể tải danh sách phòng.' })
+      })
+      .finally(() => setLoading(false)), [])
+
+  function loadRooms() {
     setLoading(true)
     setNotice(null)
-    try {
-      const result = await searchManagedRooms({
-        roomType: roomTypeFilter || undefined,
-        floor: floorFilter === '' ? undefined : Number(floorFilter),
-        status: statusFilter || undefined,
-      })
-      setRooms(result.rooms)
-    } catch (error) {
-      setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Không thể tải danh sách phòng.' })
-    } finally {
-      setLoading(false)
-    }
+    return fetchRooms({
+      roomType: roomTypeFilter || undefined,
+      floor: floorFilter === '' ? undefined : Number(floorFilter),
+      status: statusFilter || undefined,
+    })
   }
 
   useEffect(() => {
-    void loadRooms()
-  }, [])
+    void fetchRooms({})
+  }, [fetchRooms])
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault()
