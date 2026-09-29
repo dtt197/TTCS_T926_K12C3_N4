@@ -1,4 +1,5 @@
 import './App.css'
+import './HomestayTheme.css'
 import { useAuth } from './hooks/useAuth'
 import { AppRoutes } from './routes/AppRoutes'
 
