@@ -1,803 +1,927 @@
 /* =========================================================
-   HOMESTAY MODERN HOSPITALITY THEME
-   Modern dashboard + warm homestay atmosphere
+
+   HOMESTAY THEME - FINAL DEMO 2 MATCH
+
+   Keeps current logic and existing background assets.
+
+   Required:
+
+   /public/assets/homestay-header-bg.png
+
+   /public/assets/homestay-sidebar-bg.png
+
    ========================================================= */
 
+
+
 :root {
+
   --hs-green-950: #08382d;
+
   --hs-green-900: #0b3d31;
-  --hs-green-850: #0e4738;
+
   --hs-green-800: #10513f;
+
   --hs-green-700: #17684f;
+
   --hs-green-600: #23805f;
 
-  --hs-sage-50: #f6faf7;
-  --hs-sage-100: #edf5ef;
-  --hs-sage-200: #dceade;
-  --hs-sage-300: #c7ddcc;
-
   --hs-ivory: #fbf8f1;
+
   --hs-cream: #f6efe2;
-  --hs-sand: #e7d6b4;
+
+  --hs-sage: #edf5ef;
 
   --hs-text: #17362d;
-  --hs-muted: #73827b;
+
+  --hs-muted: #74817b;
+
   --hs-border: rgba(37, 92, 71, 0.12);
 
-  --hs-shadow:
-    0 14px 40px rgba(28, 70, 53, 0.08);
+  --hs-shadow: 0 14px 38px rgba(28, 70, 53, 0.08);
 
-  --hs-shadow-strong:
-    0 22px 60px rgba(25, 67, 51, 0.13);
+  --hs-shadow-strong: 0 22px 58px rgba(25, 67, 51, 0.11);
+
 }
 
 
-/* =========================================================
-   APP BACKGROUND
-   ========================================================= */
+
+/* ========================= APP ========================= */
+
+
 
 .internal-layout {
+
   position: relative;
+
   min-height: 100vh;
 
   background:
-    radial-gradient(
-      circle at 88% 7%,
-      rgba(130, 174, 139, 0.28),
-      transparent 27%
-    ),
-    radial-gradient(
-      circle at 68% 16%,
-      rgba(234, 204, 151, 0.20),
-      transparent 23%
-    ),
-    radial-gradient(
-      circle at 8% 86%,
-      rgba(98, 150, 115, 0.15),
-      transparent 28%
-    ),
-    linear-gradient(
-      135deg,
-      #faf8f1 0%,
-      #f4f6ef 48%,
-      #eaf2ec 100%
-    );
 
-  isolation: isolate;
-}
+    radial-gradient(circle at 91% 8%, rgba(141, 179, 148, 0.15), transparent 28%),
 
-.internal-layout::before {
-  content: '';
+    linear-gradient(135deg, #faf8f1 0%, #f5f6ef 50%, #edf3ed 100%);
 
-  position: fixed;
-  inset: 0;
-
-  z-index: -1;
-  pointer-events: none;
-
-  background:
-    linear-gradient(
-      115deg,
-      transparent 0 60%,
-      rgba(255, 255, 255, 0.25) 60% 100%
-    );
 }
 
 
-/* =========================================================
-   SIDEBAR
-   ========================================================= */
+
+/* ========================= SIDEBAR ========================= */
+
+
 
 .app-sidebar {
+
   position: fixed;
+
   overflow: hidden;
 
   background:
-    linear-gradient(
-      180deg,
-      rgba(22, 107, 81, 0.98) 0%,
-      rgba(14, 78, 61, 0.99) 52%,
-      rgba(7, 54, 44, 1) 100%
-    );
 
-  box-shadow:
-    14px 0 42px rgba(12, 57, 44, 0.18);
+    linear-gradient(
+
+      180deg,
+
+      rgba(14, 90, 68, 0.99) 0%,
+
+      rgba(10, 76, 59, 0.985) 48%,
+
+      rgba(6, 49, 40, 0.80) 100%
+
+    ),
+
+    url('/assets/homestay-sidebar-bg.png') center bottom / cover no-repeat;
+
+  box-shadow: 14px 0 40px rgba(8, 49, 38, 0.18);
+
 }
 
-/* soft ambient glow */
-.app-sidebar::after {
+
+
+.app-sidebar::before {
+
   content: '';
 
   position: absolute;
+
   inset: 0;
 
   pointer-events: none;
 
   background:
-    radial-gradient(
-      circle at 24% 8%,
-      rgba(255, 255, 255, 0.12),
-      transparent 24%
-    ),
+
     linear-gradient(
+
       180deg,
-      transparent 0 62%,
-      rgba(0, 0, 0, 0.12) 100%
+
+      rgba(12, 92, 70, 0.46) 0%,
+
+      rgba(9, 72, 56, 0.50) 46%,
+
+      rgba(5, 43, 35, 0.14) 75%,
+
+      rgba(4, 35, 29, 0.36) 100%
+
     );
+
 }
 
-/* botanical / interior-inspired detail */
-.app-sidebar::before {
+
+
+.app-sidebar::after {
+
   content: '';
 
   position: absolute;
 
-  left: -44px;
-  bottom: 92px;
-
-  width: 270px;
-  height: 300px;
+  inset: 0;
 
   pointer-events: none;
-  opacity: 0.78;
 
   background:
-    radial-gradient(
-      ellipse at 18% 72%,
-      rgba(151, 196, 159, 0.18) 0 13%,
-      transparent 14%
-    ),
-    radial-gradient(
-      ellipse at 39% 58%,
-      rgba(173, 208, 179, 0.15) 0 12%,
-      transparent 13%
-    ),
-    radial-gradient(
-      ellipse at 61% 72%,
-      rgba(124, 178, 137, 0.14) 0 13%,
-      transparent 14%
-    ),
-    radial-gradient(
-      ellipse at 68% 44%,
-      rgba(184, 211, 179, 0.12) 0 11%,
-      transparent 12%
-    ),
-    linear-gradient(
-      74deg,
-      transparent 0 46%,
-      rgba(208, 224, 205, 0.10) 47% 49%,
-      transparent 50% 100%
-    );
+
+    radial-gradient(circle at 24% 8%, rgba(255,255,255,0.12), transparent 23%);
+
 }
 
-.app-sidebar > * {
+
+
+.app-sidebar > \* {
+
   position: relative;
+
   z-index: 2;
+
 }
+
+
+
+/* ========================= BRAND / LOGO ========================= */
+
+
+
+.sidebar-brand {
+
+  gap: 12px;
+
+}
+
+
 
 .sidebar-logo {
-  border-color: rgba(255, 255, 255, 0.24);
 
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.20),
-      rgba(255, 255, 255, 0.08)
-    );
-
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 10px 24px rgba(0, 0, 0, 0.10);
-}
-
-.sidebar-nav-item {
   position: relative;
-  overflow: hidden;
-}
-
-.sidebar-nav-item.active {
-  color: #124737;
-
-  background:
-    linear-gradient(
-      135deg,
-      #fffdf8,
-      #f2efe5
-    );
-
-  box-shadow:
-    0 10px 26px rgba(5, 45, 34, 0.18);
-}
-
-.sidebar-nav-item.active::after {
-  content: '';
-
-  position: absolute;
-  right: -22px;
-  top: -18px;
-
-  width: 64px;
-  height: 64px;
-
-  border-radius: 50%;
-
-  background:
-    rgba(115, 167, 132, 0.10);
-}
-
-.sidebar-nav-icon {
-  position: relative;
-  z-index: 1;
-}
-
-.sidebar-welcome {
-  border:
-    1px solid rgba(222, 203, 159, 0.56);
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 250, 240, 0.98),
-      rgba(242, 229, 201, 0.97)
-    );
-
-  box-shadow:
-    0 14px 28px rgba(4, 42, 32, 0.17);
-}
-
-
-/* =========================================================
-   MAIN
-   ========================================================= */
-
-.internal-main {
-  position: relative;
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.10),
-      rgba(241, 246, 239, 0.16)
-    );
-}
-
-
-/* =========================================================
-   HEADER
-   ========================================================= */
-
-.dashboard-header {
-  position: relative;
-
-  min-height: 164px;
-
-  overflow: hidden;
-
-  background:
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.98) 0%,
-      rgba(252, 248, 238, 0.96) 47%,
-      rgba(227, 240, 229, 0.92) 100%
-    );
-}
-
-/* faux window / warm daylight */
-.dashboard-header::before {
-  content: '';
-
-  position: absolute;
-
-  right: -6px;
-  top: 0;
-
-  width: 42%;
-  height: 100%;
-
-  pointer-events: none;
-
-  background:
-    linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 246, 220, 0.10)
-    ),
-    linear-gradient(
-      90deg,
-      transparent 0 64%,
-      rgba(255, 255, 255, 0.40) 64% 67%,
-      transparent 67% 82%,
-      rgba(255, 255, 255, 0.30) 82% 85%,
-      transparent 85%
-    ),
-    radial-gradient(
-      ellipse at 82% 44%,
-      rgba(112, 171, 126, 0.30),
-      transparent 36%
-    ),
-    radial-gradient(
-      ellipse at 94% 70%,
-      rgba(228, 200, 147, 0.22),
-      transparent 28%
-    );
-
-  opacity: 0.95;
-}
-
-/* botanical canopy */
-.dashboard-header::after {
-  content: '';
-
-  position: absolute;
-
-  right: 38px;
-  top: -56px;
-
-  width: 390px;
-  height: 220px;
-
-  pointer-events: none;
-
-  background:
-    radial-gradient(
-      ellipse at 22% 44%,
-      rgba(76, 137, 91, 0.22) 0 10%,
-      transparent 11%
-    ),
-    radial-gradient(
-      ellipse at 36% 34%,
-      rgba(94, 150, 104, 0.20) 0 11%,
-      transparent 12%
-    ),
-    radial-gradient(
-      ellipse at 49% 24%,
-      rgba(111, 162, 118, 0.18) 0 10%,
-      transparent 11%
-    ),
-    radial-gradient(
-      ellipse at 61% 18%,
-      rgba(126, 173, 132, 0.16) 0 9%,
-      transparent 10%
-    ),
-    radial-gradient(
-      ellipse at 72% 13%,
-      rgba(149, 188, 150, 0.15) 0 8%,
-      transparent 9%
-    ),
-    linear-gradient(
-      21deg,
-      transparent 0 48%,
-      rgba(63, 116, 80, 0.15) 49% 50%,
-      transparent 51% 100%
-    );
-
-  transform: rotate(-8deg);
-}
-
-.dashboard-header > * {
-  position: relative;
-  z-index: 2;
-}
-
-.dashboard-header h1 {
-  color: var(--hs-text);
-}
-
-.dashboard-eyebrow {
-  color: #2a7a5d;
-}
-
-.dashboard-account {
-  border:
-    1px solid rgba(36, 91, 69, 0.10);
-
-  background:
-    rgba(255, 255, 255, 0.90);
-
-  backdrop-filter:
-    blur(14px);
-
-  box-shadow:
-    0 16px 40px rgba(29, 71, 54, 0.11);
-}
-
-
-/* =========================================================
-   CONTENT BACKGROUND
-   ========================================================= */
-
-.internal-page-content {
-  position: relative;
-
-  background:
-    radial-gradient(
-      circle at 97% 10%,
-      rgba(152, 188, 157, 0.18),
-      transparent 24%
-    ),
-    radial-gradient(
-      circle at 8% 90%,
-      rgba(224, 198, 149, 0.13),
-      transparent 22%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(248, 248, 242, 0.94),
-      rgba(238, 245, 238, 0.96)
-    );
-}
-
-
-/* =========================================================
-   SHARED CARDS
-   ========================================================= */
-
-.summary-card,
-.quick-checkin-panel,
-.rooms-section,
-.modern-room-card,
-.history-panel {
-  border-color:
-    var(--hs-border);
-
-  background:
-    rgba(255, 255, 255, 0.93);
-
-  backdrop-filter:
-    blur(10px);
-
-  box-shadow:
-    var(--hs-shadow);
-}
-
-
-/* =========================================================
-   KPI CARDS
-   ========================================================= */
-
-.internal-page-content .summary-card {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-
-  min-height: 118px;
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.99),
-      rgba(249, 251, 247, 0.95)
-    );
-}
-
-.internal-page-content .summary-card::before {
-  content: '';
-
-  position: absolute;
-  inset: auto -24px -34px auto;
-
-  width: 115px;
-  height: 115px;
-
-  border-radius: 42% 58% 65% 35% / 50% 38% 62% 50%;
-
-  background:
-    rgba(160, 196, 169, 0.08);
-
-  transform: rotate(-18deg);
-}
-
-.summary-icon {
-  position: relative;
-  z-index: 2;
 
   display: grid;
+
   place-items: center;
 
   width: 48px;
+
   height: 48px;
 
   flex: 0 0 48px;
 
   border-radius: 14px;
 
-  background:
-    #eef6f1;
-
-  color:
-    #237a5d;
-}
-
-.summary-content {
-  position: relative;
-  z-index: 2;
-
-  min-width: 0;
-}
-
-.internal-page-content .summary-card.clean .summary-icon {
-  color: #237a5d;
-  background: #eaf5ee;
-}
-
-.internal-page-content .summary-card.dirty .summary-icon {
-  color: #b97822;
-  background: #fff3df;
-}
-
-.internal-page-content .summary-card.occupied .summary-icon {
-  color: #3f6f9d;
-  background: #eaf2fb;
-}
-
-.internal-page-content .summary-card.maintenance .summary-icon {
-  color: #b9524c;
-  background: #fbeceb;
-}
-
-.internal-page-content .summary-label {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.internal-page-content .summary-number {
-  margin-top: 6px;
-
-  font-size: 30px;
-}
-
-.summary-icon svg {
-  width: 22px;
-  height: 22px;
-}
-
-
-/* =========================================================
-   QUICK CHECK-IN
-   ========================================================= */
-
-.quick-checkin-panel {
-  position: relative;
-  overflow: hidden;
+  border: 1px solid rgba(238, 222, 168, 0.28);
 
   background:
-    linear-gradient(
-      115deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(242, 248, 242, 0.95)
-    );
+
+    radial-gradient(circle at 74% 24%, rgba(239, 210, 116, 0.42) 0 12%, transparent 13%),
+
+    linear-gradient(145deg, rgba(219, 226, 188, 0.22), rgba(74, 139, 104, 0.22));
+
+  box-shadow:
+
+    inset 0 1px 0 rgba(255,255,255,0.24),
+
+    0 8px 20px rgba(0,0,0,0.10);
+
 }
 
-.quick-checkin-panel::after {
+
+
+.sidebar-house {
+
+  position: relative;
+
+  display: block;
+
+  width: 28px;
+
+  height: 28px;
+
+  font-size: 0;
+
+}
+
+
+
+.sidebar-house::before {
+
   content: '';
 
   position: absolute;
 
-  right: -90px;
-  top: -70px;
+  inset: 2px;
 
-  width: 260px;
-  height: 180px;
+  background: #f8f3dc;
+
+  -webkit-mask:
+
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z' fill='none' stroke='black' stroke-width='1.9' stroke-linejoin='round'/%3E%3C/svg%3E")
+
+    center / contain no-repeat;
+
+  mask:
+
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z' fill='none' stroke='black' stroke-width='1.9' stroke-linejoin='round'/%3E%3C/svg%3E")
+
+    center / contain no-repeat;
+
+}
+
+
+
+.sidebar-house::after {
+
+  content: '';
+
+  position: absolute;
+
+  right: -2px;
+
+  top: -2px;
+
+  width: 10px;
+
+  height: 15px;
+
+  border-radius: 100% 0 100% 0;
+
+  background: linear-gradient(145deg, #d9c16e, #a9c27e);
+
+  transform: rotate(18deg);
+
+  box-shadow: 0 0 0 2px rgba(19, 92, 70, 0.24);
+
+}
+
+
+
+.sidebar-brand strong {
+
+  color: #fffdf1;
+
+  letter-spacing: -0.02em;
+
+  text-shadow: 0 1px 1px rgba(0,0,0,0.10);
+
+}
+
+
+
+.sidebar-brand > div:last-child > span {
+
+  color: rgba(255,255,255,0.78);
+
+}
+
+
+
+.sidebar-nav-item {
+
+  position: relative;
+
+  overflow: hidden;
+
+}
+
+
+
+.sidebar-nav-item.active {
+
+  color: #124737;
+
+  background: linear-gradient(135deg, #fffdf8, #f3efe4);
+
+  box-shadow: 0 10px 26px rgba(5,45,34,0.18);
+
+}
+
+
+
+.sidebar-nav-item.active::after {
+
+  content: '';
+
+  position: absolute;
+
+  right: -20px;
+
+  top: -18px;
+
+  width: 64px;
+
+  height: 64px;
 
   border-radius: 50%;
 
-  pointer-events: none;
+  background: rgba(115,167,132,0.10);
 
-  background:
-    radial-gradient(
-      circle,
-      rgba(159, 196, 166, 0.13),
-      transparent 68%
-    );
 }
 
-.quick-checkin-panel > * {
+
+
+.sidebar-welcome {
+
+  border: 1px solid rgba(222,203,159,0.56);
+
+  background: linear-gradient(145deg, rgba(255,250,240,0.98), rgba(242,229,201,0.97));
+
+  box-shadow: 0 14px 28px rgba(4,42,32,0.17);
+
+}
+
+
+
+/* ========================= HEADER ========================= */
+
+
+
+.internal-main {
+
   position: relative;
-  z-index: 1;
-}
 
-.quick-checkin-icon {
-  background:
-    linear-gradient(
-      145deg,
-      #218363,
-      #115d46
-    );
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(241,246,239,0.15));
 
-  box-shadow:
-    0 8px 20px rgba(26, 106, 78, 0.24);
-}
-
-.quick-checkin-icon svg {
-  width: 22px;
-  height: 22px;
 }
 
 
-/* =========================================================
-   ROOMS SECTION
-   ========================================================= */
 
-.rooms-section {
+.dashboard-header {
+
   position: relative;
+
+  min-height: 170px;
+
   overflow: hidden;
 
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(249, 250, 245, 0.96)
-    );
+  background-image:
 
-  box-shadow:
-    var(--hs-shadow-strong);
+    linear-gradient(
+
+      90deg,
+
+      rgba(255,255,255,0.99) 0%,
+
+      rgba(255,255,255,0.96) 34%,
+
+      rgba(252,249,239,0.74) 53%,
+
+      rgba(239,245,234,0.24) 76%,
+
+      rgba(255,255,255,0.04) 100%
+
+    ),
+
+    url('/assets/homestay-header-bg.png');
+
+  background-size: cover;
+
+  background-position: 63% 49%;
+
+  background-repeat: no-repeat;
+
+  border-bottom: 1px solid rgba(36,91,69,0.08);
+
 }
 
-/* botanical flourish top-right */
-.rooms-section::before {
+
+
+.dashboard-header::before {
+
   content: '';
 
   position: absolute;
 
-  right: 22px;
-  top: 2px;
-
-  width: 170px;
-  height: 90px;
+  inset: 0;
 
   pointer-events: none;
 
-  opacity: 0.78;
-
   background:
-    radial-gradient(
-      ellipse at 80% 25%,
-      rgba(91, 151, 104, 0.15) 0 11%,
-      transparent 12%
-    ),
-    radial-gradient(
-      ellipse at 68% 40%,
-      rgba(118, 169, 123, 0.13) 0 10%,
-      transparent 11%
-    ),
-    radial-gradient(
-      ellipse at 92% 50%,
-      rgba(132, 177, 134, 0.12) 0 9%,
-      transparent 10%
+
+    linear-gradient(
+
+      90deg,
+
+      rgba(255,255,255,0.56) 0%,
+
+      rgba(255,255,255,0.20) 38%,
+
+      transparent 62%
+
     );
+
 }
 
-/* soft landscape shape bottom */
-.rooms-section::after {
+
+
+.dashboard-header::after {
+
   content: '';
 
   position: absolute;
 
-  right: -90px;
-  bottom: -135px;
+  right: 0;
 
-  width: 470px;
-  height: 275px;
+  bottom: -55px;
 
-  pointer-events: none;
+  width: 36%;
 
-  border-radius:
-    70% 30% 52% 48%
-    / 62% 40% 60% 38%;
-
-  background:
-    linear-gradient(
-      140deg,
-      rgba(163, 197, 168, 0.19),
-      rgba(226, 203, 158, 0.11)
-    );
-
-  transform:
-    rotate(-7deg);
-}
-
-.rooms-section > * {
-  position: relative;
-  z-index: 1;
-}
-
-
-/* =========================================================
-   ROOM CARDS
-   ========================================================= */
-
-.modern-room-card {
-  position: relative;
-  overflow: hidden;
-
-  background:
-    linear-gradient(
-      150deg,
-      rgba(255, 255, 255, 0.995),
-      rgba(247, 250, 246, 0.97)
-    );
-
-  border:
-    1px solid rgba(35, 92, 70, 0.11);
-
-  box-shadow:
-    0 6px 22px rgba(31, 78, 59, 0.055);
-}
-
-.modern-room-card::before {
-  content: '';
-
-  position: absolute;
-
-  right: -42px;
-  bottom: -58px;
-
-  width: 170px;
   height: 120px;
 
   pointer-events: none;
 
-  border-radius:
-    62% 38% 58% 42%
-    / 55% 44% 56% 45%;
+  background: radial-gradient(ellipse, rgba(236,211,163,0.18), transparent 68%);
 
-  background:
-    linear-gradient(
-      145deg,
-      rgba(155, 194, 163, 0.10),
-      rgba(233, 213, 171, 0.06)
-    );
-
-  transform:
-    rotate(-12deg);
 }
 
-.modern-room-card::after {
+
+
+.dashboard-header > \* {
+
+  position: relative;
+
+  z-index: 2;
+
+}
+
+
+
+.dashboard-header h1 {
+
+  color: var(--hs-text);
+
+}
+
+
+
+.dashboard-eyebrow {
+
+  color: #2a7a5d;
+
+}
+
+
+
+.dashboard-account {
+
+  border: 1px solid rgba(36,91,69,0.10);
+
+  background: rgba(255,255,255,0.91);
+
+  backdrop-filter: blur(14px);
+
+  box-shadow: 0 16px 40px rgba(29,71,54,0.11);
+
+}
+
+
+
+/* ========================= CONTENT ========================= */
+
+
+
+.internal-page-content {
+
+  position: relative;
+
+  background:
+
+    radial-gradient(circle at 96% 11%, rgba(151,187,156,0.13), transparent 23%),
+
+    linear-gradient(180deg, rgba(248,248,242,0.95), rgba(240,245,239,0.97));
+
+}
+
+
+
+.summary-card,
+
+.quick-checkin-panel,
+
+.rooms-section,
+
+.modern-room-card,
+
+.history-panel {
+
+  border-color: var(--hs-border);
+
+  background: rgba(255,255,255,0.94);
+
+  backdrop-filter: blur(10px);
+
+  box-shadow: var(--hs-shadow);
+
+}
+
+
+
+/* ========================= KPI ========================= */
+
+
+
+.internal-page-content .summary-card {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+
+  min-height: 118px;
+
+  background: linear-gradient(145deg, rgba(255,255,255,0.99), rgba(250,251,247,0.95));
+
+}
+
+
+
+.internal-page-content .summary-card::before {
+
   content: '';
 
   position: absolute;
 
-  right: 14px;
-  bottom: 16px;
+  right: -24px;
 
-  width: 66px;
-  height: 66px;
+  bottom: -35px;
+
+  width: 116px;
+
+  height: 116px;
+
+  border-radius: 46% 54% 65% 35% / 50% 38% 62% 50%;
+
+  background: rgba(160,196,169,0.075);
+
+  transform: rotate(-18deg);
+
+}
+
+
+
+.summary-icon {
+
+  position: relative;
+
+  z-index: 2;
+
+  display: grid;
+
+  place-items: center;
+
+  width: 48px;
+
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  border-radius: 14px;
+
+}
+
+
+
+.summary-content {
+
+  position: relative;
+
+  z-index: 2;
+
+}
+
+
+
+.summary-card.clean .summary-icon {
+
+  color: #237a5d;
+
+  background: #eaf5ee;
+
+}
+
+
+
+.summary-card.dirty .summary-icon {
+
+  color: #b97822;
+
+  background: #fff3df;
+
+}
+
+
+
+.summary-card.occupied .summary-icon {
+
+  color: #3f6f9d;
+
+  background: #eaf2fb;
+
+}
+
+
+
+.summary-card.maintenance .summary-icon {
+
+  color: #b9524c;
+
+  background: #fbeceb;
+
+}
+
+
+
+.summary-icon svg {
+
+  width: 22px;
+
+  height: 22px;
+
+}
+
+
+
+.internal-page-content .summary-label {
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+}
+
+
+
+.internal-page-content .summary-number {
+
+  margin-top: 6px;
+
+  font-size: 30px;
+
+}
+
+
+
+/* ========================= QUICK CHECK-IN ========================= */
+
+
+
+.quick-checkin-panel {
+
+  position: relative;
+
+  overflow: hidden;
+
+  background: linear-gradient(115deg, rgba(255,255,255,0.99), rgba(245,249,244,0.96));
+
+  box-shadow: 0 13px 32px rgba(31,78,59,0.07);
+
+}
+
+
+
+.quick-checkin-icon {
+
+  background: linear-gradient(145deg, #1e805f, #0e5c44);
+
+  box-shadow: 0 8px 20px rgba(26,106,78,0.24);
+
+}
+
+
+
+.quick-checkin-icon svg {
+
+  width: 22px;
+
+  height: 22px;
+
+}
+
+
+
+.quick-checkin-button {
+
+  background: linear-gradient(135deg, #176f53, #0d4f3b) !important;
+
+  color: #fff !important;
+
+  box-shadow: 0 10px 22px rgba(20,93,70,0.20) !important;
+
+}
+
+
+
+/* ========================= ROOMS SECTION ========================= */
+
+
+
+.rooms-section {
+
+  position: relative;
+
+  overflow: hidden;
+
+  background: linear-gradient(145deg, rgba(255,255,255,0.99), rgba(250,250,246,0.97));
+
+  box-shadow: var(--hs-shadow-strong);
+
+}
+
+
+
+.rooms-section::before {
+
+  content: '';
+
+  position: absolute;
+
+  right: 16px;
+
+  top: 8px;
+
+  width: 120px;
+
+  height: 75px;
 
   pointer-events: none;
 
-  opacity: 0.48;
+  background:
+
+    radial-gradient(ellipse at 68% 32%, rgba(105,158,113,0.15) 0 12%, transparent 13%),
+
+    radial-gradient(ellipse at 84% 52%, rgba(132,177,134,0.12) 0 11%, transparent 12%);
+
+}
+
+
+
+.rooms-section::after {
+
+  content: '';
+
+  position: absolute;
+
+  right: -105px;
+
+  bottom: -150px;
+
+  width: 480px;
+
+  height: 270px;
+
+  pointer-events: none;
+
+  border-radius: 70% 30% 52% 48% / 62% 40% 60% 38%;
+
+  background: linear-gradient(140deg, rgba(163,197,168,0.17), rgba(226,203,158,0.09));
+
+  transform: rotate(-7deg);
+
+}
+
+
+
+.rooms-section > \* {
+
+  position: relative;
+
+  z-index: 1;
+
+}
+
+
+
+/* ========================= ROOM CARDS ========================= */
+
+
+
+.modern-room-card {
+
+  position: relative;
+
+  overflow: hidden;
+
+  min-height: 260px;
+
+  background: linear-gradient(150deg, rgba(255,255,255,0.995), rgba(248,250,246,0.98));
+
+  border: 1px solid rgba(35,92,70,0.11);
+
+  box-shadow: 0 6px 22px rgba(31,78,59,0.055);
+
+}
+
+
+
+.modern-room-card::before {
+
+  content: '';
+
+  position: absolute;
+
+  left: -10%;
+
+  right: -10%;
+
+  bottom: -52px;
+
+  height: 138px;
+
+  pointer-events: none;
+
+  border-radius: 54% 46% 0 0 / 46% 54% 0 0;
 
   background:
-    radial-gradient(
-      ellipse at 40% 65%,
-      rgba(77, 142, 93, 0.13) 0 13%,
-      transparent 14%
-    ),
-    radial-gradient(
-      ellipse at 66% 39%,
-      rgba(90, 151, 102, 0.11) 0 13%,
-      transparent 14%
+
+    linear-gradient(
+
+      110deg,
+
+      rgba(235,221,190,0.18) 0%,
+
+      rgba(190,214,194,0.17) 48%,
+
+      rgba(190,211,231,0.17) 100%
+
     );
+
+  transform: rotate(-2deg);
+
 }
 
-.modern-room-card > * {
-  position: relative;
-  z-index: 1;
+
+
+.modern-room-card::after {
+
+  content: '';
+
+  position: absolute;
+
+  right: 18px;
+
+  bottom: 14px;
+
+  width: 94px;
+
+  height: 78px;
+
+  pointer-events: none;
+
+  opacity: 0.72;
+
+  background:
+
+    radial-gradient(ellipse at 30% 70%, rgba(88,145,100,0.16) 0 13%, transparent 14%),
+
+    radial-gradient(ellipse at 60% 43%, rgba(107,159,113,0.15) 0 13%, transparent 14%),
+
+    linear-gradient(35deg, transparent 0 48%, rgba(87,142,98,0.10) 49% 50%, transparent 51% 100%);
+
 }
+
+
+
+.modern-room-card > \* {
+
+  position: relative;
+
+  z-index: 1;
+
+}
+
+
 
 .modern-room-card:hover {
-  transform:
-    translateY(-3px);
 
-  border-color:
-    rgba(50, 132, 98, 0.24);
+  transform: translateY(-3px);
 
-  box-shadow:
-    0 16px 36px rgba(31, 78, 59, 0.10);
+  border-color: rgba(50,132,98,0.24);
+
+  box-shadow: 0 16px 36px rgba(31,78,59,0.10);
+
 }
 
+
+
 .room-icon {
+
   width: 38px;
+
   height: 38px;
 
   flex: 0 0 38px;
@@ -806,175 +930,576 @@
 
   color: #217759;
 
-  background:
-    linear-gradient(
-      145deg,
-      #eaf5ef,
-      #dff0e6
-    );
+  background: linear-gradient(145deg, #eaf5ef, #dff0e6);
 
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.78);
+
 }
+
+
 
 .room-icon svg {
+
   width: 20px;
+
   height: 20px;
+
 }
 
 
-/* =========================================================
-   FORMS
-   ========================================================= */
+
+.modern-room-status {
+
+  margin-top: 18px;
+
+}
+
+
+
+.modern-room-actions {
+
+  margin-top: 26px;
+
+}
+
+
+
+/* ========================= FORMS ========================= */
+
+
 
 .form-control,
-.status-select {
-  background:
-    rgba(250, 251, 247, 0.97);
 
-  border-color:
-    rgba(48, 94, 75, 0.15);
+.status-select {
+
+  background: rgba(250,251,247,0.97);
+
+  border-color: rgba(48,94,75,0.15);
+
 }
+
+
 
 .form-control:focus,
+
 .status-select:focus {
-  border-color:
-    #75aa91;
 
-  background:
-    #ffffff;
+  border-color: #75aa91;
 
-  box-shadow:
-    0 0 0 3px rgba(68, 137, 107, 0.13);
+  background: #fff;
+
+  box-shadow: 0 0 0 3px rgba(68,137,107,0.13);
+
 }
 
 
-/* =========================================================
-   BUTTONS
-   ========================================================= */
+
+/* ========================= BUTTONS ========================= */
+
+
 
 .primary-button,
+
 .secondary-button {
+
   display: inline-flex;
+
   align-items: center;
+
   justify-content: center;
 
   gap: 7px;
+
 }
+
+
 
 .primary-button {
-  background:
-    linear-gradient(
-      135deg,
-      #238161,
-      #135943
-    );
 
-  box-shadow:
-    0 8px 20px rgba(23, 98, 73, 0.19);
+  background: linear-gradient(135deg, #176f53, #0d4f3b);
+
+  box-shadow: 0 10px 22px rgba(20,93,70,0.22);
+
 }
+
+
 
 .primary-button:hover:not(:disabled) {
-  box-shadow:
-    0 12px 26px rgba(23, 98, 73, 0.27);
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 13px 28px rgba(20,93,70,0.27);
+
 }
+
+
 
 .secondary-button {
-  background:
-    rgba(255, 255, 255, 0.90);
 
-  backdrop-filter:
-    blur(8px);
+  background: rgba(255,255,255,0.93);
+
+  backdrop-filter: blur(8px);
+
 }
 
+
+
 .button-icon {
+
   display: inline-grid;
+
   place-items: center;
 
   flex: 0 0 auto;
+
 }
+
+
 
 .button-icon svg {
+
   width: 16px;
+
   height: 16px;
+
 }
+
+
 
 .room-save-button {
+
   padding-inline: 13px;
+
 }
 
 
-/* =========================================================
-   MAINTENANCE
-   ========================================================= */
+
+/* ========================= MAINTENANCE ========================= */
+
+
 
 .maintenance-fields {
+
   position: relative;
 
   overflow: hidden;
 
-  background:
-    linear-gradient(
-      145deg,
-      #fbf8f2,
-      #fffaf3
-    );
+  background: linear-gradient(145deg, #fbf8f2, #fffaf3);
+
 }
 
+
+
 .maintenance-fields::after {
+
   content: '';
 
   position: absolute;
 
   right: -22px;
+
   bottom: -26px;
 
   width: 92px;
+
   height: 92px;
 
   border-radius: 50%;
 
   pointer-events: none;
 
-  background:
-    rgba(222, 191, 138, 0.09);
+  background: rgba(222,191,138,0.09);
+
 }
 
-.maintenance-fields > * {
+
+
+.maintenance-fields > \* {
+
   position: relative;
+
   z-index: 1;
+
+}
+
+
+
+/* ========================= RESPONSIVE ========================= */
+
+
+
+@media (max-width: 1200px) {
+
+  .dashboard-header {
+
+    background-position: 68% center;
+
+  }
+
+}
+
+
+
+@media (max-width: 1000px) {
+
+  .dashboard-header {
+
+    background-position: 72% center;
+
+  }
+
+
+
+  .modern-room-card {
+
+    min-height: 0;
+
+  }
+
+}
+
+
+
+@media (max-width: 760px) {
+
+  .dashboard-header {
+
+    background-position: 76% center;
+
+  }
+
+
+
+  .dashboard-header::before {
+
+    background:
+
+      linear-gradient(
+
+        90deg,
+
+        rgba(255,255,255,0.88),
+
+        rgba(255,255,255,0.52)
+
+      );
+
+  }
+
+
+
+  .rooms-section::before,
+
+  .rooms-section::after,
+
+  .modern-room-card::before,
+
+  .modern-room-card::after {
+
+    opacity: 0.30;
+
+  }
+
 }
 
 
 /* =========================================================
-   MOBILE
+   FINAL DEMO-2 OVERRIDES
+   Mục tiêu: card phòng không còn trắng tinh, 3 card cân bằng,
+   wave / botanical rõ hơn và nút check-in xanh đậm.
    ========================================================= */
 
-@media (max-width: 1000px) {
-  .dashboard-header::after {
-    right: -40px;
-    opacity: 0.58;
+@media (min-width: 1001px) {
+  .modern-room-grid {
+    align-items: stretch !important;
+    grid-auto-rows: 1fr;
+  }
+
+  .modern-room-card {
+    height: 100%;
+    min-height: 420px;
+  }
+
+  .modern-room-actions {
+    margin-top: auto;
   }
 }
 
-@media (max-width: 760px) {
-  .dashboard-header::before,
-  .dashboard-header::after,
-  .rooms-section::before,
-  .rooms-section::after,
-  .app-sidebar::before,
-  .modern-room-card::before,
-  .modern-room-card::after {
-    opacity: 0.30;
+/* Nền cơ bản của card rõ hơn thay vì trắng tinh */
+.modern-room-card {
+  isolation: isolate;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,0.995) 0%,
+      rgba(255,255,255,0.985) 56%,
+      rgba(243,248,244,0.98) 100%
+    );
+}
+
+/* Wave lớn ở nửa dưới card */
+.modern-room-card::before {
+  left: -14%;
+  right: -14%;
+  bottom: -78px;
+  height: 210px;
+  border-radius: 52% 48% 0 0 / 38% 44% 0 0;
+  opacity: 1;
+  transform: rotate(-3deg);
+}
+
+/* Botanical nhẹ ở góc phải dưới */
+.modern-room-card::after {
+  right: 20px;
+  bottom: 24px;
+  width: 118px;
+  height: 100px;
+  opacity: 0.88;
+}
+
+/* TRỐNG SẠCH - sage xanh nhẹ */
+.modern-room-card:has(.status-badge.clean) {
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fcfefd 54%,
+      #f0f8f2 100%
+    );
+}
+
+.modern-room-card:has(.status-badge.clean)::before {
+  background:
+    linear-gradient(
+      116deg,
+      rgba(213, 233, 216, 0.56) 0%,
+      rgba(231, 241, 228, 0.38) 52%,
+      rgba(239, 230, 201, 0.26) 100%
+    );
+}
+
+/* TRỐNG BẨN - kem vàng nhẹ giống demo */
+.modern-room-card:has(.status-badge.dirty) {
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fffefd 52%,
+      #fff9ee 100%
+    );
+}
+
+.modern-room-card:has(.status-badge.dirty)::before {
+  background:
+    linear-gradient(
+      116deg,
+      rgba(244, 228, 195, 0.62) 0%,
+      rgba(247, 236, 210, 0.46) 52%,
+      rgba(217, 234, 220, 0.34) 100%
+    );
+}
+
+/* ĐANG Ở - wave xanh lam/sage rõ như ảnh demo */
+.modern-room-card:has(.status-badge.occupied) {
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fcfdff 50%,
+      #f3f8fc 100%
+    );
+}
+
+.modern-room-card:has(.status-badge.occupied)::before {
+  bottom: -66px;
+  height: 220px;
+  background:
+    linear-gradient(
+      118deg,
+      rgba(212, 229, 246, 0.70) 0%,
+      rgba(225, 236, 244, 0.52) 46%,
+      rgba(211, 232, 218, 0.46) 100%
+    );
+}
+
+/* BẢO TRÌ - kem ấm, không làm chìm form */
+.modern-room-card:has(.status-badge.maintenance) {
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fffdfa 52%,
+      #fff8ed 100%
+    );
+}
+
+.modern-room-card:has(.status-badge.maintenance)::before {
+  background:
+    linear-gradient(
+      116deg,
+      rgba(244, 226, 192, 0.54) 0%,
+      rgba(247, 236, 213, 0.40) 48%,
+      rgba(241, 218, 213, 0.32) 100%
+    );
+}
+
+/* Tăng hình lá nhưng vẫn không che nội dung */
+.modern-room-card::after {
+  background:
+    radial-gradient(
+      ellipse at 28% 74%,
+      rgba(79, 141, 91, 0.24) 0 12%,
+      transparent 13%
+    ),
+    radial-gradient(
+      ellipse at 54% 50%,
+      rgba(104, 158, 111, 0.21) 0 12%,
+      transparent 13%
+    ),
+    radial-gradient(
+      ellipse at 74% 30%,
+      rgba(132, 177, 132, 0.18) 0 11%,
+      transparent 12%
+    ),
+    linear-gradient(
+      34deg,
+      transparent 0 48%,
+      rgba(76, 133, 89, 0.14) 49% 50%,
+      transparent 51% 100%
+    );
+}
+
+/* Card header / body phân cấp rõ hơn */
+.modern-room-card-top {
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(43, 90, 72, 0.08);
+}
+
+.modern-room-status {
+  margin-top: 20px;
+}
+
+.status-help {
+  max-width: 58%;
+}
+
+/* Form bảo trì rõ hơn, tách khỏi phần nền trang trí */
+.maintenance-fields {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgba(208, 180, 127, 0.16);
+  border-radius: 13px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(253,249,240,0.98),
+      rgba(255,252,246,0.98)
+    );
+}
+
+.maintenance-summary {
+  border-left-width: 3px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 244, 241, 0.98),
+      rgba(255, 250, 246, 0.92)
+    );
+}
+
+/* Nút check-in phải xanh đậm giống demo */
+.quick-checkin-form .quick-checkin-button.primary-button {
+  background:
+    linear-gradient(
+      135deg,
+      #176f53 0%,
+      #0d4f3b 100%
+    ) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  opacity: 1;
+}
+
+.quick-checkin-form .quick-checkin-button.primary-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  background:
+    linear-gradient(
+      135deg,
+      #1d7b5b 0%,
+      #0b4736 100%
+    ) !important;
+}
+
+/* Khi disabled vẫn rõ trạng thái nhưng không nhạt quá */
+.quick-checkin-form .quick-checkin-button.primary-button:disabled {
+  background:
+    linear-gradient(
+      135deg,
+      #8fbaaa,
+      #76a392
+    ) !important;
+  color: rgba(255,255,255,0.96) !important;
+  opacity: 1;
+}
+
+/* Phần tổng thể của danh sách phòng giống panel demo hơn */
+.rooms-section {
+  padding-bottom: 26px;
+}
+
+.rooms-section-header {
+  margin-bottom: 18px;
+}
+
+.room-count-badge {
+  box-shadow:
+    inset 0 0 0 1px rgba(39, 112, 85, 0.04);
+}
+
+/* Mobile / tablet: trả card về chiều cao tự nhiên */
+@media (max-width: 1000px) {
+  .modern-room-card {
+    height: auto;
+    min-height: 0;
   }
 
-  .internal-page-content .summary-card {
-    align-items: flex-start;
+  .modern-room-actions {
+    margin-top: 18px;
   }
 
-  .summary-icon {
-    width: 42px;
-    height: 42px;
-    flex-basis: 42px;
+  .status-help {
+    max-width: none;
+  }
+}
+/* =========================================================
+   FIX KHOẢNG TRẮNG ROOM CARD
+   ========================================================= */
+
+@media (min-width: 1001px) {
+  .modern-room-grid {
+    align-items: start !important;
+    grid-auto-rows: auto !important;
+  }
+
+  /* Không ép tất cả card cao bằng phòng bảo trì */
+  .modern-room-card {
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: start !important;
+  }
+
+  /* Phòng thường cao vừa đủ để vẫn có wave trang trí */
+  .modern-room-card:not(:has(.status-badge.maintenance)) {
+    min-height: 285px !important;
+  }
+
+  /* Phòng bảo trì tự cao theo form */
+  .modern-room-card:has(.status-badge.maintenance) {
+    min-height: 0 !important;
+  }
+
+  /* Nút nằm gần đáy nhưng không tạo vùng trống lớn */
+  .modern-room-actions {
+    margin-top: 24px !important;
   }
 }
