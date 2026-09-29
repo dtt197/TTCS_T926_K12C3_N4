@@ -40,7 +40,7 @@ export function UserManagementPage({
   const canManageAccounts = hasPermission(role, 'accounts:manage')
 
   const [users, setUsers] = useState<StaffUser[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(canViewAccounts)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [busyUserId, setBusyUserId] = useState<number | null>(null)
@@ -50,7 +50,6 @@ export function UserManagementPage({
 
   useEffect(() => {
     if (!canViewAccounts) {
-      setIsLoading(false)
       return
     }
 
