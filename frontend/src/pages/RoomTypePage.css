@@ -1,0 +1,556 @@
+/* =========================================================
+   ROOM TYPE PAGE - MODERN HOMESTAY UI
+   Chỉ áp dụng cho trang Loại phòng.
+   Không đụng App.css / HomestayTheme.css / UserManagementPage.css.
+   ========================================================= */
+
+.room-type-page {
+  --rt-green-900: #0d4f3b;
+  --rt-green-800: #176f53;
+  --rt-green-700: #238161;
+  --rt-text: #17362d;
+  --rt-muted: #74817b;
+  --rt-line: rgba(37, 92, 71, 0.12);
+  --rt-shadow: 0 14px 34px rgba(31, 78, 59, 0.07);
+  --rt-shadow-strong: 0 22px 52px rgba(31, 78, 59, 0.10);
+
+  width: 100%;
+}
+
+.room-type-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+
+.room-type-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: #2b7c5f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.room-type-heading h1,
+.room-type-section-heading h2 {
+  margin: 0;
+  color: var(--rt-text);
+}
+
+.room-type-heading h1 {
+  font-size: clamp(30px, 3vw, 44px);
+  line-height: 1.05;
+}
+
+.room-type-heading p,
+.room-type-section-heading p {
+  margin: 7px 0 0;
+  color: var(--rt-muted);
+  line-height: 1.6;
+}
+
+.room-type-heading p {
+  max-width: 720px;
+}
+
+.room-type-count,
+.room-type-list-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  padding: 9px 13px;
+  border: 1px solid rgba(35, 92, 70, 0.12);
+  border-radius: 999px;
+  color: #286f57;
+  background: linear-gradient(145deg, #fff, #eef6f0);
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.room-type-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.room-type-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 92px;
+  padding: 16px 18px;
+  border: 1px solid var(--rt-line);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(248,251,247,.96));
+  box-shadow: var(--rt-shadow);
+}
+
+.room-type-summary-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 12px;
+  color: #237a5d;
+  background: #eaf5ee;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.room-type-summary-card span:not(.room-type-summary-icon) {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--rt-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.room-type-summary-card strong {
+  color: var(--rt-text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.room-type-notice {
+  margin-bottom: 18px;
+  padding: 13px 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.room-type-notice.success {
+  color: #166534;
+  border-color: rgba(22, 101, 52, 0.12);
+  background: #eaf7ee;
+}
+
+.room-type-notice.error {
+  color: #9f2d1d;
+  border-color: rgba(159, 45, 29, 0.12);
+  background: #fff1ee;
+}
+
+.room-type-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(330px, .7fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.room-type-workspace.readonly {
+  grid-template-columns: 1fr;
+}
+
+.room-type-list-panel,
+.room-type-form-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rt-line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(249,251,247,.97));
+  box-shadow: var(--rt-shadow-strong);
+}
+
+.room-type-list-panel {
+  padding: 22px;
+}
+
+.room-type-form-panel {
+  position: sticky;
+  top: 20px;
+  padding: 22px;
+}
+
+.room-type-list-panel::after,
+.room-type-form-panel::after {
+  content: '';
+  position: absolute;
+  right: -50px;
+  bottom: -60px;
+  width: 190px;
+  height: 145px;
+  pointer-events: none;
+  border-radius: 58% 42% 66% 34% / 50% 56% 44% 50%;
+  background: linear-gradient(145deg, rgba(174,205,179,.11), rgba(232,211,170,.08));
+  transform: rotate(-10deg);
+}
+
+.room-type-list-panel > *,
+.room-type-form-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.room-type-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(37,92,71,.08);
+}
+
+.room-type-section-heading.compact {
+  display: block;
+}
+
+.room-type-section-heading h2 {
+  font-size: 20px;
+}
+
+.room-type-section-heading p {
+  font-size: 11px;
+}
+
+.room-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.room-type-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid rgba(37,92,71,.11);
+  border-radius: 15px;
+  padding: 17px;
+  background: linear-gradient(150deg, rgba(255,255,255,.995), rgba(247,250,246,.97));
+  box-shadow: 0 6px 20px rgba(31,78,59,.05);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.room-type-card::after {
+  content: '';
+  position: absolute;
+  right: -42px;
+  bottom: -52px;
+  width: 150px;
+  height: 105px;
+  pointer-events: none;
+  border-radius: 60% 40% 65% 35% / 52% 42% 58% 48%;
+  background: linear-gradient(145deg, rgba(168,199,175,.12), rgba(232,211,170,.08));
+  transform: rotate(-10deg);
+}
+
+.room-type-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.room-type-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(50,132,98,.20);
+  box-shadow: 0 12px 26px rgba(31,78,59,.08);
+}
+
+.room-type-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.room-type-card-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+}
+
+.room-type-code {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  height: 38px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  border-radius: 11px;
+  color: #217759;
+  background: linear-gradient(145deg, #eaf5ef, #dff0e6);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.room-type-card h3 {
+  margin: 0;
+  color: var(--rt-text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.room-type-card-title p {
+  margin: 5px 0 0;
+  color: var(--rt-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.room-type-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.room-type-status.active {
+  color: #166534;
+  background: #e7f6ec;
+}
+
+.room-type-status.inactive {
+  color: #8a4b16;
+  background: #fff1dc;
+}
+
+.room-type-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 8px;
+  margin: 16px 0;
+  padding: 12px 0;
+  border-top: 1px solid rgba(37,92,71,.07);
+  border-bottom: 1px solid rgba(37,92,71,.07);
+}
+
+.room-type-metrics > div {
+  min-width: 0;
+}
+
+.room-type-metrics span,
+.room-type-meta-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #819089;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.room-type-metrics strong {
+  color: var(--rt-text);
+  font-size: 16px;
+}
+
+.room-type-metrics small {
+  margin-left: 4px;
+  color: var(--rt-muted);
+  font-size: 9px;
+}
+
+.room-type-amenity-block {
+  min-height: 68px;
+}
+
+.room-type-amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.room-type-amenity-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(37,92,71,.08);
+  border-radius: 999px;
+  color: #45675a;
+  background: #f4f8f4;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.room-type-no-amenity {
+  margin: 0;
+  color: var(--rt-muted);
+  font-size: 10px;
+}
+
+.room-type-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(37,92,71,.07);
+}
+
+.room-type-actions .secondary-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 10px;
+}
+
+.room-type-actions .secondary-button.danger {
+  color: #a33d37;
+  border-color: rgba(163,61,55,.14);
+}
+
+.room-type-actions .secondary-button.danger:hover {
+  background: #fff5f3;
+  border-color: rgba(163,61,55,.24);
+}
+
+.room-type-empty {
+  padding: 34px 24px;
+  text-align: center;
+  color: var(--rt-muted);
+  border: 1px dashed rgba(64,111,91,.26);
+  border-radius: 14px;
+  background: rgba(248,251,247,.72);
+}
+
+.room-type-form-panel .checkin-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 13px;
+}
+
+.room-type-form-panel .checkin-form > .alert,
+.room-type-form-panel .checkin-form > .checkin-note {
+  grid-column: 1 / -1;
+}
+
+.room-type-form-panel .form-label {
+  display: grid;
+  gap: 7px;
+  color: #53685f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.room-type-form-panel .form-label:nth-of-type(6) {
+  grid-column: 1 / -1;
+}
+
+.room-type-form-panel .form-control {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(48,94,75,.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--rt-text);
+  background: rgba(250,251,247,.98);
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.room-type-form-panel .form-control:focus {
+  border-color: #75aa91;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(68,137,107,.12);
+}
+
+.room-type-form-panel textarea.form-control {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.room-type-form-panel .checkin-form > .primary-button,
+.room-type-form-panel .checkin-form > .secondary-button {
+  min-height: 38px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.room-type-form-panel .checkin-form > .primary-button {
+  justify-self: stretch;
+}
+
+.room-type-form-panel .checkin-form > .secondary-button {
+  justify-self: stretch;
+}
+
+.room-type-amenity-editor-wrap {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(37,92,71,.08);
+}
+
+.room-type-amenity-editor-wrap .checkin-form {
+  grid-template-columns: 1fr;
+}
+
+.room-type-amenity-editor-wrap h3 {
+  margin: 0;
+  color: var(--rt-text);
+  font-size: 15px;
+}
+
+.room-type-amenity-editor-wrap .user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.room-type-amenity-editor-wrap .user-actions .secondary-button {
+  min-height: 32px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 9px;
+}
+
+.room-type-amenity-editor-wrap .primary-button {
+  min-height: 38px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+@media (max-width: 1260px) {
+  .room-type-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .room-type-form-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .room-type-summary,
+  .room-type-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .room-type-form-panel .checkin-form {
+    grid-template-columns: 1fr;
+  }
+
+  .room-type-form-panel .form-label:nth-of-type(6) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .room-type-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .room-type-list-panel,
+  .room-type-form-panel {
+    padding: 18px;
+  }
+
+  .room-type-card-top {
+    flex-direction: column;
+  }
+
+  .room-type-metrics {
+    grid-template-columns: 1fr;
+  }
+}

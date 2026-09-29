@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RoomTypeAmenityEditor } from '../components/RoomTypeAmenityEditor'
 import { RoomTypeForm } from '../components/RoomTypeForm'
 import { hasPermission } from '../permissions/rolePermissions'
@@ -13,7 +13,7 @@ import {
 import type { Amenity } from '../types/amenity'
 import type { RoomType, RoomTypePayload } from '../types/roomType'
 import '../App.css'
-import './UserManagementPage.css'
+import './RoomTypePage.css'
 
 type RoomTypePageProps = {
   role: string
@@ -34,49 +34,73 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [editing, setEditing] = useState<RoomType | null>(null)
 
-  const load = useCallback(() =>
-    getRoomTypes()
-      .then((items) => {
-        setRoomTypes(items)
-        setLoadError(null)
-      })
-      .catch((err: unknown) => {
-        setLoadError(err instanceof Error ? err.message : 'Không tải được danh sách loại phòng')
-      })
-      .finally(() => {
-        setIsLoading(false)
-      }),
-  [])
+  const load = useCallback(
+    () =>
+      getRoomTypes()
+        .then((items) => {
+          setRoomTypes(items)
+          setLoadError(null)
+        })
+        .catch((err: unknown) => {
+          setLoadError(
+            err instanceof Error
+              ? err.message
+              : 'Không tải được danh sách loại phòng',
+          )
+        })
+        .finally(() => {
+          setIsLoading(false)
+        }),
+    [],
+  )
 
   useEffect(() => {
     void load()
   }, [load])
 
-  // S1-08: danh mục tiện nghi để chọn khi gắn (chỉ người quản lý mới cần).
   useEffect(() => {
     if (!canManage) return
+
     void getAmenities()
       .then(setAmenities)
       .catch(() => setAmenities([]))
   }, [canManage])
 
+  const stats = useMemo(
+    () => ({
+      total: roomTypes.length,
+      active: roomTypes.filter((roomType) => roomType.active).length,
+      rooms: roomTypes.reduce((sum, roomType) => sum + roomType.roomCount, 0),
+    }),
+    [roomTypes],
+  )
+
   async function handleCreate(payload: RoomTypePayload) {
     const created = await createRoomType(payload)
-    setNotice({ type: 'success', text: `Đã thêm loại phòng ${created.name}` })
+    setNotice({
+      type: 'success',
+      text: `Đã thêm loại phòng ${created.name}`,
+    })
     await load()
   }
 
   async function handleUpdate(payload: RoomTypePayload) {
     if (!editing) return
+
     const updated = await updateRoomType(editing.id, payload)
     setEditing(null)
-    setNotice({ type: 'success', text: `Đã lưu loại phòng ${updated.name}` })
+    setNotice({
+      type: 'success',
+      text: `Đã lưu loại phòng ${updated.name}`,
+    })
     await load()
   }
 
   function handleAmenitiesChanged(updated: RoomType) {
     setEditing(updated)
-    setRoomTypes((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+    setRoomTypes((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    )
   }
 
   async function handleToggle(roomType: RoomType) {
@@ -84,158 +108,282 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
       await updateRoomTypeStatus(roomType.id, !roomType.active)
       setNotice({
         type: 'success',
-        text: roomType.active ? `Đã ngừng bán ${roomType.name}` : `Đã mở bán lại ${roomType.name}`,
+        text: roomType.active
+          ? `Đã ngừng bán ${roomType.name}`
+          : `Đã mở bán lại ${roomType.name}`,
       })
       await load()
     } catch (err) {
-      setNotice({ type: 'error', text: err instanceof Error ? err.message : 'Không đổi được trạng thái' })
+      setNotice({
+        type: 'error',
+        text:
+          err instanceof Error
+            ? err.message
+            : 'Không đổi được trạng thái',
+      })
     }
   }
 
   async function handleDelete(roomType: RoomType) {
     if (!window.confirm(`Xoá loại phòng "${roomType.name}"?`)) return
+
     try {
       await deleteRoomType(roomType.id)
-      if (editing?.id === roomType.id) setEditing(null)
-      setNotice({ type: 'success', text: `Đã xoá loại phòng ${roomType.name}` })
+
+      if (editing?.id === roomType.id) {
+        setEditing(null)
+      }
+
+      setNotice({
+        type: 'success',
+        text: `Đã xoá loại phòng ${roomType.name}`,
+      })
+
       await load()
     } catch (err) {
-      // AC4: máy chủ báo "đang có N phòng gắn vào nên không xoá được..."
-      setNotice({ type: 'error', text: err instanceof Error ? err.message : 'Không xoá được loại phòng' })
+      setNotice({
+        type: 'error',
+        text:
+          err instanceof Error
+            ? err.message
+            : 'Không xoá được loại phòng',
+      })
     }
   }
 
   return (
-    <div className="app-shell">
-      <main className="main-content">
-        <section className="intro">
+    <div className="room-type-page">
+      <section className="room-type-heading">
+        <div>
+          <span className="room-type-kicker">QUẢN LÝ DANH MỤC</span>
+          <h1>Loại phòng</h1>
+          <p>
+            {canManage
+              ? 'Khai báo loại phòng, sức chứa và tiện nghi để chuẩn hoá thông tin bán phòng.'
+              : 'Xem các loại phòng homestay đang bán và tiện nghi của từng loại.'}
+          </p>
+        </div>
+
+        <div className="room-type-count">{roomTypes.length} loại phòng</div>
+      </section>
+
+      <section className="room-type-summary" aria-label="Tổng quan loại phòng">
+        <article className="room-type-summary-card">
+          <span className="room-type-summary-icon">▦</span>
           <div>
-
-            <h1>Loại phòng</h1>
-            <p>
-              {canManage
-                ? 'Khai báo loại phòng và tiện nghi để mọi người cùng gọi tên và bán theo cùng một mô tả.'
-                : 'Xem các loại phòng homestay đang bán và tiện nghi của từng loại.'}
-            </p>
+            <span>Tổng loại phòng</span>
+            <strong>{stats.total}</strong>
           </div>
-        </section>
+        </article>
 
-        <section className="workspace-grid">
-          <div className="panel">
-            <div className="panel-heading">
+        <article className="room-type-summary-card">
+          <span className="room-type-summary-icon">✓</span>
+          <div>
+            <span>Đang bán</span>
+            <strong>{stats.active}</strong>
+          </div>
+        </article>
+
+        <article className="room-type-summary-card">
+          <span className="room-type-summary-icon">⌂</span>
+          <div>
+            <span>Phòng vật lý</span>
+            <strong>{stats.rooms}</strong>
+          </div>
+        </article>
+      </section>
+
+      {notice && (
+        <div
+          className={`room-type-notice ${notice.type}`}
+          role="status"
+        >
+          {notice.text}
+        </div>
+      )}
+
+      <section
+        className={
+          canManage
+            ? 'room-type-workspace'
+            : 'room-type-workspace readonly'
+        }
+      >
+        <div className="room-type-list-panel">
+          <div className="room-type-section-heading">
+            <div>
+              <span className="room-type-kicker">DANH SÁCH</span>
+              <h2>Danh sách loại phòng</h2>
+              <p>
+                Theo dõi sức chứa, số phòng, tiện nghi và trạng thái bán.
+              </p>
+            </div>
+
+            <span className="room-type-list-count">
+              {roomTypes.length} loại
+            </span>
+          </div>
+
+          {isLoading ? (
+            <div className="room-type-empty">Đang tải...</div>
+          ) : loadError ? (
+            <div className="room-type-notice error" role="alert">
+              {loadError}
+            </div>
+          ) : roomTypes.length === 0 ? (
+            <div className="room-type-empty">
+              Chưa có loại phòng nào.
+            </div>
+          ) : (
+            <div className="room-type-grid">
+              {roomTypes.map((roomType) => (
+                <article className="room-type-card" key={roomType.id}>
+                  <div className="room-type-card-top">
+                    <div className="room-type-card-title">
+                      <div className="room-type-code">
+                        {roomType.code}
+                      </div>
+
+                      <div>
+                        <h3>{roomType.name}</h3>
+                        <p>
+                          {roomType.description ||
+                            'Chưa có mô tả cho loại phòng này.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={
+                        roomType.active
+                          ? 'room-type-status active'
+                          : 'room-type-status inactive'
+                      }
+                    >
+                      {roomType.active ? 'Đang bán' : 'Ngừng bán'}
+                    </span>
+                  </div>
+
+                  <div className="room-type-metrics">
+                    <div>
+                      <span>Sức chứa</span>
+                      <strong>
+                        {roomType.standardCapacity}–{roomType.maxCapacity}
+                      </strong>
+                      <small>người</small>
+                    </div>
+
+                    <div>
+                      <span>Số giường</span>
+                      <strong>{roomType.numberOfBeds}</strong>
+                      <small>giường</small>
+                    </div>
+
+                    <div>
+                      <span>Số phòng</span>
+                      <strong>{roomType.roomCount}</strong>
+                      <small>phòng</small>
+                    </div>
+                  </div>
+
+                  <div className="room-type-amenity-block">
+                    <span className="room-type-meta-label">Tiện nghi</span>
+
+                    {roomType.amenities.length === 0 ? (
+                      <p className="room-type-no-amenity">
+                        Chưa gắn tiện nghi.
+                      </p>
+                    ) : (
+                      <div className="room-type-amenities">
+                        {roomType.amenities.map((amenity) => (
+                          <span
+                            className="room-type-amenity-chip"
+                            key={amenity.id}
+                          >
+                            {amenity.icon} {amenity.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {canManage && (
+                    <div className="room-type-actions">
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => setEditing(roomType)}
+                      >
+                        Sửa
+                      </button>
+
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => void handleToggle(roomType)}
+                      >
+                        {roomType.active ? 'Ngừng bán' : 'Bán lại'}
+                      </button>
+
+                      <button
+                        className="secondary-button danger"
+                        type="button"
+                        title={
+                          roomType.roomCount > 0
+                            ? 'Đang có phòng gắn vào, chỉ có thể ngừng bán'
+                            : 'Xoá loại phòng'
+                        }
+                        onClick={() => void handleDelete(roomType)}
+                      >
+                        Xoá
+                      </button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {canManage && (
+          <aside className="room-type-form-panel">
+            <div className="room-type-section-heading compact">
               <div>
-                <h2>Danh sách loại phòng</h2>
-                <p>{roomTypes.length} loại phòng</p>
+                <span className="room-type-kicker">
+                  {editing ? 'CHỈNH SỬA' : 'THÊM MỚI'}
+                </span>
+
+                <h2>
+                  {editing
+                    ? `Sửa loại phòng ${editing.code}`
+                    : 'Thêm loại phòng'}
+                </h2>
+
+                <p>
+                  Sức chứa tối đa không được nhỏ hơn sức chứa tiêu chuẩn.
+                </p>
               </div>
             </div>
 
-            {notice && (
-              <div className={`alert ${notice.type === 'success' ? 'success' : ''}`} role="status">
-                {notice.text}
+            <RoomTypeForm
+              key={editing?.id ?? 'create'}
+              initial={editing ?? undefined}
+              onSubmit={editing ? handleUpdate : handleCreate}
+              onCancel={editing ? () => setEditing(null) : undefined}
+            />
+
+            {editing && (
+              <div className="room-type-amenity-editor-wrap">
+                <RoomTypeAmenityEditor
+                  roomType={editing}
+                  amenities={amenities}
+                  onChanged={handleAmenitiesChanged}
+                />
               </div>
             )}
-
-            {isLoading ? (
-              <p className="empty-state">Đang tải...</p>
-            ) : loadError ? (
-              <div className="alert" role="alert">{loadError}</div>
-            ) : roomTypes.length === 0 ? (
-              <p className="empty-state">Chưa có loại phòng nào.</p>
-            ) : (
-              <div className="user-table-wrapper">
-                <table className="user-table">
-                  <thead>
-                    <tr>
-                      <th>Mã</th>
-                      <th>Tên</th>
-                      <th>Sức chứa</th>
-                      <th>Số giường</th>
-                      <th>Số phòng</th>
-                      <th>Trạng thái</th>
-                      {canManage && <th>Thao tác</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {roomTypes.map((roomType) => (
-                      <tr key={roomType.id}>
-                        <td>{roomType.code}</td>
-                        <td>
-                          {roomType.name}
-                          {roomType.description && <small>{roomType.description}</small>}
-                          {roomType.amenities.length > 0 && (
-                            <small>
-                              {roomType.amenities.map((amenity) => `${amenity.icon} ${amenity.name}`).join(' · ')}
-                            </small>
-                          )}
-                        </td>
-                        <td>
-                          {roomType.standardCapacity} – {roomType.maxCapacity} người
-                        </td>
-                        <td>{roomType.numberOfBeds}</td>
-                        <td>{roomType.roomCount}</td>
-                        <td>
-                          <span className={`user-tag ${roomType.active ? '' : 'off'}`}>
-                            {roomType.active ? 'Đang bán' : 'Ngừng bán'}
-                          </span>
-                        </td>
-                        {canManage && (
-                          <td>
-                            <div className="user-actions">
-                              <button className="secondary-button" type="button"
-                                onClick={() => setEditing(roomType)}>
-                                Sửa
-                              </button>
-                              <button className="secondary-button" type="button"
-                                onClick={() => handleToggle(roomType)}>
-                                {roomType.active ? 'Ngừng bán' : 'Bán lại'}
-                              </button>
-                              <button className="secondary-button" type="button"
-                                title={roomType.roomCount > 0
-                                  ? 'Đang có phòng gắn vào, chỉ có thể ngừng bán'
-                                  : 'Xoá loại phòng'}
-                                onClick={() => handleDelete(roomType)}>
-                                Xoá
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {canManage && (
-            <aside className="panel">
-              <div className="panel-heading">
-                <div>
-                  <h2>{editing ? `Sửa loại phòng ${editing.code}` : 'Thêm loại phòng'}</h2>
-                  <p>Sức chứa tối đa không được nhỏ hơn sức chứa tiêu chuẩn.</p>
-                </div>
-              </div>
-              {editing ? (
-                <>
-                  <RoomTypeForm
-                    key={editing.id}
-                    initial={editing}
-                    onSubmit={handleUpdate}
-                    onCancel={() => setEditing(null)}
-                  />
-                  <RoomTypeAmenityEditor
-                    roomType={editing}
-                    amenities={amenities}
-                    onChanged={handleAmenitiesChanged}
-                  />
-                </>
-              ) : (
-                <RoomTypeForm onSubmit={handleCreate} />
-              )}
-            </aside>
-          )}
-        </section>
-      </main>
+          </aside>
+        )}
+      </section>
     </div>
   )
 }
