@@ -1,4 +1,4 @@
-package com.ttcs.homestay.controller;
+package com.ttcs.homestay.controller.user;
 
 import java.util.List;
 

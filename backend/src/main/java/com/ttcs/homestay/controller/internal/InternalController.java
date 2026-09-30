@@ -1,4 +1,4 @@
-package com.ttcs.homestay.controller;
+package com.ttcs.homestay.controller.internal;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

@@ -1,4 +1,4 @@
-package com.ttcs.homestay.controller;
+package com.ttcs.homestay.controller.room;
 
 import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;

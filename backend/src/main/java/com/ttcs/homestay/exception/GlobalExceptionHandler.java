@@ -5,8 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import com.ttcs.homestay.controller.AuthController;
-import com.ttcs.homestay.controller.PasswordResetController; 
+import com.ttcs.homestay.controller.auth.AuthController;
+import com.ttcs.homestay.controller.auth.PasswordResetController; 
 import java.util.Map;
 
 @RestControllerAdvice(assignableTypes = {AuthController.class, PasswordResetController.class}) 

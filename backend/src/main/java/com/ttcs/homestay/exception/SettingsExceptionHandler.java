@@ -1,6 +1,6 @@
 package com.ttcs.homestay.exception;
 
-import com.ttcs.homestay.controller.OperatingSettingsController;
+import com.ttcs.homestay.controller.settings.OperatingSettingsController;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
