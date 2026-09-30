@@ -1,5 +1,5 @@
 package com.ttcs.homestay.controller;
-
+import com.ttcs.homestay.controller.auth.AuthController;
 import com.ttcs.homestay.config.JwtProperties;
 import com.ttcs.homestay.dto.auth.LoginResponse;
 import com.ttcs.homestay.dto.auth.LoginResult;

@@ -1,4 +1,4 @@
-package com.ttcs.homestay.controller;
+package com.ttcs.homestay.controller.auth;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

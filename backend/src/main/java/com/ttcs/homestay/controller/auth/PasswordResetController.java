@@ -1,4 +1,4 @@
-package com.ttcs.homestay.controller;
+package com.ttcs.homestay.controller.auth;
 
 import com.ttcs.homestay.dto.auth.ForgotPasswordRequest;
 import com.ttcs.homestay.dto.auth.ResetPasswordRequest;

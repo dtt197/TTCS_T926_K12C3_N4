@@ -8,8 +8,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.ttcs.homestay.controller.UserController;
-import com.ttcs.homestay.controller.AccountController;
+import com.ttcs.homestay.controller.user.UserController;
+import com.ttcs.homestay.controller.auth.AccountController;
 
 @RestControllerAdvice(assignableTypes = { UserController.class, AccountController.class })
 public class UserAdminExceptionHandler {

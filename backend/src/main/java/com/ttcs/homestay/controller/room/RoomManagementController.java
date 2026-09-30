@@ -1,4 +1,4 @@
-package com.ttcs.homestay.controller;
+package com.ttcs.homestay.controller.room;
 
 import com.ttcs.homestay.dto.CreatePhysicalRoomRequest;
 import com.ttcs.homestay.dto.RoomResponse;

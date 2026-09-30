@@ -1,6 +1,6 @@
 package com.ttcs.homestay.exception;
 
-import com.ttcs.homestay.controller.AmenityController;
+import com.ttcs.homestay.controller.room.AmenityController;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;

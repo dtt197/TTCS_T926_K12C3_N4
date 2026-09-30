@@ -1,4 +1,4 @@
-package com.ttcs.homestay.controller;
+package com.ttcs.homestay.controller.settings;
 
 import com.ttcs.homestay.dto.settings.OperatingSettingsRequest;
 import com.ttcs.homestay.dto.settings.OperatingSettingsResponse;

@@ -1,5 +1,5 @@
 package com.ttcs.homestay.exception;
-import com.ttcs.homestay.controller.RoomController;
+import com.ttcs.homestay.controller.room.RoomController;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
