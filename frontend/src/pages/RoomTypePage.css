@@ -554,3 +554,325 @@
     grid-template-columns: 1fr;
   }
 }
+/* =========================================================
+   ROOM TYPE AMENITY DETAIL BUTTON + MODAL
+   ========================================================= */
+
+.room-type-amenity-detail-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 6px;
+  padding: 9px 12px;
+  border: 1px solid rgba(37, 92, 71, 0.12);
+  border-radius: 12px;
+  color: #245f4c;
+  background: linear-gradient(145deg, #f8fbf8, #eef6f0);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.room-type-amenity-detail-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(35, 122, 93, 0.24);
+  background: linear-gradient(145deg, #ffffff, #e9f4ed);
+  box-shadow: 0 8px 20px rgba(31, 78, 59, 0.07);
+}
+
+.room-type-amenity-detail-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 9px;
+  color: #237a5d;
+  background: #e3f1e8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.room-type-amenity-detail-text {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.room-type-amenity-detail-text strong {
+  color: #176f53;
+}
+
+.room-type-amenity-detail-arrow {
+  color: #6f8b80;
+  font-size: 19px;
+  line-height: 1;
+}
+
+
+/* Overlay */
+
+.room-type-amenity-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(13, 44, 35, 0.38);
+  backdrop-filter: blur(5px);
+  animation: roomTypeAmenityBackdropIn 0.18s ease;
+}
+
+
+/* Modal */
+
+.room-type-amenity-modal {
+  width: min(640px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow-y: auto;
+  border: 1px solid rgba(37, 92, 71, 0.12);
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      circle at right top,
+      rgba(214, 234, 218, 0.42),
+      transparent 34%
+    ),
+    linear-gradient(145deg, #ffffff, #f8fbf7);
+  box-shadow:
+    0 30px 90px rgba(21, 57, 43, 0.22),
+    0 4px 18px rgba(21, 57, 43, 0.08);
+  animation: roomTypeAmenityModalIn 0.2s ease;
+}
+
+
+/* Header */
+
+.room-type-amenity-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid rgba(37, 92, 71, 0.08);
+}
+
+.room-type-amenity-modal-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: #2b7c5f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.room-type-amenity-modal-header h2 {
+  margin: 0;
+  color: #17362d;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.room-type-amenity-modal-header p {
+  max-width: 470px;
+  margin: 7px 0 0;
+  color: #74817b;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.room-type-amenity-modal-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: 1px solid rgba(37, 92, 71, 0.12);
+  border-radius: 11px;
+  color: #566e64;
+  background: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.room-type-amenity-modal-close:hover {
+  color: #17362d;
+  border-color: rgba(37, 92, 71, 0.22);
+  background: #ffffff;
+}
+
+
+/* Summary */
+
+.room-type-amenity-modal-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+}
+
+.room-type-amenity-modal-summary span {
+  color: #819089;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.room-type-amenity-modal-summary strong {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #176f53;
+  background: #e9f5ed;
+  font-size: 10px;
+}
+
+
+/* Amenity grid */
+
+.room-type-amenity-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 24px 24px;
+}
+
+.room-type-amenity-modal-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid rgba(37, 92, 71, 0.1);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, #f4f8f4);
+  box-shadow: 0 5px 14px rgba(31, 78, 59, 0.035);
+}
+
+.room-type-amenity-modal-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 11px;
+  color: #237a5d;
+  background: #e5f2e9;
+  font-size: 16px;
+}
+
+.room-type-amenity-modal-name {
+  min-width: 0;
+  color: #24493d;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+
+/* Footer */
+
+.room-type-amenity-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px 22px;
+  border-top: 1px solid rgba(37, 92, 71, 0.08);
+}
+
+.room-type-amenity-modal-done {
+  min-width: 96px;
+  min-height: 38px;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: 10px;
+  color: #ffffff;
+  background: linear-gradient(145deg, #278366, #176f53);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+  box-shadow: 0 7px 16px rgba(23, 111, 83, 0.18);
+}
+
+.room-type-amenity-modal-done:hover {
+  filter: brightness(1.03);
+}
+
+
+/* Animations */
+
+@keyframes roomTypeAmenityBackdropIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes roomTypeAmenityModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* Mobile */
+
+@media (max-width: 640px) {
+  .room-type-amenity-modal-backdrop {
+    padding: 14px;
+  }
+
+  .room-type-amenity-modal {
+    max-height: calc(100vh - 28px);
+    border-radius: 18px;
+  }
+
+  .room-type-amenity-modal-header {
+    padding: 20px 18px 16px;
+  }
+
+  .room-type-amenity-modal-header h2 {
+    font-size: 21px;
+  }
+
+  .room-type-amenity-modal-summary {
+    padding: 14px 18px;
+  }
+
+  .room-type-amenity-modal-grid {
+    grid-template-columns: 1fr;
+    padding: 0 18px 20px;
+  }
+
+  .room-type-amenity-modal-footer {
+    padding: 14px 18px 18px;
+  }
+
+  .room-type-amenity-modal-done {
+    width: 100%;
+  }
+}

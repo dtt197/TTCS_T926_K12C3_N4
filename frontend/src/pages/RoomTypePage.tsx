@@ -34,6 +34,9 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [editing, setEditing] = useState<RoomType | null>(null)
 
+const [amenityDetailRoomType, setAmenityDetailRoomType] =
+  useState<RoomType | null>(null)
+
   const load = useCallback(
     () =>
       getRoomTypes()
@@ -286,26 +289,32 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                     </div>
                   </div>
 
-                  <div className="room-type-amenity-block">
-                    <span className="room-type-meta-label">Tiện nghi</span>
+<div className="room-type-amenity-block">
+  <span className="room-type-meta-label">Tiện nghi</span>
 
-                    {roomType.amenities.length === 0 ? (
-                      <p className="room-type-no-amenity">
-                        Chưa gắn tiện nghi.
-                      </p>
-                    ) : (
-                      <div className="room-type-amenities">
-                        {roomType.amenities.map((amenity) => (
-                          <span
-                            className="room-type-amenity-chip"
-                            key={amenity.id}
-                          >
-                            {amenity.icon} {amenity.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+  {roomType.amenities.length === 0 ? (
+    <p className="room-type-no-amenity">
+      Chưa gắn tiện nghi.
+    </p>
+  ) : (
+    <button
+      className="room-type-amenity-detail-button"
+      type="button"
+      onClick={() => setAmenityDetailRoomType(roomType)}
+    >
+      <span className="room-type-amenity-detail-icon">✦</span>
+
+      <span className="room-type-amenity-detail-text">
+        Chi tiết tiện nghi
+        <strong> ({roomType.amenities.length})</strong>
+      </span>
+
+      <span className="room-type-amenity-detail-arrow">
+        ›
+      </span>
+    </button>
+  )}
+</div>
 
                   {canManage && (
                     <div className="room-type-actions">
@@ -382,8 +391,84 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
               </div>
             )}
           </aside>
-        )}
+                )}
       </section>
+
+      {amenityDetailRoomType && (
+        <div
+          className="room-type-amenity-modal-backdrop"
+          onClick={() => setAmenityDetailRoomType(null)}
+        >
+          <div
+            className="room-type-amenity-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="amenity-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="room-type-amenity-modal-header">
+              <div>
+                <span className="room-type-amenity-modal-kicker">
+                  TIỆN NGHI PHÒNG
+                </span>
+
+                <h2 id="amenity-detail-title">
+                  {amenityDetailRoomType.name}
+                </h2>
+
+                <p>
+                  {amenityDetailRoomType.description ||
+                    'Danh sách tiện nghi của loại phòng này.'}
+                </p>
+              </div>
+
+              <button
+                className="room-type-amenity-modal-close"
+                type="button"
+                aria-label="Đóng"
+                onClick={() => setAmenityDetailRoomType(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="room-type-amenity-modal-summary">
+              <span>Tiện nghi</span>
+
+              <strong>
+                {amenityDetailRoomType.amenities.length} tiện nghi
+              </strong>
+            </div>
+
+            <div className="room-type-amenity-modal-grid">
+              {amenityDetailRoomType.amenities.map((amenity) => (
+                <div
+                  className="room-type-amenity-modal-item"
+                  key={amenity.id}
+                >
+                  <span className="room-type-amenity-modal-icon">
+                    {amenity.icon || '✦'}
+                  </span>
+
+                  <span className="room-type-amenity-modal-name">
+                    {amenity.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="room-type-amenity-modal-footer">
+              <button
+                className="room-type-amenity-modal-done"
+                type="button"
+                onClick={() => setAmenityDetailRoomType(null)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
