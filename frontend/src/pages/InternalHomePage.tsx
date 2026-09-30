@@ -25,50 +25,60 @@ type View =
   | 'users'
   | 'audit-logs'
 
-const TABS: ReadonlyArray<{
+type Tab = {
   view: View
+  path: string
   label: string
   icon: string
   permission: Permission
-}> = [
+}
+
+const TABS: ReadonlyArray<Tab> = [
   {
     view: 'rooms',
+    path: '/rooms',
     label: 'Phòng',
     icon: '▣',
     permission: 'rooms:view',
   },
   {
     view: 'roomManagement',
+    path: '/room-management',
     label: 'Quản lý phòng',
     icon: '▤',
     permission: 'rooms:manage',
   },
   {
     view: 'roomTypes',
+    path: '/room-types',
     label: 'Loại phòng',
     icon: '▦',
     permission: 'roomTypes:view',
   },
   {
     view: 'amenities',
+    path: '/amenities',
     label: 'Tiện nghi',
     icon: '✦',
     permission: 'amenities:view',
   },
   {
     view: 'settings',
+    path: '/settings',
     label: 'Tham số',
     icon: '⚙',
     permission: 'settings:view',
   },
   {
     view: 'users',
+    path: '/users',
     label: 'Tài khoản',
     icon: '●',
     permission: 'accounts:view',
   },
   {
     view: 'audit-logs',
+    path: '/audit-logs',
     label: 'Nhật ký',
     icon: '☷',
     permission: 'auditLogs:view',
@@ -76,40 +86,96 @@ const TABS: ReadonlyArray<{
 ]
 
 const SESSION_CHECK_INTERVAL_MS = 30_000
-const VIEW_STORAGE_KEY = 'homestay_internal_view'
 
-function getInitialView(): View {
-  const savedView = window.sessionStorage.getItem(VIEW_STORAGE_KEY)
-
-  return TABS.find((tab) => tab.view === savedView)?.view ?? 'rooms'
+function getViewFromPath(pathname: string): View {
+  return TABS.find((tab) => tab.path === pathname)?.view ?? 'rooms'
 }
 
 export function InternalHomePage({
   user,
   onLogout,
 }: InternalHomePageProps) {
-  const [view, setView] = useState<View>(getInitialView)
+  const [view, setView] = useState<View>(() =>
+    getViewFromPath(window.location.pathname),
+  )
 
   const visibleTabs = TABS.filter((tab) =>
     hasPermission(user.role, tab.permission),
   )
 
+  const fallbackTab =
+    visibleTabs[0] ??
+    TABS[0]
+
   const activeView: View = visibleTabs.some(
     (tab) => tab.view === view,
   )
     ? view
-    : 'rooms'
+    : fallbackTab.view
 
   const activeTab =
     visibleTabs.find((tab) => tab.view === activeView) ??
-    visibleTabs[0]
+    fallbackTab
 
   useEffect(() => {
-    window.sessionStorage.setItem(
-      VIEW_STORAGE_KEY,
-      activeView,
+    const currentTab = TABS.find(
+      (tab) => tab.path === window.location.pathname,
     )
-  }, [activeView])
+
+    const currentTabAllowed =
+      currentTab &&
+      hasPermission(user.role, currentTab.permission)
+
+    if (!currentTabAllowed) {
+      window.history.replaceState(
+        {},
+        '',
+        fallbackTab.path,
+      )
+
+      setView(fallbackTab.view)
+    }
+  }, [user.role, fallbackTab])
+
+  useEffect(() => {
+    function handlePopState() {
+      const nextView = getViewFromPath(
+        window.location.pathname,
+      )
+
+      const nextTab = TABS.find(
+        (tab) => tab.view === nextView,
+      )
+
+      if (
+        nextTab &&
+        hasPermission(user.role, nextTab.permission)
+      ) {
+        setView(nextView)
+        return
+      }
+
+      window.history.replaceState(
+        {},
+        '',
+        fallbackTab.path,
+      )
+
+      setView(fallbackTab.view)
+    }
+
+    window.addEventListener(
+      'popstate',
+      handlePopState,
+    )
+
+    return () => {
+      window.removeEventListener(
+        'popstate',
+        handlePopState,
+      )
+    }
+  }, [user.role, fallbackTab])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -118,6 +184,22 @@ export function InternalHomePage({
 
     return () => window.clearInterval(timer)
   }, [])
+
+  function navigateTo(tab: Tab) {
+    if (!hasPermission(user.role, tab.permission)) {
+      return
+    }
+
+    if (window.location.pathname !== tab.path) {
+      window.history.pushState(
+        {},
+        '',
+        tab.path,
+      )
+    }
+
+    setView(tab.view)
+  }
 
   return (
     <main className="internal-layout">
@@ -149,7 +231,7 @@ export function InternalHomePage({
                     ? 'sidebar-nav-item active'
                     : 'sidebar-nav-item'
                 }
-                onClick={() => setView(tab.view)}
+                onClick={() => navigateTo(tab)}
               >
                 <span className="sidebar-nav-icon">
                   {tab.icon}
