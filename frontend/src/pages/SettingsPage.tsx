@@ -109,23 +109,7 @@ export function SettingsPage({ role }: SettingsPageProps) {
 
   return (
     <div className="settings-page">
-      <section className="settings-heading">
-        <div>
-          <span className="settings-kicker">VẬN HÀNH HOMESTAY</span>
-          <h1>Tham số vận hành</h1>
-          <p>
-            Giờ nhận – trả phòng, phụ thu và chính sách huỷ áp thống nhất cho
-            mọi lễ tân.
-          </p>
-        </div>
-
-        {current && (
-          <div className="settings-version">
-            Cập nhật {formatDateTime(current.updatedAt)}
-          </div>
-        )}
-      </section>
-
+     
       <section className="settings-summary" aria-label="Tổng quan vận hành">
         <article className="settings-summary-card">
           <span className="settings-summary-icon">↘</span>

@@ -321,15 +321,7 @@ const roomStats = useMemo(
 
     <div className="room-management-page">
 
-      <section className="management-heading">
-        <div>
-          <p className="management-kicker">QUẢN LÝ PHÒNG</p>
-          <h1>Quản lý phòng vật lý</h1>
-          <p>Tạo phòng, tìm kiếm theo nhiều điều kiện và cập nhật thông tin phòng.</p>
-        </div>
-
-        <div className="management-count">{rooms.length} phòng</div>
-      </section>
+      
 
       <section className="management-summary" aria-label="Tổng quan phòng">
         <article className="management-summary-card">

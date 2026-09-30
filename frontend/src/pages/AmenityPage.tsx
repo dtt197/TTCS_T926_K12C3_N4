@@ -131,19 +131,8 @@ export function AmenityPage({ role }: AmenityPageProps) {
 
   return (
     <div className="amenity-page">
-      <section className="amenity-heading">
-        <div>
-          <span className="amenity-kicker">QUẢN LÝ DANH MỤC</span>
-          <h1>Tiện nghi</h1>
-          <p>
-            {canManage
-              ? 'Khai báo tiện nghi rồi gắn vào từng loại phòng ở trang Loại phòng.'
-              : 'Xem danh mục tiện nghi của homestay.'}
-          </p>
-        </div>
-
-        <div className="amenity-count">{amenities.length} tiện nghi</div>
-      </section>
+     
+      
 
       <section className="amenity-summary" aria-label="Tổng quan tiện nghi">
         <article className="amenity-summary-card">
