@@ -21,4 +21,5 @@ export type RoomTypePayload = {
   maxCapacity: number
   numberOfBeds: number
   description: string
+  amenityIds: number[]
 }

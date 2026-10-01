@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RoomTypeAmenityEditor } from '../components/RoomTypeAmenityEditor'
+
 import { RoomTypeForm } from '../components/RoomTypeForm'
 import { hasPermission } from '../permissions/rolePermissions'
 import { getAmenities } from '../services/amenityService'
@@ -99,12 +99,7 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
     await load()
   }
 
-  function handleAmenitiesChanged(updated: RoomType) {
-    setEditing(updated)
-    setRoomTypes((current) =>
-      current.map((item) => (item.id === updated.id ? updated : item)),
-    )
-  }
+  
 
   async function handleToggle(roomType: RoomType) {
     try {
@@ -362,22 +357,13 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
               </div>
             </div>
 
-            <RoomTypeForm
+                        <RoomTypeForm
               key={editing?.id ?? 'create'}
               initial={editing ?? undefined}
+              amenities={amenities}
               onSubmit={editing ? handleUpdate : handleCreate}
               onCancel={editing ? () => setEditing(null) : undefined}
             />
-
-            {editing && (
-              <div className="room-type-amenity-editor-wrap">
-                <RoomTypeAmenityEditor
-                  roomType={editing}
-                  amenities={amenities}
-                  onChanged={handleAmenitiesChanged}
-                />
-              </div>
-            )}
           </aside>
                 )}
       </section>

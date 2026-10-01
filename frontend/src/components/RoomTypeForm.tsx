@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import type { Amenity } from '../types/amenity'
 import type { RoomType, RoomTypePayload } from '../types/roomType'
 
 type RoomTypeFormProps = {
   initial?: RoomType
+  amenities: Amenity[]
   onSubmit: (payload: RoomTypePayload) => Promise<void>
   onCancel?: () => void
 }
@@ -27,14 +29,29 @@ function toFormState(roomType?: RoomType): FormState {
   }
 }
 
-/** S1-06 AC1, AC2: mã, tên, sức chứa tiêu chuẩn, sức chứa tối đa, số giường và mô tả. */
-export function RoomTypeForm({ initial, onSubmit, onCancel }: RoomTypeFormProps) {
+/**
+ * S1-06 AC1, AC2: mã, tên, sức chứa tiêu chuẩn, sức chứa tối đa, số giường và mô tả.
+ * S1-08: tick chọn tiện nghi ngay trong biểu mẫu thêm / sửa loại phòng.
+ */
+export function RoomTypeForm({ initial, amenities, onSubmit, onCancel }: RoomTypeFormProps) {
   const [form, setForm] = useState<FormState>(() => toFormState(initial))
+  const [amenityIds, setAmenityIds] = useState<number[]>(
+    () => initial?.amenities.map((amenity) => amenity.id) ?? [],
+  )
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
+  // S1-08 AC4: tiện nghi đã ngừng dùng không hiện, nên cũng không cho tick.
+  const activeAmenities = amenities.filter((amenity) => amenity.active)
+
   function update(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function toggleAmenity(id: number) {
+    setAmenityIds((current) =>
+      current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id],
+    )
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -67,8 +84,12 @@ export function RoomTypeForm({ initial, onSubmit, onCancel }: RoomTypeFormProps)
         maxCapacity,
         numberOfBeds,
         description: form.description.trim(),
+        amenityIds,
       })
-      if (!initial) setForm(toFormState())
+      if (!initial) {
+        setForm(toFormState())
+        setAmenityIds([])
+      }
     } catch (err) {
       // AC3: hiện đúng thông báo của máy chủ, ví dụ "Mã loại phòng DOI đã tồn tại..."
       setError(err instanceof Error ? err.message : 'Không lưu được loại phòng')
@@ -110,6 +131,25 @@ export function RoomTypeForm({ initial, onSubmit, onCancel }: RoomTypeFormProps)
         <textarea className="form-control" rows={3} maxLength={500} value={form.description}
           onChange={(e) => update('description', e.target.value)} />
       </label>
+
+      <fieldset className="amenity-checklist">
+        <legend>Tiện nghi ({amenityIds.length} đã chọn)</legend>
+        {activeAmenities.length === 0 ? (
+          <p className="checkin-note">Chưa có tiện nghi đang dùng. Khai báo ở trang Tiện nghi.</p>
+        ) : (
+          activeAmenities.map((amenity) => (
+            <label key={amenity.id} className="amenity-check">
+              <input
+                type="checkbox"
+                checked={amenityIds.includes(amenity.id)}
+                onChange={() => toggleAmenity(amenity.id)}
+              />
+              <span>{amenity.icon} {amenity.name}</span>
+            </label>
+          ))
+        )}
+      </fieldset>
+
       <button className="primary-button" type="submit" disabled={isSaving}>
         {isSaving ? 'Đang lưu...' : initial ? 'Lưu thay đổi' : 'Thêm loại phòng'}
       </button>
