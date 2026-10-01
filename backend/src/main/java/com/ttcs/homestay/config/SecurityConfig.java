@@ -174,6 +174,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pricing/**")
                         .hasAnyRole("OWNER", "ADMIN", "RECEPTIONIST")
 
+                        .requestMatchers(
+                          HttpMethod.GET,
+                         "/api/bookings",
+                         "/api/bookings/**"
+)
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
                         // API chưa khai báo quyền sẽ bị từ chối
                         .requestMatchers("/api/**").denyAll()
 

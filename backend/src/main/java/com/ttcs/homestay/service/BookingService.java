@@ -1,8 +1,12 @@
 package com.ttcs.homestay.service;
 
+import java.util.Locale;
+import java.util.UUID;
+
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
@@ -10,11 +14,15 @@ import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.DayOfWeek;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.ttcs.homestay.dto.booking.BookingListItemResponse;
+import java.util.List;
 
 @Service
 public class BookingService {
@@ -64,7 +72,20 @@ public class BookingService {
         long totalAmount = PricingService.total(pricingService.priceNights(
                 roomType, request.checkInDate(), request.checkOutDate(), weekendDays));
 
+        // Đã sửa: Xóa dòng khai báo trùng lặp "Booking booking = new Booking();"
         Booking booking = new Booking();
+
+        booking.setBookingCode(
+                "BK-" + UUID.randomUUID()
+                        .toString()
+                        .replace("-", "")
+                        .substring(0, 8)
+                        .toUpperCase(Locale.ROOT)
+        );
+
+        booking.setGuestName(request.guestName().trim());
+        booking.setStatus(BookingStatus.CHO_XAC_NHAN);
+
         booking.setRoomType(roomType);
         booking.setRoomTypeNameSnapshot(roomType.getName());
         booking.setCheckInDate(request.checkInDate());
@@ -75,6 +96,31 @@ public class BookingService {
         booking.setTotalAmount(totalAmount);
         booking.setCreatedAt(createdAt);
 
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Đã sửa: Trả về BookingResponse sử dụng constructor của record thay vì gọi phương thức from() chưa tồn tại
+        return new BookingResponse(
+                savedBooking.getId(),
+                savedBooking.getBookingCode(),
+                savedBooking.getGuestName(),
+                roomType.getId(),
+                savedBooking.getRoomTypeNameSnapshot(),
+                savedBooking.getCheckInDate(),
+                savedBooking.getCheckOutDate(),
+                savedBooking.getWeekdayPriceSnapshot(),
+                savedBooking.getWeekendPriceSnapshot(),
+                savedBooking.getWeekendDaysSnapshot(),
+                savedBooking.getTotalAmount(),
+                savedBooking.getStatus(),
+                savedBooking.getCreatedAt()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingListItemResponse> getLatestBookings() {
+        return bookingRepository.findAllByOrderByCreatedAtDescIdDesc()
+                .stream()
+                .map(BookingListItemResponse::from)
+                .toList();
     }
 }

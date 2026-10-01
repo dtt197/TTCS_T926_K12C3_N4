@@ -14,6 +14,8 @@ import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Entity
 @Table(name = "bookings")
@@ -53,4 +55,14 @@ public class Booking {
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
+
+    @Column(name = "booking_code", nullable = false, unique = true, length = 40)
+private String bookingCode;
+
+@Column(name = "guest_name", nullable = false, length = 120)
+private String guestName;
+
+@Enumerated(EnumType.STRING)
+@Column(name = "status", nullable = false, length = 30)
+private BookingStatus status;
 }

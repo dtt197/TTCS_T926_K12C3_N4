@@ -1,32 +1,22 @@
 package com.ttcs.homestay.dto.booking;
 
-import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingStatus;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 public record BookingResponse(
-        Long id,
-        Long roomTypeId,
-        String roomTypeName,
-        LocalDate checkInDate,
-        LocalDate checkOutDate,
-        long weekdayPriceSnapshot,
-        long weekendPriceSnapshot,
-        String weekendDaysSnapshot,
-        long totalAmount,
-        OffsetDateTime createdAt) {
-
-    public static BookingResponse from(Booking booking) {
-        return new BookingResponse(
-                booking.getId(),
-                booking.getRoomType() == null ? null : booking.getRoomType().getId(),
-                booking.getRoomTypeNameSnapshot(),
-                booking.getCheckInDate(),
-                booking.getCheckOutDate(),
-                booking.getWeekdayPriceSnapshot(),
-                booking.getWeekendPriceSnapshot(),
-                booking.getWeekendDaysSnapshot(),
-                booking.getTotalAmount(),
-                booking.getCreatedAt());
-    }
+    Long id,
+    String bookingCode,
+    String guestName,
+    Long roomTypeId,
+    String roomTypeNameSnapshot,
+    LocalDate checkInDate,
+    LocalDate checkOutDate,
+    Long weekdayPriceSnapshot,
+    Long weekendPriceSnapshot,
+    String weekendDaysSnapshot,
+    Long totalAmount,
+    BookingStatus status,
+    OffsetDateTime createdAt
+) {
 }
