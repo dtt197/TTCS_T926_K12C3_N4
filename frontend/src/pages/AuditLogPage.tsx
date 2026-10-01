@@ -28,6 +28,32 @@ function actionLabel(action: string) {
     ROLE_CHANGED: 'Đổi vai trò',
     ACCOUNT_DISABLED: 'Vô hiệu hóa tài khoản',
     GUEST_DOCUMENT_VIEWED: 'Xem giấy tờ khách',
+    SETTINGS_UPDATED: 'Cập nhật tham số',
+
+    ROOM_STATUS_UPDATED: 'Cập nhật trạng thái phòng',
+    ROOM_MAINTENANCE_UPDATED: 'Cập nhật bảo trì',
+    ROOM_CHECKED_IN: 'Nhận phòng',
+    ROOM_CHECKED_OUT: 'Trả phòng',
+
+    ROOM_CREATED: 'Tạo phòng',
+    ROOM_UPDATED: 'Cập nhật thông tin phòng',
+
+    ROOM_TYPE_CREATED: 'Tạo loại phòng',
+ROOM_TYPE_UPDATED: 'Cập nhật loại phòng',
+ROOM_TYPE_STATUS_CHANGED: 'Cập nhật trạng thái loại phòng',
+ROOM_TYPE_DELETED: 'Xóa loại phòng',
+ROOM_TYPE_AMENITY_ADDED: 'Gắn tiện nghi vào loại phòng',
+ROOM_TYPE_AMENITY_REMOVED: 'Gỡ tiện nghi khỏi loại phòng',
+
+AMENITY_CREATED: 'Tạo tiện nghi',
+AMENITY_UPDATED: 'Cập nhật tiện nghi',
+AMENITY_STATUS_CHANGED: 'Cập nhật trạng thái tiện nghi',
+AMENITY_DELETED: 'Xóa tiện nghi',
+
+USER_CREATED: 'Tạo tài khoản',
+USER_UPDATED: 'Cập nhật tài khoản',
+ACCOUNT_ENABLED: 'Kích hoạt tài khoản',
+TEMP_PASSWORD_RESENT: 'Gửi lại mật khẩu tạm',
   }
 
   return labels[action] ?? action
@@ -151,8 +177,8 @@ export function AuditLogPage() {
             <span className="audit-kicker">TRA CỨU</span>
             <h2>Bộ lọc nhật ký</h2>
             <p>
-              Lọc theo khoảng ngày hoặc email người thao tác / tài khoản liên quan.
-            </p>
+  Lọc theo khoảng ngày hoặc người thao tác / đối tượng liên quan.
+</p>
           </div>
         </div>
 
@@ -189,7 +215,7 @@ export function AuditLogPage() {
             Tài khoản
             <input
               type="search"
-              placeholder="Email người thao tác hoặc tài khoản liên quan"
+              placeholder="Người thao tác hoặc đối tượng liên quan"
               value={filters.account}
               onChange={(event) =>
                 setFilters({
@@ -248,7 +274,7 @@ export function AuditLogPage() {
               <tr>
                 <th>Thời gian (GMT+7)</th>
                 <th>Người thao tác</th>
-                <th>Tài khoản liên quan</th>
+                <th>Đối tượng liên quan</th>
                 <th>Hành động</th>
                 <th>Kết quả</th>
                 <th>IP</th>
