@@ -19,14 +19,25 @@ type RoomTypePageProps = {
   role: string
 }
 
-type Notice = { type: 'success' | 'error'; text: string }
+type Notice = {
+  type: 'success' | 'error'
+  text: string
+}
 
 /**
- * S1-06: Chủ homestay và Quản trị thêm/sửa/ngừng bán/xoá loại phòng, Lễ tân chỉ xem.
- * S1-08: gắn / bỏ tiện nghi khi sửa loại phòng; danh sách chỉ hiện tiện nghi đang dùng.
+ * S1-06: Chủ homestay và Quản trị thêm/sửa/ngừng bán/xoá loại phòng,
+ * Lễ tân chỉ xem.
+ *
+ * S1-08: gắn / bỏ tiện nghi khi sửa loại phòng;
+ * danh sách chỉ hiện tiện nghi đang dùng.
+ *
+ * S2-01:
+ * - Lát 1: giá ngày thường.
+ * - Lát 2: giá cuối tuần.
  */
 export function RoomTypePage({ role }: RoomTypePageProps) {
   const canManage = hasPermission(role, 'roomTypes:manage')
+
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [amenities, setAmenities] = useState<Amenity[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -34,8 +45,8 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
   const [notice, setNotice] = useState<Notice | null>(null)
   const [editing, setEditing] = useState<RoomType | null>(null)
 
-const [amenityDetailRoomType, setAmenityDetailRoomType] =
-  useState<RoomType | null>(null)
+  const [amenityDetailRoomType, setAmenityDetailRoomType] =
+    useState<RoomType | null>(null)
 
   const load = useCallback(
     () =>
@@ -73,17 +84,22 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
     () => ({
       total: roomTypes.length,
       active: roomTypes.filter((roomType) => roomType.active).length,
-      rooms: roomTypes.reduce((sum, roomType) => sum + roomType.roomCount, 0),
+      rooms: roomTypes.reduce(
+        (sum, roomType) => sum + roomType.roomCount,
+        0,
+      ),
     }),
     [roomTypes],
   )
 
   async function handleCreate(payload: RoomTypePayload) {
     const created = await createRoomType(payload)
+
     setNotice({
       type: 'success',
       text: `Đã thêm loại phòng ${created.name}`,
     })
+
     await load()
   }
 
@@ -91,25 +107,31 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
     if (!editing) return
 
     const updated = await updateRoomType(editing.id, payload)
+
     setEditing(null)
+
     setNotice({
       type: 'success',
       text: `Đã lưu loại phòng ${updated.name}`,
     })
+
     await load()
   }
 
-  
-
   async function handleToggle(roomType: RoomType) {
     try {
-      await updateRoomTypeStatus(roomType.id, !roomType.active)
+      await updateRoomTypeStatus(
+        roomType.id,
+        !roomType.active,
+      )
+
       setNotice({
         type: 'success',
         text: roomType.active
           ? `Đã ngừng bán ${roomType.name}`
           : `Đã mở bán lại ${roomType.name}`,
       })
+
       await load()
     } catch (err) {
       setNotice({
@@ -123,7 +145,13 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
   }
 
   async function handleDelete(roomType: RoomType) {
-    if (!window.confirm(`Xoá loại phòng "${roomType.name}"?`)) return
+    if (
+      !window.confirm(
+        `Xoá loại phòng "${roomType.name}"?`,
+      )
+    ) {
+      return
+    }
 
     try {
       await deleteRoomType(roomType.id)
@@ -151,11 +179,15 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
 
   return (
     <div className="room-type-page">
-     
-
-      <section className="room-type-summary" aria-label="Tổng quan loại phòng">
+      <section
+        className="room-type-summary"
+        aria-label="Tổng quan loại phòng"
+      >
         <article className="room-type-summary-card">
-          <span className="room-type-summary-icon">▦</span>
+          <span className="room-type-summary-icon">
+            ▦
+          </span>
+
           <div>
             <span>Tổng loại phòng</span>
             <strong>{stats.total}</strong>
@@ -163,7 +195,10 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
         </article>
 
         <article className="room-type-summary-card">
-          <span className="room-type-summary-icon">✓</span>
+          <span className="room-type-summary-icon">
+            ✓
+          </span>
+
           <div>
             <span>Đang bán</span>
             <strong>{stats.active}</strong>
@@ -171,7 +206,10 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
         </article>
 
         <article className="room-type-summary-card">
-          <span className="room-type-summary-icon">⌂</span>
+          <span className="room-type-summary-icon">
+            ⌂
+          </span>
+
           <div>
             <span>Phòng vật lý</span>
             <strong>{stats.rooms}</strong>
@@ -198,10 +236,15 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
         <div className="room-type-list-panel">
           <div className="room-type-section-heading">
             <div>
-              <span className="room-type-kicker">DANH SÁCH</span>
+              <span className="room-type-kicker">
+                DANH SÁCH
+              </span>
+
               <h2>Danh sách loại phòng</h2>
+
               <p>
-                Theo dõi sức chứa, số phòng, tiện nghi và trạng thái bán.
+                Theo dõi sức chứa, số phòng, giá,
+                tiện nghi và trạng thái bán.
               </p>
             </div>
 
@@ -211,9 +254,14 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
           </div>
 
           {isLoading ? (
-            <div className="room-type-empty">Đang tải...</div>
+            <div className="room-type-empty">
+              Đang tải...
+            </div>
           ) : loadError ? (
-            <div className="room-type-notice error" role="alert">
+            <div
+              className="room-type-notice error"
+              role="alert"
+            >
               {loadError}
             </div>
           ) : roomTypes.length === 0 ? (
@@ -223,7 +271,10 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
           ) : (
             <div className="room-type-grid">
               {roomTypes.map((roomType) => (
-                <article className="room-type-card" key={roomType.id}>
+                <article
+                  className="room-type-card"
+                  key={roomType.id}
+                >
                   <div className="room-type-card-top">
                     <div className="room-type-card-title">
                       <div className="room-type-code">
@@ -232,6 +283,7 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
 
                       <div>
                         <h3>{roomType.name}</h3>
+
                         <p>
                           {roomType.description ||
                             'Chưa có mô tả cho loại phòng này.'}
@@ -246,81 +298,133 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
                           : 'room-type-status inactive'
                       }
                     >
-                      {roomType.active ? 'Đang bán' : 'Ngừng bán'}
+                      {roomType.active
+                        ? 'Đang bán'
+                        : 'Ngừng bán'}
                     </span>
                   </div>
 
                   <div className="room-type-metrics">
                     <div>
                       <span>Sức chứa</span>
+
                       <strong>
-                        {roomType.standardCapacity}–{roomType.maxCapacity}
+                        {roomType.standardCapacity}–
+                        {roomType.maxCapacity}
                       </strong>
+
                       <small>người</small>
                     </div>
 
                     <div>
                       <span>Số giường</span>
-                      <strong>{roomType.numberOfBeds}</strong>
+
+                      <strong>
+                        {roomType.numberOfBeds}
+                      </strong>
+
                       <small>giường</small>
                     </div>
-                      <div>
-  <span>Giá ngày thường</span>
 
-  {roomType.weekdayPrice != null ? (
-    <>
-      <strong>
-        {roomType.weekdayPrice.toLocaleString('vi-VN')}
-      </strong>
-      <small>VND/đêm</small>
-    </>
-  ) : (
-    <>
-      <strong>—</strong>
-      <small>Chưa khai báo</small>
-    </>
-  )}
-</div>
+                    <div>
+                      <span>Giá ngày thường</span>
+
+                      {roomType.weekdayPrice != null ? (
+                        <>
+                          <strong>
+                            {roomType.weekdayPrice.toLocaleString(
+                              'vi-VN',
+                            )}
+                          </strong>
+
+                          <small>VND/đêm</small>
+                        </>
+                      ) : (
+                        <>
+                          <strong>—</strong>
+                          <small>Chưa khai báo</small>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      <span>Giá cuối tuần</span>
+
+                      {roomType.weekendPrice != null ? (
+                        <>
+                          <strong>
+                            {roomType.weekendPrice.toLocaleString(
+                              'vi-VN',
+                            )}
+                          </strong>
+
+                          <small>VND/đêm</small>
+                        </>
+                      ) : (
+                        <>
+                          <strong>—</strong>
+                          <small>Chưa khai báo</small>
+                        </>
+                      )}
+                    </div>
+
                     <div>
                       <span>Số phòng</span>
-                      <strong>{roomType.roomCount}</strong>
+
+                      <strong>
+                        {roomType.roomCount}
+                      </strong>
+
                       <small>phòng</small>
                     </div>
                   </div>
 
-<div className="room-type-amenity-block">
-  <span className="room-type-meta-label">Tiện nghi</span>
+                  <div className="room-type-amenity-block">
+                    <span className="room-type-meta-label">
+                      Tiện nghi
+                    </span>
 
-  {roomType.amenities.length === 0 ? (
-    <p className="room-type-no-amenity">
-      Chưa gắn tiện nghi.
-    </p>
-  ) : (
-    <button
-      className="room-type-amenity-detail-button"
-      type="button"
-      onClick={() => setAmenityDetailRoomType(roomType)}
-    >
-      <span className="room-type-amenity-detail-icon">✦</span>
+                    {roomType.amenities.length === 0 ? (
+                      <p className="room-type-no-amenity">
+                        Chưa gắn tiện nghi.
+                      </p>
+                    ) : (
+                      <button
+                        className="room-type-amenity-detail-button"
+                        type="button"
+                        onClick={() =>
+                          setAmenityDetailRoomType(
+                            roomType,
+                          )
+                        }
+                      >
+                        <span className="room-type-amenity-detail-icon">
+                          ✦
+                        </span>
 
-      <span className="room-type-amenity-detail-text">
-        Chi tiết tiện nghi
-        <strong> ({roomType.amenities.length})</strong>
-      </span>
+                        <span className="room-type-amenity-detail-text">
+                          Chi tiết tiện nghi
+                          <strong>
+                            {' '}
+                            ({roomType.amenities.length})
+                          </strong>
+                        </span>
 
-      <span className="room-type-amenity-detail-arrow">
-        ›
-      </span>
-    </button>
-  )}
-</div>
+                        <span className="room-type-amenity-detail-arrow">
+                          ›
+                        </span>
+                      </button>
+                    )}
+                  </div>
 
                   {canManage && (
                     <div className="room-type-actions">
                       <button
                         className="secondary-button"
                         type="button"
-                        onClick={() => setEditing(roomType)}
+                        onClick={() =>
+                          setEditing(roomType)
+                        }
                       >
                         Sửa
                       </button>
@@ -328,9 +432,13 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
                       <button
                         className="secondary-button"
                         type="button"
-                        onClick={() => void handleToggle(roomType)}
+                        onClick={() =>
+                          void handleToggle(roomType)
+                        }
                       >
-                        {roomType.active ? 'Ngừng bán' : 'Bán lại'}
+                        {roomType.active
+                          ? 'Ngừng bán'
+                          : 'Bán lại'}
                       </button>
 
                       <button
@@ -341,7 +449,9 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
                             ? 'Đang có phòng gắn vào, chỉ có thể ngừng bán'
                             : 'Xoá loại phòng'
                         }
-                        onClick={() => void handleDelete(roomType)}
+                        onClick={() =>
+                          void handleDelete(roomType)
+                        }
                       >
                         Xoá
                       </button>
@@ -358,7 +468,9 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
             <div className="room-type-section-heading compact">
               <div>
                 <span className="room-type-kicker">
-                  {editing ? 'CHỈNH SỬA' : 'THÊM MỚI'}
+                  {editing
+                    ? 'CHỈNH SỬA'
+                    : 'THÊM MỚI'}
                 </span>
 
                 <h2>
@@ -368,33 +480,46 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
                 </h2>
 
                 <p>
-                  Sức chứa tối đa không được nhỏ hơn sức chứa tiêu chuẩn.
+                  Sức chứa tối đa không được nhỏ hơn
+                  sức chứa tiêu chuẩn.
                 </p>
               </div>
             </div>
 
-                        <RoomTypeForm
+            <RoomTypeForm
               key={editing?.id ?? 'create'}
               initial={editing ?? undefined}
               amenities={amenities}
-              onSubmit={editing ? handleUpdate : handleCreate}
-              onCancel={editing ? () => setEditing(null) : undefined}
+              onSubmit={
+                editing
+                  ? handleUpdate
+                  : handleCreate
+              }
+              onCancel={
+                editing
+                  ? () => setEditing(null)
+                  : undefined
+              }
             />
           </aside>
-                )}
+        )}
       </section>
 
       {amenityDetailRoomType && (
         <div
           className="room-type-amenity-modal-backdrop"
-          onClick={() => setAmenityDetailRoomType(null)}
+          onClick={() =>
+            setAmenityDetailRoomType(null)
+          }
         >
           <div
             className="room-type-amenity-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="amenity-detail-title"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
             <div className="room-type-amenity-modal-header">
               <div>
@@ -416,7 +541,9 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
                 className="room-type-amenity-modal-close"
                 type="button"
                 aria-label="Đóng"
-                onClick={() => setAmenityDetailRoomType(null)}
+                onClick={() =>
+                  setAmenityDetailRoomType(null)
+                }
               >
                 ×
               </button>
@@ -426,32 +553,40 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
               <span>Tiện nghi</span>
 
               <strong>
-                {amenityDetailRoomType.amenities.length} tiện nghi
+                {
+                  amenityDetailRoomType
+                    .amenities.length
+                }{' '}
+                tiện nghi
               </strong>
             </div>
 
             <div className="room-type-amenity-modal-grid">
-              {amenityDetailRoomType.amenities.map((amenity) => (
-                <div
-                  className="room-type-amenity-modal-item"
-                  key={amenity.id}
-                >
-                  <span className="room-type-amenity-modal-icon">
-                    {amenity.icon || '✦'}
-                  </span>
+              {amenityDetailRoomType.amenities.map(
+                (amenity) => (
+                  <div
+                    className="room-type-amenity-modal-item"
+                    key={amenity.id}
+                  >
+                    <span className="room-type-amenity-modal-icon">
+                      {amenity.icon || '✦'}
+                    </span>
 
-                  <span className="room-type-amenity-modal-name">
-                    {amenity.name}
-                  </span>
-                </div>
-              ))}
+                    <span className="room-type-amenity-modal-name">
+                      {amenity.name}
+                    </span>
+                  </div>
+                ),
+              )}
             </div>
 
             <div className="room-type-amenity-modal-footer">
               <button
                 className="room-type-amenity-modal-done"
                 type="button"
-                onClick={() => setAmenityDetailRoomType(null)}
+                onClick={() =>
+                  setAmenityDetailRoomType(null)
+                }
               >
                 Đóng
               </button>
