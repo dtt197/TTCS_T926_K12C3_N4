@@ -29,6 +29,7 @@ type Tab = {
   view: View
   path: string
   label: string
+  title: string
   icon: string
   permission: Permission
 }
@@ -38,6 +39,7 @@ const TABS: ReadonlyArray<Tab> = [
     view: 'rooms',
     path: '/rooms',
     label: 'Phòng',
+    title: 'Phòng',
     icon: '▣',
     permission: 'rooms:view',
   },
@@ -45,6 +47,7 @@ const TABS: ReadonlyArray<Tab> = [
     view: 'roomManagement',
     path: '/room-management',
     label: 'Quản lý phòng',
+    title: 'Quản lý phòng',
     icon: '▤',
     permission: 'rooms:manage',
   },
@@ -52,6 +55,7 @@ const TABS: ReadonlyArray<Tab> = [
     view: 'roomTypes',
     path: '/room-types',
     label: 'Loại phòng',
+    title: 'Loại phòng',
     icon: '▦',
     permission: 'roomTypes:view',
   },
@@ -59,13 +63,15 @@ const TABS: ReadonlyArray<Tab> = [
     view: 'amenities',
     path: '/amenities',
     label: 'Tiện nghi',
+    title: 'Tiện nghi',
     icon: '✦',
     permission: 'amenities:view',
   },
   {
     view: 'settings',
     path: '/settings',
-    label: 'Tham số',
+    label: 'Tham số ',
+    title: 'Tham số',
     icon: '⚙',
     permission: 'settings:view',
   },
@@ -73,6 +79,7 @@ const TABS: ReadonlyArray<Tab> = [
     view: 'users',
     path: '/users',
     label: 'Tài khoản',
+    title: 'Tài khoản nhân viên',
     icon: '●',
     permission: 'accounts:view',
   },
@@ -80,6 +87,7 @@ const TABS: ReadonlyArray<Tab> = [
     view: 'audit-logs',
     path: '/audit-logs',
     label: 'Nhật ký',
+    title: 'Nhật ký hoạt động',
     icon: '☷',
     permission: 'auditLogs:view',
   },
@@ -275,8 +283,8 @@ export function InternalHomePage({
             </p>
 
             <h1>
-              {activeTab?.label ?? 'HomeStay'}
-            </h1>
+  {activeTab?.title ?? 'HomeStay'}
+</h1>
 
             <p className="dashboard-subtitle">
               Quản lý hoạt động homestay của bạn

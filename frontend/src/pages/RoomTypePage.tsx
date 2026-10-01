@@ -156,19 +156,7 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
 
   return (
     <div className="room-type-page">
-      <section className="room-type-heading">
-        <div>
-          <span className="room-type-kicker">QUẢN LÝ DANH MỤC</span>
-          <h1>Loại phòng</h1>
-          <p>
-            {canManage
-              ? 'Khai báo loại phòng, sức chứa và tiện nghi để chuẩn hoá thông tin bán phòng.'
-              : 'Xem các loại phòng homestay đang bán và tiện nghi của từng loại.'}
-          </p>
-        </div>
-
-        <div className="room-type-count">{roomTypes.length} loại phòng</div>
-      </section>
+     
 
       <section className="room-type-summary" aria-label="Tổng quan loại phòng">
         <article className="room-type-summary-card">

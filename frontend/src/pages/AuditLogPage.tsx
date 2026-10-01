@@ -117,17 +117,7 @@ export function AuditLogPage() {
 
   return (
     <main className="audit-page">
-      <section className="audit-heading">
-        <div>
-          <span className="audit-kicker">THEO DÕI HỆ THỐNG</span>
-          <h1>Nhật ký hoạt động</h1>
-          <p>
-            Theo dõi thao tác tài khoản, kết quả thực hiện và thông tin truy cập.
-          </p>
-        </div>
-
-        <div className="audit-total">{data.totalElements} bản ghi</div>
-      </section>
+     
 
       <section className="audit-summary" aria-label="Tổng quan nhật ký">
         <article className="audit-summary-card">

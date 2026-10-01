@@ -205,21 +205,7 @@ export function UserManagementPage({
 
   return (
     <div className="user-management-page">
-      <section className="user-management-heading">
-        <div>
-          <span className="user-management-kicker">QUẢN LÝ NHÂN SỰ</span>
-          <h1>Tài khoản nhân viên</h1>
-          <p>
-            {canManageAccounts
-              ? 'Mỗi nhân viên một tài khoản riêng, gán đúng một vai trò và theo dõi trạng thái truy cập.'
-              : 'Xem danh sách và trạng thái tài khoản nhân viên.'}
-          </p>
-        </div>
-
-        <div className="user-management-count">
-          {filteredUsers.length} / {users.length} tài khoản
-        </div>
-      </section>
+     
 
       <section className="user-summary" aria-label="Tổng quan tài khoản">
         <article className="user-summary-card">

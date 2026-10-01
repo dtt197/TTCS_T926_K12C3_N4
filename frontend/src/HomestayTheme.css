@@ -1503,3 +1503,152 @@
     margin-top: 24px !important;
   }
 }
+/* =========================================================
+   FINAL DASHBOARD HEADER TYPOGRAPHY - FORCE
+   ========================================================= */
+
+.dashboard-header .dashboard-eyebrow {
+  margin: 0 0 10px !important;
+
+  color: #176f53 !important;
+
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.16em !important;
+
+  opacity: 1 !important;
+}
+
+.dashboard-header h1 {
+  margin: 0 !important;
+
+  color: #10382d !important;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif !important;
+
+  font-size: clamp(42px, 3.8vw, 54px) !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.035em !important;
+
+  opacity: 1 !important;
+
+  text-shadow:
+    0 0 0 #10382d,
+    0.3px 0 #10382d,
+    -0.3px 0 #10382d !important;
+}
+
+.dashboard-header .dashboard-subtitle {
+  margin: 13px 0 0 !important;
+
+  color: #405f54 !important;
+
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1.5 !important;
+
+  opacity: 1 !important;
+}
+
+.dashboard-user-info strong {
+  color: #153c31 !important;
+  font-weight: 800 !important;
+}
+
+.dashboard-user-info span {
+  color: #62766e !important;
+  font-weight: 700 !important;
+}
+
+@media (max-width: 760px) {
+  .dashboard-header h1 {
+    font-size: clamp(36px, 9vw, 44px) !important;
+  }
+
+  .dashboard-header .dashboard-subtitle {
+    font-size: 13px !important;
+  }
+}
+/* =========================================================
+   DEMO HEADER MATCH
+   - chữ đậm hơn
+   - ảnh nền rõ hơn
+   - giảm lớp phủ trắng
+   ========================================================= */
+
+.dashboard-header {
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.98) 0%,
+      rgba(255, 255, 255, 0.92) 27%,
+      rgba(252, 249, 239, 0.55) 48%,
+      rgba(239, 245, 234, 0.12) 68%,
+      rgba(255, 255, 255, 0.00) 100%
+    ),
+    url('/assets/homestay-header-bg.png') !important;
+
+  background-size: cover !important;
+  background-position: 64% 50% !important;
+  background-repeat: no-repeat !important;
+}
+
+.dashboard-header::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,0.34) 0%,
+      rgba(255,255,255,0.10) 34%,
+      transparent 58%
+    ) !important;
+}
+
+.dashboard-header h1 {
+  color: #0d3027 !important;
+
+  font-family:
+    Georgia,
+    'Times New Roman',
+    serif !important;
+
+  font-size: clamp(44px, 4vw, 58px) !important;
+  font-weight: 900 !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.04em !important;
+
+  text-shadow:
+    0.45px 0 #0d3027,
+    -0.45px 0 #0d3027 !important;
+}
+
+.dashboard-header .dashboard-eyebrow {
+  color: #126d50 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.16em !important;
+}
+
+.dashboard-header .dashboard-subtitle {
+  color: #3d5b51 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+@media (max-width: 760px) {
+  .dashboard-header {
+    background-position: 72% center !important;
+  }
+
+  .dashboard-header h1 {
+    font-size: clamp(38px, 10vw, 46px) !important;
+  }
+}
+.dashboard-header h1 {
+  word-spacing: normal !important;
+  letter-spacing: -0.02em !important;
+}

@@ -565,35 +565,32 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 }
 
 .dashboard-eyebrow {
-  margin: 0 0 6px;
-
-  color: #318064;
-
+  margin: 0 0 7px;
+  color: #246f55;
   font-size: 11px;
-  font-weight: 800;
-
+  font-weight: 900;
   letter-spacing: 0.15em;
 }
 
 .dashboard-header h1 {
   margin: 0;
-
-  color: #17352d;
-
+  color: #102f26;
   font-family:
     'Playfair Display',
     Georgia,
     serif;
-
-  font-size: clamp(29px, 3vw, 40px);
+  font-size: clamp(31px, 3vw, 42px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
 }
 
 .dashboard-subtitle {
-  margin: 8px 0 0;
-
-  color: #78847f;
-
+  margin: 9px 0 0;
+  color: #536b61;
   font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
 }
 
 .dashboard-account {
