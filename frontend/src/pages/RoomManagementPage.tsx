@@ -9,6 +9,8 @@ import '../App.css'
 import './RoomManagementPage.css'
 
 import type { RoomStatus } from '../types/room'
+import type { RoomType } from '../types/roomType'
+import { getRoomTypes } from '../services/roomTypeService'
 
 import {
   createManagedRoom,
@@ -50,7 +52,7 @@ type EditDraft = {
 
 export function RoomManagementPage() {
   const [rooms, setRooms] = useState<ManagedRoom[]>([])
-
+  const [availableRoomTypes, setAvailableRoomTypes] = useState<RoomType[]>([])
   const [roomTypeFilter, setRoomTypeFilter] = useState('')
   const [floorFilter, setFloorFilter] = useState('')
   const [statusFilter, setStatusFilter] =
@@ -166,7 +168,15 @@ export function RoomManagementPage() {
   useEffect(() => {
     void fetchRooms({})
   }, [fetchRooms])
-
+  useEffect(() => {
+  void getRoomTypes()
+    .then((items) => {
+      setAvailableRoomTypes(items.filter((item) => item.active))
+    })
+    .catch(() => {
+      setAvailableRoomTypes([])
+    })
+}, [])
   async function handleCreate(
     event: React.FormEvent,
   ) {
@@ -512,22 +522,33 @@ export function RoomManagementPage() {
               />
             </label>
 
-            <label>
-              Loại phòng
+           <label>
+  Loại phòng
 
-              <input
-                value={createForm.roomType}
-                onChange={(event) =>
-                  setCreateForm({
-                    ...createForm,
-                    roomType:
-                      event.target.value,
-                  })
-                }
-                placeholder="Phòng đôi"
-                required
-              />
-            </label>
+  <select
+    value={createForm.roomType}
+    onChange={(event) =>
+      setCreateForm({
+        ...createForm,
+        roomType: event.target.value,
+      })
+    }
+    required
+  >
+    <option value="">
+      Chọn loại phòng
+    </option>
+
+    {availableRoomTypes.map((roomType) => (
+      <option
+        key={roomType.id}
+        value={roomType.name}
+      >
+        {roomType.name}
+      </option>
+    ))}
+  </select>
+</label>
 
             <label>
               Trạng thái
@@ -924,22 +945,28 @@ export function RoomManagementPage() {
                 />
               </label>
 
-              <label>
-                Loại phòng
+             <label>
+  Loại phòng
 
-                <input
-                  value={
-                    editDraft.roomType
-                  }
-                  onChange={(event) =>
-                    setEditDraft({
-                      ...editDraft,
-                      roomType:
-                        event.target.value,
-                    })
-                  }
-                />
-              </label>
+  <select
+    value={editDraft.roomType}
+    onChange={(event) =>
+      setEditDraft({
+        ...editDraft,
+        roomType: event.target.value,
+      })
+    }
+  >
+    {availableRoomTypes.map((roomType) => (
+      <option
+        key={roomType.id}
+        value={roomType.name}
+      >
+        {roomType.name}
+      </option>
+    ))}
+  </select>
+</label>
 
               <label>
                 Trạng thái
