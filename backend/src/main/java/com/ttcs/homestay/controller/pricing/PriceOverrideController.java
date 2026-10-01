@@ -1,5 +1,6 @@
 package com.ttcs.homestay.controller.pricing;
-
+import com.ttcs.homestay.dto.pricing.PriceOverridePreviewRequest;
+import com.ttcs.homestay.dto.pricing.PriceOverridePreviewResponse;
 import com.ttcs.homestay.dto.pricing.PriceOverrideRequest;
 import com.ttcs.homestay.dto.pricing.PriceOverrideResponse;
 import com.ttcs.homestay.service.AuditLogService;
@@ -50,6 +51,11 @@ public class PriceOverrideController {
                 priceOverrideService.createPriceOverride(request, jwt.getClaimAsString("fullName"));
         audit(jwt, httpRequest, "PRICE_OVERRIDE_CREATED");
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+        /** S2-02 Lát 4: xem trước giá từng đêm của đợt đang nhập, không lưu gì nên không ghi nhật ký. */
+    @PostMapping("/preview")
+    public PriceOverridePreviewResponse previewPriceOverride(@Valid @RequestBody PriceOverridePreviewRequest request) {
+        return priceOverrideService.preview(request);
     }
 
     @PutMapping("/{id}")

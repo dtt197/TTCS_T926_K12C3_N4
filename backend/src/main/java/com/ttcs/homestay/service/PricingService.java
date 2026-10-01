@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -56,10 +57,8 @@ public class PricingService {
         }
         RoomType roomType = roomTypeRepository.findById(roomTypeId)
                 .orElseThrow(RoomTypeNotFoundException::new);
-        Set<DayOfWeek> weekendDays = parseWeekendDays(
-                operatingSettingsService.findEffectiveAt(OffsetDateTime.now()).getWeekendDays());
 
-        List<NightlyPrice> nightlyPrices = priceNights(roomType, checkIn, checkOut, weekendDays);
+        List<NightlyPrice> nightlyPrices = priceNights(roomType, checkIn, checkOut, currentWeekendDays());
         return new PriceQuoteResponse(
                 roomType.getId(),
                 roomType.getName(),
@@ -70,7 +69,10 @@ public class PricingService {
                 total(nightlyPrices));
     }
 
-    /** Giá từng đêm từ checkIn đến trước checkOut. Booking và API xem giá cùng dùng hàm này. */
+    /**
+     * Giá từng đêm từ checkIn đến trước checkOut. Booking và API xem giá cùng dùng hàm này.
+     * Đêm cần giá ngày thường / cuối tuần mà loại phòng chưa khai báo thì báo lỗi.
+     */
     @Transactional(readOnly = true)
     public List<NightlyPrice> priceNights(
             RoomType roomType, LocalDate checkIn, LocalDate checkOut, Set<DayOfWeek> weekendDays) {
@@ -80,6 +82,33 @@ public class PricingService {
 
         List<NightlyPrice> nightlyPrices = new ArrayList<>();
         for (LocalDate night = checkIn; night.isBefore(checkOut); night = night.plusDays(1)) {
+            NightlyPrice nightlyPrice = priceForNight(roomType, night, weekendDays, overrides);
+            if (nightlyPrice.price() == null) {
+                throw new InvalidPriceQuoteException(nightlyPrice.priceType() == PriceType.WEEKEND
+                        ? "Loại phòng chưa có giá cuối tuần"
+                        : "Loại phòng chưa có giá ngày thường");
+            }
+            nightlyPrices.add(nightlyPrice);
+        }
+        return nightlyPrices;
+    }
+
+    /**
+     * S2-02 Lát 4: giá hiện tại từng đêm từ firstNight đến lastNight (gồm cả hai đầu, như khoảng ngày của đợt),
+     * bỏ qua đợt đang sửa. Đêm chưa khai báo giá thì price để trống thay vì báo lỗi, để màn hình xem trước vẫn hiện.
+     */
+    @Transactional(readOnly = true)
+    public List<NightlyPrice> currentPrices(
+            RoomType roomType, LocalDate firstNight, LocalDate lastNight, Long excludeOverrideId) {
+        Set<DayOfWeek> weekendDays = currentWeekendDays();
+        List<PriceOverride> overrides = priceOverrideRepository
+                .findOverlapping(roomType.getId(), firstNight, lastNight)
+                .stream()
+                .filter(override -> !Objects.equals(override.getId(), excludeOverrideId))
+                .toList();
+
+        List<NightlyPrice> nightlyPrices = new ArrayList<>();
+        for (LocalDate night = firstNight; !night.isAfter(lastNight); night = night.plusDays(1)) {
             nightlyPrices.add(priceForNight(roomType, night, weekendDays, overrides));
         }
         return nightlyPrices;
@@ -94,11 +123,13 @@ public class PricingService {
             }
         }
         if (weekendDays.contains(night.getDayOfWeek())) {
-            return new NightlyPrice(night, PriceType.WEEKEND, "Cuối tuần",
-                    requirePrice(roomType.getWeekendPrice(), "Loại phòng chưa có giá cuối tuần"));
+            return new NightlyPrice(night, PriceType.WEEKEND, "Cuối tuần", validPrice(roomType.getWeekendPrice()));
         }
-        return new NightlyPrice(night, PriceType.WEEKDAY, "Ngày thường",
-                requirePrice(roomType.getWeekdayPrice(), "Loại phòng chưa có giá ngày thường"));
+        return new NightlyPrice(night, PriceType.WEEKDAY, "Ngày thường", validPrice(roomType.getWeekdayPrice()));
+    }
+
+    private Set<DayOfWeek> currentWeekendDays() {
+        return parseWeekendDays(operatingSettingsService.findEffectiveAt(OffsetDateTime.now()).getWeekendDays());
     }
 
     public static long total(List<NightlyPrice> nightlyPrices) {
@@ -118,10 +149,8 @@ public class PricingService {
                 .collect(Collectors.toSet());
     }
 
-    private static long requirePrice(Long price, String message) {
-        if (price == null || price <= 0) {
-            throw new InvalidPriceQuoteException(message);
-        }
-        return price;
+    /** Giá chưa khai báo (trống hoặc không dương) coi như chưa có. */
+    private static Long validPrice(Long price) {
+        return price == null || price <= 0 ? null : price;
     }
 }

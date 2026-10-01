@@ -120,3 +120,28 @@
   .price-panel { padding: 18px; }
   .price-section-heading { flex-direction: column; }
 }
+
+/* S2-02 Lát 4: bảng xem trước giá từng đêm trong form */
+.price-preview { display: grid; gap: 10px; padding-top: 4px; }
+.price-preview h3 { margin: 0; color: var(--pr-text); font-size: 13px; }
+.price-preview .price-notice { margin-bottom: 0; }
+.price-preview-hint { margin: 0; color: var(--pr-muted); font-size: 11px; }
+.price-preview-table-wrapper {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--pr-line);
+  border-radius: 10px;
+}
+.price-preview-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--pr-text); }
+.price-preview-table th,
+.price-preview-table td { padding: 7px 8px; text-align: left; border-bottom: 1px solid rgba(37,92,71,.07); }
+.price-preview-table th {
+  position: sticky;
+  top: 0;
+  color: var(--pr-muted);
+  font-size: 10px;
+  font-weight: 700;
+  background: #f4f8f3;
+}
+.price-preview-table td small { display: block; color: var(--pr-muted); font-size: 10px; }
+.price-preview-table tfoot td { font-weight: 700; border-bottom: 0; background: #f4f8f3; }
