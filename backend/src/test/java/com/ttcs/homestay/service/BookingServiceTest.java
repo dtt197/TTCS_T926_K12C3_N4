@@ -6,7 +6,9 @@ import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.repository.BookingRepository;
@@ -59,9 +61,11 @@ class BookingServiceTest {
         });
 
         BookingCreateRequest request = new BookingCreateRequest(
-                4L,
-                LocalDate.of(2026, 10, 2),
-                LocalDate.of(2026, 10, 5));
+            4L,
+            "Nguyễn Văn A",
+            LocalDate.of(2026, 10, 2),
+            LocalDate.of(2026, 10, 5)
+        );
         BookingResponse originalBooking = bookingService.createBooking(request);
 
         roomType.setWeekdayPrice(150_000L);
@@ -80,5 +84,35 @@ class BookingServiceTest {
         assertThat(newBooking.weekendDaysSnapshot()).isEqualTo("SUNDAY");
         assertThat(newBooking.totalAmount()).isEqualTo(600_000L);
         assertThat(storedBookings.get(1).getTotalAmount()).isEqualTo(600_000L);
+    }
+
+    @Test
+    void getLatestBookingsUsesCreatedAtDescendingOrder() {
+        Booking newest = new Booking();
+        newest.setBookingCode("BK-NEW");
+        newest.setGuestName("Khách mới");
+        newest.setRoomTypeNameSnapshot("Phòng đôi");
+        newest.setCheckInDate(LocalDate.of(2026, 10, 20));
+        newest.setCheckOutDate(LocalDate.of(2026, 10, 22));
+        newest.setTotalAmount(1_000_000L);
+        newest.setStatus(BookingStatus.CHO_XAC_NHAN);
+
+        Booking oldest = new Booking();
+        oldest.setBookingCode("BK-OLD");
+        oldest.setGuestName("Khách cũ");
+        oldest.setRoomTypeNameSnapshot("Phòng đơn");
+        oldest.setCheckInDate(LocalDate.of(2026, 10, 18));
+        oldest.setCheckOutDate(LocalDate.of(2026, 10, 19));
+        oldest.setTotalAmount(500_000L);
+        oldest.setStatus(BookingStatus.DA_XAC_NHAN);
+
+        when(bookingRepository.findAllByOrderByCreatedAtDescIdDesc())
+                .thenReturn(List.of(newest, oldest));
+
+        var result = bookingService.getLatestBookings();
+
+        assertThat(result)
+                .extracting(BookingListItemResponse::bookingCode)
+                .containsExactly("BK-NEW", "BK-OLD");
     }
 }

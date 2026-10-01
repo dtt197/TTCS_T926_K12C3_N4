@@ -1,0 +1,68 @@
+.booking-page {
+  overflow: hidden;
+}
+
+.booking-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.booking-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.booking-table th,
+.booking-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.booking-table th {
+  color: var(--muted);
+  background: #fbfcfa;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.booking-table tbody tr:hover {
+  background: #f5faf6;
+}
+
+.booking-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.booking-status.pending {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
+.booking-status.confirmed {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.booking-status.cancelled {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.booking-status.checked-in {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.booking-status.checked-out {
+  background: #eeeef5;
+  color: #56567d;
+}

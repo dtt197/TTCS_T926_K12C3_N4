@@ -10,6 +10,7 @@ import { SettingsPage } from './SettingsPage'
 import { RoomStatusPage } from './RoomStatusPage'
 import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
+import { BookingListPage } from './BookingListPage'
 import './AuthPages.css'
 
 type InternalHomePageProps = {
@@ -26,6 +27,7 @@ type View =
   | 'settings'
   | 'users'
   | 'audit-logs'
+  | 'bookings'
 
 type Tab = {
   view: View
@@ -38,12 +40,12 @@ type Tab = {
 
 const TABS: ReadonlyArray<Tab> = [
   {
-    view: 'rooms',
-    path: '/rooms',
-    label: 'Phòng',
-    title: 'Phòng',
-    icon: '▣',
-    permission: 'rooms:view',
+    view: 'bookings',
+    path: '/bookings',
+    label: 'Booking',
+    title: 'Danh sách booking mới',
+    icon: '▤',
+    permission: 'bookings:view',
   },
   {
     view: 'roomManagement',
@@ -105,17 +107,23 @@ const TABS: ReadonlyArray<Tab> = [
 
 const SESSION_CHECK_INTERVAL_MS = 30_000
 
-function getViewFromPath(pathname: string): View {
-  return TABS.find((tab) => tab.path === pathname)?.view ?? 'rooms'
+function getViewFromPath(pathname: string): View | undefined {
+  return TABS.find((tab) => tab.path === pathname)?.view
 }
 
 export function InternalHomePage({
   user,
   onLogout,
 }: InternalHomePageProps) {
-  const [view, setView] = useState<View>(() =>
-    getViewFromPath(window.location.pathname),
-  )
+  const [view, setView] = useState<View>(() => {
+    const viewFromPath = getViewFromPath(window.location.pathname)
+
+    if (viewFromPath) {
+      return viewFromPath
+    }
+
+    return user.role === 'RECEPTIONIST' ? 'bookings' : 'rooms'
+  })
 
   const visibleTabs = TABS.filter((tab) =>
     hasPermission(user.role, tab.permission),
@@ -136,26 +144,6 @@ export function InternalHomePage({
     fallbackTab
 
   useEffect(() => {
-    const currentTab = TABS.find(
-      (tab) => tab.path === window.location.pathname,
-    )
-
-    const currentTabAllowed =
-      currentTab &&
-      hasPermission(user.role, currentTab.permission)
-
-    if (!currentTabAllowed) {
-      window.history.replaceState(
-        {},
-        '',
-        fallbackTab.path,
-      )
-
-      setView(fallbackTab.view)
-    }
-  }, [user.role, fallbackTab])
-
-  useEffect(() => {
     function handlePopState() {
       const nextView = getViewFromPath(
         window.location.pathname,
@@ -169,7 +157,7 @@ export function InternalHomePage({
         nextTab &&
         hasPermission(user.role, nextTab.permission)
       ) {
-        setView(nextView)
+        if (nextView) setView(nextView)
         return
       }
 
@@ -293,8 +281,8 @@ export function InternalHomePage({
             </p>
 
             <h1>
-  {activeTab?.title ?? 'HomeStay'}
-</h1>
+              {activeTab?.title ?? 'HomeStay'}
+            </h1>
 
             <p className="dashboard-subtitle">
               Quản lý hoạt động homestay của bạn
@@ -317,7 +305,9 @@ export function InternalHomePage({
         </header>
 
         <div className="internal-page-content">
-          {activeView === 'audit-logs' ? (
+          {activeView === 'bookings' ? (
+            <BookingListPage />
+          ) : activeView === 'audit-logs' ? (
             <AuditLogPage />
           ) : activeView === 'roomManagement' ? (
             <RoomManagementPage />
@@ -330,7 +320,7 @@ export function InternalHomePage({
             <RoomTypePage role={user.role} />
           ) : activeView === 'amenities' ? (
             <AmenityPage role={user.role} />
-            ) : activeView === 'priceOverrides' ? (
+          ) : activeView === 'priceOverrides' ? (
             <PriceOverridePage role={user.role} />
           ) : activeView === 'settings' ? (
             <SettingsPage role={user.role} />

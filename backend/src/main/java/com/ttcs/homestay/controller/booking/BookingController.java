@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.ttcs.homestay.dto.booking.BookingListItemResponse;
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -26,4 +29,8 @@ public class BookingController {
             @Valid @RequestBody BookingCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(request));
     }
+    @GetMapping
+public List<BookingListItemResponse> getBookings() {
+    return bookingService.getLatestBookings();
+}
 }
