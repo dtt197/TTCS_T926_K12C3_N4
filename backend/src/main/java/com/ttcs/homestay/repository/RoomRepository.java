@@ -17,6 +17,8 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select room from Room room where room.id = :id")
     Optional<Room> findByIdForUpdate(Long id);
+        /** S2-07: các phòng đang hoạt động của một loại phòng (phòng gắn loại phòng theo tên). */
+    List<Room> findByRoomTypeIgnoreCaseAndActiveTrue(String roomType);
 
     /** S1-06: đếm số phòng đang gắn với một loại phòng (so theo tên, không phân biệt hoa thường). */
     long countByRoomTypeIgnoreCase(String roomType);
