@@ -264,7 +264,23 @@ const [amenityDetailRoomType, setAmenityDetailRoomType] =
                       <strong>{roomType.numberOfBeds}</strong>
                       <small>giường</small>
                     </div>
+                      <div>
+  <span>Giá ngày thường</span>
 
+  {roomType.weekdayPrice != null ? (
+    <>
+      <strong>
+        {roomType.weekdayPrice.toLocaleString('vi-VN')}
+      </strong>
+      <small>VND/đêm</small>
+    </>
+  ) : (
+    <>
+      <strong>—</strong>
+      <small>Chưa khai báo</small>
+    </>
+  )}
+</div>
                     <div>
                       <span>Số phòng</span>
                       <strong>{roomType.roomCount}</strong>

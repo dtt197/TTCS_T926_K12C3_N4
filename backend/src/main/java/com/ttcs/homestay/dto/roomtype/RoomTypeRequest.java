@@ -1,17 +1,24 @@
 package com.ttcs.homestay.dto.roomtype;
 
-import jakarta.validation.constraints.Min;
 import java.util.List;
+
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** S1-06 AC1: loại phòng gồm mã, tên, sức chứa tiêu chuẩn, sức chứa tối đa, số giường và mô tả. */
+/**
+ * S1-06: thông tin loại phòng.
+ * S2-01 Lát 1: bổ sung giá ngày thường theo loại phòng.
+ */
 public record RoomTypeRequest(
+
         @NotBlank(message = "Vui lòng nhập mã loại phòng")
-        @Pattern(regexp = "^[A-Za-z0-9_]{2,50}$",
-                message = "Mã loại phòng dài 2–50 ký tự, chỉ gồm chữ không dấu, số và dấu gạch dưới")
+        @Pattern(
+                regexp = "^[A-Za-z0-9_]{2,50}$",
+                message = "Mã loại phòng dài 2–50 ký tự, chỉ gồm chữ không dấu, số và dấu gạch dưới"
+        )
         String code,
 
         @NotBlank(message = "Vui lòng nhập tên loại phòng")
@@ -36,5 +43,11 @@ public record RoomTypeRequest(
         Boolean active,
 
         /** S1-08: danh sách tiện nghi được tick; null nghĩa là giữ nguyên tiện nghi đang gắn. */
-        List<Long> amenityIds) {
+        List<Long> amenityIds,
+
+        /** S2-01 Lát 1: giá ngày thường theo VND/đêm. */
+        @NotNull(message = "Vui lòng nhập giá ngày thường")
+        @Min(value = 1, message = "Giá ngày thường phải lớn hơn 0")
+        Long weekdayPrice
+) {
 }
