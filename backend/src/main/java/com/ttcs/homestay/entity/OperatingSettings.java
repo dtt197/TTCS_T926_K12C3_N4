@@ -56,6 +56,13 @@ public class OperatingSettings {
     @Column(name = "extra_person_fee", nullable = false)
     private long extraPersonFee;
 
+        /**
+     * S2-01 Lát 3:
+     * Các ngày được tính là cuối tuần, lưu dạng FRIDAY,SATURDAY.
+     */
+    @Column(name = "weekend_days", nullable = false, length = 100)
+    private String weekendDays = "FRIDAY,SATURDAY";
+
     /** AC4: người sửa. Lưu kèm tên để lịch sử vẫn đọc được nếu tài khoản bị đổi tên. */
     @Column(name = "created_by_user_id")
     private Long createdByUserId;
