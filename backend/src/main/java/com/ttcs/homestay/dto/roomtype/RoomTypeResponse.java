@@ -7,8 +7,9 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * roomCount: số phòng đang gắn với loại phòng này, frontend dùng để khoá nút Xoá.
- * amenities: S1-08 AC4, chỉ gồm tiện nghi đang dùng (tiện nghi đã ngừng dùng bị ẩn).
+ * roomCount: số phòng đang gắn với loại phòng này.
+ * amenities: chỉ gồm tiện nghi đang dùng.
+ * weekdayPrice: S2-01 Lát 1, giá ngày thường theo VND/đêm.
  */
 public record RoomTypeResponse(
         Long id,
@@ -18,16 +19,20 @@ public record RoomTypeResponse(
         int maxCapacity,
         int numberOfBeds,
         String description,
+        Long weekdayPrice,
         boolean active,
         long roomCount,
         List<AmenitySummary> amenities) {
 
     public static RoomTypeResponse from(RoomType roomType, long roomCount) {
-        List<AmenitySummary> activeAmenities = roomType.getAmenities().stream()
-                .filter(Amenity::isActive)
-                .sorted(Comparator.comparing(Amenity::getName))
-                .map(AmenitySummary::from)
-                .toList();
+
+        List<AmenitySummary> activeAmenities =
+                roomType.getAmenities().stream()
+                        .filter(Amenity::isActive)
+                        .sorted(Comparator.comparing(Amenity::getName))
+                        .map(AmenitySummary::from)
+                        .toList();
+
         return new RoomTypeResponse(
                 roomType.getId(),
                 roomType.getCode(),
@@ -36,8 +41,10 @@ public record RoomTypeResponse(
                 roomType.getMaxCapacity(),
                 roomType.getNumberOfBeds(),
                 roomType.getDescription(),
+                roomType.getWeekdayPrice(),
                 !Boolean.FALSE.equals(roomType.getStatus()),
                 roomCount,
-                activeAmenities);
+                activeAmenities
+        );
     }
 }

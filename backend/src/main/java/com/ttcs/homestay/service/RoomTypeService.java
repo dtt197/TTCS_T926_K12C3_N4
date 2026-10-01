@@ -170,12 +170,22 @@ public class RoomTypeService {
 
     private void apply(RoomType roomType, RoomTypeRequest request, String code, String name) {
         roomType.setCode(code);
-        roomType.setName(name);
-        roomType.setStandardCapacity(request.standardCapacity());
-        roomType.setMaxCapacity(request.maxCapacity());
-        roomType.setNumberOfBeds(request.numberOfBeds());
-        String description = request.description() == null ? null : request.description().trim();
-        roomType.setDescription(description == null || description.isEmpty() ? null : description);
+roomType.setName(name);
+roomType.setStandardCapacity(request.standardCapacity());
+roomType.setMaxCapacity(request.maxCapacity());
+roomType.setNumberOfBeds(request.numberOfBeds());
+roomType.setWeekdayPrice(request.weekdayPrice());
+
+String description =
+        request.description() == null
+                ? null
+                : request.description().trim();
+
+roomType.setDescription(
+        description == null || description.isEmpty()
+                ? null
+                : description
+);
     }
 
     /** Mã lưu thống nhất bằng chữ in hoa, ví dụ "doi" thành "DOI". */

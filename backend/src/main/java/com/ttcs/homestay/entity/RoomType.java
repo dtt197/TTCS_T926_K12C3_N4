@@ -42,10 +42,13 @@ public class RoomType {
     private Integer numberOfBeds;
 
     @Column(name = "description", length = 500)
-    private String description;
+private String description;
 
-    @Column(name = "status")
-    private Boolean status = true; // true: Đang bán, false: Ngừng bán
+@Column(name = "weekday_price")
+private Long weekdayPrice;
+
+@Column(name = "status")
+private Boolean status = true;// true: Đang bán, false: Ngừng bán
 
     /** S1-08 AC2: một loại phòng gắn được nhiều tiện nghi (bảng nối room_type_amenities). */
     @ManyToMany

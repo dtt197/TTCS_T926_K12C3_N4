@@ -227,12 +227,42 @@ class RoomTypeServiceTest {
         verify(roomTypeRepository, never()).save(any());
     }
 
-    private static RoomTypeRequest requestWithAmenities(String code, String name, List<Long> amenityIds) {
-        return new RoomTypeRequest(code, name, 2, 3, 1, null, null, amenityIds);
-    }
-    private static RoomTypeRequest request(String code, String name, int standardCapacity, int maxCapacity) {
-        return new RoomTypeRequest(code, name, standardCapacity, maxCapacity, 1, null, null, null);
-    }
+   private static RoomTypeRequest requestWithAmenities(
+        String code,
+        String name,
+        List<Long> amenityIds) {
+
+    return new RoomTypeRequest(
+            code,
+            name,
+            2,
+            3,
+            1,
+            null,
+            null,
+            amenityIds,
+            500000L
+    );
+}
+
+private static RoomTypeRequest request(
+        String code,
+        String name,
+        int standardCapacity,
+        int maxCapacity) {
+
+    return new RoomTypeRequest(
+            code,
+            name,
+            standardCapacity,
+            maxCapacity,
+            1,
+            null,
+            null,
+            null,
+            500000L
+    );
+}
 
     private static RoomType roomType(Long id, String code, String name) {
         RoomType roomType = new RoomType();
@@ -245,4 +275,57 @@ class RoomTypeServiceTest {
         roomType.setStatus(true);
         return roomType;
     }
+    @Test
+void taoLoaiPhong_coGiaNgayThuong_luuDungGia() {
+    when(roomTypeRepository.save(any(RoomType.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+    RoomTypeResponse response =
+            roomTypeService.createRoomType(
+                    new RoomTypeRequest(
+                            "VIP",
+                            "Phòng VIP",
+                            2,
+                            4,
+                            1,
+                            null,
+                            null,
+                            null,
+                            1200000L
+                    )
+            );
+
+    assertThat(response.weekdayPrice())
+            .isEqualTo(1200000L);
+}
+
+@Test
+void suaLoaiPhong_capNhatGiaNgayThuong() {
+    RoomType roomType =
+            roomType(1L, "VIP", "Phòng VIP");
+
+    roomType.setWeekdayPrice(1000000L);
+
+    when(roomTypeRepository.findById(1L))
+            .thenReturn(Optional.of(roomType));
+
+    RoomTypeResponse response =
+            roomTypeService.updateRoomType(
+                    1L,
+                    new RoomTypeRequest(
+                            "VIP",
+                            "Phòng VIP",
+                            2,
+                            4,
+                            1,
+                            null,
+                            null,
+                            null,
+                            1200000L
+                    )
+            );
+
+    assertThat(response.weekdayPrice())
+            .isEqualTo(1200000L);
+}
 }
