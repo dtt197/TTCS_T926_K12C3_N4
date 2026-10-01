@@ -1,0 +1,2 @@
+ALTER TABLE operating_settings
+ADD COLUMN weekend_days VARCHAR(100) NOT NULL DEFAULT 'FRIDAY,SATURDAY';

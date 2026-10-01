@@ -112,9 +112,22 @@ class OperatingSettingsServiceTest {
         return new CancellationTierRequest(hours, percent);
     }
 
-    private static OperatingSettingsRequest request(LocalTime checkIn, LocalTime checkOut,
-            List<CancellationTierRequest> tiers) {
-        return new OperatingSettingsRequest("HomeStay Test", "Hà Nội", "0912345678", "homestay@test.local",
-                checkIn, checkOut, 100_000L, 200_000L, tiers);
-    }
+    private static OperatingSettingsRequest request(
+        LocalTime checkIn,
+        LocalTime checkOut,
+        List<CancellationTierRequest> tiers) {
+
+    return new OperatingSettingsRequest(
+            "HomeStay Test",
+            "Hà Nội",
+            "0912345678",
+            "homestay@test.local",
+            checkIn,
+            checkOut,
+            100_000L,
+            200_000L,
+            tiers,
+            List.of("FRIDAY", "SATURDAY")
+    );
+}
 }

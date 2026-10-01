@@ -17,6 +17,7 @@ export type OperatingSettings = {
   cancellationTiers: CancellationTier[]
   updatedByName: string
   updatedAt: string
+  weekendDays: string[]
 }
 
 export type OperatingSettingsPayload = {
@@ -29,4 +30,5 @@ export type OperatingSettingsPayload = {
   lateCheckoutFeePerHour: number
   extraPersonFee: number
   cancellationTiers: CancellationTier[]
+  weekendDays: string[]
 }
