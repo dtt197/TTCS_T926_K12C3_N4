@@ -911,4 +911,26 @@ void leTanXemGiaTungDem_quaPhanQuyen() throws Exception {
                     .header("Authorization", "Bearer receptionist-test-token")
     ).andExpect(status().isBadRequest());
 }
+
+@Test
+void leTanXemTruocGiaDe_biChan403() throws Exception {
+    // Xem trước chỉ dùng trong form thêm/sửa, nên chỉ Chủ homestay được gọi.
+    mockMvc.perform(
+            post("/api/price-overrides/preview")
+                    .header("Authorization", "Bearer receptionist-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void ownerXemTruocGiaDe_quaPhanQuyen() throws Exception {
+    // Qua được phân quyền, bị chặn vì thiếu loại phòng và ngày (400) chứ không phải 403.
+    mockMvc.perform(
+            post("/api/price-overrides/preview")
+                    .header("Authorization", "Bearer owner-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isBadRequest());
+}
 }

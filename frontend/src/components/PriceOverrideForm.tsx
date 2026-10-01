@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { PriceOverride, PriceOverridePayload } from '../types/priceOverride'
 import type { RoomType } from '../types/roomType'
+import { PriceOverridePreview } from './PriceOverridePreview'
 
 type PriceOverrideFormProps = {
   initial?: PriceOverride
@@ -113,6 +114,13 @@ export function PriceOverrideForm({ initial, roomTypes, onSubmit, onCancel }: Pr
       {price !== null && price > 0 && (
         <p className="checkin-note">= {money.format(price)} đ / đêm</p>
       )}
+            <PriceOverridePreview
+        roomTypeId={form.roomTypeId}
+        startDate={form.startDate}
+        endDate={form.endDate}
+        pricePerNight={price}
+        excludeId={initial?.id}
+      />
       <button className="primary-button" type="submit" disabled={isSaving}>
         {isSaving ? 'Đang lưu...' : initial ? 'Lưu thay đổi' : 'Thêm giá đè'}
       </button>
