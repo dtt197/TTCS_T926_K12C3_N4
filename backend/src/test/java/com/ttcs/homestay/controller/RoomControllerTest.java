@@ -1,55 +1,131 @@
 package com.ttcs.homestay.controller;
-import com.ttcs.homestay.controller.room.RoomController;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-
+import static org.mockito.Mockito.when;
+import com.ttcs.homestay.dto.RoomResponse;
+import com.ttcs.homestay.controller.room.RoomController;
 import com.ttcs.homestay.dto.UpdateRoomStatusRequest;
 import com.ttcs.homestay.entity.RoomStatus;
+import com.ttcs.homestay.service.AuditLogService;
 import com.ttcs.homestay.service.RoomService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
-/** S1-10 AC5: lịch sử trạng thái ghi đúng người đang đăng nhập. */
 class RoomControllerTest {
 
     private final RoomService roomService = mock(RoomService.class);
-    private final RoomController roomController = new RoomController(roomService);
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
+    private final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+
+    private final RoomController controller =
+            new RoomController(roomService, auditLogService);
 
     @Test
-    void doiTrangThai_ghiNguoiThaoTacLaNguoiDangNhap() {
-        roomController.updateStatus(1L, new UpdateRoomStatusRequest(RoomStatus.TRONG_SACH),
-                token("Nguyễn Lễ Tân", "RECEPTIONIST"));
+    void updateStatusUsesAuthenticatedOperatorName() {
+        JwtAuthenticationToken authentication = authentication(
+                "Nguyễn Văn A",
+                "letan@homestay.local",
+                "RECEPTIONIST"
+        );
 
-        verify(roomService).updateStatus(1L, RoomStatus.TRONG_SACH, "Nguyễn Lễ Tân");
+        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+
+        controller.updateStatus(
+                1L,
+                new UpdateRoomStatusRequest(RoomStatus.TRONG_SACH),
+                authentication,
+                httpRequest
+        );
+
+        verify(roomService).updateStatus(
+                1L,
+                RoomStatus.TRONG_SACH,
+                "Nguyễn Văn A"
+        );
     }
 
     @Test
-    void traPhong_ghiNguoiThaoTacLaNguoiDangNhap() {
-        roomController.checkOut(2L, token("Demo Administrator", "ADMIN"));
+    void checkOutUsesAuthenticatedOperatorName() {
+        JwtAuthenticationToken authentication = authentication(
+                "Nguyễn Văn A",
+                "letan@homestay.local",
+                "RECEPTIONIST"
+        );
 
-        verify(roomService).checkOut(2L, "Demo Administrator");
+        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+
+        controller.checkOut(
+                1L,
+                authentication,
+                httpRequest
+        );
+
+        verify(roomService).checkOut(
+                1L,
+                "Nguyễn Văn A"
+        );
     }
 
     @Test
-    void tokenKhongCoHoTen_dungEmailLamNguoiThaoTac() {
-        roomController.updateStatus(1L, new UpdateRoomStatusRequest(RoomStatus.TRONG_BAN),
-                token(null, "RECEPTIONIST"));
+void housekeepingCanOnlyMarkDirtyRoomAsClean() {
+    JwtAuthenticationToken authentication = authentication(
+            "Buồng phòng",
+            "buongphong@homestay.local",
+            "HOUSEKEEPING"
+    );
 
-        verify(roomService).updateStatus(1L, RoomStatus.TRONG_BAN, "letan@test.local");
-    }
+    RoomResponse dirtyRoom = new RoomResponse(
+            1L,
+            "101",
+            1,
+            "Phòng đôi",
+            RoomStatus.TRONG_BAN,
+            true
+    );
 
-    private static JwtAuthenticationToken token(String fullName, String role) {
-        Jwt.Builder builder = Jwt.withTokenValue("test-token")
+    when(roomService.getRooms())
+            .thenReturn(List.of(dirtyRoom));
+
+    when(httpRequest.getRemoteAddr())
+            .thenReturn("127.0.0.1");
+
+    controller.updateStatus(
+            1L,
+            new UpdateRoomStatusRequest(RoomStatus.TRONG_SACH),
+            authentication,
+            httpRequest
+    );
+
+    verify(roomService).updateStatus(
+            1L,
+            RoomStatus.TRONG_SACH,
+            "Buồng phòng"
+    );
+}
+
+    private JwtAuthenticationToken authentication(
+            String fullName,
+            String email,
+            String role) {
+
+        Jwt jwt = Jwt.withTokenValue("token")
                 .header("alg", "none")
-                .subject("7")
-                .claim("email", "letan@test.local")
-                .claim("role", role);
-        if (fullName != null) {
-            builder.claim("fullName", fullName);
-        }
-        return new JwtAuthenticationToken(builder.build(), List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                .subject("1")
+                .claim("fullName", fullName)
+                .claim("email", email)
+                .claim("role", role)
+                .build();
+
+        return new JwtAuthenticationToken(
+                jwt,
+                List.of(
+                        new SimpleGrantedAuthority("ROLE_" + role)
+                )
+        );
     }
 }
