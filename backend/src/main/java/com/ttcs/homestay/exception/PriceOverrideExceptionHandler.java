@@ -22,6 +22,11 @@ public class PriceOverrideExceptionHandler {
     public ResponseEntity<ApiError> handleInvalid(InvalidPriceOverrideException exception) {
         return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
     }
+        /** Lát 3: trùng ngày với đợt khác của cùng loại phòng. */
+    @ExceptionHandler(PriceOverrideConflictException.class)
+    public ResponseEntity<ApiError> handleConflict(PriceOverrideConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(exception.getMessage()));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception) {

@@ -894,4 +894,21 @@ void ownerThemGiaDe_quaPhanQuyen() throws Exception {
                     .content("{}")
     ).andExpect(status().isBadRequest());
 }
+
+@Test
+void buongPhongXemGiaTungDem_biChan403() throws Exception {
+    mockMvc.perform(
+            get("/api/pricing/quote")
+                    .header("Authorization", "Bearer housekeeping-test-token")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void leTanXemGiaTungDem_quaPhanQuyen() throws Exception {
+    // Qua được phân quyền, bị chặn vì thiếu tham số (400) chứ không phải 403.
+    mockMvc.perform(
+            get("/api/pricing/quote")
+                    .header("Authorization", "Bearer receptionist-test-token")
+    ).andExpect(status().isBadRequest());
+}
 }
