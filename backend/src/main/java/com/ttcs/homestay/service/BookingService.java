@@ -9,12 +9,8 @@ import com.ttcs.homestay.exception.RoomTypeNotFoundException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.Locale;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,14 +22,17 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final OperatingSettingsService operatingSettingsService;
+    private final PricingService pricingService;
 
     public BookingService(
             BookingRepository bookingRepository,
             RoomTypeRepository roomTypeRepository,
-            OperatingSettingsService operatingSettingsService) {
+            OperatingSettingsService operatingSettingsService,
+            PricingService pricingService) {
         this.bookingRepository = bookingRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.operatingSettingsService = operatingSettingsService;
+        this.pricingService = pricingService;
     }
 
     @Transactional
@@ -59,16 +58,11 @@ public class BookingService {
 
         OffsetDateTime createdAt = OffsetDateTime.now();
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(createdAt);
-        Set<DayOfWeek> weekendDays = Arrays.stream(settings.getWeekendDays().split(","))
-                .map(String::trim)
-                .map(value -> DayOfWeek.valueOf(value.toUpperCase(Locale.ROOT)))
-                .collect(Collectors.toSet());
+        Set<DayOfWeek> weekendDays = PricingService.parseWeekendDays(settings.getWeekendDays());
 
-        long totalAmount = 0;
-        for (LocalDate night = request.checkInDate(); night.isBefore(request.checkOutDate()); night = night.plusDays(1)) {
-            long nightlyPrice = weekendDays.contains(night.getDayOfWeek()) ? weekendPrice : weekdayPrice;
-            totalAmount = Math.addExact(totalAmount, nightlyPrice);
-        }
+        // S2-02 Lát 2: mỗi đêm lấy giá theo ưu tiên giá đè > giá cuối tuần > giá ngày thường.
+        long totalAmount = PricingService.total(pricingService.priceNights(
+                roomType, request.checkInDate(), request.checkOutDate(), weekendDays));
 
         Booking booking = new Booking();
         booking.setRoomType(roomType);
