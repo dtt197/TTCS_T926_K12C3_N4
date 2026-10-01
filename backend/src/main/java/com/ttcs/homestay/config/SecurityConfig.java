@@ -166,6 +166,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/price-overrides/**")
                         .hasRole("OWNER")
 
+                        // S2-01: booking tạo bởi Admin, Chủ homestay hoặc Lễ tân.
+                        .requestMatchers(HttpMethod.POST, "/api/bookings")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
                         // API chưa khai báo quyền sẽ bị từ chối
                         .requestMatchers("/api/**").denyAll()
 
