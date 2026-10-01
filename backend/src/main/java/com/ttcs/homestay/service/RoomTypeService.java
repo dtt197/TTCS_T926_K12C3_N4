@@ -12,6 +12,8 @@ import com.ttcs.homestay.repository.AmenityRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +57,7 @@ public class RoomTypeService {
 
         RoomType roomType = new RoomType();
         apply(roomType, request, code, name);
+        applyAmenities(roomType, request.amenityIds());
         roomType.setStatus(request.active() == null || request.active());
         return toResponse(roomTypeRepository.save(roomType));
     }
@@ -74,6 +77,7 @@ public class RoomTypeService {
 
         String oldName = roomType.getName();
         apply(roomType, request, code, name);
+        applyAmenities(roomType, request.amenityIds());
         if (!oldName.equals(name)) {
             // Đổi tên thì đổi luôn tên loại phòng lưu trong các phòng để không mất liên kết.
             roomRepository.renameRoomType(oldName, name);
@@ -126,6 +130,31 @@ public class RoomTypeService {
         RoomType roomType = findOrThrow(roomTypeId);
         roomType.getAmenities().removeIf(existing -> existing.getId().equals(amenityId));
         return toResponse(roomType);
+    }
+        /**
+     * S1-08: tick chọn tiện nghi ngay trong biểu mẫu thêm / sửa loại phòng.
+     * amenityIds = null: giữ nguyên. Tiện nghi đã ngừng dùng đang gắn thì giữ lại
+     * (giao diện không hiện chúng nên không bỏ nhầm). Tick tiện nghi đã ngừng dùng thì bị chặn.
+     */
+    private void applyAmenities(RoomType roomType, List<Long> amenityIds) {
+        if (amenityIds == null) {
+            return;
+        }
+        Set<Long> wanted = new LinkedHashSet<>(amenityIds);
+        roomType.getAmenities().removeIf(existing -> existing.isActive() && !wanted.contains(existing.getId()));
+        for (Long amenityId : wanted) {
+            boolean attached = roomType.getAmenities().stream()
+                    .anyMatch(existing -> existing.getId().equals(amenityId));
+            if (attached) {
+                continue;
+            }
+            Amenity amenity = amenityRepository.findById(amenityId).orElseThrow(AmenityNotFoundException::new);
+            if (!amenity.isActive()) {
+                throw new RoomTypeConflictException(
+                        "Tiện nghi \"" + amenity.getName() + "\" đã ngừng dùng nên không gắn được");
+            }
+            roomType.getAmenities().add(amenity);
+        }
     }
 
     private RoomType findOrThrow(Long id) {

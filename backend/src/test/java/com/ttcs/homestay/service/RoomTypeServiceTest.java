@@ -19,6 +19,7 @@ import com.ttcs.homestay.exception.RoomTypeConflictException;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.util.Optional;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -186,9 +187,51 @@ class RoomTypeServiceTest {
 
         assertThat(response.amenities()).extracting(AmenitySummary::code).containsExactly("WIFI");
     }
+    @Test
+    void taoLoaiPhong_kemTienNghiDaTick_ganLuon() {
+        Amenity wifi = AmenityServiceTest.amenity(10L, "WIFI", "Wi-Fi", true);
+        Amenity tivi = AmenityServiceTest.amenity(11L, "TIVI", "Tivi", true);
+        when(amenityRepository.findById(10L)).thenReturn(Optional.of(wifi));
+        when(amenityRepository.findById(11L)).thenReturn(Optional.of(tivi));
+        when(roomTypeRepository.save(any(RoomType.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        RoomTypeResponse response = roomTypeService.createRoomType(
+                requestWithAmenities("SUITE", "Phòng suite", List.of(10L, 11L)));
+
+        assertThat(response.amenities()).extracting(AmenitySummary::code).containsExactlyInAnyOrder("WIFI", "TIVI");
+    }
+
+    @Test
+    void suaLoaiPhong_boTickTienNghi_vanGiuTienNghiDaNgungDung() {
+        RoomType roomType = roomType(1L, "DOI", "Phòng đôi");
+        roomType.getAmenities().add(AmenityServiceTest.amenity(10L, "WIFI", "Wi-Fi", true));
+        roomType.getAmenities().add(AmenityServiceTest.amenity(11L, "TIVI", "Tivi", true));
+        roomType.getAmenities().add(AmenityServiceTest.amenity(12L, "QUAT", "Quạt cây", false));
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(roomType));
+
+        roomTypeService.updateRoomType(1L, requestWithAmenities("DOI", "Phòng đôi", List.of(10L)));
+
+        // Bỏ tick Tivi thì Tivi bị gỡ; Quạt cây đã ngừng dùng (không hiện trên giao diện) vẫn giữ.
+        assertThat(roomType.getAmenities()).extracting(Amenity::getCode).containsExactlyInAnyOrder("WIFI", "QUAT");
+    }
+
+    @Test
+    void taoLoaiPhong_tickTienNghiDaNgungDung_biChan() {
+        Amenity tivi = AmenityServiceTest.amenity(11L, "TIVI", "Tivi", false);
+        when(amenityRepository.findById(11L)).thenReturn(Optional.of(tivi));
+
+        assertThatThrownBy(() -> roomTypeService.createRoomType(
+                requestWithAmenities("SUITE", "Phòng suite", List.of(11L))))
+                .isInstanceOf(RoomTypeConflictException.class)
+                .hasMessageContaining("ngừng dùng");
+        verify(roomTypeRepository, never()).save(any());
+    }
+
+    private static RoomTypeRequest requestWithAmenities(String code, String name, List<Long> amenityIds) {
+        return new RoomTypeRequest(code, name, 2, 3, 1, null, null, amenityIds);
+    }
     private static RoomTypeRequest request(String code, String name, int standardCapacity, int maxCapacity) {
-        return new RoomTypeRequest(code, name, standardCapacity, maxCapacity, 1, null, null);
+        return new RoomTypeRequest(code, name, standardCapacity, maxCapacity, 1, null, null, null);
     }
 
     private static RoomType roomType(Long id, String code, String name) {

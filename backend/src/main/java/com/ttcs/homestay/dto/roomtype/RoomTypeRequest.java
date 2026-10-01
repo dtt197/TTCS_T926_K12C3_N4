@@ -1,6 +1,7 @@
 package com.ttcs.homestay.dto.roomtype;
 
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -32,5 +33,8 @@ public record RoomTypeRequest(
         @Size(max = 500, message = "Mô tả tối đa 500 ký tự")
         String description,
 
-        Boolean active) {
+        Boolean active,
+
+        /** S1-08: danh sách tiện nghi được tick; null nghĩa là giữ nguyên tiện nghi đang gắn. */
+        List<Long> amenityIds) {
 }
