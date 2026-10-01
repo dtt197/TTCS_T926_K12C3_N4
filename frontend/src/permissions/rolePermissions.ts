@@ -22,7 +22,8 @@ export type Permission =
   | 'settings:view'
   | 'settings:history'
   | 'settings:manage'
-
+  | 'pricing:view'
+  | 'pricing:manage'
 /** S1-04: ma trận quyền tập trung. S1-06: loại phòng (Chủ homestay, Admin = F; Lễ tân = R). */
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ADMIN: [
@@ -42,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'amenities:manage',
     'settings:view',
     'settings:history',
+    'pricing:view',
   ],
   OWNER: [
     'accounts:view',
@@ -54,6 +56,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'settings:view',
     'settings:history',
     'settings:manage',
+    'pricing:view',
+    'pricing:manage',
   ],
   RECEPTIONIST: [
     'rooms:view',
@@ -64,6 +68,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'roomTypes:view',
     'amenities:view',
     'settings:view',
+    'pricing:view',
   ],
   // S1-04 AC1: Buồng phòng chỉ thấy danh sách phòng cần dọn, không có menu Loại phòng.
   HOUSEKEEPING: [

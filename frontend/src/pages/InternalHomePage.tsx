@@ -5,6 +5,7 @@ import type { LoginResponse } from '../types/auth'
 import { AuditLogPage } from './AuditLogPage'
 import { RoomManagementPage } from './RoomManagementPage'
 import { AmenityPage } from './AmenityPage'
+import { PriceOverridePage } from './PriceOverridePage'
 import { SettingsPage } from './SettingsPage'
 import { RoomStatusPage } from './RoomStatusPage'
 import { RoomTypePage } from './RoomTypePage'
@@ -21,6 +22,7 @@ type View =
   | 'roomManagement'
   | 'roomTypes'
   | 'amenities'
+  | 'priceOverrides'
   | 'settings'
   | 'users'
   | 'audit-logs'
@@ -66,6 +68,14 @@ const TABS: ReadonlyArray<Tab> = [
     title: 'Tiện nghi',
     icon: '✦',
     permission: 'amenities:view',
+  },
+  {
+    view: 'priceOverrides',
+    path: '/price-overrides',
+    label: 'Giá đè',
+    title: 'Giá đè theo mùa / ngày lễ',
+    icon: '₫',
+    permission: 'pricing:view',
   },
   {
     view: 'settings',
@@ -320,6 +330,8 @@ export function InternalHomePage({
             <RoomTypePage role={user.role} />
           ) : activeView === 'amenities' ? (
             <AmenityPage role={user.role} />
+            ) : activeView === 'priceOverrides' ? (
+            <PriceOverridePage role={user.role} />
           ) : activeView === 'settings' ? (
             <SettingsPage role={user.role} />
           ) : (
