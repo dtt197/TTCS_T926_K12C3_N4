@@ -1,0 +1,122 @@
+/* S2-02: trang Giá đè, cùng phong cách với trang Tiện nghi. Chỉ áp dụng trong .price-page */
+.price-page {
+  --pr-text: #17362d;
+  --pr-muted: #74817b;
+  --pr-line: rgba(37, 92, 71, 0.12);
+  width: 100%;
+}
+
+.price-notice {
+  margin-bottom: 18px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.price-notice.success { color: #166534; background: #eaf7ee; }
+.price-notice.error { color: #9f2d1d; background: #fff1ee; }
+
+.price-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, .7fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.price-workspace.readonly { grid-template-columns: 1fr; }
+
+.price-panel {
+  padding: 22px;
+  border: 1px solid var(--pr-line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,.99), rgba(249,251,247,.97));
+  box-shadow: 0 22px 52px rgba(31, 78, 59, 0.10);
+}
+
+.price-form-panel { position: sticky; top: 20px; }
+
+.price-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(37,92,71,.08);
+}
+
+.price-section-heading.compact { display: block; }
+.price-section-heading h2 { margin: 0; color: var(--pr-text); font-size: 20px; }
+.price-section-heading p { margin: 7px 0 0; color: var(--pr-muted); font-size: 11px; line-height: 1.6; }
+
+.price-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: #2b7c5f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.price-count {
+  padding: 9px 13px;
+  border: 1px solid rgba(35, 92, 70, 0.12);
+  border-radius: 999px;
+  color: #286f57;
+  background: #eef6f0;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.price-empty {
+  padding: 34px 24px;
+  text-align: center;
+  color: var(--pr-muted);
+  border: 1px dashed rgba(64,111,91,.26);
+  border-radius: 14px;
+}
+
+.price-table-wrapper { overflow-x: auto; }
+.price-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--pr-text); }
+.price-table th {
+  text-align: left;
+  padding: 10px 8px;
+  color: var(--pr-muted);
+  font-size: 11px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--pr-line);
+  white-space: nowrap;
+}
+.price-table td { padding: 12px 8px; border-bottom: 1px solid rgba(37,92,71,.07); vertical-align: top; }
+.price-table td small { display: block; color: var(--pr-muted); font-size: 11px; }
+.price-money { font-weight: 700; white-space: nowrap; }
+
+.price-actions { display: flex; gap: 6px; }
+.price-actions .secondary-button { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+.price-actions .secondary-button.danger { color: #a33d37; }
+
+.price-form-panel .checkin-form { display: grid; gap: 13px; }
+.price-form-panel .form-label { display: grid; gap: 7px; color: #53685f; font-size: 11px; font-weight: 700; }
+.price-form-panel .form-control {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(48,94,75,.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--pr-text);
+  background: rgba(250,251,247,.98);
+}
+.price-form-panel .primary-button,
+.price-form-panel .secondary-button { width: 100%; min-height: 38px; border-radius: 10px; }
+
+@media (max-width: 1260px) {
+  .price-workspace { grid-template-columns: 1fr; }
+  .price-form-panel { position: static; }
+}
+
+@media (max-width: 760px) {
+  .price-panel { padding: 18px; }
+  .price-section-heading { flex-direction: column; }
+}
