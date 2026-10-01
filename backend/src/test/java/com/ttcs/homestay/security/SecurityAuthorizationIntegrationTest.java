@@ -848,4 +848,50 @@ void ownerSuaThamSo_quaPhanQuyen() throws Exception {
                     .content("{}")
     ).andExpect(status().isBadRequest());
 }
+
+@Test
+void adminThemGiaDe_biChan403() throws Exception {
+    // S2-02: ma trận "Bảng giá và chính sách huỷ" cho Admin chỉ xem (R)
+    mockMvc.perform(
+            post("/api/price-overrides")
+                    .header("Authorization", "Bearer admin-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void leTanXoaGiaDe_biChan403() throws Exception {
+    mockMvc.perform(
+            delete("/api/price-overrides/1")
+                    .header("Authorization", "Bearer receptionist-test-token")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void buongPhongXemGiaDe_biChan403() throws Exception {
+    mockMvc.perform(
+            get("/api/price-overrides")
+                    .header("Authorization", "Bearer housekeeping-test-token")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void leTanXemGiaDe_duoc200() throws Exception {
+    mockMvc.perform(
+            get("/api/price-overrides")
+                    .header("Authorization", "Bearer receptionist-test-token")
+    ).andExpect(status().isOk());
+}
+
+@Test
+void ownerThemGiaDe_quaPhanQuyen() throws Exception {
+    // Qua được phân quyền, bị chặn ở bước kiểm tra dữ liệu trống (400) chứ không phải 403.
+    mockMvc.perform(
+            post("/api/price-overrides")
+                    .header("Authorization", "Bearer owner-test-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isBadRequest());
+}
 }

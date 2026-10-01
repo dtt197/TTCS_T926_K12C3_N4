@@ -158,6 +158,13 @@ public class SecurityConfig {
                         // S1-09: sửa tham số chỉ Chủ homestay (ma trận: F)
                         .requestMatchers(HttpMethod.PUT, "/api/settings")
                         .hasRole("OWNER")
+                                                // S2-02: xem giá đè (ma trận "Bảng giá và chính sách huỷ": Admin R, Lễ tân R)
+                        .requestMatchers(HttpMethod.GET, "/api/price-overrides", "/api/price-overrides/**")
+                        .hasAnyRole("OWNER", "ADMIN", "RECEPTIONIST")
+
+                        // S2-02: thêm/sửa/xoá giá đè chỉ Chủ homestay (ma trận: F)
+                        .requestMatchers("/api/price-overrides/**")
+                        .hasRole("OWNER")
 
                         // API chưa khai báo quyền sẽ bị từ chối
                         .requestMatchers("/api/**").denyAll()
