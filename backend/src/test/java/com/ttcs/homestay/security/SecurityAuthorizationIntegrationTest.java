@@ -933,4 +933,20 @@ void ownerXemTruocGiaDe_quaPhanQuyen() throws Exception {
                     .content("{}")
     ).andExpect(status().isBadRequest());
 }
+
+@Test
+void khachChuaDangNhapXemLoaiPhongDatDuoc_duoc200() throws Exception {
+    // S2-07: trang đặt phòng công khai, không gửi token.
+    mockMvc.perform(get("/api/public/room-types")).andExpect(status().isOk());
+}
+
+@Test
+void khachChuaDangNhapGuiDatPhong_quaPhanQuyen() throws Exception {
+    // Không bị 401/403; bị chặn vì thiếu thông tin (400).
+    mockMvc.perform(
+            post("/api/public/bookings")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+    ).andExpect(status().isBadRequest());
+}
 }
