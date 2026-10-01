@@ -12,6 +12,7 @@ import com.ttcs.homestay.dto.pricing.PriceOverrideResponse;
 import com.ttcs.homestay.entity.PriceOverride;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.InvalidPriceOverrideException;
+import com.ttcs.homestay.exception.PriceOverrideConflictException;
 import com.ttcs.homestay.repository.PriceOverrideRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.LocalDate;
@@ -113,6 +114,57 @@ class PriceOverrideServiceTest {
                 request("Cả năm", 1L, LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 5), 900_000L), "Dinh Ba Chu"))
                 .isInstanceOf(InvalidPriceOverrideException.class)
                 .hasMessageContaining("366 đêm");
+    }
+        // ---- S2-02 Lát 3 (AC3): chặn hai đợt trùng ngày cho cùng một loại phòng ----
+
+    @Test
+    void taoDotTrungNgay_biChanKemTenDotXungDot() {
+        RoomType doi = roomType(1L, "DOI", "Phòng đôi");
+        PriceOverride le304 = priceOverride(10L, "Lễ 30/4", doi, 900_000L); // 29/04 – 01/05/2026
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(doi));
+        when(priceOverrideRepository.findOverlapping(1L, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3)))
+                .thenReturn(List.of(le304));
+
+        assertThatThrownBy(() -> priceOverrideService.createPriceOverride(
+                request("Khuyến mãi", 1L, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 3), 700_000L), "Dinh Ba Chu"))
+                .isInstanceOf(PriceOverrideConflictException.class)
+                .hasMessageContaining("\"Lễ 30/4\"")
+                .hasMessageContaining("29/04/2026 – 01/05/2026");
+        verify(priceOverrideRepository, never()).save(any());
+    }
+
+    @Test
+    void suaDot_khongTinhTrungVoiChinhNo() {
+        RoomType doi = roomType(1L, "DOI", "Phòng đôi");
+        PriceOverride le304 = priceOverride(10L, "Lễ 30/4", doi, 900_000L);
+        when(priceOverrideRepository.findById(10L)).thenReturn(Optional.of(le304));
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(doi));
+        when(priceOverrideRepository.findOverlapping(1L, LocalDate.of(2026, 4, 29), LocalDate.of(2026, 5, 1)))
+                .thenReturn(List.of(le304));
+
+        PriceOverrideResponse updated = priceOverrideService.updatePriceOverride(10L,
+                request("Lễ 30/4", 1L, LocalDate.of(2026, 4, 29), LocalDate.of(2026, 5, 1), 1_200_000L));
+
+        assertThat(updated.pricePerNight()).isEqualTo(1_200_000L);
+    }
+
+    @Test
+    void suaDotSangKhoangCuaDotKhac_biChanVaGiuNguyenDuLieu() {
+        RoomType doi = roomType(1L, "DOI", "Phòng đôi");
+        PriceOverride le304 = priceOverride(10L, "Lễ 30/4", doi, 900_000L);
+        PriceOverride he = priceOverride(11L, "Hè", doi, 800_000L);
+        he.setStartDate(LocalDate.of(2026, 6, 1));
+        he.setEndDate(LocalDate.of(2026, 6, 30));
+        when(priceOverrideRepository.findById(11L)).thenReturn(Optional.of(he));
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(doi));
+        when(priceOverrideRepository.findOverlapping(1L, LocalDate.of(2026, 4, 30), LocalDate.of(2026, 6, 30)))
+                .thenReturn(List.of(he, le304));
+
+        assertThatThrownBy(() -> priceOverrideService.updatePriceOverride(11L,
+                request("Hè", 1L, LocalDate.of(2026, 4, 30), LocalDate.of(2026, 6, 30), 800_000L)))
+                .isInstanceOf(PriceOverrideConflictException.class)
+                .hasMessageContaining("\"Lễ 30/4\"");
+        assertThat(he.getStartDate()).isEqualTo(LocalDate.of(2026, 6, 1));
     }
 
     private static PriceOverrideRequest request(String name, Long roomTypeId, LocalDate start, LocalDate end,
