@@ -9,6 +9,7 @@ export type RoomType = {
   maxCapacity: number
   numberOfBeds: number
   description: string | null
+  weekdayPrice: number | null
   active: boolean
   roomCount: number
   amenities: AmenitySummary[]
@@ -22,4 +23,5 @@ export type RoomTypePayload = {
   numberOfBeds: number
   description: string
   amenityIds: number[]
+  weekdayPrice: number
 }

@@ -16,6 +16,7 @@ type FormState = {
   maxCapacity: string
   numberOfBeds: string
   description: string
+  weekdayPrice: string
 }
 
 function toFormState(roomType?: RoomType): FormState {
@@ -26,6 +27,7 @@ function toFormState(roomType?: RoomType): FormState {
     maxCapacity: roomType ? String(roomType.maxCapacity) : '2',
     numberOfBeds: roomType ? String(roomType.numberOfBeds) : '1',
     description: roomType?.description ?? '',
+    weekdayPrice: roomType?.weekdayPrice != null ? String(roomType.weekdayPrice) : '',
   }
 }
 
@@ -60,6 +62,7 @@ export function RoomTypeForm({ initial, amenities, onSubmit, onCancel }: RoomTyp
     const standardCapacity = Number(form.standardCapacity)
     const maxCapacity = Number(form.maxCapacity)
     const numberOfBeds = Number(form.numberOfBeds)
+    const weekdayPrice = Number(form.weekdayPrice)
 
     if (!form.code.trim() || !form.name.trim()) {
       setError('Vui lòng nhập mã và tên loại phòng')
@@ -69,6 +72,14 @@ export function RoomTypeForm({ initial, amenities, onSubmit, onCancel }: RoomTyp
       setError('Sức chứa và số giường phải là số nguyên từ 1 trở lên')
       return
     }
+    if (
+  form.weekdayPrice.trim() === '' ||
+  !Number.isInteger(weekdayPrice) ||
+  weekdayPrice <= 0
+) {
+  setError('Giá ngày thường phải là số nguyên lớn hơn 0')
+  return
+}
     // AC2: báo ngay trên giao diện, máy chủ vẫn kiểm tra lại.
     if (maxCapacity < standardCapacity) {
       setError(`Sức chứa tối đa (${maxCapacity}) không được nhỏ hơn sức chứa tiêu chuẩn (${standardCapacity})`)
@@ -78,14 +89,15 @@ export function RoomTypeForm({ initial, amenities, onSubmit, onCancel }: RoomTyp
     setIsSaving(true)
     try {
       await onSubmit({
-        code: form.code.trim(),
-        name: form.name.trim(),
-        standardCapacity,
-        maxCapacity,
-        numberOfBeds,
-        description: form.description.trim(),
-        amenityIds,
-      })
+  code: form.code.trim(),
+  name: form.name.trim(),
+  standardCapacity,
+  maxCapacity,
+  numberOfBeds,
+  description: form.description.trim(),
+  amenityIds,
+  weekdayPrice,
+})
       if (!initial) {
         setForm(toFormState())
         setAmenityIds([])
@@ -126,6 +138,19 @@ export function RoomTypeForm({ initial, amenities, onSubmit, onCancel }: RoomTyp
         <input className="form-control" type="number" min={1} value={form.numberOfBeds}
           onChange={(e) => update('numberOfBeds', e.target.value)} />
       </label>
+      <label className="form-label">
+  Giá ngày thường (VND/đêm)
+  <input
+    className="form-control"
+    type="number"
+    min="1"
+    step="1"
+    inputMode="numeric"
+    value={form.weekdayPrice}
+    placeholder="Ví dụ: 500000"
+    onChange={(e) => update('weekdayPrice', e.target.value)}
+  />
+</label>
       <label className="form-label">
         Mô tả
         <textarea className="form-control" rows={3} maxLength={500} value={form.description}
