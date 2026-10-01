@@ -47,6 +47,9 @@ private String description;
 @Column(name = "weekday_price")
 private Long weekdayPrice;
 
+@Column(name = "weekend_price")
+private Long weekendPrice;
+
 @Column(name = "status")
 private Boolean status = true;// true: Đang bán, false: Ngừng bán
 

@@ -20,6 +20,7 @@ public record RoomTypeResponse(
         int numberOfBeds,
         String description,
         Long weekdayPrice,
+        Long weekendPrice,
         boolean active,
         long roomCount,
         List<AmenitySummary> amenities) {
@@ -42,6 +43,7 @@ public record RoomTypeResponse(
                 roomType.getNumberOfBeds(),
                 roomType.getDescription(),
                 roomType.getWeekdayPrice(),
+                roomType.getWeekendPrice(),
                 !Boolean.FALSE.equals(roomType.getStatus()),
                 roomCount,
                 activeAmenities

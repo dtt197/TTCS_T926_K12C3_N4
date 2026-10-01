@@ -175,6 +175,7 @@ roomType.setStandardCapacity(request.standardCapacity());
 roomType.setMaxCapacity(request.maxCapacity());
 roomType.setNumberOfBeds(request.numberOfBeds());
 roomType.setWeekdayPrice(request.weekdayPrice());
+roomType.setWeekendPrice(request.weekendPrice());
 
 String description =
         request.description() == null

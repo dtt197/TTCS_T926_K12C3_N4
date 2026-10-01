@@ -10,7 +10,9 @@ import jakarta.validation.constraints.Size;
 
 /**
  * S1-06: thông tin loại phòng.
- * S2-01 Lát 1: bổ sung giá ngày thường theo loại phòng.
+ * S2-01:
+ * - Lát 1: giá ngày thường.
+ * - Lát 2: giá cuối tuần.
  */
 public record RoomTypeRequest(
 
@@ -48,6 +50,12 @@ public record RoomTypeRequest(
         /** S2-01 Lát 1: giá ngày thường theo VND/đêm. */
         @NotNull(message = "Vui lòng nhập giá ngày thường")
         @Min(value = 1, message = "Giá ngày thường phải lớn hơn 0")
-        Long weekdayPrice
+        Long weekdayPrice,
+
+        /** S2-01 Lát 2: giá cuối tuần theo VND/đêm. */
+        @NotNull(message = "Vui lòng nhập giá cuối tuần")
+        @Min(value = 1, message = "Giá cuối tuần phải lớn hơn 0")
+        Long weekendPrice
+
 ) {
 }
