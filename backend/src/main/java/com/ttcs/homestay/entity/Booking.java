@@ -82,4 +82,14 @@ private BookingStatus status;
     /** S2-07: booking chờ xác nhận chỉ giữ chỗ đến thời điểm này (tạo + 24 giờ). */
     @Column(name = "hold_expires_at")
     private OffsetDateTime holdExpiresAt;
+    
+    /** S2-06: số người vượt sức chứa tiêu chuẩn, mức phụ thu (VND / người / đêm) áp dụng và tiền phụ thu. */
+    @Column(name = "extra_guest_count", nullable = false)
+    private int extraGuestCount;
+
+    @Column(name = "extra_person_fee_snapshot", nullable = false)
+    private long extraPersonFeeSnapshot;
+
+    @Column(name = "surcharge_amount", nullable = false)
+    private long surchargeAmount;
 }

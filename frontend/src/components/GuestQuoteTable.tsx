@@ -6,6 +6,7 @@ type GuestQuoteTableProps = {
   roomTypeId: string
   checkInDate: string
   checkOutDate: string
+  guestCount: string
 }
 
 /** Kết quả gắn với key của lần hỏi giá, để không hiện nhầm kết quả của lựa chọn trước. */
@@ -27,11 +28,16 @@ function labelClass(priceType: QuoteNight['priceType']) {
   return 'guest-quote-label'
 }
 
-/** S2-06 Lát 1: bảng giá tạm tính từng đêm, tự cập nhật khi khách đổi loại phòng hoặc ngày. */
-export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate }: GuestQuoteTableProps) {
+/**
+ * S2-06: bảng giá tạm tính từng đêm, tự cập nhật khi khách đổi loại phòng, ngày hoặc số khách.
+ * Lát 2: thêm dòng phụ thu khi số khách vượt sức chứa tiêu chuẩn.
+ */
+export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate, guestCount }: GuestQuoteTableProps) {
+  const guests = Number(guestCount)
   // Ngày dạng yyyy-MM-dd nên so sánh chuỗi là đúng thứ tự thời gian.
   const ready = Boolean(roomTypeId && checkInDate && checkOutDate && checkOutDate > checkInDate)
-  const key = ready ? `${roomTypeId}|${checkInDate}|${checkOutDate}` : null
+    && Number.isInteger(guests) && guests >= 1
+  const key = ready ? `${roomTypeId}|${checkInDate}|${checkOutDate}|${guests}` : null
   const [result, setResult] = useState<QuoteResult | null>(null)
 
   useEffect(() => {
@@ -39,7 +45,7 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate }: Guest
     let cancelled = false
     // Đợi khách chọn xong 300ms rồi mới hỏi giá.
     const timer = window.setTimeout(() => {
-      getGuestQuote(Number(roomTypeId), checkInDate, checkOutDate)
+      getGuestQuote(Number(roomTypeId), checkInDate, checkOutDate, guests)
         .then((data) => {
           if (!cancelled) setResult({ key, data })
         })
@@ -56,17 +62,18 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate }: Guest
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [key, roomTypeId, checkInDate, checkOutDate])
+  }, [key, roomTypeId, checkInDate, checkOutDate, guests])
 
   if (!key) {
     return (
       <p className="guest-quote-hint">
-        Chọn loại phòng, ngày nhận và ngày trả phòng để xem giá tạm tính từng đêm.
+        Chọn loại phòng, ngày nhận, ngày trả phòng và số khách để xem giá tạm tính từng đêm.
       </p>
     )
   }
 
   const shown = result?.key === key ? result : null
+  const data = shown?.data
 
   return (
     <section className="guest-quote" aria-live="polite">
@@ -75,7 +82,7 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate }: Guest
         <p className="guest-quote-hint">Đang tính giá...</p>
       ) : shown.error ? (
         <p className="error-message">{shown.error}</p>
-      ) : shown.data ? (
+      ) : data ? (
         <div className="guest-quote-table-wrapper">
           <table className="guest-quote-table">
             <thead>
@@ -86,7 +93,7 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate }: Guest
               </tr>
             </thead>
             <tbody>
-              {shown.data.nightlyPrices.map((night) => (
+              {data.nightlyPrices.map((night) => (
                 <tr key={night.date}>
                   <td>{formatNight(night.date)}</td>
                   <td><span className={labelClass(night.priceType)}>{night.label}</span></td>
@@ -95,9 +102,29 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate }: Guest
               ))}
             </tbody>
             <tfoot>
+              {data.surchargeAmount > 0 && (
+                <>
+                  <tr className="guest-quote-subtotal">
+                    <td colSpan={2}>Tiền phòng {data.nights} đêm</td>
+                    <td className="price">{money.format(data.nightsTotal)} đ</td>
+                  </tr>
+                  <tr className="guest-quote-surcharge">
+                    <td colSpan={2}>
+                      Phụ thu thêm {data.extraGuests} người
+                      <small>
+                        {money.format(data.extraPersonFee)} đ / người / đêm × {data.nights} đêm
+                        (tiêu chuẩn {data.standardCapacity} khách)
+                      </small>
+                    </td>
+                    <td className="price">{money.format(data.surchargeAmount)} đ</td>
+                  </tr>
+                </>
+              )}
               <tr>
-                <td colSpan={2}>Tổng {shown.data.nights} đêm</td>
-                <td className="price">{money.format(shown.data.totalAmount)} đ</td>
+                <td colSpan={2}>
+                  {data.surchargeAmount > 0 ? 'Tổng tạm tính' : `Tổng ${data.nights} đêm`}
+                </td>
+                <td className="price">{money.format(data.totalAmount)} đ</td>
               </tr>
             </tfoot>
           </table>
