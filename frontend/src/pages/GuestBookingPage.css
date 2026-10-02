@@ -1,0 +1,115 @@
+/* S2-07: trang đặt phòng công khai, dùng chung khung với trang đăng nhập (AuthPages.css). */
+.guest-booking .login-form {
+  width: min(100%, 520px);
+}
+
+.guest-booking .field select,
+.guest-booking .field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--auth-line);
+  border-radius: 6px;
+  padding: 14px 15px;
+  background: var(--auth-panel);
+  color: var(--auth-ink);
+  font: inherit;
+}
+
+.guest-booking .field textarea {
+  resize: vertical;
+}
+
+.guest-booking .field select:focus,
+.guest-booking .field textarea:focus {
+  outline: 3px solid rgba(23, 107, 100, 0.18);
+  border-color: var(--auth-teal);
+}
+
+.guest-booking .field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+
+.guest-booking-code {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 24px;
+  border: 1px dashed var(--auth-teal);
+  border-radius: 8px;
+  padding: 18px;
+  text-align: center;
+  background: var(--auth-panel);
+}
+
+.guest-booking-code span {
+  color: var(--auth-muted);
+  font-size: 0.86rem;
+}
+
+.guest-booking-code strong {
+  color: var(--auth-teal-dark);
+  font-size: 2rem;
+  letter-spacing: 0.18em;
+}
+
+.guest-booking-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 18px;
+  margin: 0 0 28px;
+}
+
+.guest-booking-summary dt {
+  color: var(--auth-muted);
+  font-size: 0.9rem;
+}
+
+.guest-booking-summary dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.guest-booking-status {
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: #fff4dc;
+  color: #8a5a00;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 520px) {
+  .guest-booking .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: #c62828;
+  font-size: 0.86rem;
+}
+
+.field input[aria-invalid="true"] {
+  border-color: #c62828;
+}
+
+.policy-checkbox {
+  margin: 18px 0;
+}
+
+.policy-checkbox label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--auth-ink);
+  line-height: 1.5;
+}
+
+.policy-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}

@@ -65,4 +65,21 @@ private String guestName;
 @Enumerated(EnumType.STRING)
 @Column(name = "status", nullable = false, length = 30)
 private BookingStatus status;
+
+    /** S2-07: thông tin khách tự đặt trên trang công khai (trống với booking nhân viên tạo). */
+    @Column(name = "guest_phone", length = 20)
+    private String guestPhone;
+
+    @Column(name = "guest_email", length = 150)
+    private String guestEmail;
+
+    @Column(name = "guest_count")
+    private Integer guestCount;
+
+    @Column(name = "note", length = 500)
+    private String note;
+
+    /** S2-07: booking chờ xác nhận chỉ giữ chỗ đến thời điểm này (tạo + 24 giờ). */
+    @Column(name = "hold_expires_at")
+    private OffsetDateTime holdExpiresAt;
 }

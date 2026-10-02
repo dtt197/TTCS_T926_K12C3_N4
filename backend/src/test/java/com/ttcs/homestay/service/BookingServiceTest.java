@@ -129,7 +129,7 @@ class BookingServiceTest {
                 .extracting(BookingListItemResponse::bookingCode)
                 .containsExactly("BK-NEW", "BK-OLD");
     }
-    
+
     @Test
     void bookingXuyenSuot3LoaiGia_tongTienDungUuTienGiaDe() {
         RoomType roomType = new RoomType();
