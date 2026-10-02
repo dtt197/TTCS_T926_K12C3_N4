@@ -67,6 +67,7 @@ class GuestBookingServiceTest {
         phongDoi.setId(1L);
         phongDoi.setName("Phòng đôi");
         phongDoi.setStatus(true);
+        phongDoi.setStandardCapacity(2);
         phongDoi.setMaxCapacity(3);
         phongDoi.setWeekdayPrice(500_000L);
         phongDoi.setWeekendPrice(700_000L);
@@ -92,6 +93,7 @@ class GuestBookingServiceTest {
         when(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).thenReturn(1);
         OperatingSettings settings = new OperatingSettings();
         settings.setWeekendDays("FRIDAY,SATURDAY");
+        settings.setExtraPersonFee(200_000L);
         when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
         when(pricingService.priceNights(any(), any(), any(), any())).thenReturn(List.of(
                 new NightlyPrice(CHECK_IN, PriceType.WEEKDAY, "Ngày thường", 500_000L),
@@ -182,5 +184,23 @@ class GuestBookingServiceTest {
         assertThatThrownBy(() -> guestBookingService.createGuestBooking(request(2)))
                 .isInstanceOf(InvalidGuestBookingException.class)
                 .hasMessageContaining("ngừng bán");
+    }
+    
+    @Test
+    void khachVuotSucChuaTieuChuan_tongTienBookingGomPhuThu() {
+        // S2-06 Lát 2: Phòng đôi chuẩn 2 người, đặt 3 khách, 2 đêm (500.000 + 700.000).
+        conPhong();
+        when(bookingCodeGenerator.next()).thenReturn("7KQ2M9XA");
+
+        GuestBookingResponse response = guestBookingService.createGuestBooking(request(3));
+
+        ArgumentCaptor<Booking> saved = ArgumentCaptor.forClass(Booking.class);
+        verify(bookingRepository).save(saved.capture());
+        Booking booking = saved.getValue();
+        assertThat(booking.getExtraGuestCount()).isEqualTo(1);
+        assertThat(booking.getExtraPersonFeeSnapshot()).isEqualTo(200_000L);
+        assertThat(booking.getSurchargeAmount()).isEqualTo(400_000L); // 1 người × 200.000 × 2 đêm
+        assertThat(booking.getTotalAmount()).isEqualTo(1_600_000L);
+        assertThat(response.totalAmount()).isEqualTo(1_600_000L);
     }
 }

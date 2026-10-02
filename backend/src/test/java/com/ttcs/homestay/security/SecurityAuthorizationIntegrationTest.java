@@ -949,4 +949,10 @@ void khachChuaDangNhapGuiDatPhong_quaPhanQuyen() throws Exception {
                     .content("{}")
     ).andExpect(status().isBadRequest());
 }
+
+@Test
+void khachChuaDangNhapXemTamTinh_quaPhanQuyen() throws Exception {
+    // S2-06: không bị 401/403; bị chặn vì thiếu loại phòng và ngày (400).
+    mockMvc.perform(get("/api/public/quote")).andExpect(status().isBadRequest());
+}
 }

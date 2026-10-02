@@ -3,6 +3,7 @@ export type PublicRoomTypeOption = {
   id: number
   code: string
   name: string
+  standardCapacity: number
   maxCapacity: number
 }
 
@@ -29,4 +30,30 @@ export type GuestBookingResult = {
   nights: number
   totalAmount: number
   holdExpiresAt: string
+}
+
+/** S2-06: một đêm trong bảng tạm tính. label là "Ngày thường", "Cuối tuần" hoặc tên đợt lễ. */
+export type QuoteNight = {
+  date: string
+  priceType: 'OVERRIDE' | 'WEEKEND' | 'WEEKDAY'
+  label: string
+  price: number
+}
+
+/** S2-06: bảng giá tạm tính từng đêm cho khoảng ngày khách chọn. */
+export type GuestQuote = {
+  roomTypeId: number
+  roomTypeName: string
+  checkIn: string
+  checkOut: string
+  nights: number
+  nightlyPrices: QuoteNight[]
+  nightsTotal: number
+  guestCount: number
+  standardCapacity: number
+  extraGuests: number
+  extraPersonFee: number
+  surchargeAmount: number
+  /** Tổng tiền phòng các đêm cộng phụ thu thêm người. */
+  totalAmount: number
 }

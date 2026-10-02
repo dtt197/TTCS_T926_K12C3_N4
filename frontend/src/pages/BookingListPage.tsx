@@ -51,8 +51,10 @@ export function BookingListPage() {
     let cancelled = false;
     setLoading(true);
 
+ feature/S2-10/booking-pagination
     // Nếu dịch vụ getLatestBookings hỗ trợ truyền số trang, bạn có thể truyền page vào đây. 
     // Nếu dùng fetch thuần, có thể thay thế bằng: fetch(`/api/bookings?page=${page}`).then(r => r.json())
+
     getLatestBookings(page)
       .then((res: any) => {
         if (!cancelled) {
@@ -118,7 +120,12 @@ export function BookingListPage() {
 
               <tbody>
                 {bookings.map((booking) => (
+ feature/S2-10/booking-pagination
                   <tr key={booking.bookingCode}>
+                  <tr 
+                    key={booking.bookingCode} 
+                    className={booking.holdExpired ? 'row-hold-expired' : ''}
+                  >
                     <td>
                       <strong>{booking.bookingCode}</strong>
                     </td>
@@ -135,6 +142,11 @@ export function BookingListPage() {
                       >
                         {STATUS_LABELS[booking.status]}
                       </span>
+ feature/S2-10/booking-pagination
+
+                      {booking.holdExpired && (
+                        <span className="badge-expired">Quá hạn giữ chỗ 24 giờ</span>
+                      )}
                     </td>
                   </tr>
                 ))}

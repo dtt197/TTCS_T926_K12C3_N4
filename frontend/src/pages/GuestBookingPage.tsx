@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { GuestQuoteTable } from '../components/GuestQuoteTable'
 import { createGuestBooking, getPublicRoomTypes } from '../services/guestBookingService'
 import type { GuestBookingResult, PublicRoomTypeOption } from '../types/guestBooking'
 import './AuthPages.css'
@@ -251,7 +252,13 @@ export function GuestBookingPage() {
                   onChange={(event) => update('checkOutDate', event.target.value)} />
               </div>
             </div>
-
+              
+            <GuestQuoteTable
+              roomTypeId={form.roomTypeId}
+              checkInDate={form.checkInDate}
+              checkOutDate={form.checkOutDate}
+              guestCount={form.guestCount}
+            />
             <div className="field">
               <label htmlFor="guest-name">Họ tên</label>
               <input id="guest-name" autoComplete="name" maxLength={120} value={form.guestName}
@@ -282,6 +289,11 @@ export function GuestBookingPage() {
                 <label htmlFor="guest-count">Số khách</label>
                 <input id="guest-count" type="number" min={1} max={selectedRoomType?.maxCapacity}
                   value={form.guestCount} onChange={(event) => update('guestCount', event.target.value)} />
+                  {selectedRoomType && (
+                  <p className="guest-capacity-hint">
+                    Tiêu chuẩn {selectedRoomType.standardCapacity}, tối đa {selectedRoomType.maxCapacity} khách
+                  </p>
+                )}
               </div>
             </div>
 
