@@ -13,3 +13,12 @@ body {
 #root {
   min-height: 100vh;
 }
+.pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  justify-content: space-between; margin-top: 12px; }
+.pagination-controls { display: flex; gap: 8px; }
+.pagination-controls button { min-height: 44px; min-width: 72px; padding: 0 12px; }
+.pagination-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.row-hold-expired { background: #fff4e5; }
+.badge-expired { display: inline-block; margin-left: 8px; padding: 2px 8px;
+  border-radius: 4px; background: #d9480f; color: #fff; font-size: 12px; }
