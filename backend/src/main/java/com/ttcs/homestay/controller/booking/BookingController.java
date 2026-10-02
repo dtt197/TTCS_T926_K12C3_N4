@@ -1,5 +1,5 @@
 package com.ttcs.homestay.controller.booking;
-
+import org.springframework.web.bind.annotation.RequestParam;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.service.BookingService;
@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import com.ttcs.homestay.dto.booking.PageResponse;
+import com.ttcs.homestay.dto.booking.BookingResponse;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -32,5 +35,9 @@ public class BookingController {
     @GetMapping
 public List<BookingListItemResponse> getBookings() {
     return bookingService.getLatestBookings();
+}
+@GetMapping("/api/bookings")
+public PageResponse<BookingResponse> list(@RequestParam(defaultValue = "0") int page) {
+    return PageResponse.from(bookingService.findPage(page).map(BookingResponse::from));
 }
 }

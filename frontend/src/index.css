@@ -13,3 +13,8 @@ body {
 #root {
   min-height: 100vh;
 }
+.pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  justify-content: space-between; margin-top: 12px; }
+.pagination-controls { display: flex; gap: 8px; }
+.pagination-controls button { min-height: 44px; min-width: 72px; padding: 0 12px; }
+.pagination-controls button:disabled { opacity: 0.5; cursor: not-allowed; }

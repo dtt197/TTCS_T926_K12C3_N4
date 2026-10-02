@@ -24,6 +24,11 @@ import org.springframework.web.server.ResponseStatusException;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
 @Service
 public class BookingService {
 
@@ -123,4 +128,11 @@ public class BookingService {
                 .map(BookingListItemResponse::from)
                 .toList();
     }
+    public static final int PAGE_SIZE = 20;
+
+public Page<Booking> findPage(int page) {
+    Pageable pageable = PageRequest.of(
+            Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
+    return bookingRepository.findAll(pageable);
+}
 }
