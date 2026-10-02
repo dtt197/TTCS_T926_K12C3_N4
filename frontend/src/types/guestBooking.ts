@@ -40,6 +40,13 @@ export type QuoteNight = {
   price: number
 }
 
+export type GuestQuoteAlternative = {
+  roomTypeId: number
+  roomTypeName: string
+  maxCapacity: number
+  totalAmount: number
+}
+
 /** S2-06: bảng giá tạm tính từng đêm cho khoảng ngày khách chọn. */
 export type GuestQuote = {
   roomTypeId: number
@@ -53,6 +60,8 @@ export type GuestQuote = {
   standardCapacity: number
   maxCapacity: number
   overCapacity: boolean
+  minimumRooms: number
+  alternatives: GuestQuoteAlternative[]
   extraGuests: number
   extraPersonFee: number
   surchargeAmount: number

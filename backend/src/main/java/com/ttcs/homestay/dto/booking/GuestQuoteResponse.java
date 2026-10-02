@@ -20,6 +20,8 @@ public record GuestQuoteResponse(
         int standardCapacity,
         int maxCapacity,
         boolean overCapacity,
+        int minimumRooms,
+        List<GuestQuoteAlternative> alternatives,
         int extraGuests,
         long extraPersonFee,
         long surchargeAmount,

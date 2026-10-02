@@ -138,6 +138,36 @@
   font-size: 0.86rem;
 }
 
+.guest-quote-minimum-rooms,
+.guest-quote-no-alternatives {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.guest-quote-alternatives {
+  display: grid;
+  gap: 8px;
+}
+
+.guest-quote-alternative {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--auth-line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--auth-panel);
+  color: var(--auth-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guest-quote-alternative:hover,
+.guest-quote-alternative:focus-visible {
+  border-color: var(--auth-teal);
+  outline: 2px solid rgba(23, 107, 100, 0.18);
+}
+
 .guest-quote-table-wrapper {
   max-height: 280px;
   overflow-y: auto;

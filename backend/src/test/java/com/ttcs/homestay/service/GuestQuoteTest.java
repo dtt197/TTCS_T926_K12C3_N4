@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
+import com.ttcs.homestay.dto.booking.GuestQuoteAlternative;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.dto.pricing.PriceType;
@@ -195,14 +196,54 @@ class GuestQuoteTest {
 
     @Test
     void soKhachVuotSucChuaToiDa_quoteTraVeDuThongTinVuotSucChua() {
-        coSan(roomType(1L, "Phòng đôi", 500_000L, 700_000L));
+        RoomType phongDoi = roomType(1L, "Phòng đôi", 500_000L, 700_000L);
+        coSan(phongDoi);
+        when(roomTypeRepository.findAllByOrderByCodeAsc()).thenReturn(List.of(phongDoi));
 
-        GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 5);
+        GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 6);
 
         assertThat(quote.overCapacity()).isTrue();
-        assertThat(quote.guestCount()).isEqualTo(5);
+        assertThat(quote.guestCount()).isEqualTo(6);
         assertThat(quote.maxCapacity()).isEqualTo(3);
         assertThat(quote.roomTypeName()).isEqualTo("Phòng đôi");
+        assertThat(quote.minimumRooms()).isEqualTo(2);
+        assertThat(quote.alternatives()).isEmpty();
+    }
+
+    @Test
+    void alternativesChiGomLoaiPhongDuSucChuaDangBanConPhongVaGiaDung() {
+        RoomType phongDoi = roomType(1L, "Phòng đôi", 500_000L, 700_000L);
+        RoomType phongNho = roomType(2L, "Phòng ba", 600_000L, 800_000L);
+        phongNho.setMaxCapacity(5);
+        RoomType phongGiaDinh = roomType(3L, "Phòng gia đình", 800_000L, 1_000_000L);
+        phongGiaDinh.setCode("FAMILY");
+        phongGiaDinh.setStandardCapacity(6);
+        phongGiaDinh.setMaxCapacity(6);
+        RoomType phongSuite = roomType(6L, "Phòng suite", 900_000L, 1_100_000L);
+        phongSuite.setCode("SUITE");
+        phongSuite.setStandardCapacity(6);
+        phongSuite.setMaxCapacity(7);
+        RoomType phongNgungBan = roomType(4L, "Phòng ngừng bán", 900_000L, 1_100_000L);
+        phongNgungBan.setMaxCapacity(8);
+        phongNgungBan.setStatus(false);
+        RoomType phongHet = roomType(5L, "Phòng hết", 1_000_000L, 1_200_000L);
+        phongHet.setMaxCapacity(8);
+
+        coSan(phongDoi);
+        when(roomTypeRepository.findAllByOrderByCodeAsc())
+                .thenReturn(List.of(phongDoi, phongNho, phongGiaDinh, phongNgungBan, phongHet, phongSuite));
+        when(roomAvailabilityService.availableRooms(phongGiaDinh, MONDAY, MONDAY.plusDays(2))).thenReturn(1);
+        when(roomAvailabilityService.availableRooms(phongSuite, MONDAY, MONDAY.plusDays(2))).thenReturn(1);
+        when(roomAvailabilityService.availableRooms(phongHet, MONDAY, MONDAY.plusDays(2))).thenReturn(0);
+        when(priceOverrideRepository.findOverlapping(3L, MONDAY, MONDAY.plusDays(1))).thenReturn(List.of());
+        when(priceOverrideRepository.findOverlapping(6L, MONDAY, MONDAY.plusDays(1))).thenReturn(List.of());
+
+        GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 6);
+
+        assertThat(quote.minimumRooms()).isEqualTo(2);
+        assertThat(quote.alternatives()).containsExactly(
+                new GuestQuoteAlternative(3L, "Phòng gia đình", 6, 1_600_000L),
+                new GuestQuoteAlternative(6L, "Phòng suite", 7, 1_800_000L));
     }
 
     @Test

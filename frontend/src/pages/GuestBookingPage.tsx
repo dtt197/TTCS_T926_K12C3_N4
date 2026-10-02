@@ -264,6 +264,7 @@ export function GuestBookingPage() {
               checkInDate={form.checkInDate}
               checkOutDate={form.checkOutDate}
               guestCount={form.guestCount}
+              onSelectRoomType={(roomTypeId) => update('roomTypeId', String(roomTypeId))}
             />
             <div className="field">
               <label htmlFor="guest-name">Họ tên</label>
