@@ -153,7 +153,7 @@ class GuestBookingServiceTest {
 
         assertThatThrownBy(() -> guestBookingService.createGuestBooking(request(4)))
                 .isInstanceOf(InvalidGuestBookingException.class)
-                .hasMessageContaining("tối đa 3 khách");
+                .hasMessage("Phòng đôi chỉ nhận tối đa 3 khách, bạn đang chọn 4 khách");
         verify(bookingRepository, never()).save(any());
     }
 

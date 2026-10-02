@@ -185,10 +185,24 @@ class GuestQuoteTest {
 
         GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 3);
 
+        assertThat(quote.overCapacity()).isFalse();
+        assertThat(quote.maxCapacity()).isEqualTo(3);
         assertThat(quote.extraGuests()).isEqualTo(1);
         assertThat(quote.extraPersonFee()).isEqualTo(200_000L);
         assertThat(quote.surchargeAmount()).isEqualTo(400_000L); // 1 người × 200.000 × 2 đêm
         assertThat(quote.totalAmount()).isEqualTo(1_400_000L);
+    }
+
+    @Test
+    void soKhachVuotSucChuaToiDa_quoteTraVeDuThongTinVuotSucChua() {
+        coSan(roomType(1L, "Phòng đôi", 500_000L, 700_000L));
+
+        GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 5);
+
+        assertThat(quote.overCapacity()).isTrue();
+        assertThat(quote.guestCount()).isEqualTo(5);
+        assertThat(quote.maxCapacity()).isEqualTo(3);
+        assertThat(quote.roomTypeName()).isEqualTo("Phòng đôi");
     }
 
     @Test

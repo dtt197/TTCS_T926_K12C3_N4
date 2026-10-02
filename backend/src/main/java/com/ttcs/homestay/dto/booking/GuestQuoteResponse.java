@@ -18,6 +18,8 @@ public record GuestQuoteResponse(
         long nightsTotal,
         int guestCount,
         int standardCapacity,
+        int maxCapacity,
+        boolean overCapacity,
         int extraGuests,
         long extraPersonFee,
         long surchargeAmount,

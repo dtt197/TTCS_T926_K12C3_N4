@@ -75,8 +75,8 @@ public class GuestBookingService {
         validateDates(request.checkInDate(), request.checkOutDate());
         RoomType roomType = findBookableRoomType(request.roomTypeId());
         if (request.guestCount() > roomType.getMaxCapacity()) {
-            throw new InvalidGuestBookingException("Loại phòng " + roomType.getName() + " chỉ nhận tối đa "
-                    + roomType.getMaxCapacity() + " khách");
+            throw new InvalidGuestBookingException(roomType.getName() + " chỉ nhận tối đa "
+                    + roomType.getMaxCapacity() + " khách, bạn đang chọn " + request.guestCount() + " khách");
         }
         if (roomAvailabilityService.availableRooms(roomType, request.checkInDate(), request.checkOutDate()) < 1) {
             throw new RoomUnavailableException("Loại phòng " + roomType.getName()
@@ -147,6 +147,8 @@ public class GuestBookingService {
                 nightsTotal,
                 guestCount,
                 roomType.getStandardCapacity(),
+                roomType.getMaxCapacity(),
+                guestCount > roomType.getMaxCapacity(),
                 extraGuests,
                 settings.getExtraPersonFee(),
                 surchargeAmount,
