@@ -1652,3 +1652,16 @@
   word-spacing: normal !important;
   letter-spacing: -0.02em !important;
 }
+
+/* Menu nhiều mục (Admin có 10 mục): cho thanh bên cuộn được để luôn tới được nút Đăng xuất. */
+.app-sidebar {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Màn hình thấp: ẩn thẻ "Xin chào" (tên đã hiện ở góc phải trên) để nút Đăng xuất không bị đẩy khuất. */
+@media (max-height: 940px) {
+  .sidebar-welcome {
+    display: none;
+  }
+}

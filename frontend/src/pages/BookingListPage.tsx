@@ -1,16 +1,8 @@
 import { useEffect, useState } from 'react';
 import Pagination from '../components/Pagination';
 import { getLatestBookings } from "../services/bookingService";
-import type { BookingListItem, BookingStatus } from '../types/booking';
+import type { BookingListItem, BookingStatus, PageResponse } from '../types/booking';
 import './BookingListPage.css';
-
-type PageResponse<T> = {
-    content: T[];
-    page: number;
-    size: number;
-    totalElements: number;
-    totalPages: number;
-};
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -49,14 +41,9 @@ export function BookingListPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-
- feature/S2-10/booking-pagination
-    // Nếu dịch vụ getLatestBookings hỗ trợ truyền số trang, bạn có thể truyền page vào đây. 
-    // Nếu dùng fetch thuần, có thể thay thế bằng: fetch(`/api/bookings?page=${page}`).then(r => r.json())
 
     getLatestBookings(page)
-      .then((res: any) => {
+      .then((res) => {
         if (!cancelled) {
           setData(res);
         }
@@ -120,8 +107,6 @@ export function BookingListPage() {
 
               <tbody>
                 {bookings.map((booking) => (
- feature/S2-10/booking-pagination
-                  <tr key={booking.bookingCode}>
                   <tr 
                     key={booking.bookingCode} 
                     className={booking.holdExpired ? 'row-hold-expired' : ''}
@@ -130,7 +115,7 @@ export function BookingListPage() {
                       <strong>{booking.bookingCode}</strong>
                     </td>
                     <td>{booking.guestName}</td>
-                    <td>{booking.roomTypeName}</td>
+                    <td>{booking.roomTypeNameSnapshot}</td>
                     <td>{formatDate(booking.checkInDate)}</td>
                     <td>{formatDate(booking.checkOutDate)}</td>
                     <td>{formatCurrency(booking.totalAmount)}</td>
@@ -142,8 +127,6 @@ export function BookingListPage() {
                       >
                         {STATUS_LABELS[booking.status]}
                       </span>
- feature/S2-10/booking-pagination
-
                       {booking.holdExpired && (
                         <span className="badge-expired">Quá hạn giữ chỗ 24 giờ</span>
                       )}
@@ -160,7 +143,11 @@ export function BookingListPage() {
               size={data.size}
               totalPages={data.totalPages}
               totalElements={data.totalElements}
-              onChange={setPage}
+              onChange={(nextPage) => {
+                // Bật trạng thái tải ngay khi đổi trang, thay vì đặt trong useEffect.
+                setLoading(true)
+                setPage(nextPage)
+              }}
             />
           )}
         </>
