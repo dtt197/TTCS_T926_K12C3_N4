@@ -2,8 +2,8 @@ package com.ttcs.homestay.controller.booking;
 
 import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
+import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
-import com.ttcs.homestay.dto.pricing.PriceQuoteResponse;
 import com.ttcs.homestay.service.GuestBookingService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -34,13 +34,14 @@ public class PublicBookingController {
         return guestBookingService.listBookableRoomTypes();
     }
 
-    /** S2-06 Lát 1: ví dụ /api/public/quote?roomTypeId=1&checkIn=2027-04-28&checkOut=2027-05-03 */
+    /** S2-06: ví dụ /api/public/quote?roomTypeId=1&checkIn=2027-04-28&checkOut=2027-05-03&guestCount=3 */
     @GetMapping("/quote")
-    public PriceQuoteResponse quote(
+    public GuestQuoteResponse quote(
             @RequestParam Long roomTypeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut) {
-        return guestBookingService.quote(roomTypeId, checkIn, checkOut);
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
+            @RequestParam(defaultValue = "1") int guestCount) {
+        return guestBookingService.quote(roomTypeId, checkIn, checkOut, guestCount);
     }
 
     @PostMapping("/bookings")

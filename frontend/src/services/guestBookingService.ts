@@ -19,8 +19,13 @@ export function createGuestBooking(payload: GuestBookingPayload) {
   })
 }
 
-/** S2-06: giá tạm tính từng đêm, khách không cần đăng nhập. Ngày dạng yyyy-MM-dd. */
-export function getGuestQuote(roomTypeId: number, checkIn: string, checkOut: string) {
-  const query = new URLSearchParams({ roomTypeId: String(roomTypeId), checkIn, checkOut })
+/** S2-06: giá tạm tính từng đêm và phụ thu thêm người, khách không cần đăng nhập. Ngày dạng yyyy-MM-dd. */
+export function getGuestQuote(roomTypeId: number, checkIn: string, checkOut: string, guestCount: number) {
+  const query = new URLSearchParams({
+    roomTypeId: String(roomTypeId),
+    checkIn,
+    checkOut,
+    guestCount: String(guestCount),
+  })
   return apiRequest<GuestQuote>(`/api/public/quote?${query.toString()}`)
 }

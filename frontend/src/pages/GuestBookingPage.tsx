@@ -257,6 +257,7 @@ export function GuestBookingPage() {
               roomTypeId={form.roomTypeId}
               checkInDate={form.checkInDate}
               checkOutDate={form.checkOutDate}
+              guestCount={form.guestCount}
             />
             <div className="field">
               <label htmlFor="guest-name">Họ tên</label>
@@ -288,6 +289,11 @@ export function GuestBookingPage() {
                 <label htmlFor="guest-count">Số khách</label>
                 <input id="guest-count" type="number" min={1} max={selectedRoomType?.maxCapacity}
                   value={form.guestCount} onChange={(event) => update('guestCount', event.target.value)} />
+                  {selectedRoomType && (
+                  <p className="guest-capacity-hint">
+                    Tiêu chuẩn {selectedRoomType.standardCapacity}, tối đa {selectedRoomType.maxCapacity} khách
+                  </p>
+                )}
               </div>
             </div>
 

@@ -2,8 +2,9 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
+import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
-import com.ttcs.homestay.dto.pricing.PriceQuoteResponse;
+import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * S2-07 Lát 1: khách tự gửi yêu cầu đặt phòng trên trang công khai.
  * Còn phòng thì tạo booking mã 8 ký tự, trạng thái chờ xác nhận, giữ chỗ 24 giờ; tổng tiền tính theo S2-02.
+ * S2-06: tạm tính và booking dùng chung một cách tính (giá từng đêm + phụ thu thêm người).
  */
 @Service
 public class GuestBookingService {
@@ -71,10 +73,7 @@ public class GuestBookingService {
     @Transactional
     public GuestBookingResponse createGuestBooking(GuestBookingRequest request) {
         validateDates(request.checkInDate(), request.checkOutDate());
-        RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
-                .filter(GuestBookingService::isBookable)
-                .orElseThrow(() -> new InvalidGuestBookingException(
-                        "Loại phòng không tồn tại hoặc đã ngừng bán, vui lòng chọn lại"));
+        RoomType roomType = findBookableRoomType(request.roomTypeId());
         if (request.guestCount() > roomType.getMaxCapacity()) {
             throw new InvalidGuestBookingException("Loại phòng " + roomType.getName() + " chỉ nhận tối đa "
                     + roomType.getMaxCapacity() + " khách");
@@ -86,8 +85,8 @@ public class GuestBookingService {
 
         OffsetDateTime createdAt = OffsetDateTime.now();
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(createdAt);
-        long totalAmount = PricingService.total(pricingService.priceNights(roomType, request.checkInDate(),
-                request.checkOutDate(), PricingService.parseWeekendDays(settings.getWeekendDays())));
+        GuestQuoteResponse price = calculate(roomType, request.checkInDate(), request.checkOutDate(),
+                request.guestCount(), settings);
 
         Booking booking = new Booking();
         booking.setBookingCode(newUniqueCode());
@@ -104,21 +103,61 @@ public class GuestBookingService {
         booking.setWeekdayPriceSnapshot(roomType.getWeekdayPrice());
         booking.setWeekendPriceSnapshot(roomType.getWeekendPrice());
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
-        booking.setTotalAmount(totalAmount);
+        booking.setExtraGuestCount(price.extraGuests());
+        booking.setExtraPersonFeeSnapshot(price.extraPersonFee());
+        booking.setSurchargeAmount(price.surchargeAmount());
+        booking.setTotalAmount(price.totalAmount());
         booking.setCreatedAt(createdAt);
         booking.setHoldExpiresAt(createdAt.plus(HOLD_DURATION));
 
         return GuestBookingResponse.from(bookingRepository.save(booking));
     }
-        /** S2-06 Lát 1: giá tạm tính từng đêm cho khách xem trước khi gửi yêu cầu (không lưu gì). */
+
+    /** S2-06: giá tạm tính từng đêm và phụ thu thêm người cho khách xem trước khi gửi yêu cầu (không lưu gì). */
     @Transactional(readOnly = true)
-    public PriceQuoteResponse quote(Long roomTypeId, LocalDate checkIn, LocalDate checkOut) {
+    public GuestQuoteResponse quote(Long roomTypeId, LocalDate checkIn, LocalDate checkOut, int guestCount) {
         validateDates(checkIn, checkOut);
-        roomTypeRepository.findById(roomTypeId)
+        if (guestCount < 1) {
+            throw new InvalidGuestBookingException("Số khách ít nhất là 1");
+        }
+        RoomType roomType = findBookableRoomType(roomTypeId);
+        OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
+        return calculate(roomType, checkIn, checkOut, guestCount, settings);
+    }
+
+    /**
+     * Cách tính dùng chung cho tạm tính và booking: tổng giá các đêm (S2-02)
+     * + số người vượt sức chứa tiêu chuẩn × mức phụ thu thêm người × số đêm.
+     */
+    private GuestQuoteResponse calculate(
+            RoomType roomType, LocalDate checkIn, LocalDate checkOut, int guestCount, OperatingSettings settings) {
+        List<NightlyPrice> nightlyPrices = pricingService.priceNights(roomType, checkIn, checkOut,
+                PricingService.parseWeekendDays(settings.getWeekendDays()));
+        long nightsTotal = PricingService.total(nightlyPrices);
+        int extraGuests = Math.max(0, guestCount - roomType.getStandardCapacity());
+        long surchargeAmount = Math.multiplyExact(
+                Math.multiplyExact((long) extraGuests, settings.getExtraPersonFee()), nightlyPrices.size());
+        return new GuestQuoteResponse(
+                roomType.getId(),
+                roomType.getName(),
+                checkIn,
+                checkOut,
+                nightlyPrices.size(),
+                nightlyPrices,
+                nightsTotal,
+                guestCount,
+                roomType.getStandardCapacity(),
+                extraGuests,
+                settings.getExtraPersonFee(),
+                surchargeAmount,
+                Math.addExact(nightsTotal, surchargeAmount));
+    }
+
+    private RoomType findBookableRoomType(Long roomTypeId) {
+        return roomTypeRepository.findById(roomTypeId)
                 .filter(GuestBookingService::isBookable)
                 .orElseThrow(() -> new InvalidGuestBookingException(
                         "Loại phòng không tồn tại hoặc đã ngừng bán, vui lòng chọn lại"));
-        return pricingService.quote(roomTypeId, checkIn, checkOut);
     }
 
     /** Ngày trả sau ngày nhận ít nhất một đêm, không nhận phòng ở quá khứ, tối đa 30 đêm. */

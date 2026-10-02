@@ -3,6 +3,7 @@ export type PublicRoomTypeOption = {
   id: number
   code: string
   name: string
+  standardCapacity: number
   maxCapacity: number
 }
 
@@ -47,5 +48,12 @@ export type GuestQuote = {
   checkOut: string
   nights: number
   nightlyPrices: QuoteNight[]
+  nightsTotal: number
+  guestCount: number
+  standardCapacity: number
+  extraGuests: number
+  extraPersonFee: number
+  surchargeAmount: number
+  /** Tổng tiền phòng các đêm cộng phụ thu thêm người. */
   totalAmount: number
 }
