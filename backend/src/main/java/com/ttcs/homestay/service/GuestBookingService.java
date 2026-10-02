@@ -3,6 +3,7 @@ package com.ttcs.homestay.service;
 import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
+import com.ttcs.homestay.dto.pricing.PriceQuoteResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -108,6 +109,16 @@ public class GuestBookingService {
         booking.setHoldExpiresAt(createdAt.plus(HOLD_DURATION));
 
         return GuestBookingResponse.from(bookingRepository.save(booking));
+    }
+        /** S2-06 Lát 1: giá tạm tính từng đêm cho khách xem trước khi gửi yêu cầu (không lưu gì). */
+    @Transactional(readOnly = true)
+    public PriceQuoteResponse quote(Long roomTypeId, LocalDate checkIn, LocalDate checkOut) {
+        validateDates(checkIn, checkOut);
+        roomTypeRepository.findById(roomTypeId)
+                .filter(GuestBookingService::isBookable)
+                .orElseThrow(() -> new InvalidGuestBookingException(
+                        "Loại phòng không tồn tại hoặc đã ngừng bán, vui lòng chọn lại"));
+        return pricingService.quote(roomTypeId, checkIn, checkOut);
     }
 
     /** Ngày trả sau ngày nhận ít nhất một đêm, không nhận phòng ở quá khứ, tối đa 30 đêm. */

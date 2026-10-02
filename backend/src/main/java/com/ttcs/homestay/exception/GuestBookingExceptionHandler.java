@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -30,6 +32,11 @@ public class GuestBookingExceptionHandler {
                 .distinct()
                 .collect(Collectors.joining(", "));
         return ResponseEntity.badRequest().body(ApiError.of(message));
+    }
+        /** S2-06: thiếu tham số tạm tính, hoặc ngày không đúng dạng yyyy-MM-dd. */
+    @ExceptionHandler({MissingServletRequestParameterException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiError> handleBadParameter(Exception exception) {
+        return ResponseEntity.badRequest().body(ApiError.of("Vui lòng chọn loại phòng, ngày nhận và ngày trả phòng"));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
