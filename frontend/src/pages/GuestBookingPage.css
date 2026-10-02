@@ -113,3 +113,79 @@
   margin-top: 3px;
   flex-shrink: 0;
 }
+
+/* S2-06: bảng giá tạm tính từng đêm */
+.guest-quote {
+  display: grid;
+  gap: 10px;
+  margin: -4px 0 20px;
+}
+
+.guest-quote h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.guest-quote-hint {
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 0.86rem;
+}
+
+.guest-quote-table-wrapper {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--auth-line);
+  border-radius: 6px;
+  background: var(--auth-panel);
+}
+
+.guest-quote-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.guest-quote-table th,
+.guest-quote-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--auth-line);
+  text-align: left;
+}
+
+.guest-quote-table th {
+  position: sticky;
+  top: 0;
+  background: #f1f4f0;
+  color: var(--auth-muted);
+  font-size: 0.78rem;
+}
+
+.guest-quote-table .price {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.guest-quote-table tfoot td {
+  border-bottom: 0;
+  background: #f1f4f0;
+  font-weight: 700;
+}
+
+.guest-quote-label {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  background: #eef3f1;
+  color: var(--auth-teal-dark);
+}
+
+.guest-quote-label.weekend {
+  background: #fff4dc;
+  color: #8a5a00;
+}
+
+.guest-quote-label.override {
+  background: #fdeae4;
+  color: #963f2c;
+}
