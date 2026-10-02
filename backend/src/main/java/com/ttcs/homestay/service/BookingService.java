@@ -129,6 +129,15 @@ public class BookingService {
                 .map(BookingListItemResponse::from)
                 .toList();
     }
+ feature/S2-10/booking-pagination
+    public static final int PAGE_SIZE = 20;
+
+public Page<Booking> findPage(int page) {
+    Pageable pageable = PageRequest.of(
+            Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
+    return bookingRepository.findAll(pageable);
+}
+
 
     public static final int PAGE_SIZE = 20;
 
@@ -137,4 +146,5 @@ public class BookingService {
                 Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
         return bookingRepository.findAll(pageable);
     }
+
 }
