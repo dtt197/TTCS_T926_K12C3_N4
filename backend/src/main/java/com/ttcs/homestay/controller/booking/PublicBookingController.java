@@ -5,6 +5,7 @@ import com.ttcs.homestay.dto.booking.GuestBookingResponse;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
 import com.ttcs.homestay.service.GuestBookingService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
@@ -18,7 +19,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** S2-07 Lát 1: API công khai cho khách đặt phòng, không cần đăng nhập (khai báo trong SecurityConfig). */
+/**
+ * S2-07 Lát 1: API công khai cho khách đặt phòng, không cần đăng nhập (khai báo
+ * trong SecurityConfig).
+ */
 @RestController
 @RequestMapping("/api/public")
 public class PublicBookingController {
@@ -34,7 +38,10 @@ public class PublicBookingController {
         return guestBookingService.listBookableRoomTypes();
     }
 
-    /** S2-06: ví dụ /api/public/quote?roomTypeId=1&checkIn=2027-04-28&checkOut=2027-05-03&guestCount=3 */
+    /**
+     * S2-06: ví dụ
+     * /api/public/quote?roomTypeId=1&checkIn=2027-04-28&checkOut=2027-05-03&guestCount=3
+     */
     @GetMapping("/quote")
     public GuestQuoteResponse quote(
             @RequestParam Long roomTypeId,
@@ -45,7 +52,14 @@ public class PublicBookingController {
     }
 
     @PostMapping("/bookings")
-    public ResponseEntity<GuestBookingResponse> createBooking(@Valid @RequestBody GuestBookingRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(guestBookingService.createGuestBooking(request));
+    public ResponseEntity<GuestBookingResponse> createBooking(
+            @Valid @RequestBody GuestBookingRequest request,
+            HttpServletRequest httpRequest) {
+
+        String ipAddress = httpRequest.getRemoteAddr();
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(guestBookingService.createGuestBooking(request, ipAddress));
     }
 }

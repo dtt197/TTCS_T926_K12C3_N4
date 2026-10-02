@@ -30,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /** S2-07 Lát 1: khách gửi yêu cầu đặt phòng. Ngày đặt luôn ở tương lai để test không phụ thuộc hôm nay. */
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +72,9 @@ class GuestBookingServiceTest {
         phongDoi.setMaxCapacity(3);
         phongDoi.setWeekdayPrice(500_000L);
         phongDoi.setWeekendPrice(700_000L);
+        
+        // S2-07 Lát 3: gắn bộ đếm lượt đặt thật (mỗi test một bộ đếm mới, chưa có lượt nào) để không bị null.
+        ReflectionTestUtils.setField(guestBookingService, "bookingRateLimiter", new BookingRateLimiter());
     }
 
     private static GuestBookingRequest request(int guestCount) {
@@ -89,7 +93,7 @@ class GuestBookingServiceTest {
 
     /** Còn 1 phòng, giá 2 đêm 500.000 + 700.000. */
     private void conPhong() {
-        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+        when(roomTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(phongDoi));
         when(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).thenReturn(1);
         OperatingSettings settings = new OperatingSettings();
         settings.setWeekendDays("FRIDAY,SATURDAY");
@@ -138,7 +142,7 @@ class GuestBookingServiceTest {
 
     @Test
     void hetPhong_biChanKhongTaoBooking() {
-        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+        when(roomTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(phongDoi));
         when(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).thenReturn(0);
 
         assertThatThrownBy(() -> guestBookingService.createGuestBooking(request(2)))
@@ -149,7 +153,7 @@ class GuestBookingServiceTest {
 
     @Test
     void soKhachVuotSucChuaToiDa_biChan() {
-        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+        when(roomTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(phongDoi));
 
         assertThatThrownBy(() -> guestBookingService.createGuestBooking(request(4)))
                 .isInstanceOf(InvalidGuestBookingException.class)
@@ -179,7 +183,7 @@ class GuestBookingServiceTest {
     @Test
     void loaiPhongNgungBan_biChan() {
         phongDoi.setStatus(false);
-        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+        when(roomTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(phongDoi));
 
         assertThatThrownBy(() -> guestBookingService.createGuestBooking(request(2)))
                 .isInstanceOf(InvalidGuestBookingException.class)
