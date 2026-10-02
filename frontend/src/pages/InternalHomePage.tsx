@@ -39,6 +39,15 @@ type Tab = {
 }
 
 const TABS: ReadonlyArray<Tab> = [
+    {
+    // S1-04 / S1-10: trạng thái phòng, nhận - trả phòng, dọn phòng, bảo trì (Lễ tân, Buồng phòng...).
+    view: 'rooms',
+    path: '/rooms',
+    label: 'Phòng',
+    title: 'Phòng',
+    icon: '▣',
+    permission: 'rooms:view',
+  },
   {
     view: 'bookings',
     path: '/bookings',
