@@ -73,8 +73,17 @@ class GuestBookingServiceTest {
     }
 
     private static GuestBookingRequest request(int guestCount) {
-        return new GuestBookingRequest(1L, CHECK_IN, CHECK_OUT, "  Nguyễn Văn A ", "0912345678",
-                "Khach@Gmail.com", guestCount, "Đến muộn khoảng 22h");
+        return new GuestBookingRequest(
+        1L,
+        CHECK_IN,
+        CHECK_OUT,
+        "  Nguyễn Văn A  ",
+        "0912345678",
+        "Khach@Gmail.com",
+        guestCount,
+        "Đến muộn khoảng 22h",
+        true
+);
     }
 
     /** Còn 1 phòng, giá 2 đêm 500.000 + 700.000. */
@@ -148,8 +157,17 @@ class GuestBookingServiceTest {
 
     @Test
     void ngayNhanPhongOQuaKhu_biChan() {
-        GuestBookingRequest past = new GuestBookingRequest(1L, LocalDate.now().minusDays(1), LocalDate.now().plusDays(1),
-                "Nguyễn Văn A", "0912345678", "khach@gmail.com", 2, null);
+        GuestBookingRequest past = new GuestBookingRequest(
+    1L,
+    LocalDate.now().minusDays(1),
+    LocalDate.now().plusDays(1),
+    "Nguyễn Văn A",
+    "0912345678",
+    "khach@gmail.com",
+    2,
+    null,
+    true
+);
 
         assertThatThrownBy(() -> guestBookingService.createGuestBooking(past))
                 .isInstanceOf(InvalidGuestBookingException.class)
