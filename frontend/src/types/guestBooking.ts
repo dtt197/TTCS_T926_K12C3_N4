@@ -15,6 +15,7 @@ export type GuestBookingPayload = {
   email: string
   guestCount: number
   note: string
+  acceptedCancellationPolicy: boolean
 }
 
 /** Kết quả sau khi gửi thành công. Ngày dạng yyyy-MM-dd, holdExpiresAt dạng ISO. */

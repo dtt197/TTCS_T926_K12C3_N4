@@ -13,6 +13,7 @@ type FormState = {
   email: string
   guestCount: string
   note: string
+  acceptedCancellationPolicy: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -24,6 +25,7 @@ const EMPTY_FORM: FormState = {
   email: '',
   guestCount: '1',
   note: '',
+  acceptedCancellationPolicy: false,
 }
 
 const money = new Intl.NumberFormat('vi-VN')
@@ -56,12 +58,21 @@ function formatDateTime(isoDateTime: string) {
   })
 }
 
+function validateVietnamesePhone(phone: string) {
+  return /^(03|05|07|08|09)\d{8}$/.test(phone.trim())
+}
+
+function validateEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+}
+
 /** S2-07 Lát 1: khách điền thông tin và gửi yêu cầu đặt phòng, không cần đăng nhập. */
 export function GuestBookingPage() {
   const [today] = useState(todayIso)
   const [roomTypes, setRoomTypes] = useState<PublicRoomTypeOption[]>([])
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<GuestBookingResult | null>(null)
 
@@ -82,12 +93,51 @@ export function GuestBookingPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
-    const guestCount = Number(form.guestCount)
-    if (!form.roomTypeId || !form.checkInDate || !form.checkOutDate || !form.guestName.trim()
-      || !form.phone.trim() || !form.email.trim()) {
-      setError('Vui lòng chọn loại phòng, ngày và nhập đủ họ tên, số điện thoại, email')
+    setFieldErrors({})
+
+    const errors: Record<string, string> = {}
+
+    if (!form.roomTypeId) {
+      errors.roomTypeId = 'Vui lòng chọn loại phòng'
+    }
+
+    if (!form.checkInDate) {
+      errors.checkInDate = 'Vui lòng chọn ngày nhận phòng'
+    }
+
+    if (!form.checkOutDate) {
+      errors.checkOutDate = 'Vui lòng chọn ngày trả phòng'
+    }
+
+    if (!form.guestName.trim()) {
+      errors.guestName = 'Vui lòng nhập họ tên'
+    }
+
+    if (!form.phone.trim()) {
+      errors.phone = 'Vui lòng nhập số điện thoại'
+    } else if (!validateVietnamesePhone(form.phone)) {
+      errors.phone = 'Số điện thoại phải có đúng 10 chữ số Việt Nam'
+    }
+
+    if (!form.email.trim()) {
+      errors.email = 'Vui lòng nhập email'
+    } else if (!validateEmail(form.email)) {
+      errors.email = 'Email không đúng định dạng'
+    }
+
+    if (!form.acceptedCancellationPolicy) {
+      errors.acceptedCancellationPolicy =
+        'Bạn phải xác nhận đã đọc chính sách hủy'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      setError('Vui lòng kiểm tra lại các thông tin chưa hợp lệ')
       return
     }
+
+    const guestCount = Number(form.guestCount)
+
     // Ngày dạng yyyy-MM-dd nên so sánh chuỗi là đúng thứ tự thời gian. Máy chủ vẫn kiểm tra lại.
     if (form.checkOutDate <= form.checkInDate) {
       setError('Ngày trả phòng phải sau ngày nhận phòng ít nhất một đêm')
@@ -110,6 +160,7 @@ export function GuestBookingPage() {
         email: form.email,
         guestCount,
         note: form.note,
+        acceptedCancellationPolicy: form.acceptedCancellationPolicy,
       })
       setResult(created)
     } catch (err) {
@@ -210,8 +261,22 @@ export function GuestBookingPage() {
             <div className="field-row">
               <div className="field">
                 <label htmlFor="guest-phone">Số điện thoại</label>
-                <input id="guest-phone" type="tel" autoComplete="tel" maxLength={20} value={form.phone}
-                  onChange={(event) => update('phone', event.target.value)} />
+                <input
+                  id="guest-phone"
+                  type="tel"
+                  autoComplete="tel"
+                  maxLength={15}
+                  value={form.phone}
+                  onChange={(event) => {
+                    update('phone', event.target.value)
+                    setFieldErrors((current) => ({ ...current, phone: '' }))
+                  }}
+                  aria-invalid={Boolean(fieldErrors.phone)}
+                />
+
+                {fieldErrors.phone && (
+                  <p className="field-error">{fieldErrors.phone}</p>
+                )}
               </div>
               <div className="field">
                 <label htmlFor="guest-count">Số khách</label>
@@ -222,8 +287,22 @@ export function GuestBookingPage() {
 
             <div className="field">
               <label htmlFor="guest-email">Email</label>
-              <input id="guest-email" type="email" autoComplete="email" maxLength={150} value={form.email}
-                onChange={(event) => update('email', event.target.value)} />
+              <input
+                id="guest-email"
+                type="email"
+                autoComplete="email"
+                maxLength={150}
+                value={form.email}
+                onChange={(event) => {
+                  update('email', event.target.value)
+                  setFieldErrors((current) => ({ ...current, email: '' }))
+                }}
+                aria-invalid={Boolean(fieldErrors.email)}
+              />
+
+              {fieldErrors.email && (
+                <p className="field-error">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div className="field">
@@ -231,6 +310,36 @@ export function GuestBookingPage() {
               <textarea id="guest-note" rows={3} maxLength={500} value={form.note}
                 placeholder="Ví dụ: đến muộn khoảng 22h"
                 onChange={(event) => update('note', event.target.value)} />
+            </div>
+
+            <div className="policy-checkbox">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={form.acceptedCancellationPolicy}
+                  onChange={(event) => {
+                    setForm((current) => ({
+                      ...current,
+                      acceptedCancellationPolicy: event.target.checked,
+                    }))
+
+                    setFieldErrors((current) => ({
+                      ...current,
+                      acceptedCancellationPolicy: '',
+                    }))
+                  }}
+                />
+
+                <span>
+                  Tôi xác nhận đã đọc và đồng ý với chính sách hủy phòng.
+                </span>
+              </label>
+
+              {fieldErrors.acceptedCancellationPolicy && (
+                <p className="field-error">
+                  {fieldErrors.acceptedCancellationPolicy}
+                </p>
+              )}
             </div>
 
             <button className="submit-button" type="submit" disabled={isSubmitting}>

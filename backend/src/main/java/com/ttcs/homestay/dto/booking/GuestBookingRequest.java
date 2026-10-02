@@ -4,6 +4,9 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.AssertTrue;
 import java.time.LocalDate;
 
 /**
@@ -25,10 +28,14 @@ public record GuestBookingRequest(
         String guestName,
 
         @NotBlank(message = "Vui lòng nhập số điện thoại")
-        @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
+        @Pattern(
+        regexp = "^(03|05|07|08|09)[0-9]{8}$",
+        message = "Số điện thoại phải có đúng 10 chữ số Việt Nam"
+        )
         String phone,
 
         @NotBlank(message = "Vui lòng nhập email")
+        @Email(message = "Email không đúng định dạng")
         @Size(max = 150, message = "Email tối đa 150 ký tự")
         String email,
 
@@ -37,5 +44,9 @@ public record GuestBookingRequest(
         Integer guestCount,
 
         @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
-        String note) {
+        String note,
+
+        @AssertTrue(message = "Bạn phải xác nhận đã đọc chính sách hủy")
+        Boolean acceptedCancellationPolicy
+) {
 }
