@@ -22,11 +22,14 @@ import java.util.List;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * S2-07 Lát 1: khách tự gửi yêu cầu đặt phòng trên trang công khai.
- * Còn phòng thì tạo booking mã 8 ký tự, trạng thái chờ xác nhận, giữ chỗ 24 giờ; tổng tiền tính theo S2-02.
- * S2-06: tạm tính và booking dùng chung một cách tính (giá từng đêm + phụ thu thêm người).
+ * Còn phòng thì tạo booking mã 8 ký tự, trạng thái chờ xác nhận, giữ chỗ 24
+ * giờ; tổng tiền tính theo S2-02.
+ * S2-06: tạm tính và booking dùng chung một cách tính (giá từng đêm + phụ thu
+ * thêm người).
  */
 @Service
 public class GuestBookingService {
@@ -45,6 +48,25 @@ public class GuestBookingService {
     private final PricingService pricingService;
     private final OperatingSettingsService operatingSettingsService;
     private final BookingCodeGenerator bookingCodeGenerator;
+    private final BookingRateLimiter bookingRateLimiter;
+
+    @Autowired
+    public GuestBookingService(
+            BookingRepository bookingRepository,
+            RoomTypeRepository roomTypeRepository,
+            RoomAvailabilityService roomAvailabilityService,
+            PricingService pricingService,
+            OperatingSettingsService operatingSettingsService,
+            BookingCodeGenerator bookingCodeGenerator,
+            BookingRateLimiter bookingRateLimiter) {
+        this.bookingRepository = bookingRepository;
+        this.roomTypeRepository = roomTypeRepository;
+        this.roomAvailabilityService = roomAvailabilityService;
+        this.pricingService = pricingService;
+        this.operatingSettingsService = operatingSettingsService;
+        this.bookingCodeGenerator = bookingCodeGenerator;
+        this.bookingRateLimiter = bookingRateLimiter;
+    }
 
     public GuestBookingService(
             BookingRepository bookingRepository,
@@ -53,15 +75,21 @@ public class GuestBookingService {
             PricingService pricingService,
             OperatingSettingsService operatingSettingsService,
             BookingCodeGenerator bookingCodeGenerator) {
-        this.bookingRepository = bookingRepository;
-        this.roomTypeRepository = roomTypeRepository;
-        this.roomAvailabilityService = roomAvailabilityService;
-        this.pricingService = pricingService;
-        this.operatingSettingsService = operatingSettingsService;
-        this.bookingCodeGenerator = bookingCodeGenerator;
+
+        this(
+                bookingRepository,
+                roomTypeRepository,
+                roomAvailabilityService,
+                pricingService,
+                operatingSettingsService,
+                bookingCodeGenerator,
+                new BookingRateLimiter());
     }
 
-    /** Loại phòng hiện trong ô chọn: đang bán và đã khai báo đủ giá ngày thường, cuối tuần. */
+    /**
+     * Loại phòng hiện trong ô chọn: đang bán và đã khai báo đủ giá ngày thường,
+     * cuối tuần.
+     */
     @Transactional(readOnly = true)
     public List<PublicRoomTypeOption> listBookableRoomTypes() {
         return roomTypeRepository.findAllByOrderByCodeAsc().stream()
@@ -72,8 +100,24 @@ public class GuestBookingService {
 
     @Transactional
     public GuestBookingResponse createGuestBooking(GuestBookingRequest request) {
+        return createGuestBooking(request, null);
+    }
+
+    @Transactional
+    public GuestBookingResponse createGuestBooking(
+            GuestBookingRequest request,
+            String ipAddress) {
+
+        if (!bookingRateLimiter.allow(ipAddress)) {
+            throw new InvalidGuestBookingException(
+                    "Bạn đã gửi quá nhiều yêu cầu đặt phòng. Vui lòng thử lại sau.");
+        }
+
         validateDates(request.checkInDate(), request.checkOutDate());
-        RoomType roomType = findBookableRoomType(request.roomTypeId());
+
+        RoomType roomType = roomTypeRepository
+                .findByIdForUpdate(request.roomTypeId())
+                .orElseThrow(() -> new InvalidGuestBookingException("Loại phòng không tồn tại"));
         if (request.guestCount() > roomType.getMaxCapacity()) {
             throw new InvalidGuestBookingException("Loại phòng " + roomType.getName() + " chỉ nhận tối đa "
                     + roomType.getMaxCapacity() + " khách");
@@ -113,7 +157,10 @@ public class GuestBookingService {
         return GuestBookingResponse.from(bookingRepository.save(booking));
     }
 
-    /** S2-06: giá tạm tính từng đêm và phụ thu thêm người cho khách xem trước khi gửi yêu cầu (không lưu gì). */
+    /**
+     * S2-06: giá tạm tính từng đêm và phụ thu thêm người cho khách xem trước khi
+     * gửi yêu cầu (không lưu gì).
+     */
     @Transactional(readOnly = true)
     public GuestQuoteResponse quote(Long roomTypeId, LocalDate checkIn, LocalDate checkOut, int guestCount) {
         validateDates(checkIn, checkOut);
@@ -160,7 +207,10 @@ public class GuestBookingService {
                         "Loại phòng không tồn tại hoặc đã ngừng bán, vui lòng chọn lại"));
     }
 
-    /** Ngày trả sau ngày nhận ít nhất một đêm, không nhận phòng ở quá khứ, tối đa 30 đêm. */
+    /**
+     * Ngày trả sau ngày nhận ít nhất một đêm, không nhận phòng ở quá khứ, tối đa 30
+     * đêm.
+     */
     private static void validateDates(LocalDate checkIn, LocalDate checkOut) {
         if (!checkOut.isAfter(checkIn)) {
             throw new InvalidGuestBookingException("Ngày trả phòng phải sau ngày nhận phòng ít nhất một đêm");
@@ -173,7 +223,10 @@ public class GuestBookingService {
         }
     }
 
-    /** Mã ngẫu nhiên, nếu đã có booking dùng mã đó thì sinh lại (cột booking_code cũng có ràng buộc UNIQUE). */
+    /**
+     * Mã ngẫu nhiên, nếu đã có booking dùng mã đó thì sinh lại (cột booking_code
+     * cũng có ràng buộc UNIQUE).
+     */
     private String newUniqueCode() {
         for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
             String code = bookingCodeGenerator.next();
