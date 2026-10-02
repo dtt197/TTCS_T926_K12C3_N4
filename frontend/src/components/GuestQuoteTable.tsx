@@ -9,6 +9,7 @@ type GuestQuoteTableProps = {
   checkInDate: string
   checkOutDate: string
   guestCount: string
+  onSelectRoomType: (roomTypeId: number) => void
 }
 
 /** Kết quả gắn với key của lần hỏi giá, để không hiện nhầm kết quả của lựa chọn trước. */
@@ -41,6 +42,7 @@ export function GuestQuoteTable({
   checkInDate,
   checkOutDate,
   guestCount,
+  onSelectRoomType,
 }: GuestQuoteTableProps) {
   const guests = Number(guestCount)
   // Ngày dạng yyyy-MM-dd nên so sánh chuỗi là đúng thứ tự thời gian.
@@ -83,13 +85,41 @@ export function GuestQuoteTable({
 
   const shown = result?.key === key ? result : null
   const data = shown?.data
+  const alternatives = data?.alternatives ?? []
   const overCapacity = data?.overCapacity ?? (Number.isInteger(guests) && guests > maxCapacity)
   const capacityMessage = `${data?.roomTypeName ?? roomTypeName} chỉ nhận tối đa ${data?.maxCapacity ?? maxCapacity} khách, bạn đang chọn ${data?.guestCount ?? guests} khách`
 
   return (
     <section className="guest-quote" aria-live="polite">
       <h3>Giá tạm tính</h3>
-      {overCapacity && <p className="guest-quote-capacity-error" role="alert">{capacityMessage}</p>}
+      {overCapacity && (
+        <>
+          <p className="guest-quote-capacity-error" role="alert">{capacityMessage}</p>
+          <p className="guest-quote-minimum-rooms">
+            Cần ít nhất {data?.minimumRooms ?? Math.ceil(guests / maxCapacity)} phòng {data?.roomTypeName ?? roomTypeName}
+          </p>
+          {data && (alternatives.length > 0 ? (
+            <div className="guest-quote-alternatives" aria-label="Loại phòng phù hợp khác">
+              {alternatives.map((alternative) => (
+                <button
+                  className="guest-quote-alternative"
+                  type="button"
+                  key={alternative.roomTypeId}
+                  onClick={() => onSelectRoomType(alternative.roomTypeId)}
+                >
+                  <strong>{alternative.roomTypeName}</strong>
+                  <span>Tối đa {alternative.maxCapacity} khách</span>
+                  <span>Tổng tạm tính: {money.format(alternative.totalAmount)} đ</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="guest-quote-no-alternatives">
+              Hiện không có loại phòng phù hợp còn trống cho khoảng ngày đã chọn.
+            </p>
+          ))}
+        </>
+      )}
       {!shown ? (
         <p className="guest-quote-hint">Đang tính giá...</p>
       ) : shown.error ? (

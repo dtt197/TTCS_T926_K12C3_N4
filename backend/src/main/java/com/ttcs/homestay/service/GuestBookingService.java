@@ -2,6 +2,7 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
+import com.ttcs.homestay.dto.booking.GuestQuoteAlternative;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
@@ -122,7 +124,28 @@ public class GuestBookingService {
         }
         RoomType roomType = findBookableRoomType(roomTypeId);
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
-        return calculate(roomType, checkIn, checkOut, guestCount, settings);
+        List<GuestQuoteAlternative> alternatives = guestCount > roomType.getMaxCapacity()
+                ? findAlternatives(roomType, checkIn, checkOut, guestCount, settings)
+                : List.of();
+        return calculate(roomType, checkIn, checkOut, guestCount, settings, alternatives);
+    }
+
+    private List<GuestQuoteAlternative> findAlternatives(
+            RoomType currentRoomType, LocalDate checkIn, LocalDate checkOut,
+            int guestCount, OperatingSettings settings) {
+        List<GuestQuoteAlternative> alternatives = new ArrayList<>();
+        for (RoomType candidate : roomTypeRepository.findAllByOrderByCodeAsc()) {
+            if (candidate.getId().equals(currentRoomType.getId())
+                    || candidate.getMaxCapacity() < guestCount
+                    || !isBookable(candidate)
+                    || roomAvailabilityService.availableRooms(candidate, checkIn, checkOut) < 1) {
+                continue;
+            }
+            GuestQuoteResponse quote = calculate(candidate, checkIn, checkOut, guestCount, settings);
+            alternatives.add(new GuestQuoteAlternative(
+                    candidate.getId(), candidate.getName(), candidate.getMaxCapacity(), quote.totalAmount()));
+        }
+        return List.copyOf(alternatives);
     }
 
     /**
@@ -131,10 +154,17 @@ public class GuestBookingService {
      */
     private GuestQuoteResponse calculate(
             RoomType roomType, LocalDate checkIn, LocalDate checkOut, int guestCount, OperatingSettings settings) {
+        return calculate(roomType, checkIn, checkOut, guestCount, settings, List.of());
+    }
+
+    private GuestQuoteResponse calculate(
+            RoomType roomType, LocalDate checkIn, LocalDate checkOut, int guestCount,
+            OperatingSettings settings, List<GuestQuoteAlternative> alternatives) {
         List<NightlyPrice> nightlyPrices = pricingService.priceNights(roomType, checkIn, checkOut,
                 PricingService.parseWeekendDays(settings.getWeekendDays()));
         long nightsTotal = PricingService.total(nightlyPrices);
         int extraGuests = Math.max(0, guestCount - roomType.getStandardCapacity());
+        int minimumRooms = (guestCount - 1) / roomType.getMaxCapacity() + 1;
         long surchargeAmount = Math.multiplyExact(
                 Math.multiplyExact((long) extraGuests, settings.getExtraPersonFee()), nightlyPrices.size());
         return new GuestQuoteResponse(
@@ -149,6 +179,8 @@ public class GuestBookingService {
                 roomType.getStandardCapacity(),
                 roomType.getMaxCapacity(),
                 guestCount > roomType.getMaxCapacity(),
+                minimumRooms,
+                alternatives,
                 extraGuests,
                 settings.getExtraPersonFee(),
                 surchargeAmount,
