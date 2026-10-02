@@ -129,6 +129,7 @@ class BookingServiceTest {
                 .extracting(BookingListItemResponse::bookingCode)
                 .containsExactly("BK-NEW", "BK-OLD");
     }
+
     @Test
     void bookingXuyenSuot3LoaiGia_tongTienDungUuTienGiaDe() {
         RoomType roomType = new RoomType();
@@ -153,7 +154,7 @@ class BookingServiceTest {
 
         // 28/04 thứ Tư 100.000 | 29/04, 30/04 (thứ Sáu), 01/05 (thứ Bảy) giá đè 900.000 | 02/05 Chủ nhật 100.000
         BookingResponse booking = bookingService.createBooking(new BookingCreateRequest(
-                 4L, "Nguyễn Văn A", LocalDate.of(2027, 4, 28), LocalDate.of(2027, 5, 3)));
+                4L, "Khách Lễ", LocalDate.of(2027, 4, 28), LocalDate.of(2027, 5, 3)));
 
         assertThat(booking.totalAmount()).isEqualTo(2_900_000L);
     }
