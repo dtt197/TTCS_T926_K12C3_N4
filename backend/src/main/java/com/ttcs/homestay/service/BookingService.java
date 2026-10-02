@@ -14,7 +14,6 @@ import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.DayOfWeek;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,6 +22,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @Service
 public class BookingService {
@@ -68,11 +72,9 @@ public class BookingService {
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(createdAt);
         Set<DayOfWeek> weekendDays = PricingService.parseWeekendDays(settings.getWeekendDays());
 
-        // S2-02 Lát 2: mỗi đêm lấy giá theo ưu tiên giá đè > giá cuối tuần > giá ngày thường.
         long totalAmount = PricingService.total(pricingService.priceNights(
                 roomType, request.checkInDate(), request.checkOutDate(), weekendDays));
 
-        // Đã sửa: Xóa dòng khai báo trùng lặp "Booking booking = new Booking();"
         Booking booking = new Booking();
 
         booking.setBookingCode(
@@ -98,21 +100,25 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Đã sửa: Trả về BookingResponse sử dụng constructor của record thay vì gọi phương thức from() chưa tồn tại
         return new BookingResponse(
-                savedBooking.getId(),
-                savedBooking.getBookingCode(),
-                savedBooking.getGuestName(),
-                roomType.getId(),
-                savedBooking.getRoomTypeNameSnapshot(),
-                savedBooking.getCheckInDate(),
-                savedBooking.getCheckOutDate(),
-                savedBooking.getWeekdayPriceSnapshot(),
-                savedBooking.getWeekendPriceSnapshot(),
-                savedBooking.getWeekendDaysSnapshot(),
-                savedBooking.getTotalAmount(),
+            savedBooking.getId(),
+            savedBooking.getBookingCode(),
+            savedBooking.getGuestName(),
+            roomType.getId(),
+            savedBooking.getRoomTypeNameSnapshot(),
+            savedBooking.getCheckInDate(),
+            savedBooking.getCheckOutDate(),
+            savedBooking.getWeekdayPriceSnapshot(),
+            savedBooking.getWeekendPriceSnapshot(),
+            savedBooking.getWeekendDaysSnapshot(),
+            savedBooking.getTotalAmount(),
+            savedBooking.getStatus(),
+            savedBooking.getCreatedAt(),
+            BookingHoldPolicy.isExpired(
                 savedBooking.getStatus(),
-                savedBooking.getCreatedAt()
+                savedBooking.getCreatedAt() != null ? savedBooking.getCreatedAt().toInstant() : null,
+                java.time.Instant.now()
+            )
         );
     }
 
@@ -123,4 +129,22 @@ public class BookingService {
                 .map(BookingListItemResponse::from)
                 .toList();
     }
+ feature/S2-10/booking-pagination
+    public static final int PAGE_SIZE = 20;
+
+public Page<Booking> findPage(int page) {
+    Pageable pageable = PageRequest.of(
+            Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
+    return bookingRepository.findAll(pageable);
+}
+
+
+    public static final int PAGE_SIZE = 20;
+
+    public Page<Booking> findPage(int page) {
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return bookingRepository.findAll(pageable);
+    }
+
 }
