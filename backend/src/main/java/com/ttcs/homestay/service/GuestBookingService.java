@@ -117,7 +117,9 @@ public class GuestBookingService {
 
         RoomType roomType = roomTypeRepository
                 .findByIdForUpdate(request.roomTypeId())
-                .orElseThrow(() -> new InvalidGuestBookingException("Loại phòng không tồn tại"));
+                .filter(GuestBookingService::isBookable)
+                .orElseThrow(() -> new InvalidGuestBookingException(
+                        "Loại phòng không tồn tại hoặc đã ngừng bán, vui lòng chọn lại"));
         if (request.guestCount() > roomType.getMaxCapacity()) {
             throw new InvalidGuestBookingException("Loại phòng " + roomType.getName() + " chỉ nhận tối đa "
                     + roomType.getMaxCapacity() + " khách");
