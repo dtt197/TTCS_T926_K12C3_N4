@@ -51,6 +51,8 @@ export type GuestQuote = {
   nightsTotal: number
   guestCount: number
   standardCapacity: number
+  maxCapacity: number
+  overCapacity: boolean
   extraGuests: number
   extraPersonFee: number
   surchargeAmount: number

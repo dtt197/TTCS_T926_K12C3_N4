@@ -4,6 +4,8 @@ import type { GuestQuote, QuoteNight } from '../types/guestBooking'
 
 type GuestQuoteTableProps = {
   roomTypeId: string
+  roomTypeName: string
+  maxCapacity: number
   checkInDate: string
   checkOutDate: string
   guestCount: string
@@ -32,7 +34,14 @@ function labelClass(priceType: QuoteNight['priceType']) {
  * S2-06: bảng giá tạm tính từng đêm, tự cập nhật khi khách đổi loại phòng, ngày hoặc số khách.
  * Lát 2: thêm dòng phụ thu khi số khách vượt sức chứa tiêu chuẩn.
  */
-export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate, guestCount }: GuestQuoteTableProps) {
+export function GuestQuoteTable({
+  roomTypeId,
+  roomTypeName,
+  maxCapacity,
+  checkInDate,
+  checkOutDate,
+  guestCount,
+}: GuestQuoteTableProps) {
   const guests = Number(guestCount)
   // Ngày dạng yyyy-MM-dd nên so sánh chuỗi là đúng thứ tự thời gian.
   const ready = Boolean(roomTypeId && checkInDate && checkOutDate && checkOutDate > checkInDate)
@@ -74,10 +83,13 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate, guestCo
 
   const shown = result?.key === key ? result : null
   const data = shown?.data
+  const overCapacity = data?.overCapacity ?? (Number.isInteger(guests) && guests > maxCapacity)
+  const capacityMessage = `${data?.roomTypeName ?? roomTypeName} chỉ nhận tối đa ${data?.maxCapacity ?? maxCapacity} khách, bạn đang chọn ${data?.guestCount ?? guests} khách`
 
   return (
     <section className="guest-quote" aria-live="polite">
       <h3>Giá tạm tính</h3>
+      {overCapacity && <p className="guest-quote-capacity-error" role="alert">{capacityMessage}</p>}
       {!shown ? (
         <p className="guest-quote-hint">Đang tính giá...</p>
       ) : shown.error ? (
@@ -101,7 +113,7 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate, guestCo
                 </tr>
               ))}
             </tbody>
-            <tfoot>
+            {!overCapacity && <tfoot>
               {data.surchargeAmount > 0 && (
                 <>
                   <tr className="guest-quote-subtotal">
@@ -126,7 +138,7 @@ export function GuestQuoteTable({ roomTypeId, checkInDate, checkOutDate, guestCo
                 </td>
                 <td className="price">{money.format(data.totalAmount)} đ</td>
               </tr>
-            </tfoot>
+            </tfoot>}
           </table>
         </div>
       ) : null}

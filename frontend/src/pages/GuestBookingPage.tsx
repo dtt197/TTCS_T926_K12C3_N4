@@ -86,6 +86,9 @@ export function GuestBookingPage() {
   }, [])
 
   const selectedRoomType = roomTypes.find((roomType) => String(roomType.id) === form.roomTypeId)
+  const guestCount = Number(form.guestCount)
+  const overCapacity = Boolean(selectedRoomType && Number.isInteger(guestCount)
+    && guestCount > selectedRoomType.maxCapacity)
 
   function update(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -137,16 +140,17 @@ export function GuestBookingPage() {
       return
     }
 
-    const guestCount = Number(form.guestCount)
-
     // Ngày dạng yyyy-MM-dd nên so sánh chuỗi là đúng thứ tự thời gian. Máy chủ vẫn kiểm tra lại.
     if (form.checkOutDate <= form.checkInDate) {
       setError('Ngày trả phòng phải sau ngày nhận phòng ít nhất một đêm')
       return
     }
-    if (!Number.isInteger(guestCount) || guestCount < 1
-      || (selectedRoomType && guestCount > selectedRoomType.maxCapacity)) {
+    if (!Number.isInteger(guestCount) || guestCount < 1) {
       setError(`Số khách phải từ 1 đến ${selectedRoomType?.maxCapacity ?? 'sức chứa tối đa'}`)
+      return
+    }
+    if (overCapacity && selectedRoomType) {
+      setError(`${selectedRoomType.name} chỉ nhận tối đa ${selectedRoomType.maxCapacity} khách, bạn đang chọn ${guestCount} khách`)
       return
     }
 
@@ -255,6 +259,8 @@ export function GuestBookingPage() {
               
             <GuestQuoteTable
               roomTypeId={form.roomTypeId}
+              roomTypeName={selectedRoomType?.name ?? ''}
+              maxCapacity={selectedRoomType?.maxCapacity ?? Number.MAX_SAFE_INTEGER}
               checkInDate={form.checkInDate}
               checkOutDate={form.checkOutDate}
               guestCount={form.guestCount}
@@ -354,7 +360,7 @@ export function GuestBookingPage() {
               )}
             </div>
 
-            <button className="submit-button" type="submit" disabled={isSubmitting}>
+            <button className="submit-button" type="submit" disabled={isSubmitting || overCapacity}>
               {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu đặt phòng'}
             </button>
           </form>
