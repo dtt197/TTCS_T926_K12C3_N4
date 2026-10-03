@@ -79,4 +79,19 @@ export function checkOut(roomId: number) {
     method: 'POST',
   })
 }
+export interface RoomAvailabilityResponse {
+  roomTypeId: number;
+  name: string;
+  capacity: number;
+  price: number;
+  availableRooms: number;
+}
 
+export function searchAvailableRooms(checkIn: string, checkOut: string, guestCount: number) {
+  const params = new URLSearchParams({
+    checkIn,
+    checkOut,
+    guestCount: guestCount.toString(),
+  });
+  return request<RoomAvailabilityResponse[]>(`/public/rooms/search?${params.toString()}`);
+}

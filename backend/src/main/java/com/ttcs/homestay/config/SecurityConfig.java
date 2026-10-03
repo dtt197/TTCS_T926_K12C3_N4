@@ -1,4 +1,3 @@
-
 package com.ttcs.homestay.config;
 
 import java.time.Duration;
@@ -184,6 +183,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/public/room-types").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()
 
                         // API chưa khai báo quyền sẽ bị từ chối
                         .requestMatchers("/api/**").denyAll()
