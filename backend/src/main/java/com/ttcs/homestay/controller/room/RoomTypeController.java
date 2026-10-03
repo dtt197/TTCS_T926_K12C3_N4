@@ -1,5 +1,6 @@
 package com.ttcs.homestay.controller.room;
 
+import com.ttcs.homestay.dto.roomtype.ReorderImagesRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeImageResponse;
 import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;
@@ -201,6 +202,27 @@ public class RoomTypeController {
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /** S2-09: Sắp xếp lại thứ tự ảnh của loại phòng (kéo thả) */
+    @PutMapping("/{id}/images/reorder")
+    public List<RoomTypeImageResponse> reorderImages(
+            @PathVariable Long id,
+            @Valid @RequestBody ReorderImagesRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        List<RoomTypeImageResponse> response =
+                roomTypeImageService.reorderImages(id, request.imageIds());
+
+        recordAction(
+                authentication,
+                "Loại phòng #" + id + " - Sắp xếp lại thứ tự ảnh",
+                "ROOM_TYPE_IMAGES_REORDERED",
+                httpRequest
+        );
+
+        return response;
     }
 
     private void recordAction(
