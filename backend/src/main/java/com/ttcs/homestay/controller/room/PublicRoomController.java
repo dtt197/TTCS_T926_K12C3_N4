@@ -32,6 +32,24 @@ public class PublicRoomController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
             @RequestParam int guestCount) {
 
+                if (checkIn == null || checkOut == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Ngày nhận phòng và trả phòng không được để trống");
+        }
+        if (guestCount < 1) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Số lượng khách phải lớn hơn hoặc bằng 1");
+        }
+        if (!checkOut.isAfter(checkIn)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Ngày trả phòng phải sau ngày nhận phòng ít nhất một đêm");
+        }
+        long nights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, checkOut);
+        if (nights > 30) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "Khoảng thời gian tra cứu không được vượt quá 30 đêm");
+        }
+        
         // 1. Lấy tất cả loại phòng và lọc theo sức chứa (capacity >= guestCount)
         List<RoomType> validRoomTypes = roomTypeRepository.findAll().stream()
                 .filter(rt -> rt.getMaxCapacity() >= guestCount)
