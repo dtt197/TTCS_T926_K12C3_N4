@@ -91,6 +91,26 @@ public class ImageStorageService {
         }
     }
 
+    /**
+     * S2-09: Xoá tệp ảnh vật lý (gốc và bản thu nhỏ) khỏi hệ thống.
+     */
+    public void deleteImageFile(String relativeUrl) {
+        if (relativeUrl == null || relativeUrl.isBlank()) {
+            return;
+        }
+        try {
+            String cleanPath = relativeUrl.startsWith("/uploads/")
+                    ? relativeUrl.substring("/uploads/".length())
+                    : relativeUrl.startsWith("/") ? relativeUrl.substring(1) : relativeUrl;
+            Path filePath = uploadRoot.resolve(cleanPath).normalize();
+            if (filePath.startsWith(uploadRoot)) {
+                Files.deleteIfExists(filePath);
+            }
+        } catch (IOException e) {
+            System.err.println("Không thể xoá tệp ảnh: " + e.getMessage());
+        }
+    }
+
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidImageException("Vui lòng chọn tệp ảnh để tải lên.");
