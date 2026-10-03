@@ -185,6 +185,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()
 
+                        // S2-09: Tệp ảnh tĩnh loại phòng công khai
+                        .requestMatchers("/uploads/**").permitAll()
+
                         // API chưa khai báo quyền sẽ bị từ chối
                         .requestMatchers("/api/**").denyAll()
 

@@ -1,14 +1,17 @@
 package com.ttcs.homestay.controller.room;
 
+import com.ttcs.homestay.dto.roomtype.RoomTypeImageResponse;
 import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;
 import com.ttcs.homestay.dto.roomtype.UpdateRoomTypeStatusRequest;
 import com.ttcs.homestay.service.AuditLogService;
+import com.ttcs.homestay.service.RoomTypeImageService;
 import com.ttcs.homestay.service.RoomTypeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -20,7 +23,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/room-types")
@@ -28,12 +33,15 @@ public class RoomTypeController {
 
     private final RoomTypeService roomTypeService;
     private final AuditLogService auditLogService;
+    private final RoomTypeImageService roomTypeImageService;
 
     public RoomTypeController(
             RoomTypeService roomTypeService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            RoomTypeImageService roomTypeImageService) {
         this.roomTypeService = roomTypeService;
         this.auditLogService = auditLogService;
+        this.roomTypeImageService = roomTypeImageService;
     }
 
     @GetMapping
@@ -167,6 +175,32 @@ public class RoomTypeController {
         );
 
         return response;
+    }
+
+    /** S2-09: Lấy danh sách ảnh của loại phòng */
+    @GetMapping("/{id}/images")
+    public List<RoomTypeImageResponse> getImages(@PathVariable Long id) {
+        return roomTypeImageService.getImages(id);
+    }
+
+    /** S2-09: Tải ảnh lên cho loại phòng */
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RoomTypeImageResponse> uploadImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        RoomTypeImageResponse response = roomTypeImageService.uploadImage(id, file);
+
+        recordAction(
+                authentication,
+                "Loại phòng #" + id + " - Tải ảnh",
+                "ROOM_TYPE_IMAGE_UPLOADED",
+                httpRequest
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     private void recordAction(
