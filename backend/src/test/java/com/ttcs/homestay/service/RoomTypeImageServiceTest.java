@@ -252,4 +252,80 @@ class RoomTypeImageServiceTest {
         assertThat(results.get(1).id()).isEqualTo(11L);
         assertThat(results.get(1).isPrimary()).isFalse();
     }
+
+    @Test
+    void reorderImages_keoThaThayDoiViTri_luuDungThuTuVaCapNhatAnhDauTienLamDaiDien() {
+        when(roomTypeRepository.existsById(1L)).thenReturn(true);
+
+        RoomTypeImage img1 = new RoomTypeImage(sampleRoomType, "/uploads/1/a.jpg", "/uploads/1/a_thumb.jpg", 0, true);
+        img1.setId(101L);
+        RoomTypeImage img2 = new RoomTypeImage(sampleRoomType, "/uploads/1/b.jpg", "/uploads/1/b_thumb.jpg", 1, false);
+        img2.setId(102L);
+        RoomTypeImage img3 = new RoomTypeImage(sampleRoomType, "/uploads/1/c.jpg", "/uploads/1/c_thumb.jpg", 2, false);
+        img3.setId(103L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(img1, img2, img3));
+        when(roomTypeImageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Kéo ảnh 103 lên đầu danh sách: thứ tự mới là [103, 101, 102]
+        List<RoomTypeImageResponse> updated =
+                roomTypeImageService.reorderImages(1L, List.of(103L, 101L, 102L));
+
+        assertThat(updated).hasSize(3);
+        // Ảnh 103 lên đầu: thứ tự 0, tự động trở thành ảnh đại diện
+        assertThat(updated.get(0).id()).isEqualTo(103L);
+        assertThat(updated.get(0).displayOrder()).isZero();
+        assertThat(updated.get(0).isPrimary()).isTrue();
+
+        // Ảnh 101 xuống thứ 2: thứ tự 1, không còn là ảnh đại diện
+        assertThat(updated.get(1).id()).isEqualTo(101L);
+        assertThat(updated.get(1).displayOrder()).isEqualTo(1);
+        assertThat(updated.get(1).isPrimary()).isFalse();
+
+        // Ảnh 102 xuống thứ 3: thứ tự 2
+        assertThat(updated.get(2).id()).isEqualTo(102L);
+        assertThat(updated.get(2).displayOrder()).isEqualTo(2);
+        assertThat(updated.get(2).isPrimary()).isFalse();
+    }
+
+    @Test
+    void reorderImages_soLuongIdKhongKhop_biChan() {
+        when(roomTypeRepository.existsById(1L)).thenReturn(true);
+
+        RoomTypeImage img1 = new RoomTypeImage(sampleRoomType, "/uploads/1/a.jpg", "/uploads/1/a_thumb.jpg", 0, true);
+        img1.setId(101L);
+        RoomTypeImage img2 = new RoomTypeImage(sampleRoomType, "/uploads/1/b.jpg", "/uploads/1/b_thumb.jpg", 1, false);
+        img2.setId(102L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(img1, img2));
+
+        assertThatThrownBy(() -> roomTypeImageService.reorderImages(1L, List.of(101L)))
+                .isInstanceOf(InvalidImageException.class)
+                .hasMessageContaining("không khớp");
+    }
+
+    @Test
+    void reorderImages_chuaIdKhongThuocLoaiPhong_biChan() {
+        when(roomTypeRepository.existsById(1L)).thenReturn(true);
+
+        RoomTypeImage img1 = new RoomTypeImage(sampleRoomType, "/uploads/1/a.jpg", "/uploads/1/a_thumb.jpg", 0, true);
+        img1.setId(101L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(img1));
+
+        assertThatThrownBy(() -> roomTypeImageService.reorderImages(1L, List.of(999L)))
+                .isInstanceOf(InvalidImageException.class)
+                .hasMessageContaining("không thuộc về loại phòng này");
+    }
+
+    @Test
+    void reorderImages_loaiPhongKhongTonTai_nemNgoaiLe() {
+        when(roomTypeRepository.existsById(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> roomTypeImageService.reorderImages(999L, List.of(1L, 2L)))
+                .isInstanceOf(RoomTypeNotFoundException.class);
+    }
 }

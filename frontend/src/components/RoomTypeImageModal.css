@@ -294,6 +294,100 @@
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25), 0 4px 12px rgba(245, 158, 11, 0.15);
 }
 
+/* S2-09: Thẻ ảnh hỗ trợ kéo thả */
+.room-type-image-card.draggable {
+  cursor: grab;
+  user-select: none;
+}
+
+.room-type-image-card.draggable:active {
+  cursor: grabbing;
+}
+
+.room-type-image-card.dragging {
+  opacity: 0.35;
+  transform: scale(0.95);
+  border: 2px dashed #2563eb;
+  box-shadow: none;
+}
+
+.room-type-image-card.drag-over {
+  border-color: #2563eb;
+  transform: scale(1.04);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35), 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.room-type-image-drag-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(2px);
+  color: #ffffff;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: grab;
+  transition: background 0.15s ease, transform 0.15s ease;
+  z-index: 2;
+}
+
+.room-type-image-card:hover .room-type-image-drag-handle {
+  background: rgba(15, 23, 42, 0.92);
+  transform: scale(1.08);
+}
+
+.room-type-image-reorder-notice {
+  padding: 0.625rem 1rem;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.room-type-image-card-actions {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.15s ease;
+  z-index: 2;
+}
+
+.room-type-image-card:hover .room-type-image-card-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.room-type-image-quick-btn {
+  background: rgba(15, 23, 42, 0.85);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 6px;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.12s ease;
+}
+
+.room-type-image-quick-btn:hover {
+  background: #2563eb;
+}
+
 .room-type-image-img {
   width: 100%;
   height: 100%;
