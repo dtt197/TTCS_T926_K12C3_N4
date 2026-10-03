@@ -4,7 +4,6 @@ import { createGuestBooking, getPublicRoomTypes } from '../services/guestBooking
 import type { GuestBookingResult, PublicRoomTypeOption } from '../types/guestBooking'
 import './AuthPages.css'
 import './GuestBookingPage.css'
-import { searchAvailableRooms } from '../services/roomService'
 
 type FormState = {
   roomTypeId: string
