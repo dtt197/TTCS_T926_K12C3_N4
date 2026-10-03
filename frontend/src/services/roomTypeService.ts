@@ -61,3 +61,19 @@ export function uploadRoomTypeImage(roomTypeId: number, file: File) {
     body: formData,
   })
 }
+
+/** S2-09 (Chức năng 2): Cập nhật thứ tự sắp xếp ảnh (kéo thả trực quan). */
+export function reorderRoomTypeImages(roomTypeId: number, imageIds: number[]) {
+  return apiRequest<RoomTypeImage[]>(`/api/room-types/${roomTypeId}/images/reorder`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ imageIds }),
+  })
+}
+
+/** S2-09 (Chức năng 3): Xoá ảnh của loại phòng (có xác nhận và bảo vệ ảnh cuối cùng khi đang mở bán). */
+export function deleteRoomTypeImage(roomTypeId: number, imageId: number) {
+  return apiRequest<RoomTypeImage[]>(`/api/room-types/${roomTypeId}/images/${imageId}`, {
+    method: 'DELETE',
+  })
+}
