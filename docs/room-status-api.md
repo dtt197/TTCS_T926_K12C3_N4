@@ -1,5 +1,14 @@
 # Room status API
 
+## Trang chi tiết loại phòng công khai
+
+- Giao diện chi tiết: `/loai-phong/{roomTypeId}`.
+- API: `GET /api/public/room-types/{roomTypeId}` (không cần đăng nhập).
+- Loại phòng đang kinh doanh trả về thông tin chi tiết với HTTP `200`.
+- Loại phòng không tồn tại trả về HTTP `404` với thông báo không tìm thấy.
+- Loại phòng đã ngừng bán trả về HTTP `404` với thông báo `Loại phòng này hiện đã ngừng bán`.
+- Các trang lỗi cung cấp liên kết `/dat-phong` để quay lại tìm phòng; loại phòng ngừng bán có nút `Tra phòng khác`.
+
 ## `GET /api/rooms`
 
 Trả về danh sách phòng đang hoạt động:
