@@ -941,6 +941,18 @@ void khachChuaDangNhapXemLoaiPhongDatDuoc_duoc200() throws Exception {
 }
 
 @Test
+void khachChuaDangNhapXemChiTietLoaiPhong_quaPhanQuyen() throws Exception {
+    // S2-04: API chi tiết loại phòng công khai, không gửi token (ID không tồn tại trả 404 chứ không phải 401/403).
+    mockMvc.perform(get("/api/public/room-types/999999")).andExpect(status().isNotFound());
+}
+
+@Test
+void khachChuaDangNhapXemDanhMucLoaiPhong_duoc200() throws Exception {
+    // S2-04: API danh mục loại phòng công khai, không gửi token.
+    mockMvc.perform(get("/api/public/room-types-catalog")).andExpect(status().isOk());
+}
+
+@Test
 void khachChuaDangNhapGuiDatPhong_quaPhanQuyen() throws Exception {
     // Không bị 401/403; bị chặn vì thiếu thông tin (400).
     mockMvc.perform(

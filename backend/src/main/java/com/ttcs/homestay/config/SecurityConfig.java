@@ -180,9 +180,14 @@ public class SecurityConfig {
                          "/api/bookings/**"
 )
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
-                                                // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
-                        .requestMatchers(HttpMethod.GET, "/api/public/room-types").permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
+                                                // S2-07 & S2-04: trang đặt phòng và danh mục/chi tiết loại phòng công khai, khách không cần đăng nhập
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/public/room-types",
+                                "/api/public/room-types/**",
+                                "/api/public/room-types-catalog"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
 
                         // API chưa khai báo quyền sẽ bị từ chối

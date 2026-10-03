@@ -71,7 +71,14 @@ function validateEmail(email: string) {
 export function GuestBookingPage() {
   const [today] = useState(todayIso)
   const [roomTypes, setRoomTypes] = useState<PublicRoomTypeOption[]>([])
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [form, setForm] = useState<FormState>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const initialRoomTypeId = params.get('roomTypeId') || ''
+    return {
+      ...EMPTY_FORM,
+      roomTypeId: initialRoomTypeId,
+    }
+  })
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -225,6 +232,22 @@ export function GuestBookingPage() {
           </div>
         ) : (
           <form className="login-form" onSubmit={handleSubmit} noValidate>
+            <div style={{ marginBottom: '14px' }}>
+              <a
+                href="/phong"
+                style={{
+                  color: '#10513f',
+                  textDecoration: 'none',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                ← Quay lại xem danh sách phòng
+              </a>
+            </div>
             <p className="eyebrow">Yêu cầu đặt phòng</p>
             <h2>Thông tin đặt phòng</h2>
             <p className="form-intro">Điền thông tin bên dưới, lễ tân sẽ liên hệ xác nhận.</p>

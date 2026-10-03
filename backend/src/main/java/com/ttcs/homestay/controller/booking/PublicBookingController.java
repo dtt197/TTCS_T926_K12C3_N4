@@ -3,6 +3,7 @@ package com.ttcs.homestay.controller.booking;
 import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
+import com.ttcs.homestay.dto.booking.PublicRoomTypeDetailResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
 import com.ttcs.homestay.service.GuestBookingService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,6 +14,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * S2-07 Lát 1: API công khai cho khách đặt phòng, không cần đăng nhập (khai báo
  * trong SecurityConfig).
+ * S2-04: API công khai cho khách xem danh sách loại phòng và chi tiết loại phòng.
  */
 @RestController
 @RequestMapping("/api/public")
@@ -36,6 +39,18 @@ public class PublicBookingController {
     @GetMapping("/room-types")
     public List<PublicRoomTypeOption> listRoomTypes() {
         return guestBookingService.listBookableRoomTypes();
+    }
+
+    /** S2-04: Danh sách loại phòng với đầy đủ ảnh, tiện nghi, số phòng trống. */
+    @GetMapping("/room-types-catalog")
+    public List<PublicRoomTypeDetailResponse> listRoomTypesCatalog() {
+        return guestBookingService.listBookableRoomTypesWithDetails();
+    }
+
+    /** S2-04: Chi tiết một loại phòng (bộ ảnh, mô tả, tiện nghi, sức chứa, số phòng trống). */
+    @GetMapping("/room-types/{id}")
+    public PublicRoomTypeDetailResponse getRoomTypeDetail(@PathVariable Long id) {
+        return guestBookingService.getRoomTypeDetail(id);
     }
 
     /**
