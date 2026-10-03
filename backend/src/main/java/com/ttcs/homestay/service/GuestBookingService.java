@@ -5,6 +5,7 @@ import com.ttcs.homestay.dto.booking.GuestBookingResponse;
 import com.ttcs.homestay.dto.booking.GuestQuoteAlternative;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
+import com.ttcs.homestay.dto.booking.PublicRoomTypeDetails;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
@@ -12,6 +13,8 @@ import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.InvalidGuestBookingException;
 import com.ttcs.homestay.exception.RoomUnavailableException;
+import com.ttcs.homestay.exception.RoomTypeNotFoundException;
+import com.ttcs.homestay.exception.RoomTypeUnavailableException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.Duration;
@@ -98,6 +101,16 @@ public class GuestBookingService {
                 .filter(GuestBookingService::isBookable)
                 .map(PublicRoomTypeOption::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PublicRoomTypeDetails getPublicRoomType(Long roomTypeId) {
+        RoomType roomType = roomTypeRepository.findById(roomTypeId)
+                .orElseThrow(RoomTypeNotFoundException::new);
+        if (!Boolean.TRUE.equals(roomType.getStatus())) {
+            throw new RoomTypeUnavailableException();
+        }
+        return PublicRoomTypeDetails.from(roomType);
     }
 
     @Transactional

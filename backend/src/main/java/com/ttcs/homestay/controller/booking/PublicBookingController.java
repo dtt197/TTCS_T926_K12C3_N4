@@ -4,6 +4,7 @@ import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
+import com.ttcs.homestay.dto.booking.PublicRoomTypeDetails;
 import com.ttcs.homestay.service.GuestBookingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -36,6 +38,11 @@ public class PublicBookingController {
     @GetMapping("/room-types")
     public List<PublicRoomTypeOption> listRoomTypes() {
         return guestBookingService.listBookableRoomTypes();
+    }
+
+    @GetMapping("/room-types/{roomTypeId}")
+    public PublicRoomTypeDetails getRoomType(@PathVariable Long roomTypeId) {
+        return guestBookingService.getPublicRoomType(roomTypeId);
     }
 
     /**

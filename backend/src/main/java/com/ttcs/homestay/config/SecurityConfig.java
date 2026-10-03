@@ -181,7 +181,7 @@ public class SecurityConfig {
 )
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
                                                 // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
-                        .requestMatchers(HttpMethod.GET, "/api/public/room-types").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/room-types", "/api/public/room-types/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
 
@@ -277,7 +277,9 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:5173",
-                "http://localhost:5174"
+                "http://localhost:5174",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174"
         ));
 
         configuration.setAllowedMethods(List.of(
