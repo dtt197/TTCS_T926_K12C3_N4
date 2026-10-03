@@ -36,6 +36,8 @@ export function RoomTypeImageModal({
   // Drag and drop sắp xếp thứ tự ảnh
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const draggedIndexRef = useRef<number | null>(null)
+  const isDraggingRef = useRef(false)
 
   // S2-09: Xoá ảnh có hộp thoại xác nhận và bảo vệ ảnh cuối cùng của phòng đang bán
   const [imageToDelete, setImageToDelete] = useState<RoomTypeImage | null>(null)
@@ -197,30 +199,69 @@ export function RoomTypeImageModal({
 
   function handleCardDragStart(e: DragEvent<HTMLDivElement>, index: number) {
     if (!canManage || isSavingOrder || isDeleting) return
-    setDraggedIndex(index)
+    draggedIndexRef.current = index
+    isDraggingRef.current = true
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', String(index))
+    // Sử dụng setTimeout 0 để không gây gián đoạn quá trình DragStart của trình duyệt
+    setTimeout(() => {
+      setDraggedIndex(index)
+    }, 0)
   }
 
   function handleCardDragOver(e: DragEvent<HTMLDivElement>, index: number) {
-    if (!canManage || draggedIndex === null) return
-    e.preventDefault()
+    if (!canManage || isSavingOrder || isDeleting) return
+    e.preventDefault() // BẮT BUỘC để cho phép thả (drop)
+    e.stopPropagation()
     e.dataTransfer.dropEffect = 'move'
     if (dragOverIndex !== index) {
       setDragOverIndex(index)
     }
   }
 
+  function handleCardDragEnter(e: DragEvent<HTMLDivElement>, index: number) {
+    if (!canManage || isSavingOrder || isDeleting) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  function handleCardDragLeave(e: DragEvent<HTMLDivElement>) {
+    e.stopPropagation()
+  }
+
   function handleCardDrop(e: DragEvent<HTMLDivElement>, targetIndex: number) {
     e.preventDefault()
-    if (!canManage || draggedIndex === null || draggedIndex === targetIndex) {
-      setDraggedIndex(null)
-      setDragOverIndex(null)
+    e.stopPropagation()
+
+    let fromIndex = draggedIndexRef.current
+    if (fromIndex === null) {
+      const raw = e.dataTransfer.getData('text/plain')
+      if (raw !== '') {
+        const parsed = parseInt(raw, 10)
+        if (!isNaN(parsed)) {
+          fromIndex = parsed
+        }
+      }
+    }
+
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    draggedIndexRef.current = null
+
+    if (
+      fromIndex === null ||
+      fromIndex === targetIndex ||
+      fromIndex < 0 ||
+      fromIndex >= images.length
+    ) {
       return
     }
 
     const reordered = [...images]
-    const [moved] = reordered.splice(draggedIndex, 1)
+    const [moved] = reordered.splice(fromIndex, 1)
     reordered.splice(targetIndex, 0, moved)
 
     void applyReorder(reordered)
@@ -229,11 +270,15 @@ export function RoomTypeImageModal({
   function handleCardDragEnd() {
     setDraggedIndex(null)
     setDragOverIndex(null)
+    draggedIndexRef.current = null
+    setTimeout(() => {
+      isDraggingRef.current = false
+    }, 150)
   }
 
-  // Thao tác nhanh chuyển vị trí (hỗ trợ thêm cho khả năng tiếp cận và tiện ích)
+  // Thao tác nhanh chuyển vị trí (hỗ trợ thêm nút bấm mũi tên và làm đại diện)
   function moveCard(fromIndex: number, toIndex: number) {
-    if (toIndex < 0 || toIndex >= images.length) return
+    if (toIndex < 0 || toIndex >= images.length || fromIndex === toIndex || isSavingOrder) return
     const reordered = [...images]
     const [moved] = reordered.splice(fromIndex, 1)
     reordered.splice(toIndex, 0, moved)
@@ -395,6 +440,8 @@ export function RoomTypeImageModal({
                       draggable={canManage && !isSavingOrder && !isDeleting}
                       onDragStart={(e) => handleCardDragStart(e, index)}
                       onDragOver={(e) => handleCardDragOver(e, index)}
+                      onDragEnter={(e) => handleCardDragEnter(e, index)}
+                      onDragLeave={handleCardDragLeave}
                       onDrop={(e) => handleCardDrop(e, index)}
                       onDragEnd={handleCardDragEnd}
                       className={`room-type-image-card ${canManage ? 'draggable' : ''} ${
@@ -402,10 +449,14 @@ export function RoomTypeImageModal({
                       } ${isBeingDragged ? 'dragging' : ''} ${
                         isBeingHoveredOver ? 'drag-over' : ''
                       }`}
-                      onClick={() => setPreviewImage(img)}
+                      onClick={() => {
+                        if (!isDraggingRef.current) {
+                          setPreviewImage(img)
+                        }
+                      }}
                       title={
                         canManage
-                          ? `Kéo thả để đổi vị trí (Ảnh #${index + 1}). Nhấn để phóng to.`
+                          ? `Ảnh #${index + 1}. Kéo thả hoặc bấm nút điều hướng bên dưới để đổi vị trí.`
                           : 'Nhấn để phóng to'
                       }
                     >
@@ -414,7 +465,30 @@ export function RoomTypeImageModal({
                         alt={`Ảnh loại phòng ${roomType.name} #${index + 1}`}
                         className="room-type-image-img"
                         loading="lazy"
+                        draggable={false}
                       />
+
+                      {/* Huy hiệu ảnh đại diện / thứ tự ở góc trên bên trái */}
+                      {isPrimary ? (
+                        <div className="room-type-image-primary-badge">
+                          <span>★</span>
+                          <span>Đại diện (#1)</span>
+                        </div>
+                      ) : (
+                        <div className="room-type-image-order-badge-top">
+                          #{index + 1}
+                        </div>
+                      )}
+
+                      {/* Nút cầm kéo thả */}
+                      {canManage && (
+                        <div
+                          className="room-type-image-drag-handle"
+                          title="Cầm vào đây hoặc thẻ ảnh để kéo thả đổi vị trí"
+                        >
+                          ⋮⋮
+                        </div>
+                      )}
 
                       {/* Nút xoá ảnh có xác nhận (S2-09) */}
                       {canManage && (
@@ -438,78 +512,46 @@ export function RoomTypeImageModal({
                         </button>
                       )}
 
-                      {/* Nút cầm kéo thả */}
+                      {/* Thanh điều hướng đổi vị trí & làm đại diện (Luôn hiển thị trên từng thẻ ảnh) */}
                       {canManage && (
                         <div
-                          className="room-type-image-drag-handle"
-                          title="Kéo thả để sắp xếp lại"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          ⋮⋮
-                        </div>
-                      )}
-
-                      {/* Huy hiệu ảnh đại diện nổi bật */}
-                      {isPrimary && (
-                        <div className="room-type-image-primary-badge">
-                          <span>★</span>
-                          <span>Ảnh đại diện</span>
-                        </div>
-                      )}
-
-                      {/* Huy hiệu thứ tự */}
-                      <div className="room-type-image-order-badge">#{index + 1}</div>
-
-                      {/* Thanh thao tác nhanh (hover) */}
-                      {canManage && (
-                        <div
-                          className="room-type-image-card-actions"
+                          className="room-type-image-card-controls"
+                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => e.stopPropagation()}
                         >
                           {index > 0 && (
                             <button
                               type="button"
-                              className="room-type-image-quick-btn"
-                              title="Đặt làm ảnh đại diện (chuyển lên đầu)"
-                              onClick={() => moveCard(index, 0)}
-                            >
-                              ★ Làm đại diện
-                            </button>
-                          )}
-                          {index > 0 && (
-                            <button
-                              type="button"
-                              className="room-type-image-quick-btn"
-                              title="Chuyển sang trái"
+                              className="room-type-image-ctrl-btn move-prev"
+                              title="Chuyển ảnh này lên trước (đổi vị trí)"
+                              disabled={isSavingOrder}
                               onClick={() => moveCard(index, index - 1)}
                             >
-                              ◀
+                              ◀ Trước
                             </button>
                           )}
                           {index < images.length - 1 && (
                             <button
                               type="button"
-                              className="room-type-image-quick-btn"
-                              title="Chuyển sang phải"
+                              className="room-type-image-ctrl-btn move-next"
+                              title="Chuyển ảnh này ra sau (đổi vị trí)"
+                              disabled={isSavingOrder}
                               onClick={() => moveCard(index, index + 1)}
                             >
-                              ▶
+                              Sau ▶
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className={`room-type-image-quick-btn room-type-image-quick-delete ${
-                              isLastImageOfActiveRoom ? 'disabled' : ''
-                            }`}
-                            title={
-                              isLastImageOfActiveRoom
-                                ? 'Không thể xoá ảnh cuối cùng của loại phòng đang bán'
-                                : 'Xoá ảnh'
-                            }
-                            onClick={() => handleRequestDelete(img)}
-                          >
-                            {isLastImageOfActiveRoom ? '🔒 Chặn xoá' : '🗑️ Xoá'}
-                          </button>
+                          {index > 0 && (
+                            <button
+                              type="button"
+                              className="room-type-image-ctrl-btn set-primary"
+                              title="Đặt ảnh này làm ảnh đại diện mới"
+                              disabled={isSavingOrder}
+                              onClick={() => moveCard(index, 0)}
+                            >
+                              ★ Làm đại diện
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

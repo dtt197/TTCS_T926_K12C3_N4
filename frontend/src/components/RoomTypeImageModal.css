@@ -334,6 +334,8 @@
   cursor: grab;
   transition: background 0.15s ease, transform 0.15s ease;
   z-index: 2;
+  user-select: none;
+  pointer-events: none;
 }
 
 .room-type-image-card:hover .room-type-image-drag-handle {
@@ -354,38 +356,57 @@
   font-weight: 500;
 }
 
-.room-type-image-card-actions {
+/* S2-09: Thanh nút điều hướng đổi vị trí & làm đại diện trên từng ảnh */
+.room-type-image-card-controls {
   position: absolute;
-  bottom: 8px;
-  left: 8px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 8px;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.75) 75%, transparent 100%);
   display: flex;
-  gap: 4px;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: all 0.15s ease;
-  z-index: 2;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  z-index: 4;
 }
 
-.room-type-image-card:hover .room-type-image-card-actions {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.room-type-image-quick-btn {
-  background: rgba(15, 23, 42, 0.85);
+.room-type-image-ctrl-btn {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
   color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  font-size: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 3px 6px;
+  padding: 4px 8px;
   cursor: pointer;
-  backdrop-filter: blur(2px);
-  transition: background 0.12s ease;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1.2;
 }
 
-.room-type-image-quick-btn:hover {
+.room-type-image-ctrl-btn:hover:not(:disabled) {
   background: #2563eb;
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+}
+
+.room-type-image-ctrl-btn.set-primary {
+  background: rgba(245, 158, 11, 0.9);
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+
+.room-type-image-ctrl-btn.set-primary:hover:not(:disabled) {
+  background: #d97706;
+}
+
+.room-type-image-ctrl-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .room-type-image-img {
@@ -394,6 +415,24 @@
   object-fit: cover;
   display: block;
   background-color: #f1f5f9;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.room-type-image-order-badge-top {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(2px);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .room-type-image-primary-badge {
@@ -411,6 +450,7 @@
   align-items: center;
   gap: 0.25rem;
   letter-spacing: 0.02em;
+  z-index: 2;
 }
 
 .room-type-image-order-badge {
