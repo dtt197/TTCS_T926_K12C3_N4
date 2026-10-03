@@ -1,0 +1,18 @@
+.room-type-details-card,
+.room-type-unavailable {
+  display: grid;
+  gap: 12px;
+}
+
+.room-type-details-card h2,
+.room-type-unavailable h2 {
+  margin-bottom: 0;
+}
+
+.room-type-details-action {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+}

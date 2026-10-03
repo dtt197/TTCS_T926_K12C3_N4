@@ -10,6 +10,16 @@ export class AuthSessionExpiredError extends Error {
   }
 }
 
+export class ApiRequestError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+  }
+}
+
 let refreshPromise: Promise<string> | null = null
 
 function notifySessionExpired(): void {
@@ -58,7 +68,10 @@ export async function apiRequest<T>(
     }
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { message?: string } | null
-      throw new Error(body?.message ?? `API request failed with status ${response.status}`)
+      throw new ApiRequestError(
+        response.status,
+        body?.message ?? `API request failed with status ${response.status}`,
+      )
     }
     if (response.status === 204) {
       return undefined as T

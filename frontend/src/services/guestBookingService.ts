@@ -3,12 +3,17 @@ import type {
   GuestBookingPayload,
   GuestBookingResult,
   GuestQuote,
+  PublicRoomTypeDetails,
   PublicRoomTypeOption,
 } from '../types/guestBooking'
 
 /** S2-07: API công khai, khách không cần đăng nhập. */
 export function getPublicRoomTypes() {
   return apiRequest<PublicRoomTypeOption[]>('/api/public/room-types')
+}
+
+export function getPublicRoomType(roomTypeId: number) {
+  return apiRequest<PublicRoomTypeDetails>(`/api/public/room-types/${roomTypeId}`)
 }
 
 export function createGuestBooking(payload: GuestBookingPayload) {

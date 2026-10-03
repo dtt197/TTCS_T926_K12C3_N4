@@ -5,6 +5,7 @@ import { GuestBookingPage } from '../pages/GuestBookingPage'
 import { InternalHomePage } from '../pages/InternalHomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { ResetPasswordPage } from '../pages/ResetPasswordPage'
+import { RoomTypeDetailsPage } from '../pages/RoomTypeDetailsPage'
 import type { LoginResponse } from '../types/auth'
 
 type AppRoutesProps = {
@@ -28,9 +29,12 @@ export function AppRoutes({
     page = <ForgotPasswordPage />
   } else if (pathname === '/reset-password') {
     page = <ResetPasswordPage />
-      } else if (pathname === '/dat-phong') {
+  } else if (pathname === '/dat-phong') {
     // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
     page = <GuestBookingPage />
+  } else if (pathname === '/loai-phong' || pathname.startsWith('/loai-phong/')) {
+    const roomTypeId = Number(pathname.slice('/loai-phong/'.length))
+    page = <RoomTypeDetailsPage roomTypeId={Number.isSafeInteger(roomTypeId) && roomTypeId > 0 ? roomTypeId : null} />
   } else if (!user) {
     page = <LoginPage onLogin={onLogin} />
   } else if (user.mustChangePassword) {

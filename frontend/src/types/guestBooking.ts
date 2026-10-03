@@ -7,6 +7,13 @@ export type PublicRoomTypeOption = {
   maxCapacity: number
 }
 
+export type PublicRoomTypeDetails = PublicRoomTypeOption & {
+  numberOfBeds: number
+  description: string | null
+  weekdayPrice: number | null
+  weekendPrice: number | null
+}
+
 export type GuestBookingPayload = {
   roomTypeId: number
   checkInDate: string
