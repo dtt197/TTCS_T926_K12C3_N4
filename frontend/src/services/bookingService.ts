@@ -4,43 +4,6 @@ import type {
   BookingStatus,
   PageResponse,
 } from '../types/booking'
-<<<<<<< HEAD
-
-export type BookingFilters = {
-  status: BookingStatus | ''
-  checkInFrom: string
-  checkInTo: string
-  keyword: string
-}
-
-export function getLatestBookings(
-  page = 0,
-  filters?: Partial<BookingFilters>,
-) {
-  const params = new URLSearchParams({
-    page: String(page),
-  })
-
-  if (filters?.status) {
-    params.set('status', filters.status)
-  }
-
-  if (filters?.checkInFrom) {
-    params.set('checkInFrom', filters.checkInFrom)
-  }
-
-  if (filters?.checkInTo) {
-    params.set('checkInTo', filters.checkInTo)
-  }
-
-  if (filters?.keyword?.trim()) {
-    params.set('keyword', filters.keyword.trim())
-  }
-
-  return apiRequest<PageResponse<BookingListItem>>(
-    `/api/bookings?${params.toString()}`,
-  )
-=======
 
 export type BookingPage = PageResponse<BookingListItem>
 
@@ -99,5 +62,4 @@ export function getLatestBookings(
     checkInTo: filters?.checkInTo,
     keyword: filters?.keyword,
   })
->>>>>>> 6c8117e (Fix bugs and complete booking feature)
 }

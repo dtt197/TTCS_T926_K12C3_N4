@@ -41,25 +41,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             BookingStatus status,
             OffsetDateTime now);
 
-    @Query("""
-        select b from Booking b
-        where (:status is null or b.status = :status)
-          and (:checkInFrom is null or b.checkInDate >= :checkInFrom)
-          and (:checkInTo is null or b.checkInDate <= :checkInTo)
-          and (
-              :keyword is null
-              or lower(b.guestName) like lower(concat('%', :keyword, '%'))
-              or lower(coalesce(b.guestPhone, '')) like lower(concat('%', :keyword, '%'))
-          )
-        """)
-    Page<Booking> search(
-            @Param("status") BookingStatus status,
-            @Param("checkInFrom") LocalDate checkInFrom,
-            @Param("checkInTo") LocalDate checkInTo,
-            @Param("keyword") String keyword,
-            Pageable pageable);
-
-    default Page<Booking> searchSpec(
+    default Page<Booking> search(
             BookingStatus status,
             LocalDate checkInFrom,
             LocalDate checkInTo,

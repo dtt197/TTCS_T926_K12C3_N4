@@ -5,16 +5,29 @@
 .booking-filters {
   display: grid;
   grid-template-columns: 2fr 1.3fr 1fr 1fr auto auto;
-  gap: 8px;
-  margin-bottom: 20px;
-  align-items: center;
+  gap: 12px;
+  align-items: end;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #e4e0d8;
+  border-radius: 12px;
+  background: #fffdf8;
+}
+
+.booking-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text, #1c2e26);
 }
 
 .booking-filters input,
 .booking-filters select {
-  min-height: 38px;
+  min-height: 40px;
   padding: 8px 12px;
-  border: 1px solid #ccd6d1;
+  border: 1px solid #cfc8bd;
   border-radius: 8px;
   background: #fff;
   font-size: 13px;
@@ -29,7 +42,7 @@
 }
 
 .booking-filters button[type="submit"] {
-  min-height: 38px;
+  min-height: 40px;
   padding: 8px 20px;
   border: none;
   border-radius: 8px;
@@ -46,20 +59,20 @@
 }
 
 .booking-filters button[type="button"] {
-  min-height: 38px;
+  min-height: 40px;
   padding: 8px 16px;
-  border: 1px solid #ccd6d1;
+  border: 1px solid #cfc8bd;
   border-radius: 8px;
-  background: #f1f4f2;
-  color: #3b5046;
+  background: #fff;
+  color: var(--text, #1c2e26);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
 .booking-filters button[type="button"]:hover {
-  background: #e4ebe6;
+  background: #f5faf6;
 }
 
 .booking-table-wrapper {
@@ -160,45 +173,6 @@
   background: #eeeef5;
   color: #56567d;
 }
-<<<<<<< HEAD
-.booking-filters {
-  display: grid;
-  grid-template-columns: 2fr 1.3fr 1fr 1fr auto auto;
-  gap: 12px;
-  align-items: end;
-  margin: 20px 0;
-  padding: 16px;
-  border: 1px solid #e4e0d8;
-  border-radius: 12px;
-  background: #fffdf8;
-}
-
-.booking-filters label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-weight: 600;
-}
-
-.booking-filters input,
-.booking-filters select {
-  min-height: 40px;
-  padding: 8px 10px;
-  border: 1px solid #cfc8bd;
-  border-radius: 8px;
-  background: white;
-}
-
-.booking-filters button {
-  min-height: 40px;
-  padding: 8px 16px;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-@media (max-width: 900px) {
-=======
 
 .booking-pagination {
   display: flex;
@@ -238,17 +212,12 @@
 }
 
 @media (max-width: 1000px) {
->>>>>>> 6c8117e (Fix bugs and complete booking feature)
   .booking-filters {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-<<<<<<< HEAD
 @media (max-width: 560px) {
-=======
-@media (max-width: 600px) {
->>>>>>> 6c8117e (Fix bugs and complete booking feature)
   .booking-filters {
     grid-template-columns: 1fr;
   }

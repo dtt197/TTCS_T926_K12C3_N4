@@ -58,14 +58,7 @@ export function RoomTypeImageModal({
       setIsLoading(false)
     }
   }, [roomType.id])
-<<<<<<< HEAD
-useEffect(() => {
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  void fetchImages()
-}, [fetchImages])
 
-=======
-  
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchImages()
@@ -103,7 +96,6 @@ useEffect(() => {
       setIsDeleting(false)
     }
   }
->>>>>>> 6c8117e (Fix bugs and complete booking feature)
 
   async function handleFileProcess(file: File) {
     setError(null)
@@ -176,7 +168,6 @@ useEffect(() => {
 
   // S2-09: Kéo thả các thẻ ảnh để sắp xếp lại thứ tự
   async function applyReorder(reorderedList: RoomTypeImage[]) {
-    // Quy tắc hiển thị: ảnh nằm ở vị trí đầu tiên sau khi sắp xếp tự động trở thành ảnh đại diện mới
     const updated = reorderedList.map((img, i) => ({
       ...img,
       displayOrder: i,
@@ -291,38 +282,6 @@ useEffect(() => {
     const [moved] = reordered.splice(fromIndex, 1)
     reordered.splice(toIndex, 0, moved)
     void applyReorder(reordered)
-  }
-
-  const isLastImageOfActiveRoom = roomType.active && images.length <= 1
-
-  function handleRequestDelete(img: RoomTypeImage) {
-    if (isLastImageOfActiveRoom) {
-      setError(
-        'Không được phép xoá ảnh cuối cùng của loại phòng đang mở bán. Vui lòng ngừng bán loại phòng trước khi xoá ảnh này.'
-      )
-      return
-    }
-    setDeleteError(null)
-    setImageToDelete(img)
-  }
-
-  async function handleConfirmDelete() {
-    if (!imageToDelete) return
-
-    try {
-      setIsDeleting(true)
-      setDeleteError(null)
-      const updated = await deleteRoomTypeImage(roomType.id, imageToDelete.id)
-      setImages(updated)
-      setImageToDelete(null)
-      setSuccessNotice('Đã xoá ảnh thành công. Ảnh đại diện và thứ tự hiển thị đã được cập nhật tự động.')
-      setTimeout(() => setSuccessNotice(null), 3500)
-      onImagesUpdated()
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Xoá ảnh thất bại.')
-    } finally {
-      setIsDeleting(false)
-    }
   }
 
   const isFull = images.length >= MAX_IMAGES
