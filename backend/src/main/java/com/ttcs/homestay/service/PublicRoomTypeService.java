@@ -23,7 +23,7 @@ public class PublicRoomTypeService {
 
     @Transactional(readOnly = true)
     public List<PublicRoomTypeCard> listRoomTypes() {
-        return roomTypeRepository.findAllByOrderByCodeAsc().stream()
+        return roomTypeRepository.findAllByStatusTrueOrderByCodeAsc().stream()
                 .map(PublicRoomTypeCard::from)
                 .sorted(DISPLAY_ORDER)
                 .toList();
