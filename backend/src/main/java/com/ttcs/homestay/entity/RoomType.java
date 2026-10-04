@@ -88,6 +88,12 @@ private Long weekendPrice;
         this.cancellationTiers.add(tier);
     }
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "image_alt", length = 200)
+    private String imageAlt;
+
     /** S1-08 AC2: một loại phòng gắn được nhiều tiện nghi (bảng nối room_type_amenities). */
     @ManyToMany
     @JoinTable(
