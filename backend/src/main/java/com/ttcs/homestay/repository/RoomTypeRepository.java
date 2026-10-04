@@ -31,6 +31,8 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
 
     List<RoomType> findAllByOrderByCodeAsc();
 
+    List<RoomType> findAllByStatusTrueOrderByCodeAsc();
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from RoomType r where r.id = :id")
     Optional<RoomType> findByIdForUpdate(@Param("id") Long id);
