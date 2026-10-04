@@ -65,7 +65,7 @@ export function checkIn(roomId: number, guestName: string) {
 }
 export function putRoomIntoMaintenance(
   roomId: number,
-  maintenance: MaintenanceDraft,
+  maintenance: Omit<MaintenanceDraft, 'endDate'> & { endDate: string | null },
 ) {
   return request<Room>(`/rooms/${roomId}/maintenance`, {
     method: 'PATCH',
@@ -79,4 +79,19 @@ export function checkOut(roomId: number) {
     method: 'POST',
   })
 }
+export interface RoomAvailabilityResponse {
+  roomTypeId: number;
+  name: string;
+  capacity: number;
+  price: number;
+  availableRooms: number;
+}
 
+export function searchAvailableRooms(checkIn: string, checkOut: string, guestCount: number) {
+  const params = new URLSearchParams({
+    checkIn,
+    checkOut,
+    guestCount: guestCount.toString(),
+  });
+  return request<RoomAvailabilityResponse[]>(`/public/rooms/search?${params.toString()}`);
+}

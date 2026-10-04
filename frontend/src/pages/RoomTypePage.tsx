@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { RoomTypeForm } from '../components/RoomTypeForm'
+import { RoomTypeImageModal } from '../components/RoomTypeImageModal'
 import { hasPermission } from '../permissions/rolePermissions'
 import { getAmenities } from '../services/amenityService'
 import {
@@ -47,6 +48,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
 
   const [amenityDetailRoomType, setAmenityDetailRoomType] =
     useState<RoomType | null>(null)
+  const [imageRoomType, setImageRoomType] = useState<RoomType | null>(null)
 
   const load = useCallback(
     () =>
@@ -275,33 +277,59 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                   className="room-type-card"
                   key={roomType.id}
                 >
-                  <div className="room-type-card-top">
-                    <div className="room-type-card-title">
-                      <div className="room-type-code">
-                        {roomType.code}
-                      </div>
-
-                      <div>
-                        <h3>{roomType.name}</h3>
-
-                        <p>
-                          {roomType.description ||
-                            'Chưa có mô tả cho loại phòng này.'}
-                        </p>
-                      </div>
+                  <div className="room-type-card-thumb-container">
+                    <div
+                      className="room-type-card-thumb"
+                      onClick={() => setImageRoomType(roomType)}
+                      title="Nhấn để xem hoặc quản lý ảnh loại phòng"
+                    >
+                      {roomType.avatarUrl ? (
+                        <>
+                          <img
+                            src={roomType.avatarUrl}
+                            alt={`Ảnh đại diện ${roomType.name}`}
+                            loading="lazy"
+                          />
+                          <span className="room-type-card-thumb-badge">★ Đại diện</span>
+                        </>
+                      ) : (
+                        <div className="room-type-card-thumb-placeholder">
+                          <span style={{ fontSize: '18px' }}>📷</span>
+                          <span>Chưa có ảnh</span>
+                        </div>
+                      )}
                     </div>
 
-                    <span
-                      className={
-                        roomType.active
-                          ? 'room-type-status active'
-                          : 'room-type-status inactive'
-                      }
-                    >
-                      {roomType.active
-                        ? 'Đang bán'
-                        : 'Ngừng bán'}
-                    </span>
+                    <div className="room-type-card-top-content">
+                      <div className="room-type-card-top">
+                        <div className="room-type-card-title">
+                          <div className="room-type-code">
+                            {roomType.code}
+                          </div>
+
+                          <div>
+                            <h3>{roomType.name}</h3>
+
+                            <p>
+                              {roomType.description ||
+                                'Chưa có mô tả cho loại phòng này.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span
+                          className={
+                            roomType.active
+                              ? 'room-type-status active'
+                              : 'room-type-status inactive'
+                          }
+                        >
+                          {roomType.active
+                            ? 'Đang bán'
+                            : 'Ngừng bán'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="room-type-metrics">
@@ -417,46 +445,57 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                     )}
                   </div>
 
-                  {canManage && (
-                    <div className="room-type-actions">
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() =>
-                          setEditing(roomType)
-                        }
-                      >
-                        Sửa
-                      </button>
+                  <div className="room-type-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => setImageRoomType(roomType)}
+                      title={canManage ? 'Quản lý ảnh loại phòng' : 'Xem ảnh loại phòng'}
+                    >
+                      🖼️ Ảnh {roomType.images && roomType.images.length > 0 ? `(${roomType.images.length})` : ''}
+                    </button>
 
-                      <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() =>
-                          void handleToggle(roomType)
-                        }
-                      >
-                        {roomType.active
-                          ? 'Ngừng bán'
-                          : 'Bán lại'}
-                      </button>
+                    {canManage && (
+                      <>
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() =>
+                            setEditing(roomType)
+                          }
+                        >
+                          Sửa
+                        </button>
 
-                      <button
-                        className="secondary-button danger"
-                        type="button"
-                        title={
-                          roomType.roomCount > 0
-                            ? 'Đang có phòng gắn vào, chỉ có thể ngừng bán'
-                            : 'Xoá loại phòng'
-                        }
-                        onClick={() =>
-                          void handleDelete(roomType)
-                        }
-                      >
-                        Xoá
-                      </button>
-                    </div>
-                  )}
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          onClick={() =>
+                            void handleToggle(roomType)
+                          }
+                        >
+                          {roomType.active
+                            ? 'Ngừng bán'
+                            : 'Bán lại'}
+                        </button>
+
+                        <button
+                          className="secondary-button danger"
+                          type="button"
+                          title={
+                            roomType.roomCount > 0
+                              ? 'Đang có phòng gắn vào, chỉ có thể ngừng bán'
+                              : 'Xoá loại phòng'
+                          }
+                          onClick={() =>
+                            void handleDelete(roomType)
+                          }
+                        >
+                          Xoá
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </article>
               ))}
             </div>
@@ -593,6 +632,22 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {imageRoomType && (
+        <RoomTypeImageModal
+          roomType={imageRoomType}
+          canManage={canManage}
+          onClose={() => setImageRoomType(null)}
+          onImagesUpdated={async () => {
+            const updatedItems = await getRoomTypes()
+            setRoomTypes(updatedItems)
+            const refreshed = updatedItems.find((r) => r.id === imageRoomType.id)
+            if (refreshed) {
+              setImageRoomType(refreshed)
+            }
+          }}
+        />
       )}
     </div>
   )

@@ -885,19 +885,10 @@ const counts = useMemo(
       if (
 
         !maintenance.reason.trim() ||
-
-        !maintenance.startDate ||
-
-        !maintenance.endDate
-
+        !maintenance.startDate
       ) {
-
         showError(
-
-          `Vui lòng nhập đầy đủ lý do, ngày bắt đầu và ` +
-
-          `ngày kết thúc bảo trì cho phòng ${room.roomNumber}.`,
-
+          `Vui lòng nhập lý do và ngày bắt đầu bảo trì cho phòng ${room.roomNumber}.`,
         )
 
 
@@ -908,7 +899,7 @@ const counts = useMemo(
 
 
 
-      if (maintenance.endDate < maintenance.startDate) {
+      if (maintenance.endDate && maintenance.endDate < maintenance.startDate) {
 
         showError(
 
@@ -961,11 +952,8 @@ const counts = useMemo(
                   : null,
 
               maintenanceEndDate:
-
                 targetStatus === 'BAO_TRI'
-
-                  ? maintenance.endDate
-
+                  ? maintenance.endDate || null
                   : null,
 
             }
@@ -973,12 +961,10 @@ const counts = useMemo(
           : targetStatus === 'BAO_TRI'
 
             ? await putRoomIntoMaintenance(room.id, {
-
                 ...maintenance,
-
                 reason: maintenance.reason.trim(),
-
-              })
+              endDate: maintenance.endDate || null,
+            })
 
             : await updateRoomStatus(room.id, targetStatus)
 
@@ -1023,8 +1009,9 @@ const counts = useMemo(
             targetStatus === 'BAO_TRI' ? maintenance.startDate : null,
 
           maintenanceEndDate:
-
-            targetStatus === 'BAO_TRI' ? maintenance.endDate : null,
+            targetStatus === 'BAO_TRI'
+              ? maintenance.endDate || null
+              : null,
 
         }
 
@@ -2064,7 +2051,9 @@ const counts = useMemo(
 
                           <label className="form-label">
 
-                            Ngày kết thúc
+                            Ngày kết thúc (không bắt buộc)
+
+                            <small>Để trống nếu chưa có ngày kết thúc dự kiến.</small>
 
 
 
@@ -2135,13 +2124,9 @@ const counts = useMemo(
 
 
                           <span>
-
                             {room.maintenanceStartDate}
-
                             {' → '}
-
-                            {room.maintenanceEndDate}
-
+                            {room.maintenanceEndDate ?? 'Chưa có ngày kết thúc dự kiến'}
                           </span>
 
                         </div>

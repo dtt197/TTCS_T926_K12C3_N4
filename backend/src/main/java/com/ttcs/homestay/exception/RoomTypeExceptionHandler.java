@@ -55,4 +55,35 @@ public class RoomTypeExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.of("Mã hoặc tên loại phòng đã tồn tại, vui lòng tải lại danh sách"));
     }
+
+    /** S2-09: Lỗi tải ảnh loại phòng */
+    @ExceptionHandler(InvalidImageException.class)
+    public ResponseEntity<ApiError> handleInvalidImage(InvalidImageException exception) {
+        return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ImageSizeExceededException.class)
+    public ResponseEntity<ApiError> handleImageSizeExceeded(ImageSizeExceededException exception) {
+        return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(MaxImageCountExceededException.class)
+    public ResponseEntity<ApiError> handleMaxImageCount(MaxImageCountExceededException exception) {
+        return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> handleMaxUploadSize(org.springframework.web.multipart.MaxUploadSizeExceededException exception) {
+        return ResponseEntity.badRequest().body(ApiError.of("Kích thước tệp vượt quá giới hạn tối đa 5MB."));
+    }
+
+    @ExceptionHandler(CannotDeleteLastImageException.class)
+    public ResponseEntity<ApiError> handleCannotDeleteLastImage(CannotDeleteLastImageException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(exception.getMessage()));
+    }
+
+    @ExceptionHandler(RoomTypeImageNotFoundException.class)
+    public ResponseEntity<ApiError> handleImageNotFound(RoomTypeImageNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(exception.getMessage()));
+    }
 }

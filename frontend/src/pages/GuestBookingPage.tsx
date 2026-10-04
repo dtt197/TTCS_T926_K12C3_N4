@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { GuestQuoteTable } from '../components/GuestQuoteTable'
 import { createGuestBooking, getPublicRoomTypes } from '../services/guestBookingService'
+import { searchAvailableRooms } from '../services/roomService'
 import type { GuestBookingResult, PublicRoomTypeOption } from '../types/guestBooking'
 import './AuthPages.css'
 import './GuestBookingPage.css'
@@ -27,6 +28,17 @@ const EMPTY_FORM: FormState = {
   guestCount: '1',
   note: '',
   acceptedCancellationPolicy: false,
+}
+
+function initialFormFromSearchParams(): FormState {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    ...EMPTY_FORM,
+    roomTypeId: params.get('roomTypeId') ?? '',
+    checkInDate: params.get('checkInDate') ?? '',
+    checkOutDate: params.get('checkOutDate') ?? '',
+    guestCount: params.get('guestCount') ?? EMPTY_FORM.guestCount,
+  }
 }
 
 const money = new Intl.NumberFormat('vi-VN')
@@ -101,6 +113,17 @@ export function GuestBookingPage() {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
+  // Tính số đêm giữa ngày nhận và ngày trả
+  const calculateNights = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return 0;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const nights = calculateNights(form.checkInDate, form.checkOutDate);
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
@@ -152,6 +175,10 @@ export function GuestBookingPage() {
       setError('Ngày trả phòng phải sau ngày nhận phòng ít nhất một đêm')
       return
     }
+    if (nights > 30) {
+      setError('Khoảng thời gian tra cứu tối đa là 30 đêm')
+      return
+    }
     if (!Number.isInteger(guestCount) || guestCount < 1) {
       setError(`Số khách phải từ 1 đến ${selectedRoomType?.maxCapacity ?? 'sức chứa tối đa'}`)
       return
@@ -163,6 +190,24 @@ export function GuestBookingPage() {
 
     setIsSubmitting(true)
     try {
+      // Kiểm tra số lượng phòng trống thực tế theo thời gian khách chọn
+      const availabilities = await searchAvailableRooms(
+        form.checkInDate,
+        form.checkOutDate,
+        Number(form.guestCount)
+      );
+
+      const selectedRoomAvailability = availabilities.find(
+        (item) => String(item.roomTypeId) === form.roomTypeId
+      );
+
+      if (!selectedRoomAvailability || selectedRoomAvailability.availableRooms <= 0) {
+        setError('Rất tiếc, loại phòng này đã hết phòng trống trong khoảng thời gian bạn chọn.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Nếu còn phòng thì tiến hành gửi yêu cầu đặt phòng
       const created = await createGuestBooking({
         roomTypeId: Number(form.roomTypeId),
         checkInDate: form.checkInDate,
@@ -176,7 +221,6 @@ export function GuestBookingPage() {
       })
       setResult(created)
     } catch (err) {
-      // Giữ nguyên thông tin đã nhập để khách sửa rồi gửi lại.
       setError(errorMessage(err, 'Không gửi được yêu cầu đặt phòng'))
     } finally {
       setIsSubmitting(false)
@@ -270,16 +314,49 @@ export function GuestBookingPage() {
             <div className="field-row">
               <div className="field">
                 <label htmlFor="guest-check-in">Ngày nhận phòng</label>
-                <input id="guest-check-in" type="date" min={today} value={form.checkInDate}
-                  onChange={(event) => update('checkInDate', event.target.value)} />
+                <input
+                  id="guest-check-in"
+                  type="date"
+                  min={today}
+                  value={form.checkInDate}
+                  onChange={(event) => {
+                    const newCheckIn = event.target.value;
+                    let newCheckOut = form.checkOutDate;
+                    if (!newCheckOut || newCheckOut <= newCheckIn) {
+                      const d = new Date(newCheckIn);
+                      d.setDate(d.getDate() + 1);
+                      newCheckOut = d.toISOString().split('T')[0];
+                    }
+                    setForm(current => ({
+                      ...current,
+                      checkInDate: newCheckIn,
+                      checkOutDate: newCheckOut
+                    }));
+                  }}
+                />
               </div>
+
               <div className="field">
-                <label htmlFor="guest-check-out">Ngày trả phòng</label>
-                <input id="guest-check-out" type="date" min={form.checkInDate || today} value={form.checkOutDate}
-                  onChange={(event) => update('checkOutDate', event.target.value)} />
+                <label htmlFor="guest-check-out">
+                  Ngày trả phòng {nights > 0 && `(${nights} đêm)`}
+                </label>
+                <input
+                  id="guest-check-out"
+                  type="date"
+                  min={form.checkInDate ? (() => {
+                    const d = new Date(form.checkInDate);
+                    d.setDate(d.getDate() + 1);
+                    return d.toISOString().split('T')[0];
+                  })() : today}
+                  value={form.checkOutDate}
+                  onChange={(event) => update('checkOutDate', event.target.value)}
+                />
+                {nights > 30 && (
+                  <p className="field-error">Khoảng thời gian tra cứu tối đa là 30 đêm.</p>
+                )}
               </div>
             </div>
-              
+
             <GuestQuoteTable
               roomTypeId={form.roomTypeId}
               roomTypeName={selectedRoomType?.name ?? ''}
@@ -319,7 +396,7 @@ export function GuestBookingPage() {
                 <label htmlFor="guest-count">Số khách</label>
                 <input id="guest-count" type="number" min={1} max={selectedRoomType?.maxCapacity}
                   value={form.guestCount} onChange={(event) => update('guestCount', event.target.value)} />
-                  {selectedRoomType && (
+                {selectedRoomType && (
                   <p className="guest-capacity-hint">
                     Tiêu chuẩn {selectedRoomType.standardCapacity}, tối đa {selectedRoomType.maxCapacity} khách
                   </p>

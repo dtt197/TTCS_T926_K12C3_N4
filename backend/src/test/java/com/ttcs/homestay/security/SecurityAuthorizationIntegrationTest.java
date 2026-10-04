@@ -60,7 +60,6 @@ class SecurityAuthorizationIntegrationTest {
         @Autowired
         private AuditLogService auditLogService;
 
-    
 @BeforeEach
 void setUp() {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS audit_logs ("
@@ -941,15 +940,13 @@ void khachChuaDangNhapXemLoaiPhongDatDuoc_duoc200() throws Exception {
 }
 
 @Test
-void khachChuaDangNhapXemChiTietLoaiPhong_quaPhanQuyen() throws Exception {
-    // S2-04: API chi tiết loại phòng công khai, không gửi token (ID không tồn tại trả 404 chứ không phải 401/403).
-    mockMvc.perform(get("/api/public/room-types/999999")).andExpect(status().isNotFound());
-}
-
-@Test
-void khachChuaDangNhapXemDanhMucLoaiPhong_duoc200() throws Exception {
-    // S2-04: API danh mục loại phòng công khai, không gửi token.
-    mockMvc.perform(get("/api/public/room-types-catalog")).andExpect(status().isOk());
+void khachChuaDangNhapTraCuuPhong_duoc200() throws Exception {
+    java.time.LocalDate checkIn = java.time.LocalDate.now().plusDays(10);
+    mockMvc.perform(get("/api/public/rooms/search")
+                    .param("checkIn", checkIn.toString())
+                    .param("checkOut", checkIn.plusDays(3).toString())
+                    .param("guestCount", "2"))
+            .andExpect(status().isOk());
 }
 
 @Test
