@@ -19,9 +19,14 @@ function formatCapacity(card: PublicRoomTypeCard): string {
 
 export function RoomTypeListPage() {
   const [cards, setCards] = useState<PublicRoomTypeCard[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    setIsLoading(true)
+    setHasError(false)
     getPublicRoomTypeCards()
       .then((data) => {
         if (!cancelled) {
@@ -30,41 +35,59 @@ export function RoomTypeListPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setCards([])
+          setHasError(true)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retryCount])
 
   return (
     <main className="room-list">
       <h1 className="room-list__title">Các loại phòng</h1>
-      <ul className="room-list__grid">
-        {cards.map((card) => (
-          <li key={card.id} className="room-card">
-            {card.imageUrl ? (
-              <img
-                className="room-card__image"
-                src={card.imageUrl}
-                alt={card.imageAlt}
-              />
-            ) : (
-              <div
-                className="room-card__image room-card__image--empty"
-                role="img"
-                aria-label={card.imageAlt}
-              />
-            )}
-            <div className="room-card__body">
-              <h2 className="room-card__name">{card.name}</h2>
-              <p className="room-card__capacity">{formatCapacity(card)}</p>
-              <p className="room-card__price">{formatPrice(card.fromPrice)}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {isLoading ? (
+        <p className="room-list__state" role="status">Đang tải danh sách loại phòng...</p>
+      ) : hasError ? (
+        <div className="room-list__state room-list__state--error" role="alert">
+          <p>Không thể tải danh sách loại phòng. Vui lòng thử lại.</p>
+          <button type="button" onClick={() => setRetryCount((count) => count + 1)}>
+            Thử lại
+          </button>
+        </div>
+      ) : cards.length === 0 ? (
+        <p className="room-list__state" role="status">Hiện chưa có loại phòng nào.</p>
+      ) : (
+        <ul className="room-list__grid">
+          {cards.map((card) => (
+            <li key={card.id} className="room-card">
+              {card.imageUrl ? (
+                <img
+                  className="room-card__image"
+                  src={card.imageUrl}
+                  alt={card.imageAlt}
+                />
+              ) : (
+                <div
+                  className="room-card__image room-card__image--empty"
+                  role="img"
+                  aria-label={card.imageAlt}
+                />
+              )}
+              <div className="room-card__body">
+                <h2 className="room-card__name">{card.name}</h2>
+                <p className="room-card__capacity">{formatCapacity(card)}</p>
+                <p className="room-card__price">{formatPrice(card.fromPrice)}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   )
 }

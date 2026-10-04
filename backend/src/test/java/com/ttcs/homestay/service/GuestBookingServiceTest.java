@@ -72,6 +72,7 @@ class GuestBookingServiceTest {
         phongDoi.setStatus(true);
         phongDoi.setStandardCapacity(2);
         phongDoi.setMaxCapacity(3);
+        phongDoi.setNumberOfBeds(1);
         phongDoi.setWeekdayPrice(500_000L);
         phongDoi.setWeekendPrice(700_000L);
         

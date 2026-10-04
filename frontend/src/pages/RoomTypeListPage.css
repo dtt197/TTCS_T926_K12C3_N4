@@ -9,6 +9,26 @@
   margin: 0 0 16px;
 }
 
+.room-list__state {
+  margin: 0;
+  padding: 16px;
+  text-align: center;
+}
+
+.room-list__state--error {
+  color: #a12622;
+}
+
+.room-list__state--error button {
+  margin-top: 8px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 4px;
+  background: #a12622;
+  color: #fff;
+  cursor: pointer;
+}
+
 .room-list__grid {
   list-style: none;
   margin: 0;

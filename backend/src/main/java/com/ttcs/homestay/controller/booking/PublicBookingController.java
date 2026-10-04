@@ -5,7 +5,6 @@ import com.ttcs.homestay.dto.booking.GuestBookingResponse;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeDetailResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
-import com.ttcs.homestay.dto.booking.PublicRoomTypeDetails;
 import com.ttcs.homestay.service.GuestBookingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -20,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -43,22 +41,15 @@ public class PublicBookingController {
         return guestBookingService.listBookableRoomTypes();
     }
 
-<<<<<<< HEAD
     @GetMapping("/room-types/{roomTypeId}")
-    public PublicRoomTypeDetails getRoomType(@PathVariable Long roomTypeId) {
-        return guestBookingService.getPublicRoomType(roomTypeId);
-=======
+    public PublicRoomTypeDetailResponse getRoomType(@PathVariable Long roomTypeId) {
+        return guestBookingService.getRoomTypeDetail(roomTypeId);
+    }
+
     /** S2-04: Danh sách loại phòng với đầy đủ ảnh, tiện nghi, số phòng trống. */
     @GetMapping("/room-types-catalog")
     public List<PublicRoomTypeDetailResponse> listRoomTypesCatalog() {
         return guestBookingService.listBookableRoomTypesWithDetails();
-    }
-
-    /** S2-04: Chi tiết một loại phòng (bộ ảnh, mô tả, tiện nghi, sức chứa, số phòng trống). */
-    @GetMapping("/room-types/{id}")
-    public PublicRoomTypeDetailResponse getRoomTypeDetail(@PathVariable Long id) {
-        return guestBookingService.getRoomTypeDetail(id);
->>>>>>> develop
     }
 
     /**

@@ -1,7 +1,6 @@
 package com.ttcs.homestay;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ttcs.homestay.entity.Booking;
@@ -24,7 +23,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -46,6 +48,9 @@ class RoomSearchPerformanceTest {
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Test
     void tim30DemVoi40PhongVa5BookingDuoiHaiGiay() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
@@ -58,22 +63,22 @@ class RoomSearchPerformanceTest {
         roomRepository.flush();
         bookingRepository.flush();
 
-        mockMvc.perform(get("/api/public/rooms/search")
+        MvcResult firstResponse = mockMvc.perform(get("/api/public/rooms/search")
                         .param("checkIn", checkIn.toString())
                         .param("checkOut", checkOut.toString())
                         .param("guestCount", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].availableRooms")
-                        .value(ROOM_COUNT - OCCUPIED_ROOM_COUNT));
+                .andReturn();
+        assertFixtureAvailability(firstResponse, roomType.getId());
 
         long startedAt = System.nanoTime();
-        mockMvc.perform(get("/api/public/rooms/search")
+        MvcResult secondResponse = mockMvc.perform(get("/api/public/rooms/search")
                         .param("checkIn", checkIn.toString())
                         .param("checkOut", checkOut.toString())
                         .param("guestCount", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].availableRooms")
-                        .value(ROOM_COUNT - OCCUPIED_ROOM_COUNT));
+                .andReturn();
+        assertFixtureAvailability(secondResponse, roomType.getId());
         long elapsedMillis = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();
 
         System.out.printf(
@@ -86,6 +91,19 @@ class RoomSearchPerformanceTest {
         org.assertj.core.api.Assertions.assertThat(elapsedMillis)
                 .as("Tra cứu thật qua API phải hoàn tất trong vòng 2 giây")
                 .isLessThan(2_000);
+    }
+
+    private void assertFixtureAvailability(MvcResult response, Long roomTypeId) throws Exception {
+        JsonNode results = objectMapper.readTree(response.getResponse().getContentAsString());
+        List<Integer> fixtureAvailability = new ArrayList<>();
+        for (JsonNode result : results) {
+            if (result.path("roomTypeId").asLong() == roomTypeId) {
+                fixtureAvailability.add(result.path("availableRooms").asInt());
+            }
+        }
+
+        org.assertj.core.api.Assertions.assertThat(fixtureAvailability)
+                .containsExactly(ROOM_COUNT - OCCUPIED_ROOM_COUNT);
     }
 
     private RoomType createRoomType(String suffix) {
