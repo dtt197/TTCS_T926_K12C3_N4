@@ -5,6 +5,7 @@ import { GuestBookingPage } from '../pages/GuestBookingPage'
 import { InternalHomePage } from '../pages/InternalHomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { ResetPasswordPage } from '../pages/ResetPasswordPage'
+import { RoomTypeListPage } from '../pages/RoomTypeListPage' 
 import type { LoginResponse } from '../types/auth'
 
 type AppRoutesProps = {
@@ -31,6 +32,9 @@ export function AppRoutes({
       } else if (pathname === '/dat-phong') {
     // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
     page = <GuestBookingPage />
+    } else if (pathname === '/danh-sach-loai-phong') {
+    // S2-03: trang danh sách loại phòng công khai, khách không cần đăng nhập
+    page = <RoomTypeListPage />
   } else if (!user) {
     page = <LoginPage onLogin={onLogin} />
   } else if (user.mustChangePassword) {
