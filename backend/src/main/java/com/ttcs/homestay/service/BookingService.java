@@ -29,7 +29,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import java.time.LocalDate;
 
-import java.time.LocalDate;
 @Service
 public class BookingService {
 
@@ -134,10 +133,7 @@ public class BookingService {
 
     public static final int PAGE_SIZE = 20;
 
-<<<<<<< HEAD
-=======
     @Transactional(readOnly = true)
->>>>>>> 6c8117e (Fix bugs and complete booking feature)
     public Page<Booking> findPage(
         int page,
         BookingStatus status,
@@ -167,12 +163,9 @@ public class BookingService {
             pageable
     );
 }
-<<<<<<< HEAD
-=======
 
     @Transactional(readOnly = true)
     public Page<Booking> findPage(int page) {
     return findPage(page, null, null, null, null);
 }
->>>>>>> 6c8117e (Fix bugs and complete booking feature)
 }
