@@ -3,3 +3,8 @@ node_modules/
 uploads/
 backend/uploads/
 dist/
+
+# Log khi Java bị crash, log npm
+*.log
+hs_err_pid*
+replay_pid*
