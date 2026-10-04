@@ -1,5 +1,5 @@
 import { apiRequest } from './apiClient'
-import type { RoomType, RoomTypePayload } from '../types/roomType'
+import type { RoomType, RoomTypeImage, RoomTypePayload } from '../types/roomType'
 
 /** S1-06: gọi API loại phòng. apiRequest tự gắn token đăng nhập. */
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
@@ -44,4 +44,36 @@ export function addRoomTypeAmenity(roomTypeId: number, amenityId: number) {
 /** S1-08: bỏ tiện nghi khỏi loại phòng. */
 export function removeRoomTypeAmenity(roomTypeId: number, amenityId: number) {
   return apiRequest<RoomType>(`/api/room-types/${roomTypeId}/amenities/${amenityId}`, { method: 'DELETE' })
+}
+
+/** S2-09: Lấy danh sách ảnh của loại phòng. */
+export function getRoomTypeImages(roomTypeId: number) {
+  return apiRequest<RoomTypeImage[]>(`/api/room-types/${roomTypeId}/images`)
+}
+
+/** S2-09: Tải ảnh lên cho loại phòng (tối đa 5MB, JPG/PNG, tối đa 8 ảnh). */
+export function uploadRoomTypeImage(roomTypeId: number, file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  return apiRequest<RoomTypeImage>(`/api/room-types/${roomTypeId}/images`, {
+    method: 'POST',
+    body: formData,
+  })
+}
+
+/** S2-09 (Chức năng 2): Cập nhật thứ tự sắp xếp ảnh (kéo thả trực quan). */
+export function reorderRoomTypeImages(roomTypeId: number, imageIds: number[]) {
+  return apiRequest<RoomTypeImage[]>(`/api/room-types/${roomTypeId}/images/reorder`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ imageIds }),
+  })
+}
+
+/** S2-09 (Chức năng 3): Xoá ảnh của loại phòng (có xác nhận và bảo vệ ảnh cuối cùng khi đang mở bán). */
+export function deleteRoomTypeImage(roomTypeId: number, imageId: number) {
+  return apiRequest<RoomTypeImage[]>(`/api/room-types/${roomTypeId}/images/${imageId}`, {
+    method: 'DELETE',
+  })
 }

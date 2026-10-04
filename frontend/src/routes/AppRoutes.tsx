@@ -1,9 +1,9 @@
-
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage'
 import { GuestBookingPage } from '../pages/GuestBookingPage'
 import { InternalHomePage } from '../pages/InternalHomePage'
 import { LoginPage } from '../pages/LoginPage'
+import { PublicRoomSearchPage } from '../pages/PublicRoomSearchPage'
 import { ResetPasswordPage } from '../pages/ResetPasswordPage'
 import { RoomTypeDetailsPage } from '../pages/RoomTypeDetailsPage'
 import type { LoginResponse } from '../types/auth'
@@ -29,6 +29,8 @@ export function AppRoutes({
     page = <ForgotPasswordPage />
   } else if (pathname === '/reset-password') {
     page = <ResetPasswordPage />
+  } else if (pathname === '/tim-phong') {
+    page = <PublicRoomSearchPage />
   } else if (pathname === '/dat-phong') {
     // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
     page = <GuestBookingPage />

@@ -138,6 +138,31 @@ class RoomServiceTest {
     }
 
     @Test
+    @DisplayName("Cho phép bảo trì chưa có ngày kết thúc dự kiến")
+    void maintenanceWithoutExpectedEndDate_shouldSucceed() {
+        Long roomId = 202L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("202");
+        room.setFloor(2);
+        room.setRoomType("Phòng đơn");
+        room.setStatus(RoomStatus.TRONG_SACH);
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LocalDate startDate = LocalDate.now();
+        RoomResponse response = roomService.putIntoMaintenance(
+                roomId,
+                new MaintenanceRequest("Chờ linh kiện", startDate, null),
+                "Lễ tân"
+        );
+
+        assertThat(response.status()).isEqualTo(RoomStatus.BAO_TRI);
+        assertThat(response.maintenanceStartDate()).isEqualTo(startDate);
+        assertThat(response.maintenanceEndDate()).isNull();
+    }
+
+    @Test
     @DisplayName("Không thể trả phòng khi phòng không ở trạng thái Đang ở")
     void checkOut_whenRoomIsNotOccupied_shouldThrowConflict() {
         Long roomId = 101L;
