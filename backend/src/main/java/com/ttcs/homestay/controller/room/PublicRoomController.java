@@ -53,6 +53,7 @@ public class PublicRoomController {
 
         List<RoomType> validRoomTypes = roomTypeRepository.findAll().stream()
                 .filter(rt -> Boolean.TRUE.equals(rt.getStatus()))
+                .filter(rt -> rt.getWeekdayPrice() != null && rt.getWeekdayPrice() > 0)
                 .filter(rt -> rt.getMaxCapacity() >= guestCount)
                 .toList();
 
@@ -63,7 +64,7 @@ public class PublicRoomController {
                             rt.getId(),
                             rt.getName(),
                             rt.getMaxCapacity(),
-                            rt.getWeekdayPrice(),
+                            rt.getWeekdayPrice() != null ? rt.getWeekdayPrice().doubleValue() : 0.0,
                             availableCount
                     );
                 })
