@@ -24,7 +24,7 @@ class RoomStatusPolicyTest {
         assertTrue(RoomStatusPolicy.canChangeTo(RoomStatus.TRONG_BAN, RoomStatus.TRONG_SACH));
     }
     @Test
-void maintenancePeriodMayBeOpenEndedAndCannotEndBeforeStartDate() {
+void maintenancePeriodMustHaveEndDateOnOrAfterStartDate() {
     assertTrue(RoomStatusPolicy.hasValidMaintenancePeriod(
             LocalDate.of(2026, 9, 1),
             LocalDate.of(2026, 9, 1)
@@ -33,11 +33,6 @@ void maintenancePeriodMayBeOpenEndedAndCannotEndBeforeStartDate() {
     assertTrue(RoomStatusPolicy.hasValidMaintenancePeriod(
             LocalDate.of(2026, 9, 1),
             LocalDate.of(2026, 9, 10)
-    ));
-
-    assertTrue(RoomStatusPolicy.hasValidMaintenancePeriod(
-            LocalDate.of(2026, 9, 1),
-            null
     ));
 
     assertFalse(RoomStatusPolicy.hasValidMaintenancePeriod(

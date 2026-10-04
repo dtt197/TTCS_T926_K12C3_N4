@@ -60,6 +60,7 @@ class SecurityAuthorizationIntegrationTest {
         @Autowired
         private AuditLogService auditLogService;
 
+    
 @BeforeEach
 void setUp() {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS audit_logs ("
@@ -937,16 +938,6 @@ void ownerXemTruocGiaDe_quaPhanQuyen() throws Exception {
 void khachChuaDangNhapXemLoaiPhongDatDuoc_duoc200() throws Exception {
     // S2-07: trang đặt phòng công khai, không gửi token.
     mockMvc.perform(get("/api/public/room-types")).andExpect(status().isOk());
-}
-
-@Test
-void khachChuaDangNhapTraCuuPhong_duoc200() throws Exception {
-    java.time.LocalDate checkIn = java.time.LocalDate.now().plusDays(10);
-    mockMvc.perform(get("/api/public/rooms/search")
-                    .param("checkIn", checkIn.toString())
-                    .param("checkOut", checkIn.plusDays(3).toString())
-                    .param("guestCount", "2"))
-            .andExpect(status().isOk());
 }
 
 @Test

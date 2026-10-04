@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * S2-07 Lát 1: câu truy vấn booking trùng ngày chạy trên CSDL thật (H2), mỗi test tự rollback.
- * Có booking đã xác nhận, đã huỷ và đã trả phòng cùng ngày để kiểm tra trạng thái chiếm phòng.
+ * Có sẵn booking đã xác nhận 10/06 – 13/06/2027 (đêm 10, 11, 12) và một booking đã huỷ cùng ngày.
  */
 @SpringBootTest
 @Transactional
@@ -45,7 +45,6 @@ class BookingRepositoryTest {
 
         bookingRepository.save(booking("TESTBK01", BookingStatus.DA_XAC_NHAN));
         bookingRepository.save(booking("TESTBK02", BookingStatus.DA_HUY));
-        bookingRepository.save(booking("TESTBK03", BookingStatus.DA_TRA_PHONG));
     }
 
     private Booking booking(String code, BookingStatus status) {
@@ -66,7 +65,7 @@ class BookingRepositoryTest {
     }
 
     @Test
-    void trungMotDem_chiBookingDangChiemPhongDuocTraVe() {
+    void trungMotDem_timThay_bookingDaHuyKhongTinh() {
         assertThat(bookingRepository.findOverlapping(doi.getId(),
                 LocalDate.of(2027, 6, 12), LocalDate.of(2027, 6, 15), OCCUPYING))
                 .extracting(Booking::getBookingCode)

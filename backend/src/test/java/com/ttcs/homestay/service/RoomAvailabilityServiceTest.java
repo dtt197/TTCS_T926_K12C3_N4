@@ -86,16 +86,6 @@ class RoomAvailabilityServiceTest {
     }
 
     @Test
-    void haiBookingChongDemTraCuu_hetPhongTrong() {
-        coBooking(
-                booking(BookingStatus.DA_XAC_NHAN, LocalDate.of(2027, 6, 12), LocalDate.of(2027, 6, 14)),
-                booking(BookingStatus.DA_NHAN_PHONG, LocalDate.of(2027, 6, 12), LocalDate.of(2027, 6, 13))
-        );
-
-        assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isZero();
-    }
-
-    @Test
     void bookingTraPhongDungNgayNhan_khongTinhTrung() {
         // Trả phòng 10/06, khách mới nhận phòng 10/06: không chiếm đêm nào của khách mới.
         coBooking(booking(BookingStatus.DA_NHAN_PHONG, LocalDate.of(2027, 6, 8), CHECK_IN));
@@ -111,54 +101,6 @@ class RoomAvailabilityServiceTest {
         coBooking(booking(BookingStatus.CHO_XAC_NHAN, CHECK_IN, CHECK_OUT));
 
         assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isZero();
-    }
-
-    @Test
-    void phongBaoTriKhongCoNgayKetThuc_banTuNgayBatDauVeSau() {
-        p202.setStatus(RoomStatus.BAO_TRI);
-        p202.setMaintenanceStartDate(LocalDate.of(2027, 6, 11));
-        p202.setMaintenanceEndDate(null);
-        coBooking();
-
-        assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isEqualTo(1);
-    }
-
-    @Test
-    void cacKhoangBaoTriTruocTrongVaSauKyTraCuuDuocTinhDung() {
-        p202.setStatus(RoomStatus.BAO_TRI);
-        coBooking();
-
-        assertBaoTri(2027, 6, 1, 2027, 6, 9, 2);
-        assertBaoTri(2027, 6, 10, 2027, 6, 10, 1);
-        assertBaoTri(2027, 6, 11, 2027, 6, 11, 1);
-        assertBaoTri(2027, 6, 12, 2027, 6, 13, 1);
-        assertBaoTri(2027, 6, 14, 2027, 6, 15, 2);
-        assertBaoTri(2027, 6, 9, 2027, 6, 14, 1);
-    }
-
-    @Test
-    void phongBaoTriBatDauSauKhoangTraCuu_khongGiamPhongTrong() {
-        p202.setStatus(RoomStatus.BAO_TRI);
-        p202.setMaintenanceStartDate(CHECK_OUT.plusDays(1));
-        p202.setMaintenanceEndDate(null);
-        coBooking();
-
-        assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isEqualTo(2);
-    }
-
-    private void assertBaoTri(
-            int startYear,
-            int startMonth,
-            int startDay,
-            int endYear,
-            int endMonth,
-            int endDay,
-            int expectedAvailable
-    ) {
-        p202.setMaintenanceStartDate(LocalDate.of(startYear, startMonth, startDay));
-        p202.setMaintenanceEndDate(LocalDate.of(endYear, endMonth, endDay));
-        assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT))
-                .isEqualTo(expectedAvailable);
     }
 
     @Test

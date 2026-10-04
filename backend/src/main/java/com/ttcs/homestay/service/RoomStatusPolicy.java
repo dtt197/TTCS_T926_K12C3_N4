@@ -28,6 +28,7 @@ public final class RoomStatusPolicy {
         LocalDate endDate
 ) {
     return startDate != null
-            && (endDate == null || !endDate.isBefore(startDate));
+            && endDate != null
+            && !endDate.isBefore(startDate);
 }
 }

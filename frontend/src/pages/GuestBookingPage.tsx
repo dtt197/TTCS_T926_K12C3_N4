@@ -30,17 +30,6 @@ const EMPTY_FORM: FormState = {
   acceptedCancellationPolicy: false,
 }
 
-function initialFormFromSearchParams(): FormState {
-  const params = new URLSearchParams(window.location.search)
-  return {
-    ...EMPTY_FORM,
-    roomTypeId: params.get('roomTypeId') ?? '',
-    checkInDate: params.get('checkInDate') ?? '',
-    checkOutDate: params.get('checkOutDate') ?? '',
-    guestCount: params.get('guestCount') ?? EMPTY_FORM.guestCount,
-  }
-}
-
 const money = new Intl.NumberFormat('vi-VN')
 
 /** Ngày hôm nay theo giờ máy, dạng yyyy-MM-dd (dùng làm ngày nhỏ nhất cho ô chọn ngày). */
@@ -83,7 +72,7 @@ function validateEmail(email: string) {
 export function GuestBookingPage() {
   const [today] = useState(todayIso)
   const [roomTypes, setRoomTypes] = useState<PublicRoomTypeOption[]>([])
-  const [form, setForm] = useState<FormState>(initialFormFromSearchParams)
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
