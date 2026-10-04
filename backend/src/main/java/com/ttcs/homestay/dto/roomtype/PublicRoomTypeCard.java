@@ -1,6 +1,7 @@
 package com.ttcs.homestay.dto.roomtype;
 
 import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.entity.RoomTypeImage;
 
 /** S2-03: thẻ loại phòng trên trang công khai. fromPrice là giá thấp nhất trong các giá đã khai báo, null nếu chưa có giá. */
 public record PublicRoomTypeCard(
@@ -15,7 +16,22 @@ public record PublicRoomTypeCard(
     public static PublicRoomTypeCard from(RoomType roomType) {
         String alt = roomType.getImageAlt();
         if (alt == null || alt.isBlank()) {
-            alt = roomType.getName();
+            alt = roomType.getName() == null || roomType.getName().isBlank()
+                    ? "Ảnh loại phòng"
+                    : "Ảnh " + roomType.getName();
+        }
+        RoomTypeImage coverImage = roomType.getImages().stream()
+                .filter(image -> Boolean.TRUE.equals(image.getIsPrimary()))
+                .findFirst()
+                .orElseGet(() -> roomType.getImages().stream().findFirst().orElse(null));
+        String imageUrl = coverImage == null
+                ? nonBlankOrNull(roomType.getImageUrl())
+                : nonBlankOrNull(coverImage.getThumbnailUrl());
+        if (coverImage != null && imageUrl == null) {
+            imageUrl = nonBlankOrNull(coverImage.getImageUrl());
+        }
+        if (imageUrl == null) {
+            imageUrl = nonBlankOrNull(roomType.getImageUrl());
         }
         return new PublicRoomTypeCard(
                 roomType.getId(),
@@ -23,8 +39,12 @@ public record PublicRoomTypeCard(
                 roomType.getStandardCapacity(),
                 roomType.getMaxCapacity(),
                 lowestPrice(roomType.getWeekdayPrice(), roomType.getWeekendPrice()),
-                roomType.getImageUrl(),
+                imageUrl,
                 alt);
+    }
+
+    private static String nonBlankOrNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     static Long lowestPrice(Long weekdayPrice, Long weekendPrice) {

@@ -7,8 +7,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.entity.RoomTypeImage;
 import com.ttcs.homestay.repository.RoomTypeRepository;
+import com.ttcs.homestay.repository.RoomTypeImageRepository;
 import com.ttcs.homestay.service.RoomTypeService;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,7 +33,13 @@ class PublicRoomTypeControllerTest {
     private RoomTypeRepository roomTypeRepository;
 
     @Autowired
+    private RoomTypeImageRepository roomTypeImageRepository;
+
+    @Autowired
     private RoomTypeService roomTypeService;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @BeforeEach
     void deactivateExistingRoomTypes() {
@@ -54,6 +63,60 @@ class PublicRoomTypeControllerTest {
                         expensiveAlpha.getId().intValue(),
                         expensiveZulu.getId().intValue())))
                 .andExpect(jsonPath("$[?(@.id == " + inactive.getId() + ")]").doesNotExist());
+    }
+
+    @Test
+    void publicCardUsesPrimaryUploadedImageAndStoredAltText() throws Exception {
+        RoomType roomType = saveRoomType("PUBLIC_COVER", "Room With Cover", true, 200_000L);
+        roomType.setImageAlt("Alt cover đã lưu");
+        roomTypeRepository.saveAndFlush(roomType);
+        saveImage(roomType, "/uploads/first.jpg", "/uploads/first_thumb.jpg", 0, false);
+        saveImage(roomType, "/uploads/cover.jpg", "/uploads/cover_thumb.jpg", 1, true);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/public/room-type-cards"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].imageUrl").value("/uploads/cover_thumb.jpg"))
+                .andExpect(jsonPath("$[0].imageAlt").value("Alt cover đã lưu"));
+    }
+
+    @Test
+    void publicCardUsesFirstOrderedImageWhenNoPrimaryIsMarked() throws Exception {
+        RoomType roomType = saveRoomType("PUBLIC_FIRST", "Room With Ordered Images", true, 200_000L);
+        saveImage(roomType, "/uploads/later.jpg", "/uploads/later_thumb.jpg", 1, false);
+        saveImage(roomType, "/uploads/first.jpg", "/uploads/first_thumb.jpg", 0, false);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/public/room-type-cards"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(roomType.getId()))
+                .andExpect(jsonPath("$[0].imageUrl").value("/uploads/first_thumb.jpg"))
+                .andExpect(jsonPath("$[0].imageAlt").value("Ảnh Room With Ordered Images"));
+    }
+
+    @Test
+    void publicCardUsesLegacyImageAndAltWhenThereAreNoUploadedImages() throws Exception {
+        RoomType roomType = saveRoomType("PUBLIC_LEGACY", "Legacy Room", true, 200_000L);
+        roomType.setImageUrl("/room-images/room-2.jpg");
+        roomType.setImageAlt("Alt legacy đã lưu");
+        roomTypeRepository.saveAndFlush(roomType);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/public/room-type-cards"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].imageUrl").value("/room-images/room-2.jpg"))
+                .andExpect(jsonPath("$[0].imageAlt").value("Alt legacy đã lưu"));
+    }
+
+    @Test
+    void publicCardWithoutAnyImageReturnsNullUrlAndNonEmptyGeneratedAlt() throws Exception {
+        RoomType roomType = saveRoomType("PUBLIC_NO_IMAGE", "Room Without Image", true, 200_000L);
+
+        mockMvc.perform(get("/api/public/room-type-cards"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(roomType.getId()))
+                .andExpect(jsonPath("$[0].imageUrl").doesNotExist())
+                .andExpect(jsonPath("$[0].imageAlt").value("Ảnh Room Without Image"));
     }
 
     @Test
@@ -108,5 +171,15 @@ class PublicRoomTypeControllerTest {
         roomType.setWeekendPrice(price);
         roomType.setStatus(active);
         return roomTypeRepository.saveAndFlush(roomType);
+    }
+
+    private void saveImage(
+            RoomType roomType,
+            String imageUrl,
+            String thumbnailUrl,
+            int displayOrder,
+            boolean primary) {
+        roomTypeImageRepository.saveAndFlush(
+                new RoomTypeImage(roomType, imageUrl, thumbnailUrl, displayOrder, primary));
     }
 }
