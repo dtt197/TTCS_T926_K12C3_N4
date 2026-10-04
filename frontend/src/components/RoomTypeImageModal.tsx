@@ -252,6 +252,38 @@ useEffect(() => {
     void applyReorder(reordered)
   }
 
+  const isLastImageOfActiveRoom = roomType.active && images.length <= 1
+
+  function handleRequestDelete(img: RoomTypeImage) {
+    if (isLastImageOfActiveRoom) {
+      setError(
+        'Không được phép xoá ảnh cuối cùng của loại phòng đang mở bán. Vui lòng ngừng bán loại phòng trước khi xoá ảnh này.'
+      )
+      return
+    }
+    setDeleteError(null)
+    setImageToDelete(img)
+  }
+
+  async function handleConfirmDelete() {
+    if (!imageToDelete) return
+
+    try {
+      setIsDeleting(true)
+      setDeleteError(null)
+      const updated = await deleteRoomTypeImage(roomType.id, imageToDelete.id)
+      setImages(updated)
+      setImageToDelete(null)
+      setSuccessNotice('Đã xoá ảnh thành công. Ảnh đại diện và thứ tự hiển thị đã được cập nhật tự động.')
+      setTimeout(() => setSuccessNotice(null), 3500)
+      onImagesUpdated()
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Xoá ảnh thất bại.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const isFull = images.length >= MAX_IMAGES
 
   return (

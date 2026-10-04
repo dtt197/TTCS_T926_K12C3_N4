@@ -179,8 +179,7 @@ public class SecurityConfig {
                          "/api/bookings/**"
 )
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
-<<<<<<< HEAD
-                                                // S2-07 & S2-04: trang đặt phòng và danh mục/chi tiết loại phòng công khai, khách không cần đăng nhập
+                        // S2-07 & S2-04: trang đặt phòng và danh mục/chi tiết loại phòng công khai, khách không cần đăng nhập
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/public/room-types",
@@ -188,12 +187,7 @@ public class SecurityConfig {
                                 "/api/public/room-types-catalog"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
-=======
-                                                // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
-                        .requestMatchers(HttpMethod.GET, "/api/public/room-types").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/room-type-cards").permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
->>>>>>> 139dbf09ff974da47ff650f29e1303613e19cb68
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()
 

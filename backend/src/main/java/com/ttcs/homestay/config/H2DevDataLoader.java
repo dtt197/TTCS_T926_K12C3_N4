@@ -6,15 +6,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-<<<<<<< HEAD
-@Component
-=======
-/**
- * Khởi tạo dữ liệu mẫu khi chạy hồ sơ test / H2 in-memory.
- */
 @Component
 @Profile({"test", "dev"})
->>>>>>> develop
 public class H2DevDataLoader implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
@@ -78,27 +71,6 @@ public class H2DevDataLoader implements ApplicationRunner {
                 INSERT INTO operating_settings (
                     homestay_name, check_in_time, check_out_time, late_checkout_fee_per_hour,
                     extra_person_fee, created_by_name, weekend_days, created_at)
-<<<<<<< HEAD
-                VALUES ('HomeStay', '14:00', '12:00', 100000, 200000, 'Hệ thống',
-                        'FRIDAY,SATURDAY', CURRENT_TIMESTAMP)
-            """);
-        }
-
-        // 5. Khởi tạo dữ liệu các loại phòng (gồm cả phòng đang bán và phòng ngừng bán để test #S2-04)
-        Integer rtCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM room_types", Integer.class);
-        if (rtCount == null || rtCount == 0) {
-            jdbcTemplate.update("""
-                INSERT INTO room_types (code, name, standard_capacity, max_capacity, number_of_beds, description, status, weekday_price, weekend_price)
-                VALUES
-                ('DON', 'Phòng đơn', 1, 2, 1, 'Phòng cho 1 người, 1 giường đơn', TRUE, 300000, 400000),
-                ('DOI', 'Phòng đôi', 2, 3, 1, 'Phòng cho 2 người, 1 giường đôi', TRUE, 500000, 650000),
-                ('GIA_DINH', 'Phòng gia đình', 4, 5, 2, 'Phòng gia đình, 2 giường đôi', TRUE, 900000, 1200000),
-                ('VIP', 'Phòng VIP cũ (Đã ngừng bán)', 2, 2, 1, 'Loại phòng VIP trước đây, hiện đã ngừng kinh doanh', FALSE, 1000000, 1500000)
-            """);
-        }
-
-        // 6. Khởi tạo danh sách phòng mẫu
-=======
                 VALUES ('HomeStay Retreat', '14:00', '12:00', 100000, 200000, 'Hệ thống',
                         'FRIDAY,SATURDAY', CURRENT_TIMESTAMP)
             """);
@@ -164,7 +136,6 @@ public class H2DevDataLoader implements ApplicationRunner {
         }
 
         // 7. Khởi tạo danh sách phòng mẫu
->>>>>>> develop
         Integer roomCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rooms", Integer.class);
         if (roomCount == null || roomCount == 0) {
             jdbcTemplate.update("""

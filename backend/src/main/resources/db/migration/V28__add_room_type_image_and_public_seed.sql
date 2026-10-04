@@ -1,7 +1,7 @@
 -- S2-03 Lát 1: ảnh đại diện + văn bản thay thế cho loại phòng, và 4 loại phòng mẫu cho trang công khai.
 ALTER TABLE room_types
-    ADD COLUMN image_url VARCHAR(500),
-    ADD COLUMN image_alt VARCHAR(200);
+    ADD COLUMN IF NOT EXISTS image_url VARCHAR(500),
+    ADD COLUMN IF NOT EXISTS image_alt VARCHAR(200);
 
 INSERT INTO room_types
     (code, name, standard_capacity, max_capacity, number_of_beds, description, status,

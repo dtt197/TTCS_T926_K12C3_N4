@@ -6,7 +6,6 @@ import com.ttcs.homestay.dto.booking.GuestQuoteAlternative;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeDetailResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
-import com.ttcs.homestay.dto.booking.PublicRoomTypeDetails;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
@@ -15,7 +14,6 @@ import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.InvalidGuestBookingException;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
 import com.ttcs.homestay.exception.RoomUnavailableException;
-import com.ttcs.homestay.exception.RoomTypeNotFoundException;
 import com.ttcs.homestay.exception.RoomTypeUnavailableException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
@@ -107,16 +105,21 @@ public class GuestBookingService {
                 .toList();
     }
 
-<<<<<<< HEAD
     @Transactional(readOnly = true)
-    public PublicRoomTypeDetails getPublicRoomType(Long roomTypeId) {
+    public PublicRoomTypeDetailResponse getPublicRoomType(Long roomTypeId) {
+        LocalDate today = LocalDate.now(HOMESTAY_ZONE);
+        LocalDate tomorrow = today.plusDays(1);
         RoomType roomType = roomTypeRepository.findById(roomTypeId)
-                .orElseThrow(RoomTypeNotFoundException::new);
+                .orElseThrow(() -> new RoomTypeNotFoundException(
+                        "Không tìm thấy thông tin loại phòng #" + roomTypeId));
         if (!Boolean.TRUE.equals(roomType.getStatus())) {
             throw new RoomTypeUnavailableException();
         }
-        return PublicRoomTypeDetails.from(roomType);
-=======
+        int available = roomAvailabilityService.availableRooms(roomType, today, tomorrow);
+        OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
+        return PublicRoomTypeDetailResponse.from(roomType, available, settings);
+    }
+
     /**
      * S2-04: Danh sách loại phòng đầy đủ chi tiết (ảnh, tiện nghi, số phòng trống)
      * cho khách xem danh mục phòng công khai.
@@ -146,11 +149,11 @@ public class GuestBookingService {
         LocalDate tomorrow = today.plusDays(1);
         RoomType roomType = roomTypeRepository.findById(id)
                 .filter(GuestBookingService::isBookable)
-                .orElseThrow(() -> new RoomTypeNotFoundException("Không tìm thấy thông tin loại phòng #" + id));
+                .orElseThrow(() -> new RoomTypeNotFoundException(
+                        "Không tìm thấy thông tin loại phòng #" + id));
         int available = roomAvailabilityService.availableRooms(roomType, today, tomorrow);
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
         return PublicRoomTypeDetailResponse.from(roomType, available, settings);
->>>>>>> develop
     }
 
     @Transactional
