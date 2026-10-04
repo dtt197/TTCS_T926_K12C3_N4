@@ -1,4 +1,4 @@
--- V25: Tạo bảng lưu trữ thông tin ảnh cho từng loại phòng (S2-09)
+-- V26: Tạo bảng lưu trữ thông tin ảnh cho từng loại phòng (S2-09)
 CREATE TABLE IF NOT EXISTS room_type_images (
     id BIGSERIAL PRIMARY KEY,
     room_type_id BIGINT NOT NULL REFERENCES room_types(id) ON DELETE CASCADE,

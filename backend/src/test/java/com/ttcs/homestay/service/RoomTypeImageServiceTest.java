@@ -10,9 +10,11 @@ import static org.mockito.Mockito.when;
 import com.ttcs.homestay.dto.roomtype.RoomTypeImageResponse;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.entity.RoomTypeImage;
+import com.ttcs.homestay.exception.CannotDeleteLastImageException;
 import com.ttcs.homestay.exception.ImageSizeExceededException;
 import com.ttcs.homestay.exception.InvalidImageException;
 import com.ttcs.homestay.exception.MaxImageCountExceededException;
+import com.ttcs.homestay.exception.RoomTypeImageNotFoundException;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
 import com.ttcs.homestay.repository.RoomTypeImageRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
@@ -251,5 +253,159 @@ class RoomTypeImageServiceTest {
         assertThat(results.get(0).isPrimary()).isTrue();
         assertThat(results.get(1).id()).isEqualTo(11L);
         assertThat(results.get(1).isPrimary()).isFalse();
+    }
+
+    @Test
+    void reorderImages_keoThaThayDoiViTri_luuDungThuTuVaCapNhatAnhDauTienLamDaiDien() {
+        when(roomTypeRepository.existsById(1L)).thenReturn(true);
+
+        RoomTypeImage img1 = new RoomTypeImage(sampleRoomType, "/uploads/1/a.jpg", "/uploads/1/a_thumb.jpg", 0, true);
+        img1.setId(101L);
+        RoomTypeImage img2 = new RoomTypeImage(sampleRoomType, "/uploads/1/b.jpg", "/uploads/1/b_thumb.jpg", 1, false);
+        img2.setId(102L);
+        RoomTypeImage img3 = new RoomTypeImage(sampleRoomType, "/uploads/1/c.jpg", "/uploads/1/c_thumb.jpg", 2, false);
+        img3.setId(103L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(img1, img2, img3));
+        when(roomTypeImageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Kéo ảnh 103 lên đầu danh sách: thứ tự mới là [103, 101, 102]
+        List<RoomTypeImageResponse> updated =
+                roomTypeImageService.reorderImages(1L, List.of(103L, 101L, 102L));
+
+        assertThat(updated).hasSize(3);
+        // Ảnh 103 lên đầu: thứ tự 0, tự động trở thành ảnh đại diện
+        assertThat(updated.get(0).id()).isEqualTo(103L);
+        assertThat(updated.get(0).displayOrder()).isZero();
+        assertThat(updated.get(0).isPrimary()).isTrue();
+
+        // Ảnh 101 xuống thứ 2: thứ tự 1, không còn là ảnh đại diện
+        assertThat(updated.get(1).id()).isEqualTo(101L);
+        assertThat(updated.get(1).displayOrder()).isEqualTo(1);
+        assertThat(updated.get(1).isPrimary()).isFalse();
+
+        // Ảnh 102 xuống thứ 3: thứ tự 2
+        assertThat(updated.get(2).id()).isEqualTo(102L);
+        assertThat(updated.get(2).displayOrder()).isEqualTo(2);
+        assertThat(updated.get(2).isPrimary()).isFalse();
+    }
+
+    @Test
+    void reorderImages_soLuongIdKhongKhop_biChan() {
+        when(roomTypeRepository.existsById(1L)).thenReturn(true);
+
+        RoomTypeImage img1 = new RoomTypeImage(sampleRoomType, "/uploads/1/a.jpg", "/uploads/1/a_thumb.jpg", 0, true);
+        img1.setId(101L);
+        RoomTypeImage img2 = new RoomTypeImage(sampleRoomType, "/uploads/1/b.jpg", "/uploads/1/b_thumb.jpg", 1, false);
+        img2.setId(102L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(img1, img2));
+
+        assertThatThrownBy(() -> roomTypeImageService.reorderImages(1L, List.of(101L)))
+                .isInstanceOf(InvalidImageException.class)
+                .hasMessageContaining("không khớp");
+    }
+
+    @Test
+    void reorderImages_chuaIdKhongThuocLoaiPhong_biChan() {
+        when(roomTypeRepository.existsById(1L)).thenReturn(true);
+
+        RoomTypeImage img1 = new RoomTypeImage(sampleRoomType, "/uploads/1/a.jpg", "/uploads/1/a_thumb.jpg", 0, true);
+        img1.setId(101L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(img1));
+
+        assertThatThrownBy(() -> roomTypeImageService.reorderImages(1L, List.of(999L)))
+                .isInstanceOf(InvalidImageException.class)
+                .hasMessageContaining("không thuộc về loại phòng này");
+    }
+
+    @Test
+    void reorderImages_loaiPhongKhongTonTai_nemNgoaiLe() {
+        when(roomTypeRepository.existsById(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> roomTypeImageService.reorderImages(999L, List.of(1L, 2L)))
+                .isInstanceOf(RoomTypeNotFoundException.class);
+    }
+
+    @Test
+    void deleteImage_nhieuAnh_xoaThanhCongVaCapNhatThuTuCungAnhDaiDienMoi() {
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(sampleRoomType));
+
+        RoomTypeImage img1 = new RoomTypeImage(sampleRoomType, "/uploads/1/a.jpg", "/uploads/1/a_thumb.jpg", 0, true);
+        img1.setId(101L);
+        RoomTypeImage img2 = new RoomTypeImage(sampleRoomType, "/uploads/1/b.jpg", "/uploads/1/b_thumb.jpg", 1, false);
+        img2.setId(102L);
+        RoomTypeImage img3 = new RoomTypeImage(sampleRoomType, "/uploads/1/c.jpg", "/uploads/1/c_thumb.jpg", 2, false);
+        img3.setId(103L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(img1, img2, img3));
+        when(roomTypeImageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Xoá ảnh đầu tiên (img1 đang là đại diện)
+        List<RoomTypeImageResponse> remaining = roomTypeImageService.deleteImage(1L, 101L);
+
+        verify(roomTypeImageRepository).delete(img1);
+        assertThat(remaining).hasSize(2);
+
+        // img2 trở thành ảnh đầu tiên và là ảnh đại diện mới
+        assertThat(remaining.get(0).id()).isEqualTo(102L);
+        assertThat(remaining.get(0).displayOrder()).isZero();
+        assertThat(remaining.get(0).isPrimary()).isTrue();
+
+        // img3 trở thành thứ 2
+        assertThat(remaining.get(1).id()).isEqualTo(103L);
+        assertThat(remaining.get(1).displayOrder()).isEqualTo(1);
+        assertThat(remaining.get(1).isPrimary()).isFalse();
+    }
+
+    @Test
+    void deleteImage_loaiPhongDangBan_con1AnhDuyNhat_biChan() {
+        sampleRoomType.setStatus(true); // Đang mở bán
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(sampleRoomType));
+
+        RoomTypeImage onlyImage = new RoomTypeImage(sampleRoomType, "/uploads/1/only.jpg", "/uploads/1/only_thumb.jpg", 0, true);
+        onlyImage.setId(101L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(onlyImage));
+
+        assertThatThrownBy(() -> roomTypeImageService.deleteImage(1L, 101L))
+                .isInstanceOf(CannotDeleteLastImageException.class)
+                .hasMessageContaining("Không được phép xoá ảnh cuối cùng của loại phòng đang mở bán");
+
+        verify(roomTypeImageRepository, never()).delete(any());
+        verify(roomTypeImageRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void deleteImage_loaiPhongNgungBan_con1Anh_xoaThanhCong() {
+        sampleRoomType.setStatus(false); // Ngừng bán
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(sampleRoomType));
+
+        RoomTypeImage onlyImage = new RoomTypeImage(sampleRoomType, "/uploads/1/only.jpg", "/uploads/1/only_thumb.jpg", 0, true);
+        onlyImage.setId(101L);
+
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L))
+                .thenReturn(List.of(onlyImage));
+
+        List<RoomTypeImageResponse> remaining = roomTypeImageService.deleteImage(1L, 101L);
+
+        verify(roomTypeImageRepository).delete(onlyImage);
+        assertThat(remaining).isEmpty();
+    }
+
+    @Test
+    void deleteImage_anhKhongTonTai_nemNgoaiLe() {
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(sampleRoomType));
+        when(roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(1L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> roomTypeImageService.deleteImage(1L, 999L))
+                .isInstanceOf(RoomTypeImageNotFoundException.class)
+                .hasMessageContaining("Không tìm thấy ảnh #999");
     }
 }

@@ -1,5 +1,6 @@
 package com.ttcs.homestay.controller.room;
 
+import com.ttcs.homestay.dto.roomtype.ReorderImagesRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeImageResponse;
 import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;
@@ -201,6 +202,47 @@ public class RoomTypeController {
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /** S2-09: Sắp xếp lại thứ tự ảnh của loại phòng (kéo thả) */
+    @PutMapping("/{id}/images/reorder")
+    public List<RoomTypeImageResponse> reorderImages(
+            @PathVariable Long id,
+            @Valid @RequestBody ReorderImagesRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        List<RoomTypeImageResponse> response =
+                roomTypeImageService.reorderImages(id, request.imageIds());
+
+        recordAction(
+                authentication,
+                "Loại phòng #" + id + " - Sắp xếp lại thứ tự ảnh",
+                "ROOM_TYPE_IMAGES_REORDERED",
+                httpRequest
+        );
+
+        return response;
+    }
+
+    /** S2-09: Xoá ảnh của loại phòng (có xác nhận và bảo vệ ảnh cuối cùng của phòng đang bán) */
+    @DeleteMapping("/{id}/images/{imageId}")
+    public List<RoomTypeImageResponse> deleteImage(
+            @PathVariable Long id,
+            @PathVariable Long imageId,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        List<RoomTypeImageResponse> response = roomTypeImageService.deleteImage(id, imageId);
+
+        recordAction(
+                authentication,
+                "Loại phòng #" + id + " - Xoá ảnh #" + imageId,
+                "ROOM_TYPE_IMAGE_DELETED",
+                httpRequest
+        );
+
+        return response;
     }
 
     private void recordAction(
