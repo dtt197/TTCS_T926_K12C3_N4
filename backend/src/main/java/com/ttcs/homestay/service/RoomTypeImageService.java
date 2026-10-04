@@ -3,8 +3,10 @@ package com.ttcs.homestay.service;
 import com.ttcs.homestay.dto.roomtype.RoomTypeImageResponse;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.entity.RoomTypeImage;
+import com.ttcs.homestay.exception.CannotDeleteLastImageException;
 import com.ttcs.homestay.exception.InvalidImageException;
 import com.ttcs.homestay.exception.MaxImageCountExceededException;
+import com.ttcs.homestay.exception.RoomTypeImageNotFoundException;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
 import com.ttcs.homestay.repository.RoomTypeImageRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
@@ -117,6 +119,56 @@ public class RoomTypeImageService {
 
         List<RoomTypeImage> updated = roomTypeImageRepository.saveAll(existingImages);
         return updated.stream()
+                .sorted(Comparator.comparing(RoomTypeImage::getDisplayOrder))
+                .map(RoomTypeImageResponse::from)
+                .toList();
+    }
+
+    /**
+     * S2-09: Xoá ảnh của loại phòng có bảo vệ.
+     * Không cho phép xoá ảnh cuối cùng của loại phòng đang trong trạng thái mở bán.
+     * Xoá tệp ảnh gốc & bản thu nhỏ, cập nhật lại thứ tự và ảnh đại diện mới.
+     */
+    @Transactional
+    public List<RoomTypeImageResponse> deleteImage(Long roomTypeId, Long imageId) {
+        RoomType roomType = roomTypeRepository.findById(roomTypeId)
+                .orElseThrow(() -> new RoomTypeNotFoundException("Không tìm thấy loại phòng #" + roomTypeId));
+
+        List<RoomTypeImage> existingImages = roomTypeImageRepository.findByRoomTypeIdOrderByDisplayOrderAsc(roomTypeId);
+
+        RoomTypeImage targetImage = existingImages.stream()
+                .filter(img -> img.getId().equals(imageId))
+                .findFirst()
+                .orElseThrow(() -> new RoomTypeImageNotFoundException("Không tìm thấy ảnh #" + imageId + " của loại phòng này"));
+
+        // Điều kiện bảo vệ: Chặn yêu cầu xoá nếu đó là ảnh cuối cùng duy nhất của loại phòng đang trong trạng thái mở bán
+        boolean isActive = !Boolean.FALSE.equals(roomType.getStatus());
+        if (isActive && existingImages.size() <= 1) {
+            throw new CannotDeleteLastImageException(
+                    "Không được phép xoá ảnh cuối cùng của loại phòng đang mở bán. Vui lòng ngừng bán loại phòng trước khi xoá ảnh này."
+            );
+        }
+
+        // Xoá tệp ảnh gốc và bản thu nhỏ tương ứng khỏi hệ thống
+        imageStorageService.deleteImageFile(targetImage.getImageUrl());
+        imageStorageService.deleteImageFile(targetImage.getThumbnailUrl());
+
+        // Xoá bản ghi khỏi cơ sở dữ liệu
+        roomTypeImageRepository.delete(targetImage);
+
+        // Cập nhật lại thứ tự hiển thị và ảnh đại diện mới cho các ảnh còn lại
+        List<RoomTypeImage> remainingImages = existingImages.stream()
+                .filter(img -> !img.getId().equals(imageId))
+                .collect(Collectors.toList());
+
+        for (int i = 0; i < remainingImages.size(); i++) {
+            RoomTypeImage img = remainingImages.get(i);
+            img.setDisplayOrder(i);
+            img.setIsPrimary(i == 0); // Ảnh đầu tiên còn lại làm ảnh đại diện mới
+        }
+
+        List<RoomTypeImage> saved = roomTypeImageRepository.saveAll(remainingImages);
+        return saved.stream()
                 .sorted(Comparator.comparing(RoomTypeImage::getDisplayOrder))
                 .map(RoomTypeImageResponse::from)
                 .toList();

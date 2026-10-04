@@ -225,6 +225,26 @@ public class RoomTypeController {
         return response;
     }
 
+    /** S2-09: Xoá ảnh của loại phòng (có xác nhận và bảo vệ ảnh cuối cùng của phòng đang bán) */
+    @DeleteMapping("/{id}/images/{imageId}")
+    public List<RoomTypeImageResponse> deleteImage(
+            @PathVariable Long id,
+            @PathVariable Long imageId,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        List<RoomTypeImageResponse> response = roomTypeImageService.deleteImage(id, imageId);
+
+        recordAction(
+                authentication,
+                "Loại phòng #" + id + " - Xoá ảnh #" + imageId,
+                "ROOM_TYPE_IMAGE_DELETED",
+                httpRequest
+        );
+
+        return response;
+    }
+
     private void recordAction(
             Authentication authentication,
             String target,
