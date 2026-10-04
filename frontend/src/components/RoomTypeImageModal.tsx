@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
-import { getRoomTypeImages, uploadRoomTypeImage } from '../services/roomTypeService'
+import {
+  getRoomTypeImages,
+  reorderRoomTypeImages,
+  uploadRoomTypeImage,
+} from '../services/roomTypeService'
 import type { RoomType, RoomTypeImage } from '../types/roomType'
 import './RoomTypeImageModal.css'
 
@@ -22,9 +26,15 @@ export function RoomTypeImageModal({
   const [images, setImages] = useState<RoomTypeImage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
+  const [isSavingOrder, setIsSavingOrder] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
+  const [successNotice, setSuccessNotice] = useState<string | null>(null)
+  const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [previewImage, setPreviewImage] = useState<RoomTypeImage | null>(null)
+
+  // Drag and drop sắp xếp thứ tự ảnh
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -47,6 +57,7 @@ export function RoomTypeImageModal({
 
   async function handleFileProcess(file: File) {
     setError(null)
+    setSuccessNotice(null)
 
     // Kiểm tra định dạng (JPG hoặc PNG)
     const validTypes = ['image/jpeg', 'image/png']
@@ -72,6 +83,8 @@ export function RoomTypeImageModal({
       setIsUploading(true)
       await uploadRoomTypeImage(roomType.id, file)
       await fetchImages()
+      setSuccessNotice('Đã tải ảnh lên thành công.')
+      setTimeout(() => setSuccessNotice(null), 3000)
       onImagesUpdated()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Tải ảnh lên thất bại.')
@@ -85,31 +98,107 @@ export function RoomTypeImageModal({
     if (file) {
       void handleFileProcess(file)
     }
-    // reset input để cho phép chọn lại cùng 1 file nếu cần
     event.target.value = ''
   }
 
-  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+  function handleDropzoneDragOver(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
-    if (!isUploading && images.length < MAX_IMAGES && canManage) {
-      setIsDragging(true)
+    if (!isUploading && images.length < MAX_IMAGES && canManage && draggedIndex === null) {
+      setIsDraggingFile(true)
     }
   }
 
-  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+  function handleDropzoneDragLeave(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
-    setIsDragging(false)
+    setIsDraggingFile(false)
   }
 
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
+  function handleDropzoneDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault()
-    setIsDragging(false)
-    if (!canManage || isUploading || images.length >= MAX_IMAGES) return
+    setIsDraggingFile(false)
+    if (!canManage || isUploading || images.length >= MAX_IMAGES || draggedIndex !== null) return
 
     const file = e.dataTransfer.files?.[0]
     if (file) {
       void handleFileProcess(file)
     }
+  }
+
+  // S2-09: Kéo thả các thẻ ảnh để sắp xếp lại thứ tự
+  async function applyReorder(reorderedList: RoomTypeImage[]) {
+    // Quy tắc hiển thị: ảnh nằm ở vị trí đầu tiên sau khi sắp xếp tự động trở thành ảnh đại diện mới
+    const updated = reorderedList.map((img, i) => ({
+      ...img,
+      displayOrder: i,
+      isPrimary: i === 0,
+    }))
+
+    setImages(updated)
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+
+    try {
+      setIsSavingOrder(true)
+      setError(null)
+      const saved = await reorderRoomTypeImages(
+        roomType.id,
+        updated.map((img) => img.id),
+      )
+      setImages(saved)
+      setSuccessNotice('Đã cập nhật thứ tự ảnh. Ảnh đầu tiên đã chuyển thành ảnh đại diện mới.')
+      setTimeout(() => setSuccessNotice(null), 3500)
+      onImagesUpdated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không lưu được thứ tự ảnh mới.')
+      void fetchImages()
+    } finally {
+      setIsSavingOrder(false)
+    }
+  }
+
+  function handleCardDragStart(e: DragEvent<HTMLDivElement>, index: number) {
+    if (!canManage || isSavingOrder) return
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+  }
+
+  function handleCardDragOver(e: DragEvent<HTMLDivElement>, index: number) {
+    if (!canManage || draggedIndex === null) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  function handleCardDrop(e: DragEvent<HTMLDivElement>, targetIndex: number) {
+    e.preventDefault()
+    if (!canManage || draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const reordered = [...images]
+    const [moved] = reordered.splice(draggedIndex, 1)
+    reordered.splice(targetIndex, 0, moved)
+
+    void applyReorder(reordered)
+  }
+
+  function handleCardDragEnd() {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  // Thao tác nhanh chuyển vị trí (hỗ trợ thêm cho khả năng tiếp cận và tiện ích)
+  function moveCard(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= images.length) return
+    const reordered = [...images]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+    void applyReorder(reordered)
   }
 
   const isFull = images.length >= MAX_IMAGES
@@ -129,7 +218,9 @@ export function RoomTypeImageModal({
             <h2 id="room-type-image-modal-title">
               Quản lý ảnh: {roomType.name} ({roomType.code})
             </h2>
-            <p>Tải ảnh lên, xem bản thu nhỏ và tự động xác định ảnh đại diện.</p>
+            <p>
+              Tải ảnh lên, kéo thả sắp xếp thứ tự trực quan. Ảnh ở vị trí đầu tiên sẽ tự động làm ảnh đại diện.
+            </p>
           </div>
           <button
             className="room-type-image-modal-close"
@@ -146,8 +237,8 @@ export function RoomTypeImageModal({
             <div className="room-type-image-badges">
               <span className="room-type-image-badge-item">JPG, PNG</span>
               <span className="room-type-image-badge-item">Tối đa 5MB/ảnh</span>
-              <span className="room-type-image-badge-item">Nén tối đa 1600px</span>
-              <span className="room-type-image-badge-item">Tự sinh bản thu nhỏ</span>
+              <span className="room-type-image-badge-item">Tối đa 8 ảnh</span>
+              <span className="room-type-image-badge-item">Kéo thả đổi thứ tự</span>
             </div>
             <span className={`room-type-image-count-badge ${isFull ? 'full' : ''}`}>
               {images.length} / {MAX_IMAGES} ảnh
@@ -161,14 +252,21 @@ export function RoomTypeImageModal({
             </div>
           )}
 
+          {successNotice && (
+            <div className="room-type-image-reorder-notice" role="status">
+              <span>✓</span>
+              <span>{successNotice}</span>
+            </div>
+          )}
+
           {canManage && (
             <div
-              className={`room-type-upload-zone ${isDragging ? 'dragging' : ''} ${
+              className={`room-type-upload-zone ${isDraggingFile ? 'dragging' : ''} ${
                 isFull || isUploading ? 'disabled' : ''
               }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
+              onDragOver={handleDropzoneDragOver}
+              onDragLeave={handleDropzoneDragLeave}
+              onDrop={handleDropzoneDrop}
               onClick={() => {
                 if (!isFull && !isUploading) {
                   fileInputRef.current?.click()
@@ -204,7 +302,7 @@ export function RoomTypeImageModal({
                     Kéo thả ảnh vào đây hoặc <span>chọn tệp từ máy tính</span>
                   </div>
                   <p className="room-type-upload-subtitle">
-                    Hỗ trợ tệp JPG, PNG dung lượng dưới 5MB. Ảnh đầu tiên sẽ làm ảnh đại diện.
+                    Hỗ trợ JPG, PNG dưới 5MB. Kéo thả các ảnh bên dưới để thay đổi thứ tự hiển thị.
                   </p>
                 </div>
               )}
@@ -213,9 +311,11 @@ export function RoomTypeImageModal({
 
           <div>
             <div className="room-type-image-grid-title">
-              <span>Danh sách ảnh ({images.length})</span>
+              <span>
+                Danh sách ảnh ({images.length}) {isSavingOrder && '— Đang lưu thứ tự mới...'}
+              </span>
               <span className="room-type-image-grid-hint">
-                Ảnh đầu tiên là ảnh đại diện hiển thị cho khách
+                {canManage ? '💡 Kéo thả thẻ ảnh để đổi thứ tự, ảnh đầu tiên là ảnh đại diện' : 'Ảnh đầu tiên là ảnh đại diện'}
               </span>
             </div>
 
@@ -229,12 +329,28 @@ export function RoomTypeImageModal({
               <div className="room-type-image-gallery">
                 {images.map((img, index) => {
                   const isPrimary = img.isPrimary || index === 0
+                  const isBeingDragged = draggedIndex === index
+                  const isBeingHoveredOver = dragOverIndex === index
+
                   return (
                     <div
                       key={img.id}
-                      className={`room-type-image-card ${isPrimary ? 'primary' : ''}`}
+                      draggable={canManage && !isSavingOrder}
+                      onDragStart={(e) => handleCardDragStart(e, index)}
+                      onDragOver={(e) => handleCardDragOver(e, index)}
+                      onDrop={(e) => handleCardDrop(e, index)}
+                      onDragEnd={handleCardDragEnd}
+                      className={`room-type-image-card ${canManage ? 'draggable' : ''} ${
+                        isPrimary ? 'primary' : ''
+                      } ${isBeingDragged ? 'dragging' : ''} ${
+                        isBeingHoveredOver ? 'drag-over' : ''
+                      }`}
                       onClick={() => setPreviewImage(img)}
-                      title="Nhấn để xem ảnh phóng to"
+                      title={
+                        canManage
+                          ? `Kéo thả để đổi vị trí (Ảnh #${index + 1}). Nhấn để phóng to.`
+                          : 'Nhấn để phóng to'
+                      }
                     >
                       <img
                         src={img.thumbnailUrl}
@@ -243,6 +359,18 @@ export function RoomTypeImageModal({
                         loading="lazy"
                       />
 
+                      {/* Nút cầm kéo thả */}
+                      {canManage && (
+                        <div
+                          className="room-type-image-drag-handle"
+                          title="Kéo thả để sắp xếp lại"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          ⋮⋮
+                        </div>
+                      )}
+
+                      {/* Huy hiệu ảnh đại diện nổi bật */}
                       {isPrimary && (
                         <div className="room-type-image-primary-badge">
                           <span>★</span>
@@ -250,7 +378,47 @@ export function RoomTypeImageModal({
                         </div>
                       )}
 
+                      {/* Huy hiệu thứ tự */}
                       <div className="room-type-image-order-badge">#{index + 1}</div>
+
+                      {/* Thanh thao tác nhanh (hover) */}
+                      {canManage && (
+                        <div
+                          className="room-type-image-card-actions"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {index > 0 && (
+                            <button
+                              type="button"
+                              className="room-type-image-quick-btn"
+                              title="Đặt làm ảnh đại diện (chuyển lên đầu)"
+                              onClick={() => moveCard(index, 0)}
+                            >
+                              ★ Làm đại diện
+                            </button>
+                          )}
+                          {index > 0 && (
+                            <button
+                              type="button"
+                              className="room-type-image-quick-btn"
+                              title="Chuyển sang trái"
+                              onClick={() => moveCard(index, index - 1)}
+                            >
+                              ◀
+                            </button>
+                          )}
+                          {index < images.length - 1 && (
+                            <button
+                              type="button"
+                              className="room-type-image-quick-btn"
+                              title="Chuyển sang phải"
+                              onClick={() => moveCard(index, index + 1)}
+                            >
+                              ▶
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
