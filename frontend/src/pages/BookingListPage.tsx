@@ -20,6 +20,13 @@ const STATUS_CLASS_NAMES: Record<BookingStatus, string> = {
   DA_TRA_PHONG: 'checked-out',
 }
 
+const EMPTY_FILTERS = {
+  status: '' as BookingStatus | '',
+  checkInFrom: '',
+  checkInTo: '',
+  keyword: '',
+}
+
 function formatDate(value: string) {
   const [year, month, day] = value.split('-')
   return `${day}/${month}/${year}`
@@ -39,10 +46,13 @@ export function BookingListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
+
   useEffect(() => {
     let cancelled = false;
 
-    getLatestBookings(page)
+    getLatestBookings(page, appliedFilters)
       .then((res) => {
         if (!cancelled) {
           setData(res);
@@ -66,7 +76,31 @@ export function BookingListPage() {
     return () => {
       cancelled = true;
     };
-  }, [page]);
+  }, [page, appliedFilters]);
+
+  function handleFilterSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (
+      filters.checkInFrom &&
+      filters.checkInTo &&
+      filters.checkInTo < filters.checkInFrom
+    ) {
+      setError('Ngày trả bộ lọc phải sau hoặc bằng ngày nhận')
+      return
+    }
+
+    setError(null)
+    setPage(0)
+    setAppliedFilters({ ...filters })
+  }
+
+  function handleResetFilters() {
+    setFilters(EMPTY_FILTERS)
+    setAppliedFilters(EMPTY_FILTERS)
+    setPage(0)
+    setError(null)
+  }
 
   const bookings = data?.content || [];
 
@@ -78,6 +112,83 @@ export function BookingListPage() {
           <p>Danh sách được sắp xếp theo thời điểm tạo mới nhất.</p>
         </div>
       </div>
+
+      <form
+        className="booking-filters"
+        onSubmit={handleFilterSubmit}
+      >
+        <label>
+          Từ khóa
+          <input
+            type="search"
+            value={filters.keyword}
+            placeholder="Tên khách hoặc số điện thoại"
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                keyword: event.target.value,
+              }))
+            }
+          />
+        </label>
+
+        <label>
+          Trạng thái
+          <select
+            value={filters.status}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                status: event.target.value as BookingStatus | '',
+              }))
+            }
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
+            <option value="DA_XAC_NHAN">Đã xác nhận</option>
+            <option value="DA_HUY">Đã huỷ</option>
+            <option value="DA_NHAN_PHONG">Đã nhận phòng</option>
+            <option value="DA_TRA_PHONG">Đã trả phòng</option>
+          </select>
+        </label>
+
+        <label>
+          Nhận phòng từ
+          <input
+            type="date"
+            value={filters.checkInFrom}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                checkInFrom: event.target.value,
+              }))
+            }
+          />
+        </label>
+
+        <label>
+          Nhận phòng đến
+          <input
+            type="date"
+            value={filters.checkInTo}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                checkInTo: event.target.value,
+              }))
+            }
+          />
+        </label>
+
+        <button type="submit">Lọc</button>
+
+        <button
+          type="button"
+          onClick={handleResetFilters}
+        >
+          Xoá lọc
+        </button>
+      </form>
 
       {error && <div className="alert">{error}</div>}
 
@@ -144,7 +255,6 @@ export function BookingListPage() {
               totalPages={data.totalPages}
               totalElements={data.totalElements}
               onChange={(nextPage) => {
-                // Bật trạng thái tải ngay khi đổi trang, thay vì đặt trong useEffect.
                 setLoading(true)
                 setPage(nextPage)
               }}

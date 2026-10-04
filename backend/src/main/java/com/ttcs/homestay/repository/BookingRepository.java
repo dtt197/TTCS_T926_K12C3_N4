@@ -10,6 +10,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.OffsetDateTime;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
         List<Booking> findAllByOrderByCreatedAtDescIdDesc();
@@ -36,4 +40,21 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         List<Booking> findByStatusAndHoldExpiresAtLessThanEqual(
                 BookingStatus status,
                 OffsetDateTime now);
+                @Query("""
+    select b from Booking b
+    where (:status is null or b.status = :status)
+      and (:checkInFrom is null or b.checkInDate >= :checkInFrom)
+      and (:checkInTo is null or b.checkInDate <= :checkInTo)
+      and (
+          :keyword is null
+          or lower(b.guestName) like lower(concat('%', :keyword, '%'))
+          or lower(coalesce(b.guestPhone, '')) like lower(concat('%', :keyword, '%'))
+      )
+    """)
+Page<Booking> search(
+        @Param("status") BookingStatus status,
+        @Param("checkInFrom") LocalDate checkInFrom,
+        @Param("checkInTo") LocalDate checkInTo,
+        @Param("keyword") String keyword,
+        Pageable pageable);
 }

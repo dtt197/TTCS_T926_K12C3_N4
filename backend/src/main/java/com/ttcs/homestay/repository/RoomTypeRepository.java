@@ -16,6 +16,8 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     /** S1-06 AC3: mã loại phòng duy nhất, không phân biệt hoa thường. */
     boolean existsByCodeIgnoreCase(String code);
 
+    Optional<RoomType> findByCodeIgnoreCase(String code);
+
     /** Dùng khi sửa: có loại phòng KHÁC đang dùng mã này không. */
     boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);
 

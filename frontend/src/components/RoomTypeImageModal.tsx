@@ -58,78 +58,11 @@ export function RoomTypeImageModal({
       setIsLoading(false)
     }
   }, [roomType.id])
+useEffect(() => {
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  void fetchImages()
+}, [fetchImages])
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchImages()
-  }, [fetchImages])
-  
-
-  // Điều kiện bảo vệ: phòng đang mở bán và chỉ còn 1 ảnh duy nhất
-  const isLastImageOfActiveRoom = roomType.active && images.length <= 1
-
-  function handleRequestDelete(img: RoomTypeImage) {
-    if (isLastImageOfActiveRoom) {
-      setError(
-        'Không được phép xoá ảnh cuối cùng của loại phòng đang mở bán. Vui lòng ngừng bán loại phòng trước khi xoá ảnh này.'
-      )
-      return
-    }
-    setDeleteError(null)
-    setImageToDelete(img)
-  }
-
-  async function handleConfirmDelete() {
-    if (!imageToDelete) return
-
-    try {
-      setIsDeleting(true)
-      setDeleteError(null)
-      const updated = await deleteRoomTypeImage(roomType.id, imageToDelete.id)
-      setImages(updated)
-      setImageToDelete(null)
-      setSuccessNotice('Đã xoá ảnh thành công. Ảnh đại diện và thứ tự hiển thị đã được cập nhật tự động.')
-      setTimeout(() => setSuccessNotice(null), 3500)
-      onImagesUpdated()
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Xoá ảnh thất bại.')
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  // Điều kiện bảo vệ: phòng đang mở bán và chỉ còn 1 ảnh duy nhất
-  const isLastImageOfActiveRoom = roomType.active && images.length <= 1
-
-  function handleRequestDelete(img: RoomTypeImage) {
-    if (isLastImageOfActiveRoom) {
-      setError(
-        'Không được phép xoá ảnh cuối cùng của loại phòng đang mở bán. Vui lòng ngừng bán loại phòng trước khi xoá ảnh này.'
-      )
-      return
-    }
-    setDeleteError(null)
-    setImageToDelete(img)
-  }
-
-  async function handleConfirmDelete() {
-    if (!imageToDelete) return
-
-    try {
-      setIsDeleting(true)
-      setDeleteError(null)
-      const updated = await deleteRoomTypeImage(roomType.id, imageToDelete.id)
-      setImages(updated)
-      setImageToDelete(null)
-      setSuccessNotice('Đã xoá ảnh thành công. Ảnh đại diện và thứ tự hiển thị đã được cập nhật tự động.')
-      setTimeout(() => setSuccessNotice(null), 3500)
-      onImagesUpdated()
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Xoá ảnh thất bại.')
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   async function handleFileProcess(file: File) {
     setError(null)
@@ -238,7 +171,6 @@ export function RoomTypeImageModal({
     isDraggingRef.current = true
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', String(index))
-    // Sử dụng setTimeout 0 để không gây gián đoạn quá trình DragStart của trình duyệt
     setTimeout(() => {
       setDraggedIndex(index)
     }, 0)
@@ -246,7 +178,7 @@ export function RoomTypeImageModal({
 
   function handleCardDragOver(e: DragEvent<HTMLDivElement>, index: number) {
     if (!canManage || isSavingOrder || isDeleting) return
-    e.preventDefault() // BẮT BUỘC để cho phép thả (drop)
+    e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = 'move'
     if (dragOverIndex !== index) {
@@ -311,7 +243,7 @@ export function RoomTypeImageModal({
     }, 150)
   }
 
-  // Thao tác nhanh chuyển vị trí (hỗ trợ thêm nút bấm mũi tên và làm đại diện)
+  // Thao tác nhanh chuyển vị trí
   function moveCard(fromIndex: number, toIndex: number) {
     if (toIndex < 0 || toIndex >= images.length || fromIndex === toIndex || isSavingOrder) return
     const reordered = [...images]
@@ -370,7 +302,6 @@ export function RoomTypeImageModal({
             </div>
           </div>
 
-          {/* Cảnh báo bảo vệ ảnh cuối cùng của phòng đang mở bán */}
           {isLastImageOfActiveRoom && (
             <div className="room-type-image-protect-notice" role="status">
               <span className="protect-icon">🛡️</span>
@@ -503,7 +434,6 @@ export function RoomTypeImageModal({
                         draggable={false}
                       />
 
-                      {/* Huy hiệu ảnh đại diện / thứ tự ở góc trên bên trái */}
                       {isPrimary ? (
                         <div className="room-type-image-primary-badge">
                           <span>★</span>
@@ -515,7 +445,6 @@ export function RoomTypeImageModal({
                         </div>
                       )}
 
-                      {/* Nút cầm kéo thả */}
                       {canManage && (
                         <div
                           className="room-type-image-drag-handle"
@@ -525,7 +454,6 @@ export function RoomTypeImageModal({
                         </div>
                       )}
 
-                      {/* Nút xoá ảnh có xác nhận (S2-09) */}
                       {canManage && (
                         <button
                           type="button"
@@ -547,7 +475,6 @@ export function RoomTypeImageModal({
                         </button>
                       )}
 
-                      {/* Thanh điều hướng đổi vị trí & làm đại diện (Luôn hiển thị trên từng thẻ ảnh) */}
                       {canManage && (
                         <div
                           className="room-type-image-card-controls"
@@ -604,7 +531,6 @@ export function RoomTypeImageModal({
         </div>
       </div>
 
-      {/* S2-09: Hộp thoại xác nhận xoá ảnh */}
       {imageToDelete && (
         <div
           className="room-type-confirm-backdrop"

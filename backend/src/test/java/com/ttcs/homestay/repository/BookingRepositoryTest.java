@@ -12,8 +12,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 /**
  * S2-07 Lát 1: câu truy vấn booking trùng ngày chạy trên CSDL thật (H2), mỗi test tự rollback.
  * Có booking đã xác nhận, đã huỷ và đã trả phòng cùng ngày để kiểm tra trạng thái chiếm phòng.
@@ -86,4 +90,34 @@ class BookingRepositoryTest {
         assertThat(bookingRepository.existsByBookingCode("TESTBK01")).isTrue();
         assertThat(bookingRepository.existsByBookingCode("CHUACOMA")).isFalse();
     }
+    @Test
+void searchTheoTrangThaiVaTuKhoaSoDienThoai() {
+    Booking booking = booking("FILTER-01", BookingStatus.CHO_XAC_NHAN);
+    booking.setGuestName("Nguyễn Văn Test");
+    booking.setGuestPhone("0912345678");
+    booking.setCheckInDate(LocalDate.of(2026, 10, 10));
+    booking.setCheckOutDate(LocalDate.of(2026, 10, 12));
+    bookingRepository.save(booking);
+
+    Pageable pageable = PageRequest.of(
+            0,
+            20,
+            Sort.by(
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.desc("id")
+            )
+    );
+
+    Page<Booking> result = bookingRepository.search(
+            BookingStatus.CHO_XAC_NHAN,
+            LocalDate.of(2026, 10, 1),
+            LocalDate.of(2026, 10, 31),
+            "0912345678",
+            pageable
+    );
+
+    assertThat(result.getContent())
+            .extracting(Booking::getBookingCode)
+            .contains("FILTER-01");
+}
 }

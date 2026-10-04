@@ -55,8 +55,44 @@ private Long weekdayPrice;
 @Column(name = "weekend_price")
 private Long weekendPrice;
 
-@Column(name = "status")
-private Boolean status = true;// true: Đang bán, false: Ngừng bán
+    @Column(name = "status")
+    private Boolean status = true; // true: Đang bán, false: Ngừng bán
+
+    /**
+     * S2-04: Các chính sách áp dụng cho loại phòng (nếu null sẽ thừa hưởng từ tham số vận hành chung).
+     */
+    @Column(name = "check_in_time")
+    private java.time.LocalTime checkInTime;
+
+    @Column(name = "check_out_time")
+    private java.time.LocalTime checkOutTime;
+
+    @Column(name = "allow_children")
+    private Boolean allowChildren = true;
+
+    @Column(name = "child_policy", length = 500)
+    private String childPolicy;
+
+    @Column(name = "extra_person_fee")
+    private Long extraPersonFee;
+
+    @Column(name = "cancellation_policy", length = 500)
+    private String cancellationPolicy;
+
+    @OneToMany(mappedBy = "roomType", cascade = CascadeType.ALL, orphanRemoval = true, fetch = jakarta.persistence.FetchType.EAGER)
+    @OrderBy("hoursBeforeCheckIn DESC")
+    private List<RoomTypeCancellationTier> cancellationTiers = new ArrayList<>();
+
+    public void addCancellationTier(int hoursBeforeCheckIn, int refundPercent) {
+        RoomTypeCancellationTier tier = new RoomTypeCancellationTier(this, hoursBeforeCheckIn, refundPercent);
+        this.cancellationTiers.add(tier);
+    }
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "image_alt", length = 200)
+    private String imageAlt;
 
     /** S1-08 AC2: một loại phòng gắn được nhiều tiện nghi (bảng nối room_type_amenities). */
     @ManyToMany

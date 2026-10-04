@@ -75,7 +75,7 @@ public class OperatingSettings {
     private OffsetDateTime createdAt;
 
     /** AC2, AC3: tối đa 3 mốc huỷ, sắp theo số giờ giảm dần. */
-    @OneToMany(mappedBy = "settings", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "settings", cascade = CascadeType.ALL, orphanRemoval = true, fetch = jakarta.persistence.FetchType.EAGER)
     @OrderBy("hoursBeforeCheckIn DESC")
     private List<CancellationTier> cancellationTiers = new ArrayList<>();
 
