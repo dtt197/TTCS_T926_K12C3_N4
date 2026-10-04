@@ -1,6 +1,17 @@
 import type { AmenitySummary } from './amenity'
 
-/** S1-06: dữ liệu loại phòng nhận từ API /api/room-types. S1-08: kèm tiện nghi đang dùng. */
+/** S2-09: dữ liệu ảnh của loại phòng */
+export type RoomTypeImage = {
+  id: number
+  roomTypeId: number
+  imageUrl: string
+  thumbnailUrl: string
+  displayOrder: number
+  isPrimary: boolean
+  createdAt?: string
+}
+
+/** S1-06: dữ liệu loại phòng nhận từ API /api/room-types. S1-08: kèm tiện nghi. S2-09: kèm ảnh đại diện & danh sách ảnh. */
 export type RoomType = {
   id: number
   code: string
@@ -14,6 +25,8 @@ export type RoomType = {
   active: boolean
   roomCount: number
   amenities: AmenitySummary[]
+  avatarUrl?: string | null
+  images?: RoomTypeImage[]
 }
 
 export type RoomTypePayload = {

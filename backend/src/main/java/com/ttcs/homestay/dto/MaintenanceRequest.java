@@ -9,7 +9,6 @@ public record MaintenanceRequest(
         String reason,
         @NotNull(message = "Ngày bắt đầu bảo trì là bắt buộc")
         LocalDate startDate,
-        @NotNull(message = "Ngày kết thúc bảo trì là bắt buộc")
         LocalDate endDate
 ) {
 }

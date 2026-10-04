@@ -65,7 +65,7 @@ export function checkIn(roomId: number, guestName: string) {
 }
 export function putRoomIntoMaintenance(
   roomId: number,
-  maintenance: MaintenanceDraft,
+  maintenance: Omit<MaintenanceDraft, 'endDate'> & { endDate: string | null },
 ) {
   return request<Room>(`/rooms/${roomId}/maintenance`, {
     method: 'PATCH',
