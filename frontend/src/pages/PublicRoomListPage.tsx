@@ -19,6 +19,7 @@ export function PublicRoomListPage({ onSelectRoomType }: PublicRoomListPageProps
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true)
     setError(null)
 
@@ -41,12 +42,12 @@ export function PublicRoomListPage({ onSelectRoomType }: PublicRoomListPageProps
     if (onSelectRoomType) {
       onSelectRoomType(id)
     } else {
-      window.location.href = `/phong/${id}`
+      window.location.assign(`/phong/${id}`)
     }
   }
 
   const handleBookNow = (id: number) => {
-    window.location.href = `/dat-phong?roomTypeId=${id}`
+    window.location.assign(`/dat-phong?roomTypeId=${id}`)
   }
 
   const filteredRoomTypes = roomTypes.filter((rt) => {

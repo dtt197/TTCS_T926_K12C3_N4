@@ -83,14 +83,7 @@ function validateEmail(email: string) {
 export function GuestBookingPage() {
   const [today] = useState(todayIso)
   const [roomTypes, setRoomTypes] = useState<PublicRoomTypeOption[]>([])
-  const [form, setForm] = useState<FormState>(() => {
-    const params = new URLSearchParams(window.location.search)
-    const initialRoomTypeId = params.get('roomTypeId') || ''
-    return {
-      ...EMPTY_FORM,
-      roomTypeId: initialRoomTypeId,
-    }
-  })
+  const [form, setForm] = useState<FormState>(initialFormFromSearchParams)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)

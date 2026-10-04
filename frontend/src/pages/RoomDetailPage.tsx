@@ -40,6 +40,7 @@ export function RoomDetailPage({
 
   useEffect(() => {
     if (!roomTypeId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('Vui lòng chọn hoặc chỉ định mã loại phòng')
       setIsLoading(false)
       return
@@ -367,6 +368,175 @@ export function RoomDetailPage({
                   <p className="text-muted">Phòng được trang bị tiện nghi cơ bản.</p>
                 )}
               </section>
+
+              {/* S2-04: Thời gian nhận/trả phòng, chính sách trẻ nhỏ & phụ thu thêm người */}
+              <section className="room-section room-policies-section" id="room-policies-section">
+                <h2 className="section-title">Thời gian nhận phòng, trả phòng & Quy định lưu trú</h2>
+                
+                {/* Giờ nhận phòng & Giờ trả phòng */}
+                <div className="check-times-grid">
+                  <div className="check-time-card checkin-card" id="policy-checkin-card">
+                    <div className="check-time-icon">🕒</div>
+                    <div className="check-time-content">
+                      <span className="check-time-label">Giờ nhận phòng (Check-in)</span>
+                      <strong className="check-time-value" id="policy-checkin-time">
+                        {roomType.checkInTime || '14:00'}
+                      </strong>
+                      <span className="check-time-hint">Từ {roomType.checkInTime || '14:00'} chiều</span>
+                    </div>
+                  </div>
+
+                  <div className="check-time-card checkout-card" id="policy-checkout-card">
+                    <div className="check-time-icon">🕛</div>
+                    <div className="check-time-content">
+                      <span className="check-time-label">Giờ trả phòng (Check-out)</span>
+                      <strong className="check-time-value" id="policy-checkout-time">
+                        {roomType.checkOutTime || '12:00'}
+                      </strong>
+                      <span className="check-time-hint">Trước {roomType.checkOutTime || '12:00'} trưa</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="policies-detail-grid">
+                  {/* Chính sách trẻ nhỏ */}
+                  <div className="policy-block" id="policy-child-block">
+                    <div className="policy-block-header">
+                      <span className="policy-icon">👶</span>
+                      <h3>Chính sách trẻ nhỏ</h3>
+                    </div>
+                    <div className="policy-block-body">
+                      <div className="policy-status-pill">
+                        <span
+                          className={`policy-badge ${
+                            roomType.allowChildren ? 'policy-badge-success' : 'policy-badge-danger'
+                          }`}
+                          id="policy-child-badge"
+                        >
+                          {roomType.allowChildren
+                            ? '✓ Cho phép mang theo trẻ nhỏ'
+                            : '✕ Không cho phép trẻ nhỏ'}
+                        </span>
+                      </div>
+                      <p className="policy-desc" id="policy-child-text">
+                        {roomType.childPolicy ||
+                          (roomType.allowChildren
+                            ? 'Cho phép mang theo trẻ nhỏ. Trẻ dưới 6 tuổi được miễn phí phụ thu khi ngủ chung giường với người lớn.'
+                            : 'Loại phòng này không cho phép mang theo trẻ nhỏ để đảm bảo không gian yên tĩnh.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mức phụ thu thêm người */}
+                  <div className="policy-block" id="policy-extra-guest-block">
+                    <div className="policy-block-header">
+                      <span className="policy-icon">👥</span>
+                      <h3>Mức phụ thu thêm người</h3>
+                    </div>
+                    <div className="policy-block-body">
+                      <div className="extra-fee-highlight" id="policy-extra-fee">
+                        <span className="fee-amount">
+                          +{money.format(roomType.extraPersonFee || 200000)} đ
+                        </span>
+                        <span className="fee-unit">/ người / đêm</span>
+                      </div>
+                      <p className="policy-desc" id="policy-extra-desc">
+                        Sức chứa tiêu chuẩn: <strong>{roomType.standardCapacity} khách</strong>. Tối đa:{' '}
+                        <strong>{roomType.maxCapacity} khách</strong>.
+                        {roomType.maxCapacity > roomType.standardCapacity ? (
+                          <> Phụ thu thêm {money.format(roomType.extraPersonFee || 200000)} đ cho mỗi khách vượt quá số lượng tiêu chuẩn {roomType.standardCapacity} người.</>
+                        ) : (
+                          <> Loại phòng này chỉ nhận tối đa đúng sức chứa tiêu chuẩn, không nhận thêm người.</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* S2-04: Chính sách hủy phòng & Các mốc phí phạt */}
+              <section className="room-section room-cancellation-section" id="room-cancellation-section">
+                <div className="cancellation-header-row">
+                  <div>
+                    <h2 className="section-title">Chính sách hủy phòng & Mốc phí phạt</h2>
+                    <p className="section-subtitle" id="policy-cancellation-summary">
+                      {roomType.cancellationPolicy ||
+                        'Chính sách hủy linh hoạt theo mốc thời gian áp dụng trước giờ nhận phòng.'}
+                    </p>
+                  </div>
+                  <span className="cancellation-badge-secure">🛡️ Quy định minh bạch</span>
+                </div>
+
+                <div className="cancellation-tiers-container" id="cancellation-tiers-list">
+                  {roomType.cancellationTiers && roomType.cancellationTiers.length > 0 ? (
+                    <div className="cancellation-timeline">
+                      {roomType.cancellationTiers.map((tier, idx) => {
+                        const feeEstimated = Math.round(
+                          ((roomType.weekdayPrice || 0) * tier.feePercent) / 100
+                        )
+                        const isFree = tier.feePercent === 0
+                        const isFull = tier.feePercent === 100
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`tier-card ${
+                              isFree
+                                ? 'tier-free'
+                                : isFull
+                                ? 'tier-full-penalty'
+                                : 'tier-partial-penalty'
+                            }`}
+                            id={`cancellation-tier-${idx}`}
+                          >
+                            <div className="tier-timing">
+                              <span className="tier-step">Mốc {idx + 1}</span>
+                              <strong className="tier-time-label">{tier.timeLabel}</strong>
+                            </div>
+
+                            <div className="tier-refund-box">
+                              <span className="tier-label">Tỷ lệ hoàn tiền:</span>
+                              <strong className="tier-refund-percent">
+                                {tier.refundPercent}% tiền cọc
+                              </strong>
+                            </div>
+
+                            <div className="tier-fee-box">
+                              <span className="tier-label">Mức phí phạt hủy:</span>
+                              <span
+                                className={`fee-pill ${
+                                  isFree
+                                    ? 'fee-free'
+                                    : isFull
+                                    ? 'fee-danger'
+                                    : 'fee-warning'
+                                }`}
+                              >
+                                {isFree
+                                  ? 'Miễn phí hủy (0% phí)'
+                                  : `Phạt ${tier.feePercent}% tiền cọc`}
+                              </span>
+                              {roomType.weekdayPrice > 0 && !isFree && (
+                                <span className="tier-fee-sample">
+                                  ~ {money.format(feeEstimated)} đ / đêm
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="tier-detail-text">
+                              <p>{tier.feeDescription}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="cancellation-tiers-fallback">
+                      <p>Hủy trước 72 giờ: Miễn phí hủy (hoàn 100%). Hủy trước 24 giờ: Phí phạt 50%. Sát ngày: Phạt 100%.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
             </div>
 
             {/* Right Column: Pricing & Booking Card */}
@@ -391,8 +561,24 @@ export function RoomDetailPage({
 
                 <div className="card-specs-summary">
                   <div className="summary-line">
-                    <span>Sức chứa tối đa:</span>
-                    <strong>{roomType.maxCapacity} người</strong>
+                    <span>Sức chứa:</span>
+                    <strong>{roomType.standardCapacity} - {roomType.maxCapacity} người</strong>
+                  </div>
+                  <div className="summary-line">
+                    <span>Giờ nhận phòng:</span>
+                    <strong id="sidebar-checkin-time">{roomType.checkInTime || '14:00'}</strong>
+                  </div>
+                  <div className="summary-line">
+                    <span>Giờ trả phòng:</span>
+                    <strong id="sidebar-checkout-time">{roomType.checkOutTime || '12:00'}</strong>
+                  </div>
+                  <div className="summary-line">
+                    <span>Trẻ nhỏ:</span>
+                    <strong id="sidebar-child-policy">{roomType.allowChildren ? 'Cho phép' : 'Không nhận'}</strong>
+                  </div>
+                  <div className="summary-line">
+                    <span>Phụ thu thêm khách:</span>
+                    <strong id="sidebar-extra-fee">+{money.format(roomType.extraPersonFee || 200000)} đ</strong>
                   </div>
                   <div className="summary-line">
                     <span>Số giường ngủ:</span>

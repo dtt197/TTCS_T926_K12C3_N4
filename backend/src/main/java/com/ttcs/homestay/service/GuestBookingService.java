@@ -112,17 +112,19 @@ public class GuestBookingService {
     public List<PublicRoomTypeDetailResponse> listBookableRoomTypesWithDetails() {
         LocalDate today = LocalDate.now(HOMESTAY_ZONE);
         LocalDate tomorrow = today.plusDays(1);
+        OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
         return roomTypeRepository.findAllByOrderByCodeAsc().stream()
                 .filter(GuestBookingService::isBookable)
                 .map(rt -> {
                     int available = roomAvailabilityService.availableRooms(rt, today, tomorrow);
-                    return PublicRoomTypeDetailResponse.from(rt, available);
+                    return PublicRoomTypeDetailResponse.from(rt, available, settings);
                 })
                 .toList();
     }
 
     /**
-     * S2-04: Lấy chi tiết một loại phòng cho khách xem.
+     * S2-04: Lấy chi tiết một loại phòng cho khách xem kèm đầy đủ chính sách nhận/trả phòng,
+     * trẻ nhỏ, phụ thu thêm người và mốc phí hủy.
      * Ném RoomTypeNotFoundException nếu không tìm thấy hoặc phòng ngừng bán.
      */
     @Transactional(readOnly = true)
@@ -133,7 +135,8 @@ public class GuestBookingService {
                 .filter(GuestBookingService::isBookable)
                 .orElseThrow(() -> new RoomTypeNotFoundException("Không tìm thấy thông tin loại phòng #" + id));
         int available = roomAvailabilityService.availableRooms(roomType, today, tomorrow);
-        return PublicRoomTypeDetailResponse.from(roomType, available);
+        OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
+        return PublicRoomTypeDetailResponse.from(roomType, available, settings);
     }
 
     @Transactional

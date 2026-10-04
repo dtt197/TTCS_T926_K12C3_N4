@@ -5,8 +5,18 @@ export type PublicAmenity = {
   icon: string
 }
 
+export type CancellationTierPolicy = {
+  hoursBeforeCheckIn: number
+  refundPercent: number
+  feePercent: number
+  timeLabel: string
+  feeDescription: string
+}
+
 /**
  * S2-04: Chi tiết một loại phòng cho khách xem trước khi đặt.
+ * Bao gồm đầy đủ thông tin nhận phòng, trả phòng, chính sách trẻ nhỏ,
+ * mức phụ thu thêm người và bảng mốc phí phạt hủy phòng.
  */
 export type PublicRoomTypeDetail = {
   id: number
@@ -21,4 +31,12 @@ export type PublicRoomTypeDetail = {
   availableRooms: number
   amenities: PublicAmenity[]
   images: string[]
+  // S2-04 Policy fields
+  checkInTime: string
+  checkOutTime: string
+  allowChildren: boolean
+  childPolicy: string
+  extraPersonFee: number
+  cancellationPolicy: string
+  cancellationTiers: CancellationTierPolicy[]
 }

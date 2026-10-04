@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * Khởi tạo dữ liệu mẫu khi chạy hồ sơ test / H2 in-memory.
  */
 @Component
-@Profile("test")
+@Profile({"test", "dev"})
 public class H2DevDataLoader implements ApplicationRunner {
 
     private final JdbcTemplate jdbcTemplate;
@@ -77,19 +77,43 @@ public class H2DevDataLoader implements ApplicationRunner {
                 VALUES ('HomeStay Retreat', '14:00', '12:00', 100000, 200000, 'Hệ thống',
                         'FRIDAY,SATURDAY', CURRENT_TIMESTAMP)
             """);
+
+            Long defaultSettingsId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM operating_settings ORDER BY id ASC LIMIT 1", Long.class);
+            if (defaultSettingsId != null) {
+                jdbcTemplate.update("""
+                    INSERT INTO cancellation_policy_tiers (settings_id, hours_before_check_in, refund_percent)
+                    VALUES
+                    (?, 72, 100),
+                    (?, 24, 50),
+                    (?, 0, 0)
+                """, defaultSettingsId, defaultSettingsId, defaultSettingsId);
+            }
         }
 
         // 5. Khởi tạo dữ liệu các loại phòng (gồm cả phòng đang bán và phòng ngừng bán để test S2-04)
         Integer rtCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM room_types", Integer.class);
         if (rtCount == null || rtCount == 0) {
             jdbcTemplate.update("""
-                INSERT INTO room_types (code, name, standard_capacity, max_capacity, number_of_beds, description, status, weekday_price, weekend_price)
+                INSERT INTO room_types (code, name, standard_capacity, max_capacity, number_of_beds, description, status, weekday_price, weekend_price, check_in_time, check_out_time, allow_children, child_policy, extra_person_fee, cancellation_policy)
                 VALUES
-                ('DON', 'Phòng đơn', 1, 2, 1, 'Phòng đơn ấm cúng, thiết kế tối giản tinh tế với bàn làm việc và cửa sổ hướng vườn.', TRUE, 300000, 400000),
-                ('DOI', 'Phòng đôi', 2, 3, 1, 'Phòng đôi sang trọng với giường Queen êm ái, ánh sáng tự nhiên ngập tràn và không gian thư giãn hoàn hảo.', TRUE, 500000, 650000),
-                ('GIA_DINH', 'Phòng gia đình', 4, 5, 2, 'Phòng gia đình rộng rãi gồm 2 giường đôi lớn, ban công thoáng mát và khu vực sinh hoạt chung ấm cúng.', TRUE, 900000, 1200000),
-                ('VIP', 'Phòng VIP cũ (Đã ngừng bán)', 2, 2, 1, 'Loại phòng VIP trước đây, hiện đã ngừng kinh doanh để nâng cấp.', FALSE, 1000000, 1500000)
+                ('DON', 'Phòng đơn', 1, 2, 1, 'Phòng đơn ấm cúng, thiết kế tối giản tinh tế với bàn làm việc và cửa sổ hướng vườn.', TRUE, 300000, 400000, '14:00', '12:00', TRUE, 'Cho phép mang theo trẻ nhỏ. Trẻ dưới 6 tuổi ở cùng người lớn miễn phí.', 150000, 'Chính sách hủy linh hoạt chuẩn homestay'),
+                ('DOI', 'Phòng đôi', 2, 3, 1, 'Phòng đôi sang trọng với giường Queen êm ái, ánh sáng tự nhiên ngập tràn và không gian thư giãn hoàn hảo.', TRUE, 500000, 650000, '14:00', '12:00', TRUE, 'Cho phép tối đa 1 trẻ em dưới 6 tuổi ngủ chung giường với bố mẹ miễn phí.', 200000, 'Chính sách hủy tiêu chuẩn hoàn 100% trước 72 giờ'),
+                ('GIA_DINH', 'Phòng gia đình', 4, 5, 2, 'Phòng gia đình rộng rãi gồm 2 giường đôi lớn, ban công thoáng mát và khu vực sinh hoạt chung ấm cúng.', TRUE, 900000, 1200000, '14:00', '12:00', TRUE, 'Rất hoan nghênh gia đình có trẻ nhỏ. Hỗ trợ miễn phí cũi em bé nếu đặt trước.', 250000, 'Hủy miễn phí trước 72h cho gia đình'),
+                ('STUDIO_ADULT', 'Studio Người Lớn', 2, 2, 1, 'Không gian nghỉ dưỡng biệt lập cao cấp dành riêng cho các cặp đôi hoặc cá nhân cần sự yên tĩnh.', TRUE, 700000, 900000, '15:00', '11:00', FALSE, 'Không cho phép mang theo trẻ nhỏ để đảm bảo không gian nghỉ dưỡng yên tĩnh tuyệt đối.', 300000, 'Chính sách hủy nghiêm ngặt dành riêng cho phòng Studio'),
+                ('VIP', 'Phòng VIP cũ (Đã ngừng bán)', 2, 2, 1, 'Loại phòng VIP trước đây, hiện đã ngừng kinh doanh để nâng cấp.', FALSE, 1000000, 1500000, '14:00', '12:00', TRUE, NULL, 200000, NULL)
             """);
+
+            Long studioId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM room_types WHERE code = 'STUDIO_ADULT'", Long.class);
+            if (studioId != null) {
+                jdbcTemplate.update("""
+                    INSERT INTO room_type_cancellation_tiers (room_type_id, hours_before_check_in, refund_percent)
+                    VALUES
+                    (?, 48, 80),
+                    (?, 0, 0)
+                """, studioId, studioId);
+            }
         }
 
         // 6. Khởi tạo tiện nghi và bảng nối room_type_amenities
