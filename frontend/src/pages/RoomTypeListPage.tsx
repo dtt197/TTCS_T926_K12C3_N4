@@ -72,6 +72,8 @@ export function RoomTypeListPage() {
                 className="room-card__image"
                 src={card.imageUrl || DEFAULT_COVER_IMAGE}
                 alt={card.imageAlt || `Ảnh ${card.name}`}
+                loading="lazy"
+                decoding="async"
                 onError={(event) => {
                   event.currentTarget.onerror = null
                   event.currentTarget.src = DEFAULT_COVER_IMAGE
