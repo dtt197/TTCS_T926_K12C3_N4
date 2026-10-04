@@ -308,7 +308,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                           </div>
 
                           <div>
-                            <h3>{roomType.name}</h3>
+                            <h3 title={roomType.name}>{roomType.name}</h3>
 
                             <p>
                               {roomType.description ||
