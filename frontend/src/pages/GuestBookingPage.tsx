@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { GuestQuoteTable } from '../components/GuestQuoteTable'
 import { createGuestBooking, getPublicRoomTypes } from '../services/guestBookingService'
+import { searchAvailableRooms } from '../services/roomService'
 import type { GuestBookingResult, PublicRoomTypeOption } from '../types/guestBooking'
 import './AuthPages.css'
 import './GuestBookingPage.css'
