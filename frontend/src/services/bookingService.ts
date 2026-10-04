@@ -1,7 +1,42 @@
 import { apiRequest } from './apiClient'
-import type { BookingListItem, PageResponse } from '../types/booking'
+import type {
+  BookingListItem,
+  BookingStatus,
+  PageResponse,
+} from '../types/booking'
 
-/** S2-10: booking mới nhất trước, 20 dòng mỗi trang (trang đầu tiên là 0). */
-export function getLatestBookings(page = 0) {
-  return apiRequest<PageResponse<BookingListItem>>(`/api/bookings?page=${page}`)
+export type BookingFilters = {
+  status: BookingStatus | ''
+  checkInFrom: string
+  checkInTo: string
+  keyword: string
+}
+
+export function getLatestBookings(
+  page = 0,
+  filters?: Partial<BookingFilters>,
+) {
+  const params = new URLSearchParams({
+    page: String(page),
+  })
+
+  if (filters?.status) {
+    params.set('status', filters.status)
+  }
+
+  if (filters?.checkInFrom) {
+    params.set('checkInFrom', filters.checkInFrom)
+  }
+
+  if (filters?.checkInTo) {
+    params.set('checkInTo', filters.checkInTo)
+  }
+
+  if (filters?.keyword?.trim()) {
+    params.set('keyword', filters.keyword.trim())
+  }
+
+  return apiRequest<PageResponse<BookingListItem>>(
+    `/api/bookings?${params.toString()}`,
+  )
 }

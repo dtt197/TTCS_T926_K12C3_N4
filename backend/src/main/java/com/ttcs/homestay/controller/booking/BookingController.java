@@ -9,8 +9,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import com.ttcs.homestay.entity.BookingStatus;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -34,7 +39,33 @@ public class BookingController {
     }
 
     @GetMapping
-    public PageResponse<BookingResponse> list(@RequestParam(defaultValue = "0") int page) {
-        return PageResponse.from(bookingService.findPage(page).map(BookingResponse::from));
+    public PageResponse<BookingResponse> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) BookingStatus status,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate checkInFrom,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate checkInTo,
+            @RequestParam(required = false) String keyword) {
+
+        if (checkInFrom != null
+                && checkInTo != null
+                && checkInTo.isBefore(checkInFrom)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
+        }
+
+        return PageResponse.from(
+                bookingService.findPage(
+                        page,
+                        status,
+                        checkInFrom,
+                        checkInTo,
+                        keyword
+                ).map(BookingResponse::from)
+        );
     }
 }

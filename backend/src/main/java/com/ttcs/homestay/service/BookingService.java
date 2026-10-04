@@ -28,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDate;
 @Service
 public class BookingService {
 
@@ -132,9 +133,33 @@ public class BookingService {
 
     public static final int PAGE_SIZE = 20;
 
-    public Page<Booking> findPage(int page) {
-        Pageable pageable = PageRequest.of(
-                Math.max(page, 0), PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return bookingRepository.findAll(pageable);
-    }
+    public Page<Booking> findPage(
+        int page,
+        BookingStatus status,
+        LocalDate checkInFrom,
+        LocalDate checkInTo,
+        String keyword) {
+
+    String normalizedKeyword =
+            keyword == null || keyword.trim().isEmpty()
+                    ? null
+                    : keyword.trim();
+
+    Pageable pageable = PageRequest.of(
+            Math.max(page, 0),
+            PAGE_SIZE,
+            Sort.by(
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.desc("id")
+            )
+    );
+
+    return bookingRepository.search(
+            status,
+            checkInFrom,
+            checkInTo,
+            normalizedKeyword,
+            pageable
+    );
+}
 }
