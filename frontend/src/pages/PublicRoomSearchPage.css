@@ -1,0 +1,88 @@
+.public-room-search .login-form {
+  width: min(100%, 560px);
+}
+
+.public-room-search .field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+  align-items: start;
+}
+
+.room-search-results {
+  display: grid;
+  gap: 10px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--auth-line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--auth-panel);
+}
+
+.room-search-result h3,
+.room-search-result p {
+  margin: 0;
+}
+
+.room-search-result h3 {
+  font-size: 1rem;
+}
+
+.room-search-result p {
+  margin-top: 5px;
+  color: var(--auth-muted);
+  font-size: 0.88rem;
+}
+
+.room-search-result strong {
+  flex-shrink: 0;
+  color: var(--auth-teal-dark);
+}
+
+.room-search-book-button {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  padding: 9px 12px;
+  background: var(--auth-coral);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.room-search-book-button:hover {
+  filter: brightness(0.94);
+}
+
+.room-search-empty {
+  margin: 24px 0 0;
+  border-left: 3px solid var(--auth-coral);
+  padding: 12px 14px;
+  background: #fff0eb;
+  color: #963f2c;
+}
+
+@media (max-width: 520px) {
+  .public-room-search .field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .room-search-result {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .room-search-result strong {
+    margin-left: auto;
+  }
+}
