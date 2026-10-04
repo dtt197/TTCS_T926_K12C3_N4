@@ -181,6 +181,7 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
                                                 // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
                         .requestMatchers(HttpMethod.GET, "/api/public/room-types").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/room-type-cards").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()

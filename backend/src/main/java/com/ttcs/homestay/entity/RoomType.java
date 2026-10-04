@@ -58,6 +58,12 @@ private Long weekendPrice;
 @Column(name = "status")
 private Boolean status = true;// true: Đang bán, false: Ngừng bán
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "image_alt", length = 200)
+    private String imageAlt;
+
     /** S1-08 AC2: một loại phòng gắn được nhiều tiện nghi (bảng nối room_type_amenities). */
     @ManyToMany
     @JoinTable(
