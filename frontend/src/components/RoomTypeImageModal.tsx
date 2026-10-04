@@ -58,11 +58,52 @@ export function RoomTypeImageModal({
       setIsLoading(false)
     }
   }, [roomType.id])
+<<<<<<< HEAD
 useEffect(() => {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   void fetchImages()
 }, [fetchImages])
 
+=======
+  
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchImages()
+  }, [fetchImages])
+
+  // Điều kiện bảo vệ: phòng đang mở bán và chỉ còn 1 ảnh duy nhất
+  const isLastImageOfActiveRoom = roomType.active && images.length <= 1
+
+  function handleRequestDelete(img: RoomTypeImage) {
+    if (isLastImageOfActiveRoom) {
+      setError(
+        'Không được phép xoá ảnh cuối cùng của loại phòng đang mở bán. Vui lòng ngừng bán loại phòng trước khi xoá ảnh này.'
+      )
+      return
+    }
+    setDeleteError(null)
+    setImageToDelete(img)
+  }
+
+  async function handleConfirmDelete() {
+    if (!imageToDelete) return
+
+    try {
+      setIsDeleting(true)
+      setDeleteError(null)
+      const updated = await deleteRoomTypeImage(roomType.id, imageToDelete.id)
+      setImages(updated)
+      setImageToDelete(null)
+      setSuccessNotice('Đã xoá ảnh thành công. Ảnh đại diện và thứ tự hiển thị đã được cập nhật tự động.')
+      setTimeout(() => setSuccessNotice(null), 3500)
+      onImagesUpdated()
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Xoá ảnh thất bại.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+>>>>>>> 6c8117e (Fix bugs and complete booking feature)
 
   async function handleFileProcess(file: File) {
     setError(null)

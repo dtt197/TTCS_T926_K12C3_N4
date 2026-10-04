@@ -12,10 +12,17 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+<<<<<<< HEAD
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import com.ttcs.homestay.entity.BookingStatus;
+=======
+import com.ttcs.homestay.entity.BookingStatus;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.server.ResponseStatusException;
+>>>>>>> 6c8117e (Fix bugs and complete booking feature)
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -38,6 +45,7 @@ public class BookingController {
         return bookingService.getLatestBookings();
     }
 
+<<<<<<< HEAD
     @GetMapping
     public PageResponse<BookingResponse> list(
             @RequestParam(defaultValue = "0") int page,
@@ -67,5 +75,36 @@ public class BookingController {
                         keyword
                 ).map(BookingResponse::from)
         );
+=======
+   @GetMapping
+public PageResponse<BookingResponse> list(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(required = false) BookingStatus status,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate checkInFrom,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate checkInTo,
+        @RequestParam(required = false) String keyword) {
+
+    if (checkInFrom != null
+            && checkInTo != null
+            && checkInTo.isBefore(checkInFrom)) {
+        throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Ngày nhận phòng kết thúc phải sau hoặc bằng ngày bắt đầu");
+>>>>>>> 6c8117e (Fix bugs and complete booking feature)
     }
+
+    return PageResponse.from(
+            bookingService.findPage(
+                    page,
+                    status,
+                    checkInFrom,
+                    checkInTo,
+                    keyword
+            ).map(BookingResponse::from)
+    );
+}
 }

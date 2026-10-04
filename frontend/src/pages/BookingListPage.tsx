@@ -1,23 +1,24 @@
-import { useEffect, useState } from 'react';
-import Pagination from '../components/Pagination';
-import { getLatestBookings } from "../services/bookingService";
-import type { BookingListItem, BookingStatus, PageResponse } from '../types/booking';
-import './BookingListPage.css';
+import './BookingListPage.css'
+import type { BookingStatus, BookingListItem } from '../types/booking'
+import { useEffect, useState, type FormEvent } from 'react'
+import { searchBookings } from '../services/bookingService'
 
-const STATUS_LABELS: Record<BookingStatus, string> = {
+const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
   DA_XAC_NHAN: 'Đã xác nhận',
   DA_HUY: 'Đã huỷ',
   DA_NHAN_PHONG: 'Đã nhận phòng',
   DA_TRA_PHONG: 'Đã trả phòng',
+  DA_HET_HAN: 'Đã hết hạn',
 }
 
-const STATUS_CLASS_NAMES: Record<BookingStatus, string> = {
+const STATUS_CLASS_NAMES: Record<string, string> = {
   CHO_XAC_NHAN: 'pending',
   DA_XAC_NHAN: 'confirmed',
   DA_HUY: 'cancelled',
   DA_NHAN_PHONG: 'checked-in',
   DA_TRA_PHONG: 'checked-out',
+  DA_HET_HAN: 'cancelled',
 }
 
 const EMPTY_FILTERS = {
@@ -28,8 +29,13 @@ const EMPTY_FILTERS = {
 }
 
 function formatDate(value: string) {
-  const [year, month, day] = value.split('-')
-  return `${day}/${month}/${year}`
+  if (!value) return ''
+  const parts = value.split('-')
+  if (parts.length === 3) {
+    const [year, month, day] = parts
+    return `${day}/${month}/${year}`
+  }
+  return value
 }
 
 function formatCurrency(value: number) {
@@ -41,31 +47,91 @@ function formatCurrency(value: number) {
 }
 
 export function BookingListPage() {
-  const [page, setPage] = useState(0);
-  const [data, setData] = useState<PageResponse<BookingListItem> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [bookings, setBookings] = useState<BookingListItem[]>([])
+  const [keyword, setKeyword] = useState('')
+  const [status, setStatus] = useState<BookingStatus | ''>('')
+  const [checkInFrom, setCheckInFrom] = useState('')
+  const [checkInTo, setCheckInTo] = useState('')
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function loadBookings(nextPage = 0) {
+    setLoading(true)
+    setError('')
+
+    try {
+      const result = await searchBookings({
+        keyword: keyword.trim() || undefined,
+        status: status || undefined,
+        checkInFrom: checkInFrom || undefined,
+        checkInTo: checkInTo || undefined,
+        page: nextPage,
+        size: 20,
+      })
+
+      setBookings(result.content || [])
+      setPage(result.page ?? 0)
+      setTotalPages(result.totalPages ?? 0)
+      setTotalElements(result.totalElements ?? 0)
+    } catch (err) {
+      setBookings([])
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể tải danh sách booking.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
 
   useEffect(() => {
-    let cancelled = false;
+    void loadBookings(0)
+  }, [])
 
     getLatestBookings(page, appliedFilters)
       .then((res) => {
         if (!cancelled) {
           setData(res);
         }
+  function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (checkInFrom && checkInTo && checkInTo < checkInFrom) {
+      setError('Ngày nhận phòng đến phải sau hoặc bằng ngày nhận phòng từ')
+      return
+    }
+
+    void loadBookings(0)
+  }
+
+  function clearFilters() {
+    setKeyword('')
+    setStatus('')
+    setCheckInFrom('')
+    setCheckInTo('')
+    setError('')
+    setLoading(true)
+    void searchBookings({ page: 0, size: 20 })
+      .then((result) => {
+        setBookings(result.content || [])
+        setPage(result.page ?? 0)
+        setTotalPages(result.totalPages ?? 0)
+        setTotalElements(result.totalElements ?? 0)
       })
-      .catch((reason: unknown) => {
-        if (!cancelled) {
-          setError(
-            reason instanceof Error
-              ? reason.message
-              : 'Không thể tải danh sách booking',
-          );
-        }
+      .catch((err) => {
+        setBookings([])
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Không thể tải danh sách booking.',
+        )
       })
       .finally(() => {
         if (!cancelled) {
@@ -103,6 +169,10 @@ export function BookingListPage() {
   }
 
   const bookings = data?.content || [];
+
+        setLoading(false)
+      })
+  }
 
   return (
     <section className="panel booking-page">
@@ -185,6 +255,49 @@ export function BookingListPage() {
         <button
           type="button"
           onClick={handleResetFilters}
+        <input
+          type="search"
+          value={keyword}
+          placeholder="Tên khách hoặc số điện thoại"
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+
+        <select
+          value={status}
+          onChange={(event) =>
+            setStatus(event.target.value as BookingStatus | '')
+          }
+        >
+          <option value="">Tất cả trạng thái</option>
+          <option value="CHO_XAC_NHAN">Chờ xác nhận</option>
+          <option value="DA_XAC_NHAN">Đã xác nhận</option>
+          <option value="DA_HUY">Đã huỷ</option>
+          <option value="DA_NHAN_PHONG">Đã nhận phòng</option>
+          <option value="DA_TRA_PHONG">Đã trả phòng</option>
+          <option value="DA_HET_HAN">Đã hết hạn</option>
+        </select>
+
+        <input
+          type="date"
+          value={checkInFrom}
+          onChange={(event) => setCheckInFrom(event.target.value)}
+          title="Nhận phòng từ"
+        />
+
+        <input
+          type="date"
+          value={checkInTo}
+          onChange={(event) => setCheckInTo(event.target.value)}
+          title="Nhận phòng đến"
+        />
+
+        <button type="submit">
+          Lọc
+        </button>
+
+        <button
+          type="button"
+          onClick={clearFilters}
         >
           Xoá lọc
         </button>
@@ -225,7 +338,12 @@ export function BookingListPage() {
                     <td>
                       <strong>{booking.bookingCode}</strong>
                     </td>
-                    <td>{booking.guestName}</td>
+                    <td>
+                      <div>{booking.guestName}</div>
+                      {booking.guestPhone && (
+                        <small>{booking.guestPhone}</small>
+                      )}
+                    </td>
                     <td>{booking.roomTypeNameSnapshot}</td>
                     <td>{formatDate(booking.checkInDate)}</td>
                     <td>{formatDate(booking.checkOutDate)}</td>
@@ -233,13 +351,15 @@ export function BookingListPage() {
                     <td>
                       <span
                         className={`booking-status ${
-                          STATUS_CLASS_NAMES[booking.status]
+                          STATUS_CLASS_NAMES[booking.status] ?? 'pending'
                         }`}
                       >
-                        {STATUS_LABELS[booking.status]}
+                        {STATUS_LABELS[booking.status] ?? booking.status}
                       </span>
                       {booking.holdExpired && (
-                        <span className="badge-expired">Quá hạn giữ chỗ 24 giờ</span>
+                        <span className="badge-expired">
+                          Quá hạn giữ chỗ 24 giờ
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -260,6 +380,27 @@ export function BookingListPage() {
               }}
             />
           )}
+          <div className="booking-pagination">
+            <button
+              type="button"
+              disabled={page === 0}
+              onClick={() => void loadBookings(page - 1)}
+            >
+              Trang trước
+            </button>
+
+            <span>
+              Trang {page + 1} / {Math.max(totalPages, 1)} ({totalElements} booking)
+            </span>
+
+            <button
+              type="button"
+              disabled={page + 1 >= totalPages}
+              onClick={() => void loadBookings(page + 1)}
+            >
+              Trang sau
+            </button>
+          </div>
         </>
       )}
     </section>

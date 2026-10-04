@@ -2,6 +2,66 @@
   overflow: hidden;
 }
 
+.booking-filters {
+  display: grid;
+  grid-template-columns: 2fr 1.3fr 1fr 1fr auto auto;
+  gap: 8px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.booking-filters input,
+.booking-filters select {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #ccd6d1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  color: var(--text, #1c2e26);
+}
+
+.booking-filters input:focus,
+.booking-filters select:focus {
+  outline: none;
+  border-color: #2b7458;
+  box-shadow: 0 0 0 2px rgba(43, 116, 88, 0.15);
+}
+
+.booking-filters button[type="submit"] {
+  min-height: 38px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary, #1b4931);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.booking-filters button[type="submit"]:hover {
+  opacity: 0.9;
+}
+
+.booking-filters button[type="button"] {
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 1px solid #ccd6d1;
+  border-radius: 8px;
+  background: #f1f4f2;
+  color: #3b5046;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.booking-filters button[type="button"]:hover {
+  background: #e4ebe6;
+}
+
 .booking-table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -18,54 +78,89 @@
 .booking-table th,
 .booking-table td {
   padding: 14px 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line, #e6ece8);
   vertical-align: middle;
 }
 
 .booking-table th {
-  color: var(--muted);
+  color: var(--muted, #496356);
   background: #fbfcfa;
   font-size: 12px;
   font-weight: 700;
+}
+
+.booking-table tbody tr {
+  transition: background-color 0.15s ease;
 }
 
 .booking-table tbody tr:hover {
   background: #f5faf6;
 }
 
+.booking-table td small {
+  display: block;
+  margin-top: 4px;
+  color: #7b8984;
+  font-size: 12px;
+}
+
+/* S2-10: Cảnh báo booking chờ xác nhận quá hạn giữ chỗ 24 giờ */
+.booking-table tbody tr.row-hold-expired {
+  background-color: #fff5f5;
+}
+
+.booking-table tbody tr.row-hold-expired:hover {
+  background-color: #fee8e8;
+}
+
+.badge-expired {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b91c1c;
+  background-color: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
 .booking-status {
   display: inline-flex;
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 5px 10px;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .booking-status.pending {
-  background: var(--orange-soft);
-  color: var(--orange);
+  background: var(--orange-soft, #fff3cd);
+  color: var(--orange, #996500);
 }
 
 .booking-status.confirmed {
-  background: var(--green-soft);
-  color: var(--green);
+  background: var(--green-soft, #dff6e8);
+  color: var(--green, #176c45);
 }
 
 .booking-status.cancelled {
-  background: var(--red-soft);
-  color: var(--red);
+  background: var(--red-soft, #ffe3e3);
+  color: var(--red, #a32626);
 }
 
 .booking-status.checked-in {
-  background: var(--blue-soft);
-  color: var(--blue);
+  background: var(--blue-soft, #e2efff);
+  color: var(--blue, #245b9b);
 }
 
 .booking-status.checked-out {
   background: #eeeef5;
   color: #56567d;
 }
+<<<<<<< HEAD
 .booking-filters {
   display: grid;
   grid-template-columns: 2fr 1.3fr 1fr 1fr auto auto;
@@ -103,12 +198,57 @@
 }
 
 @media (max-width: 900px) {
+=======
+
+.booking-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.booking-pagination button {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid #ccd6d1;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text, #1c2e26);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.booking-pagination button:hover:not(:disabled) {
+  background: #f1f4f2;
+  border-color: #9cb1a5;
+}
+
+.booking-pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.booking-pagination span {
+  font-size: 13px;
+  color: var(--muted, #496356);
+  font-weight: 500;
+}
+
+@media (max-width: 1000px) {
+>>>>>>> 6c8117e (Fix bugs and complete booking feature)
   .booking-filters {
     grid-template-columns: 1fr 1fr;
   }
 }
 
+<<<<<<< HEAD
 @media (max-width: 560px) {
+=======
+@media (max-width: 600px) {
+>>>>>>> 6c8117e (Fix bugs and complete booking feature)
   .booking-filters {
     grid-template-columns: 1fr;
   }

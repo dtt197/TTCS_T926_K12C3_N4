@@ -30,6 +30,25 @@ function toFormState(priceOverride?: PriceOverride): FormState {
 
 const money = new Intl.NumberFormat('vi-VN')
 
+function holidayDates() {
+  const today = new Date()
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  let start = new Date(today.getFullYear(), 3, 30)
+  if (start < todayStart) start = new Date(today.getFullYear() + 1, 3, 30)
+  const end = new Date(start.getFullYear(), 4, 1)
+  const toIsoDate = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return { startDate: toIsoDate(start), endDate: toIsoDate(end) }
+}
+
+// Đã đổi tên từ useHolidaySample thành getHolidaySample để tránh vi phạm Rules of Hooks
+function getHolidaySamplePrice(roomType: RoomType) {
+  const basePrice = roomType.weekendPrice ?? roomType.weekdayPrice
+  if (!basePrice || basePrice <= 0) return null
+  // Giá mẫu tham khảo: cộng 20% so với giá cuối tuần, làm tròn đến 10.000 VND.
+  return Math.round((basePrice * 1.2) / 10_000) * 10_000
+}
+
 /** S2-02 AC1: tên đợt, khoảng ngày áp dụng, loại phòng và giá một đêm. */
 export function PriceOverrideForm({ initial, roomTypes, onSubmit, onCancel }: PriceOverrideFormProps) {
   const [form, setForm] = useState<FormState>(() => toFormState(initial))
@@ -41,6 +60,18 @@ export function PriceOverrideForm({ initial, roomTypes, onSubmit, onCancel }: Pr
   }
 
   const price = /^\d+$/.test(form.pricePerNight.trim()) ? Number(form.pricePerNight.trim()) : null
+
+  function handleUseHolidaySample(roomType: RoomType) {
+    const samplePrice = getHolidaySamplePrice(roomType)
+    if (samplePrice === null) return
+    setForm({
+      name: 'Lễ 30/4 – 1/5',
+      roomTypeId: String(roomType.id),
+      ...holidayDates(),
+      pricePerNight: String(samplePrice),
+    })
+    setError(null)
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -111,10 +142,33 @@ export function PriceOverrideForm({ initial, roomTypes, onSubmit, onCancel }: Pr
         <input className="form-control" inputMode="numeric" value={form.pricePerNight} placeholder="900000"
           onChange={(e) => update('pricePerNight', e.target.value)} />
       </label>
+      {!initial && roomTypes.length > 0 && (
+        <section className="price-holiday-samples" aria-label="Mẫu giá dịp lễ">
+          <div className="price-holiday-samples-heading">
+            <h3>Mẫu giá lễ 30/4 – 1/5</h3>
+            <p>Giá tham khảo được tính bằng giá cuối tuần cộng 20%. Có thể chỉnh trước khi lưu.</p>
+          </div>
+          <div className="price-holiday-samples-list">
+            {roomTypes.map((roomType) => {
+              const samplePrice = getHolidaySamplePrice(roomType)
+              return (
+                <div className="price-holiday-sample" key={roomType.id}>
+                  <span>{roomType.name}</span>
+                  <strong>{samplePrice === null ? 'Chưa có giá nền' : `${money.format(samplePrice)} đ`}</strong>
+                  <button type="button" className="secondary-button" disabled={samplePrice === null}
+                    onClick={() => handleUseHolidaySample(roomType)}>
+                    Dùng mẫu
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
       {price !== null && price > 0 && (
         <p className="checkin-note">= {money.format(price)} đ / đêm</p>
       )}
-            <PriceOverridePreview
+      <PriceOverridePreview
         roomTypeId={form.roomTypeId}
         startDate={form.startDate}
         endDate={form.endDate}

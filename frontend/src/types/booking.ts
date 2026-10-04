@@ -4,11 +4,13 @@ export type BookingStatus =
   | 'DA_HUY'
   | 'DA_NHAN_PHONG'
   | 'DA_TRA_PHONG'
+  | 'DA_HET_HAN'
 
 /** S2-10: một dòng trong danh sách booking (GET /api/bookings, có phân trang). */
 export type BookingListItem = {
   bookingCode: string
   guestName: string
+  guestPhone?: string
   roomTypeNameSnapshot: string
   checkInDate: string
   checkOutDate: string
@@ -24,4 +26,27 @@ export type PageResponse<T> = {
   size: number
   totalElements: number
   totalPages: number
+}
+
+export type Booking = {
+  id: string
+  bookingCode: string
+  guestName: string
+  guestPhone: string
+  roomType: string
+  checkInDate: string
+  checkOutDate: string
+  totalAmount: number
+  status: BookingStatus
+  createdAt: string
+  holdExpired?: boolean
+}
+
+export type BookingFilter = {
+  keyword?: string
+  status?: BookingStatus | ''
+  checkInFrom?: string
+  checkInTo?: string
+  page?: number
+  size?: number
 }

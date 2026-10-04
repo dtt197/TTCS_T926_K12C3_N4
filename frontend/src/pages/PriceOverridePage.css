@@ -111,6 +111,35 @@
 .price-form-panel .primary-button,
 .price-form-panel .secondary-button { width: 100%; min-height: 38px; border-radius: 10px; }
 
+.price-holiday-samples {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid rgba(37, 92, 71, 0.12);
+  border-radius: 12px;
+  background: rgba(239, 247, 240, 0.72);
+}
+.price-holiday-samples-heading h3 { margin: 0; color: var(--pr-text); font-size: 12px; }
+.price-holiday-samples-heading p { margin: 4px 0 0; color: var(--pr-muted); font-size: 10px; line-height: 1.5; }
+.price-holiday-samples-list { display: grid; gap: 6px; }
+.price-holiday-sample {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--pr-text);
+  font-size: 10px;
+}
+.price-holiday-sample strong { white-space: nowrap; }
+.price-form-panel .price-holiday-sample .secondary-button {
+  width: auto;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.price-holiday-sample .secondary-button:disabled { cursor: not-allowed; opacity: .55; }
+
 @media (max-width: 1260px) {
   .price-workspace { grid-template-columns: 1fr; }
   .price-form-panel { position: static; }

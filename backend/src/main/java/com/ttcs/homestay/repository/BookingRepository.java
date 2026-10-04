@@ -9,12 +9,24 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.OffsetDateTime;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
+<<<<<<< HEAD
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
+=======
+
+
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
+
+public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpecificationExecutor<Booking> {
+>>>>>>> 6c8117e (Fix bugs and complete booking feature)
 
         List<Booking> findAllByOrderByCreatedAtDescIdDesc();
 
@@ -40,6 +52,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         List<Booking> findByStatusAndHoldExpiresAtLessThanEqual(
                 BookingStatus status,
                 OffsetDateTime now);
+<<<<<<< HEAD
                 @Query("""
     select b from Booking b
     where (:status is null or b.status = :status)
@@ -57,4 +70,33 @@ Page<Booking> search(
         @Param("checkInTo") LocalDate checkInTo,
         @Param("keyword") String keyword,
         Pageable pageable);
+=======
+
+        default Page<Booking> search(
+                BookingStatus status,
+                LocalDate checkInFrom,
+                LocalDate checkInTo,
+                String keyword,
+                Pageable pageable) {
+            return findAll((root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                if (status != null) {
+                    predicates.add(cb.equal(root.get("status"), status));
+                }
+                if (checkInFrom != null) {
+                    predicates.add(cb.greaterThanOrEqualTo(root.get("checkInDate"), checkInFrom));
+                }
+                if (checkInTo != null) {
+                    predicates.add(cb.lessThanOrEqualTo(root.get("checkInDate"), checkInTo));
+                }
+                if (keyword != null && !keyword.isBlank()) {
+                    String pattern = "%" + keyword.trim().toLowerCase() + "%";
+                    Predicate namePredicate = cb.like(cb.lower(root.get("guestName")), pattern);
+                    Predicate phonePredicate = cb.like(cb.lower(cb.coalesce(root.get("guestPhone"), "")), pattern);
+                    predicates.add(cb.or(namePredicate, phonePredicate));
+                }
+                return cb.and(predicates.toArray(new Predicate[0]));
+            }, pageable);
+        }
+>>>>>>> 6c8117e (Fix bugs and complete booking feature)
 }
