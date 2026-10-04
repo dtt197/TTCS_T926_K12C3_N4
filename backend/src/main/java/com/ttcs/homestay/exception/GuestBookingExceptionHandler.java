@@ -15,6 +15,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = PublicBookingController.class)
 public class GuestBookingExceptionHandler {
 
+    @ExceptionHandler(RoomTypeNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(RoomTypeNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(exception.getMessage()));
+    }
+
     @ExceptionHandler(InvalidGuestBookingException.class)
     public ResponseEntity<ApiError> handleInvalid(InvalidGuestBookingException exception) {
         return ResponseEntity.badRequest().body(ApiError.of(exception.getMessage()));

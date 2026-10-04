@@ -106,17 +106,17 @@ export function GuestBookingPage() {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-// Tính số đêm giữa ngày nhận và ngày trả
-const calculateNights = (checkIn: string, checkOut: string) => {
-  if (!checkIn || !checkOut) return 0;
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  const diffTime = end.getTime() - start.getTime();
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
-};
+  // Tính số đêm giữa ngày nhận và ngày trả
+  const calculateNights = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return 0;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
 
-const nights = calculateNights(form.checkInDate, form.checkOutDate);
+  const nights = calculateNights(form.checkInDate, form.checkOutDate);
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
@@ -181,15 +181,15 @@ const nights = calculateNights(form.checkInDate, form.checkOutDate);
       return
     }
 
-   setIsSubmitting(true)
+    setIsSubmitting(true)
     try {
       // Kiểm tra số lượng phòng trống thực tế theo thời gian khách chọn
       const availabilities = await searchAvailableRooms(
-        form.checkInDate, 
-        form.checkOutDate, 
+        form.checkInDate,
+        form.checkOutDate,
         Number(form.guestCount)
       );
-      
+
       const selectedRoomAvailability = availabilities.find(
         (item) => String(item.roomTypeId) === form.roomTypeId
       );
@@ -269,6 +269,22 @@ const nights = calculateNights(form.checkInDate, form.checkOutDate);
           </div>
         ) : (
           <form className="login-form" onSubmit={handleSubmit} noValidate>
+            <div style={{ marginBottom: '14px' }}>
+              <a
+                href="/phong"
+                style={{
+                  color: '#10513f',
+                  textDecoration: 'none',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                ← Quay lại xem danh sách phòng
+              </a>
+            </div>
             <p className="eyebrow">Yêu cầu đặt phòng</p>
             <h2>Thông tin đặt phòng</h2>
             <p className="form-intro">Điền thông tin bên dưới, lễ tân sẽ liên hệ xác nhận.</p>
@@ -288,52 +304,52 @@ const nights = calculateNights(form.checkInDate, form.checkOutDate);
               </select>
             </div>
 
-           <div className="field-row">
-  <div className="field">
-    <label htmlFor="guest-check-in">Ngày nhận phòng</label>
-    <input 
-      id="guest-check-in" 
-      type="date" 
-      min={today} 
-      value={form.checkInDate}
-      onChange={(event) => {
-        const newCheckIn = event.target.value;
-        let newCheckOut = form.checkOutDate;
-        if (!newCheckOut || newCheckOut <= newCheckIn) {
-          const d = new Date(newCheckIn);
-          d.setDate(d.getDate() + 1);
-          newCheckOut = d.toISOString().split('T')[0];
-        }
-        setForm(current => ({
-          ...current,
-          checkInDate: newCheckIn,
-          checkOutDate: newCheckOut
-        }));
-      }} 
-    />
-  </div>
-  
-  <div className="field">
-    <label htmlFor="guest-check-out">
-      Ngày trả phòng {nights > 0 && `(${nights} đêm)`}
-    </label>
-    <input 
-      id="guest-check-out" 
-      type="date" 
-      min={form.checkInDate ? (() => {
-        const d = new Date(form.checkInDate);
-        d.setDate(d.getDate() + 1);
-        return d.toISOString().split('T')[0];
-      })() : today} 
-      value={form.checkOutDate}
-      onChange={(event) => update('checkOutDate', event.target.value)} 
-    />
-    {nights > 30 && (
-      <p className="field-error">Khoảng thời gian tra cứu tối đa là 30 đêm.</p>
-    )}
-  </div>
-</div>
-              
+            <div className="field-row">
+              <div className="field">
+                <label htmlFor="guest-check-in">Ngày nhận phòng</label>
+                <input
+                  id="guest-check-in"
+                  type="date"
+                  min={today}
+                  value={form.checkInDate}
+                  onChange={(event) => {
+                    const newCheckIn = event.target.value;
+                    let newCheckOut = form.checkOutDate;
+                    if (!newCheckOut || newCheckOut <= newCheckIn) {
+                      const d = new Date(newCheckIn);
+                      d.setDate(d.getDate() + 1);
+                      newCheckOut = d.toISOString().split('T')[0];
+                    }
+                    setForm(current => ({
+                      ...current,
+                      checkInDate: newCheckIn,
+                      checkOutDate: newCheckOut
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="guest-check-out">
+                  Ngày trả phòng {nights > 0 && `(${nights} đêm)`}
+                </label>
+                <input
+                  id="guest-check-out"
+                  type="date"
+                  min={form.checkInDate ? (() => {
+                    const d = new Date(form.checkInDate);
+                    d.setDate(d.getDate() + 1);
+                    return d.toISOString().split('T')[0];
+                  })() : today}
+                  value={form.checkOutDate}
+                  onChange={(event) => update('checkOutDate', event.target.value)}
+                />
+                {nights > 30 && (
+                  <p className="field-error">Khoảng thời gian tra cứu tối đa là 30 đêm.</p>
+                )}
+              </div>
+            </div>
+
             <GuestQuoteTable
               roomTypeId={form.roomTypeId}
               roomTypeName={selectedRoomType?.name ?? ''}
@@ -373,7 +389,7 @@ const nights = calculateNights(form.checkInDate, form.checkOutDate);
                 <label htmlFor="guest-count">Số khách</label>
                 <input id="guest-count" type="number" min={1} max={selectedRoomType?.maxCapacity}
                   value={form.guestCount} onChange={(event) => update('guestCount', event.target.value)} />
-                  {selectedRoomType && (
+                {selectedRoomType && (
                   <p className="guest-capacity-hint">
                     Tiêu chuẩn {selectedRoomType.standardCapacity}, tối đa {selectedRoomType.maxCapacity} khách
                   </p>
