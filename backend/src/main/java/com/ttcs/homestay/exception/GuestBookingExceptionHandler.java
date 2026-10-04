@@ -30,6 +30,11 @@ public class GuestBookingExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(exception.getMessage()));
     }
 
+    @ExceptionHandler({RoomTypeNotFoundException.class, RoomTypeUnavailableException.class})
+    public ResponseEntity<ApiError> handleRoomTypeUnavailable(RuntimeException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(exception.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()

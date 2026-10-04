@@ -302,6 +302,11 @@ export function GuestBookingPage() {
                   </option>
                 ))}
               </select>
+              {selectedRoomType && (
+                <a className="guest-room-type-details-link" href={`/loai-phong/${selectedRoomType.id}`}>
+                  Xem chi tiết loại phòng
+                </a>
+              )}
             </div>
 
             <div className="field-row">

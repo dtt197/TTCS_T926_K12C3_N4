@@ -3,6 +3,7 @@ import type {
   GuestBookingPayload,
   GuestBookingResult,
   GuestQuote,
+  PublicRoomTypeDetails,
   PublicRoomTypeOption,
 } from '../types/guestBooking'
 import type { PublicRoomTypeDetail } from '../types/roomDetail'
@@ -12,6 +13,10 @@ export function getPublicRoomTypes() {
   return apiRequest<PublicRoomTypeOption[]>('/api/public/room-types')
 }
 
+<<<<<<< HEAD
+export function getPublicRoomType(roomTypeId: number) {
+  return apiRequest<PublicRoomTypeDetails>(`/api/public/room-types/${roomTypeId}`)
+=======
 /** S2-04: Danh mục loại phòng công khai cho khách xem. */
 export function getPublicRoomTypesCatalog() {
   return apiRequest<PublicRoomTypeDetail[]>('/api/public/room-types-catalog')
@@ -20,6 +25,7 @@ export function getPublicRoomTypesCatalog() {
 /** S2-04: Chi tiết một loại phòng công khai cho khách xem (bộ ảnh, mô tả, tiện nghi, sức chứa, số phòng trống). */
 export function getPublicRoomTypeDetail(id: number | string) {
   return apiRequest<PublicRoomTypeDetail>(`/api/public/room-types/${id}`)
+>>>>>>> develop
 }
 
 export function createGuestBooking(payload: GuestBookingPayload) {

@@ -17,6 +17,8 @@ import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.InvalidGuestBookingException;
 import com.ttcs.homestay.exception.RoomUnavailableException;
+import com.ttcs.homestay.exception.RoomTypeNotFoundException;
+import com.ttcs.homestay.exception.RoomTypeUnavailableException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.Duration;
@@ -188,6 +190,35 @@ class GuestBookingServiceTest {
         assertThatThrownBy(() -> guestBookingService.createGuestBooking(request(2)))
                 .isInstanceOf(InvalidGuestBookingException.class)
                 .hasMessageContaining("ngừng bán");
+    }
+
+    @Test
+    void chiTietLoaiPhongDangBan_duocTraVeChoKhach() {
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+
+        var details = guestBookingService.getPublicRoomType(1L);
+
+        assertThat(details.id()).isEqualTo(1L);
+        assertThat(details.name()).isEqualTo("Phòng đôi");
+        assertThat(details.maxCapacity()).isEqualTo(3);
+    }
+
+    @Test
+    void chiTietLoaiPhongKhongTonTai_baoNotFound() {
+        when(roomTypeRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> guestBookingService.getPublicRoomType(999L))
+                .isInstanceOf(RoomTypeNotFoundException.class);
+    }
+
+    @Test
+    void chiTietLoaiPhongNgungBan_baoUnavailable() {
+        phongDoi.setStatus(false);
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+
+        assertThatThrownBy(() -> guestBookingService.getPublicRoomType(1L))
+                .isInstanceOf(RoomTypeUnavailableException.class)
+                .hasMessage("Loại phòng này hiện đã ngừng bán");
     }
     
     @Test

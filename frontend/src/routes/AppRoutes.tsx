@@ -6,11 +6,15 @@ import { LoginPage } from '../pages/LoginPage'
 import { PublicRoomSearchPage } from '../pages/PublicRoomSearchPage'
 import { ResetPasswordPage } from '../pages/ResetPasswordPage'
 <<<<<<< HEAD
+import { RoomTypeDetailsPage } from '../pages/RoomTypeDetailsPage'
+=======
+<<<<<<< HEAD
 import { PublicRoomListPage } from '../pages/PublicRoomListPage'
 import { RoomDetailPage } from '../pages/RoomDetailPage'
 =======
 import { RoomTypeListPage } from '../pages/RoomTypeListPage' 
 >>>>>>> 139dbf09ff974da47ff650f29e1303613e19cb68
+>>>>>>> develop
 import type { LoginResponse } from '../types/auth'
 
 type AppRoutesProps = {
@@ -40,6 +44,11 @@ export function AppRoutes({
     // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
     page = <GuestBookingPage />
 <<<<<<< HEAD
+  } else if (pathname === '/loai-phong' || pathname.startsWith('/loai-phong/')) {
+    const roomTypeId = Number(pathname.slice('/loai-phong/'.length))
+    page = <RoomTypeDetailsPage roomTypeId={Number.isSafeInteger(roomTypeId) && roomTypeId > 0 ? roomTypeId : null} />
+=======
+<<<<<<< HEAD
   } else if (pathname === '/loai-phong') {
     page = <PublicRoomListPage />
   } else if (pathname.startsWith('/loai-phong/')) {
@@ -53,6 +62,7 @@ export function AppRoutes({
     // S2-03: trang danh sách loại phòng công khai, khách không cần đăng nhập
     page = <RoomTypeListPage />
 >>>>>>> 139dbf09ff974da47ff650f29e1303613e19cb68
+>>>>>>> develop
   } else if (!user) {
     page = <LoginPage onLogin={onLogin} />
   } else if (user.mustChangePassword) {
