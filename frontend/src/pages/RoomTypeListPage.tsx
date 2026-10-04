@@ -3,6 +3,8 @@ import { getPublicRoomTypeCards } from '../services/publicRoomTypeService'
 import type { PublicRoomTypeCard } from '../types/publicRoomType'
 import './RoomTypeListPage.css'
 
+const DEFAULT_COVER_IMAGE = '/room-images/room-1.jpg'
+
 function formatPrice(price: number | null): string {
   if (price === null) {
     return 'Liên hệ để biết giá'
@@ -66,19 +68,15 @@ export function RoomTypeListPage() {
         <ul className="room-list__grid">
           {cards.map((card) => (
             <li key={card.id} className="room-card">
-              {card.imageUrl ? (
-                <img
-                  className="room-card__image"
-                  src={card.imageUrl}
-                  alt={card.imageAlt}
-                />
-              ) : (
-                <div
-                  className="room-card__image room-card__image--empty"
-                  role="img"
-                  aria-label={card.imageAlt}
-                />
-              )}
+              <img
+                className="room-card__image"
+                src={card.imageUrl || DEFAULT_COVER_IMAGE}
+                alt={card.imageAlt || `Ảnh ${card.name}`}
+                onError={(event) => {
+                  event.currentTarget.onerror = null
+                  event.currentTarget.src = DEFAULT_COVER_IMAGE
+                }}
+              />
               <div className="room-card__body">
                 <h2 className="room-card__name">{card.name}</h2>
                 <p className="room-card__capacity">{formatCapacity(card)}</p>
