@@ -82,6 +82,16 @@
   overflow-wrap: anywhere;
 }
 
+.room-card__details-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-top: 8px;
+  color: #10513f;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 @media (min-width: 640px) {
   .room-list__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

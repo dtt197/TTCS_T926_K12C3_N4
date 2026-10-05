@@ -56,6 +56,9 @@ export function RoomTypeDetailsPage({ roomTypeId }: RoomTypeDetailsPageProps) {
       </section>
 
       <section className="form-panel">
+        <a className="room-type-details-back" href="/danh-sach-loai-phong">
+          ← Quay lại danh sách loại phòng
+        </a>
         {roomType ? (
           <article className="login-form room-type-details-card">
             <p className="eyebrow">Chi tiết loại phòng</p>

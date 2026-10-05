@@ -84,7 +84,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(0,0,0,0.08)', textAlign: 'center' }}>
             <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#74817b' }}>Bạn là khách hàng đang tìm phòng nghỉ?</p>
-            <a href="/phong" style={{ color: '#10513f', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}>
+            <a href="/danh-sach-loai-phong" style={{ color: '#10513f', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}>
               🌿 Khám phá danh sách loại phòng & Đặt ngay →
             </a>
           </div>
