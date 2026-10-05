@@ -52,3 +52,10 @@
   color: #74817b;
   font-weight: 500;
 }
+
+/* S2-08 Lát 2: thông báo quá số lần tra cứu sai, màu cảnh báo khác lỗi nhập sai */
+.login-layout .error-message.booking-lookup-limit {
+  border-left-color: #d97706;
+  background: #fff7e6;
+  color: #8a5a00;
+}

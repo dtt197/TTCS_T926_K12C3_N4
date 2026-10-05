@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { ApiRequestError } from '../services/apiClient'
 import { lookupBooking } from '../services/bookingLookupService'
 import type { BookingLookupResult } from '../types/bookingLookup'
 import './AuthPages.css'
@@ -34,10 +35,12 @@ export function BookingLookupPage() {
   const [result, setResult] = useState<BookingLookupResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-
+    // S2-08 Lát 2: quá 10 lần tra cứu sai trong 15 phút thì thông báo hiện màu cảnh báo riêng
+  const [limited, setLimited] = useState(false)
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!bookingCode.trim() || !email.trim()) {
+      setLimited(false)
       setError('Vui lòng nhập mã booking và email')
       return
     }
@@ -48,6 +51,7 @@ export function BookingLookupPage() {
       setResult(await lookupBooking(bookingCode.trim(), email.trim()))
     } catch (err) {
       setResult(null)
+      setLimited(err instanceof ApiRequestError && err.status === 429)
       setError(errorMessage(err))
     } finally {
       setSubmitting(false)
@@ -120,7 +124,11 @@ export function BookingLookupPage() {
             <h2>Xem lại đặt phòng</h2>
             <p className="form-intro">Mã booking gồm 8 ký tự, có trong thông báo khi bạn đặt phòng thành công.</p>
 
-            {error && <p className="error-message" role="alert">{error}</p>}
+              {error && (
+              <p className={limited ? 'error-message booking-lookup-limit' : 'error-message'} role="alert">
+                {error}
+              </p>
+            )}
 
             <div className="field">
               <label htmlFor="lookup-code">Mã booking</label>
