@@ -82,14 +82,38 @@
   overflow-wrap: anywhere;
 }
 
-.room-card__details-link {
+.room-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.room-card__details-link,
+.room-card__availability-link {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
-  margin-top: 8px;
-  color: #10513f;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.room-card__details-link {
+  color: #10513f;
+}
+
+.room-card__availability-link {
+  justify-content: center;
+  border-radius: 4px;
+  padding: 0 12px;
+  background: #10513f;
+  color: #fff;
+  text-decoration: none;
+}
+
+.room-card__availability-link:hover {
+  background: #0b3d31;
 }
 
 @media (min-width: 640px) {
