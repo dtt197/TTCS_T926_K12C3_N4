@@ -27,7 +27,9 @@ public final class RoomStatusPolicy {
         LocalDate startDate,
         LocalDate endDate
 ) {
+    // S1-10 AC3: phải có cả ngày bắt đầu và ngày kết thúc dự kiến, kết thúc không trước bắt đầu
     return startDate != null
-            && (endDate == null || !endDate.isBefore(startDate));
+            && endDate != null
+            && !endDate.isBefore(startDate);
 }
 }

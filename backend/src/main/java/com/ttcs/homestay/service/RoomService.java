@@ -110,7 +110,7 @@ public List<RoomStatusHistoryResponse> getHistory(
         }
         if (!RoomStatusPolicy.hasValidMaintenancePeriod(request.startDate(), request.endDate())) {
             throw new RoomStatusConflictException(
-                    "Khoảng ngày bảo trì không hợp lệ. Ngày kết thúc phải từ ngày bắt đầu trở đi.");
+                    "Khoảng ngày bảo trì không hợp lệ. Vui lòng nhập ngày kết thúc dự kiến, từ ngày bắt đầu trở đi.");
         }
 
         RoomStatus previousStatus = room.getStatus();

@@ -138,8 +138,8 @@ class RoomServiceTest {
     }
 
     @Test
-    @DisplayName("Cho phép bảo trì chưa có ngày kết thúc dự kiến")
-    void maintenanceWithoutExpectedEndDate_shouldSucceed() {
+        @DisplayName("S1-10 AC3: bảo trì thiếu ngày kết thúc dự kiến bị từ chối, không lưu và không ghi lịch sử")
+    void maintenanceWithoutExpectedEndDate_shouldReject() {
         Long roomId = 202L;
         Room room = new Room();
         room.setId(roomId);
@@ -148,18 +148,17 @@ class RoomServiceTest {
         room.setRoomType("Phòng đơn");
         room.setStatus(RoomStatus.TRONG_SACH);
         when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
-        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        LocalDate startDate = LocalDate.now();
-        RoomResponse response = roomService.putIntoMaintenance(
+        assertThatThrownBy(() -> roomService.putIntoMaintenance(
                 roomId,
-                new MaintenanceRequest("Chờ linh kiện", startDate, null),
-                "Lễ tân"
-        );
+                new MaintenanceRequest("Chờ linh kiện", LocalDate.now(), null),
+                "Lễ tân"))
+                .isInstanceOf(RoomStatusConflictException.class)
+                .hasMessageContaining("ngày kết thúc dự kiến");
 
-        assertThat(response.status()).isEqualTo(RoomStatus.BAO_TRI);
-        assertThat(response.maintenanceStartDate()).isEqualTo(startDate);
-        assertThat(response.maintenanceEndDate()).isNull();
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_SACH);
+        verify(roomRepository, never()).save(any(Room.class));
+        verify(roomStatusHistoryRepository, never()).save(any(RoomStatusHistory.class));
     }
 
     @Test

@@ -24,7 +24,7 @@ class RoomStatusPolicyTest {
         assertTrue(RoomStatusPolicy.canChangeTo(RoomStatus.TRONG_BAN, RoomStatus.TRONG_SACH));
     }
     @Test
-void maintenancePeriodMayBeOpenEndedAndCannotEndBeforeStartDate() {
+void maintenancePeriodRequiresEndDateAndCannotEndBeforeStartDate() {
     assertTrue(RoomStatusPolicy.hasValidMaintenancePeriod(
             LocalDate.of(2026, 9, 1),
             LocalDate.of(2026, 9, 1)
@@ -35,7 +35,8 @@ void maintenancePeriodMayBeOpenEndedAndCannotEndBeforeStartDate() {
             LocalDate.of(2026, 9, 10)
     ));
 
-    assertTrue(RoomStatusPolicy.hasValidMaintenancePeriod(
+    // S1-10 AC3: bắt buộc khoảng ngày dự kiến, thiếu ngày kết thúc là không hợp lệ
+    assertFalse(RoomStatusPolicy.hasValidMaintenancePeriod(
             LocalDate.of(2026, 9, 1),
             null
     ));
