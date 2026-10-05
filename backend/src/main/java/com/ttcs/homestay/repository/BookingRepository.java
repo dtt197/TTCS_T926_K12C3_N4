@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpecificationExecutor<Booking> {
 
@@ -22,6 +23,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
 
     /** S2-07: mã booking đã có chưa (sinh lại nếu trùng). */
     boolean existsByBookingCode(String bookingCode);
+    
+    /** S2-08: tìm booking theo mã để khách tra cứu. */
+    Optional<Booking> findByBookingCode(String bookingCode);
 
     /**
      * S2-07: booking của một loại phòng có ít nhất một đêm trong [checkIn, checkOut).

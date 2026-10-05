@@ -1,0 +1,54 @@
+/* S2-08: trang tra cứu booking, dùng chung khung với trang đặt phòng (GuestBookingPage.css). */
+.booking-lookup-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.booking-lookup-code-input::placeholder {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.booking-lookup-result h2 {
+  overflow-wrap: anywhere;
+}
+
+.booking-lookup-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  background: #eef1f0;
+  color: #44514c;
+}
+
+.booking-lookup-status.pending {
+  background: #fff4dc;
+  color: #8a5a00;
+}
+
+.booking-lookup-status.confirmed {
+  background: #e3f4ea;
+  color: #166534;
+}
+
+.booking-lookup-status.checked-in {
+  background: #e0ecff;
+  color: #1d4ed8;
+}
+
+.booking-lookup-status.checked-out {
+  background: #eef1f0;
+  color: #44514c;
+}
+
+.booking-lookup-status.cancelled {
+  background: #fde8e8;
+  color: #b42318;
+}
+
+.booking-lookup-muted {
+  color: #74817b;
+  font-weight: 500;
+}
