@@ -12,6 +12,7 @@ export type PublicRoomTypeDetails = PublicRoomTypeOption & {
   description: string | null
   weekdayPrice: number | null
   weekendPrice: number | null
+  images: string[]
 }
 
 export type GuestBookingPayload = {

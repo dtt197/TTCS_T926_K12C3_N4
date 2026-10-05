@@ -63,6 +63,13 @@ export function RoomTypeDetailsPage({ roomTypeId }: RoomTypeDetailsPageProps) {
           <article className="login-form room-type-details-card">
             <p className="eyebrow">Chi tiết loại phòng</p>
             <h2>{roomType.name}</h2>
+            {roomType.images.length > 0 && (
+              <img
+                className="room-type-details-image"
+                src={roomType.images[0]}
+                alt={`Ảnh ${roomType.name}`}
+              />
+            )}
             {roomType.description && <p className="form-intro">{roomType.description}</p>}
             <dl className="guest-booking-summary">
               <dt>Mã loại phòng</dt>
