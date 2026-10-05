@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.repository.RoomTypeRepository;
+import com.ttcs.homestay.service.PublicBookingDatePolicy;
 import com.ttcs.homestay.service.RoomAvailabilityService;
 import java.time.LocalDate;
 import java.util.List;
@@ -69,6 +70,35 @@ class PublicRoomControllerTest {
                 controller.searchAvailableRooms(CHECK_IN, CHECK_OUT, 3);
 
         assertThat(response.getBody()).isEqualTo(List.of());
+    }
+
+    @Test
+    void searchCheckInToiDa12ThangVaKyNghi30DemVanHopLe() {
+        LocalDate checkIn = PublicBookingDatePolicy.maximumCheckInDate(PublicBookingDatePolicy.today());
+        when(roomTypeRepository.findAll()).thenReturn(List.of());
+
+        ResponseEntity<?> boundaryResponse = controller.searchAvailableRooms(
+                checkIn, checkIn.plusDays(1), 2);
+        ResponseEntity<?> thirtyNightsResponse = controller.searchAvailableRooms(
+                CHECK_IN, CHECK_IN.plusDays(30), 2);
+
+        assertThat(boundaryResponse.getStatusCode().value()).isEqualTo(200);
+        assertThat(thirtyNightsResponse.getStatusCode().value()).isEqualTo(200);
+    }
+
+    @Test
+    void searchCheckInQua12ThangVaNam9999BiTuChoi() {
+        LocalDate maximumCheckIn = PublicBookingDatePolicy.maximumCheckInDate(PublicBookingDatePolicy.today());
+
+        assertThatThrownBy(() -> controller.searchAvailableRooms(
+                        maximumCheckIn.plusDays(1), maximumCheckIn.plusDays(2), 2))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("không được quá 12 tháng");
+        assertThatThrownBy(() -> controller.searchAvailableRooms(
+                        LocalDate.of(9999, 1, 1), LocalDate.of(9999, 1, 2), 2))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("không được quá 12 tháng");
+        verify(roomTypeRepository, never()).findAll();
     }
 
     @Test

@@ -76,6 +76,16 @@ private Long weekendPrice;
     @Column(name = "extra_person_fee")
     private Long extraPersonFee;
 
+    public long effectiveExtraPersonFee(Long fallbackFee) {
+        if (extraPersonFee != null) {
+            return extraPersonFee;
+        }
+        if (fallbackFee == null) {
+            throw new IllegalStateException("Operating settings are required when the room type has no extra person fee");
+        }
+        return fallbackFee;
+    }
+
     @Column(name = "cancellation_policy", length = 500)
     private String cancellationPolicy;
 

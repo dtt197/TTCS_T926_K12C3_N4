@@ -6,9 +6,6 @@ import './PublicRoomSearchPage.css'
 
 const MAX_STAY_NIGHTS = 30
 
-/** Giới hạn trên cho ô ngày: không có thì trình duyệt cho gõ năm tới 6 chữ số. */
-const MAX_DATE = '9999-12-31'
-
 /** S2-04 AC4: mở từ trang chi tiết loại phòng (/tim-phong?roomTypeId=...) thì loại phòng đó được chọn sẵn. */
 function roomTypeIdFromUrl() {
   const id = Number(new URLSearchParams(window.location.search).get('roomTypeId'))
@@ -18,6 +15,14 @@ function roomTypeIdFromUrl() {
 function todayIso() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+function addMonths(isoDate: string, months: number) {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const target = new Date(year, month - 1 + months, 1)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(day, lastDay))
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}`
 }
 
 function addDays(isoDate: string, days: number) {
@@ -38,6 +43,8 @@ function getErrorMessage(err: unknown) {
 }
 
 export function PublicRoomSearchPage() {
+  const [today] = useState(todayIso)
+  const maxCheckInDate = addMonths(today, 12)
   const [selectedRoomTypeId] = useState(roomTypeIdFromUrl)
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
@@ -55,8 +62,12 @@ export function PublicRoomSearchPage() {
       setError('Vui lòng chọn ngày nhận phòng và ngày trả phòng.')
       return
     }
-    if (checkIn < todayIso()) {
+    if (checkIn < today) {
       setError('Ngày nhận phòng không được trước ngày hiện tại.')
+      return
+    }
+    if (checkIn > maxCheckInDate) {
+      setError('Ngày nhận phòng không được quá 12 tháng kể từ ngày hiện tại.')
       return
     }
     if (checkOut <= checkIn) {
@@ -87,7 +98,7 @@ export function PublicRoomSearchPage() {
     }
   }
 
-  const minCheckOut = checkIn ? addDays(checkIn, 1) : todayIso()
+  const minCheckOut = checkIn ? addDays(checkIn, 1) : today
   const maxCheckOut = checkIn ? addDays(checkIn, MAX_STAY_NIGHTS) : undefined
   const selectedNights = checkIn && checkOut && checkOut > checkIn
     ? nightsBetween(checkIn, checkOut)
@@ -136,8 +147,8 @@ export function PublicRoomSearchPage() {
                 <input
                   id="search-check-in"
                   type="date"
-                  min={todayIso()}
-                  max={MAX_DATE}
+                  min={today}
+                  max={maxCheckInDate}
                   value={checkIn}
                   onChange={(event) => {
                     const nextCheckIn = event.target.value
@@ -159,7 +170,7 @@ export function PublicRoomSearchPage() {
                   id="search-check-out"
                   type="date"
                   min={minCheckOut}
-                  max={maxCheckOut ?? MAX_DATE}
+                  max={maxCheckOut ?? addDays(maxCheckInDate, MAX_STAY_NIGHTS)}
                   value={checkOut}
                   onChange={(event) => {
                     setCheckOut(event.target.value)

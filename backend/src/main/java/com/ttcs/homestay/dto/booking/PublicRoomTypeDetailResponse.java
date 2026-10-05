@@ -95,9 +95,8 @@ public record PublicRoomTypeDetailResponse(
                         : "Không cho phép mang theo trẻ nhỏ (loại phòng này chỉ dành cho người lớn từ 18 tuổi trở lên).");
 
         // 3. Mức phụ thu thêm người
-        long effectiveExtraFee = roomType.getExtraPersonFee() != null
-                ? roomType.getExtraPersonFee()
-                : (settings != null ? settings.getExtraPersonFee() : 200000L);
+        long effectiveExtraFee = roomType.effectiveExtraPersonFee(
+                settings != null ? settings.getExtraPersonFee() : null);
 
         // 4. Chính sách hủy phòng
         String effectiveCancellationPolicy = (roomType.getCancellationPolicy() != null && !roomType.getCancellationPolicy().isBlank())

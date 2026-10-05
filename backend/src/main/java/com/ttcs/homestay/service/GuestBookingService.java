@@ -270,8 +270,9 @@ public class GuestBookingService {
         long nightsTotal = PricingService.total(nightlyPrices);
         int extraGuests = Math.max(0, guestCount - roomType.getStandardCapacity());
         int minimumRooms = (guestCount - 1) / roomType.getMaxCapacity() + 1;
+        long extraPersonFee = roomType.effectiveExtraPersonFee(settings.getExtraPersonFee());
         long surchargeAmount = Math.multiplyExact(
-                Math.multiplyExact((long) extraGuests, settings.getExtraPersonFee()), nightlyPrices.size());
+                Math.multiplyExact((long) extraGuests, extraPersonFee), nightlyPrices.size());
         return new GuestQuoteResponse(
                 roomType.getId(),
                 roomType.getName(),
@@ -287,7 +288,7 @@ public class GuestBookingService {
                 minimumRooms,
                 alternatives,
                 extraGuests,
-                settings.getExtraPersonFee(),
+                extraPersonFee,
                 surchargeAmount,
                 Math.addExact(nightsTotal, surchargeAmount));
     }
@@ -307,8 +308,12 @@ public class GuestBookingService {
         if (!checkOut.isAfter(checkIn)) {
             throw new InvalidGuestBookingException("Ngày trả phòng phải sau ngày nhận phòng ít nhất một đêm");
         }
-        if (checkIn.isBefore(LocalDate.now(HOMESTAY_ZONE))) {
+        LocalDate today = PublicBookingDatePolicy.today();
+        if (checkIn.isBefore(today)) {
             throw new InvalidGuestBookingException("Ngày nhận phòng không được ở trong quá khứ");
+        }
+        if (PublicBookingDatePolicy.isCheckInTooFar(checkIn, today)) {
+            throw new InvalidGuestBookingException(PublicBookingDatePolicy.CHECK_IN_TOO_FAR_MESSAGE);
         }
         if (ChronoUnit.DAYS.between(checkIn, checkOut) > MAX_NIGHTS) {
             throw new InvalidGuestBookingException("Mỗi lần đặt tối đa " + MAX_NIGHTS + " đêm");

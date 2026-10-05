@@ -19,6 +19,8 @@ import com.ttcs.homestay.repository.PriceOverrideRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.DayOfWeek;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class GuestQuoteTest {
 
-    private static final LocalDate MONDAY = LocalDate.of(2030, 5, 6);
+    private static final LocalDate MONDAY = LocalDate.now().with(TemporalAdjusters.next(DayOfWeek.MONDAY));
 
     @Mock
     private BookingRepository bookingRepository;
@@ -167,6 +169,39 @@ class GuestQuoteTest {
                 .hasMessageContaining("tối đa 30 đêm");
     }
 
+    @Test
+    void checkInToiDa12Thang_quoteHopLe() {
+        LocalDate checkIn = PublicBookingDatePolicy.maximumCheckInDate(PublicBookingDatePolicy.today());
+        coSan(roomType(1L, "Phòng đôi", 500_000L, 700_000L));
+
+        GuestQuoteResponse quote = guestBookingService.quote(1L, checkIn, checkIn.plusDays(1), 2);
+
+        assertThat(quote.checkIn()).isEqualTo(checkIn);
+    }
+
+    @Test
+    void checkInQua12ThangVaNam9999_quoteBiTuChoi() {
+        LocalDate maximumCheckIn = PublicBookingDatePolicy.maximumCheckInDate(PublicBookingDatePolicy.today());
+
+        assertThatThrownBy(() -> guestBookingService.quote(
+                        1L, maximumCheckIn.plusDays(1), maximumCheckIn.plusDays(2), 2))
+                .isInstanceOf(InvalidGuestBookingException.class)
+                .hasMessageContaining("không được quá 12 tháng");
+        assertThatThrownBy(() -> guestBookingService.quote(
+                        1L, LocalDate.of(9999, 1, 1), LocalDate.of(9999, 1, 2), 2))
+                .isInstanceOf(InvalidGuestBookingException.class)
+                .hasMessageContaining("không được quá 12 tháng");
+    }
+
+    @Test
+    void kyNghiDung30Dem_quoteVanHopLe() {
+        coSan(roomType(1L, "Phòng đôi", 500_000L, 700_000L));
+
+        GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(30), 2);
+
+        assertThat(quote.nights()).isEqualTo(30);
+    }
+
     // ---- Lát 2: phụ thu thêm người (mỗi người vượt sức chứa tiêu chuẩn, mỗi đêm) ----
 
     @Test
@@ -192,6 +227,29 @@ class GuestQuoteTest {
         assertThat(quote.extraPersonFee()).isEqualTo(200_000L);
         assertThat(quote.surchargeAmount()).isEqualTo(400_000L); // 1 người × 200.000 × 2 đêm
         assertThat(quote.totalAmount()).isEqualTo(1_400_000L);
+    }
+
+    @Test
+    void vuot1Nguoi_loaiPhongCoPhuThuRieng_quoteDungMucRieng() {
+        RoomType phongDoi = roomType(1L, "Phòng đôi", 500_000L, 700_000L);
+        phongDoi.setExtraPersonFee(250_000L);
+        coSan(phongDoi);
+
+        GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 3);
+
+        assertThat(quote.extraPersonFee()).isEqualTo(250_000L);
+        assertThat(quote.surchargeAmount()).isEqualTo(500_000L);
+    }
+
+    @Test
+    void vuot1Nguoi_loaiPhongKhongCoPhuThuRieng_quoteFallbackVeOperatingSettings() {
+        settings.setExtraPersonFee(300_000L);
+        coSan(roomType(1L, "Phòng đôi", 500_000L, 700_000L));
+
+        GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 3);
+
+        assertThat(quote.extraPersonFee()).isEqualTo(300_000L);
+        assertThat(quote.surchargeAmount()).isEqualTo(600_000L);
     }
 
     @Test
