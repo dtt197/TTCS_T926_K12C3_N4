@@ -1,7 +1,10 @@
 package com.ttcs.homestay.exception;
 
 import com.ttcs.homestay.controller.booking.PublicBookingLookupController;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.stream.Collectors;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -16,6 +19,14 @@ public class BookingLookupExceptionHandler {
     @ExceptionHandler(BookingLookupNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(BookingLookupNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(exception.getMessage()));
+    }
+        /** S2-08 Lát 2: quá 10 lần tra cứu sai trong 15 phút, kèm số giây chờ trong header Retry-After. */
+    @ExceptionHandler(BookingLookupLimitException.class)
+    public ResponseEntity<ApiError> handleLimit(BookingLookupLimitException exception) {
+        long retryAfterSeconds = Math.max(1, Duration.between(Instant.now(), exception.getRetryAt()).getSeconds());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds))
+                .body(ApiError.of(exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
