@@ -189,6 +189,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/room-type-cards").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
+                        // S2-08: khách tra cứu booking bằng mã và email
+                        .requestMatchers(HttpMethod.POST, "/api/public/bookings/lookup").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()
 
                         // S2-09: Tệp ảnh tĩnh loại phòng công khai

@@ -1,3 +1,4 @@
+import { BookingLookupPage } from '../pages/BookingLookupPage'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage'
 import { GuestBookingPage } from '../pages/GuestBookingPage'
@@ -37,6 +38,9 @@ export function AppRoutes({
   } else if (pathname === '/dat-phong') {
     // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
     page = <GuestBookingPage />
+      } else if (pathname === '/tra-cuu-booking') {
+    // S2-08: khách tra cứu booking bằng mã và email, không cần đăng nhập
+    page = <BookingLookupPage />
   } else if (pathname === '/loai-phong') {
     page = <PublicRoomListPage />
   } else if (pathname.startsWith('/loai-phong/')) {
