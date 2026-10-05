@@ -42,7 +42,7 @@ export function PublicRoomListPage({ onSelectRoomType }: PublicRoomListPageProps
     if (onSelectRoomType) {
       onSelectRoomType(id)
     } else {
-      window.location.assign(`/phong/${id}`)
+      window.location.assign(`/loai-phong/${id}`)
     }
   }
 
@@ -65,13 +65,13 @@ export function PublicRoomListPage({ onSelectRoomType }: PublicRoomListPageProps
       {/* Top Navbar */}
       <nav className="public-nav-bar">
         <div className="nav-inner">
-          <div className="brand-logo" onClick={() => (window.location.href = '/phong')}>
+          <div className="brand-logo" onClick={() => (window.location.href = '/danh-sach-loai-phong')}>
             <span className="brand-leaf">🌿</span>
             <span className="brand-name">HomeStay Retreat</span>
           </div>
 
           <div className="nav-links">
-            <a href="/phong" className="nav-link active">
+            <a href="/danh-sach-loai-phong" className="nav-link active">
               Danh sách loại phòng
             </a>
             <a href="/dat-phong" className="nav-link">

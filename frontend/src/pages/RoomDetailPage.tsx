@@ -20,7 +20,7 @@ export function RoomDetailPage({
   onBack,
   onBookNow,
 }: RoomDetailPageProps) {
-  // Determine roomTypeId from props, or URL search param (?id=...), or URL path (/phong/:id)
+  // Determine roomTypeId from props, URL search param (?id=...), or the final URL path segment.
   const [roomTypeId] = useState<string | number | null>(() => {
     if (propRoomTypeId) return propRoomTypeId
     const searchParams = new URLSearchParams(window.location.search)
@@ -69,7 +69,7 @@ export function RoomDetailPage({
     if (onBack) {
       onBack()
     } else {
-      window.location.href = '/phong'
+      window.location.href = '/danh-sach-loai-phong'
     }
   }
 

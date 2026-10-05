@@ -271,7 +271,7 @@ export function GuestBookingPage() {
           <form className="login-form" onSubmit={handleSubmit} noValidate>
             <div style={{ marginBottom: '14px' }}>
               <a
-                href="/phong"
+                href="/danh-sach-loai-phong"
                 style={{
                   color: '#10513f',
                   textDecoration: 'none',

@@ -83,6 +83,9 @@ export function RoomTypeListPage() {
                 <h2 className="room-card__name">{card.name}</h2>
                 <p className="room-card__capacity">{formatCapacity(card)}</p>
                 <p className="room-card__price">{formatPrice(card.fromPrice)}</p>
+                <a className="room-card__details-link" href={`/loai-phong/${card.id}`}>
+                  Xem chi tiết
+                </a>
               </div>
             </li>
           ))}
