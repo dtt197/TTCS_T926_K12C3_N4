@@ -9,6 +9,8 @@ public record MaintenanceRequest(
         String reason,
         @NotNull(message = "Ngày bắt đầu bảo trì là bắt buộc")
         LocalDate startDate,
+        // S1-10 AC3: bắt buộc khoảng ngày dự kiến (V5 rooms_maintenance_details_check cũng yêu cầu)
+        @NotNull(message = "Ngày kết thúc bảo trì dự kiến là bắt buộc")
         LocalDate endDate
 ) {
 }

@@ -39,7 +39,14 @@ const emptyCreate = {
   floor: 1,
   roomType: '',
   status: 'TRONG_SACH' as RoomStatus,
+  // S1-07 AC1: phòng gồm số phòng, tầng, loại phòng, ghi chú và trạng thái hoạt động
+  note: '',
 }
+
+/** S1-10 AC3: Bảo trì cần lý do và khoảng ngày nên chỉ chọn được ở màn hình Phòng, không chọn ở đây. */
+const NON_MAINTENANCE_STATUS_OPTIONS = STATUS_OPTIONS.filter(
+  (status) => status !== 'BAO_TRI',
+)
 
 type EditDraft = {
   roomNumber: string
@@ -197,8 +204,11 @@ export function RoomManagementPage() {
           roomType:
             createForm.roomType.trim(),
 
-          status:
+            status:
             createForm.status,
+
+          note:
+            createForm.note.trim(),
         })
 
       setCreateForm(emptyCreate)
@@ -333,15 +343,11 @@ export function RoomManagementPage() {
           },
         )
 
+      // Backend chỉ dừng lại chưa lưu khi warningRequired = true (cần xác nhận).
+      // bookingCheckAvailable = false là thông tin, đã lưu xong thì không hiện "Cảnh báo trước khi lưu" nữa.
       if (
         !confirmWhenBookingCheckUnavailable &&
-        (
-          result.warningRequired ||
-          (
-            !result.bookingCheckAvailable &&
-            result.warningMessage
-          )
-        )
+        result.warningRequired
       ) {
         setWarning({
           message:
@@ -564,7 +570,7 @@ export function RoomManagementPage() {
                   })
                 }
               >
-                {STATUS_OPTIONS.map(
+                {NON_MAINTENANCE_STATUS_OPTIONS.map(
                   (status) => (
                     <option
                       key={status}
@@ -579,6 +585,21 @@ export function RoomManagementPage() {
                   ),
                 )}
               </select>
+            </label>
+                        <label className="full-width">
+              Ghi chú
+
+              <textarea
+                maxLength={500}
+                value={createForm.note}
+                onChange={(event) =>
+                  setCreateForm({
+                    ...createForm,
+                    note: event.target.value,
+                  })
+                }
+                placeholder="Ghi chú về phòng..."
+              />
             </label>
 
             <button
@@ -982,7 +1003,10 @@ export function RoomManagementPage() {
                     })
                   }
                 >
-                  {STATUS_OPTIONS.map(
+                   {(editRoom?.status === 'BAO_TRI'
+                    ? STATUS_OPTIONS
+                    : NON_MAINTENANCE_STATUS_OPTIONS
+                  ).map(
                     (status) => (
                       <option
                         key={status}

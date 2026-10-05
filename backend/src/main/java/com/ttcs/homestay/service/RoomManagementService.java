@@ -21,7 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoomManagementService {
 
     private static final String ROOM_NUMBER_UNIQUE_CONSTRAINT = "rooms_room_number_key";
-
+    
+    /** S1-10 AC3: bảo trì phải có lý do và khoảng ngày, chỉ nhập được ở biểu mẫu bảo trì (màn hình Phòng). */
+    static final String USE_MAINTENANCE_FORM_MESSAGE =
+            "Muốn chuyển phòng sang Bảo trì, hãy vào màn hình Phòng và chọn trạng thái Bảo trì để nhập lý do và khoảng ngày.";
     private final RoomManagementRepository roomRepository;
     private final RoomNoteRepository roomNoteRepository;
     private final FutureBookingImpactChecker bookingImpactChecker;
@@ -42,6 +45,9 @@ public class RoomManagementService {
 
         if (roomRepository.existsByRoomNumberIgnoreCase(roomNumber)) {
             throw new IllegalArgumentException("Số phòng " + roomNumber + " đã tồn tại trong hệ thống.");
+        }
+                if (request.status() == RoomStatus.BAO_TRI) {
+            throw new IllegalArgumentException(USE_MAINTENANCE_FORM_MESSAGE);
         }
 
         Room room = new Room();
@@ -92,6 +98,9 @@ public class RoomManagementService {
         if (roomRepository.existsByRoomNumberIgnoreCaseAndIdNot(newRoomNumber, roomId)) {
             throw new IllegalArgumentException("Số phòng " + newRoomNumber + " đã tồn tại trong hệ thống.");
         }
+                if (request.status() == RoomStatus.BAO_TRI && room.getStatus() != RoomStatus.BAO_TRI) {
+            throw new IllegalArgumentException(USE_MAINTENANCE_FORM_MESSAGE);
+        }
 
         FutureBookingImpactChecker.FutureBookingImpact impact = bookingImpactChecker.check(
                 room.getId(),
@@ -134,6 +143,12 @@ public class RoomManagementService {
         room.setRoomType(newRoomType);
         room.setActive(request.active());
         if (request.status() != null) {
+            if (room.getStatus() == RoomStatus.BAO_TRI && request.status() != RoomStatus.BAO_TRI) {
+                // Rời trạng thái bảo trì thì xoá lý do và khoảng ngày cũ (giống RoomService.updateStatus)
+                room.setMaintenanceReason(null);
+                room.setMaintenanceStartDate(null);
+                room.setMaintenanceEndDate(null);
+            }
             room.setStatus(request.status());
         }
 
