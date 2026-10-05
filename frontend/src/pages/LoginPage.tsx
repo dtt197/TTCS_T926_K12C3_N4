@@ -87,6 +87,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <a href="/danh-sach-loai-phong" style={{ color: '#10513f', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}>
               🌿 Khám phá danh sách loại phòng & Đặt ngay →
             </a>
+            {/* S2-08 Lát 3: lối vào trang tra cứu booking cho khách */}
+            <a href="/tra-cuu-booking" style={{ display: 'block', marginTop: '8px', color: '#10513f', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}>
+              🔎 Đã đặt phòng? Tra cứu booking →
+            </a>
           </div>
         </form>
       </section>

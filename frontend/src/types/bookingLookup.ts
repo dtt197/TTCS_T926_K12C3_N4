@@ -9,4 +9,7 @@ export type BookingLookupResult = {
   nights: number
   totalAmount: number
   depositAmount: number
+    /** S2-08 Lát 3: giờ nhận/trả phòng dạng HH:mm:ss. */
+  checkInTime: string
+  checkOutTime: string
 }

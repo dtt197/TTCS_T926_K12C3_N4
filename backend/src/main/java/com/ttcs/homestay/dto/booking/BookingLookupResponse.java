@@ -3,12 +3,14 @@ package com.ttcs.homestay.dto.booking;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 
 /**
  * S2-08 Lát 1: chi tiết booking trả cho khách tra cứu.
  * Chỉ gồm các trường AC cho phép; không có số giấy tờ tuỳ thân, ghi chú nội bộ của lễ tân,
  * số điện thoại hay ghi chú của khách.
+ * S2-08 Lát 3: thêm giờ nhận phòng và giờ trả phòng.
  */
 public record BookingLookupResponse(
         String bookingCode,
@@ -19,9 +21,12 @@ public record BookingLookupResponse(
         LocalDate checkOutDate,
         long nights,
         long totalAmount,
-        long depositAmount) {
+        long depositAmount,
+        LocalTime checkInTime,
+        LocalTime checkOutTime) {
 
-    public static BookingLookupResponse from(Booking booking, long depositAmount) {
+    public static BookingLookupResponse from(
+            Booking booking, long depositAmount, LocalTime checkInTime, LocalTime checkOutTime) {
         return new BookingLookupResponse(
                 booking.getBookingCode(),
                 booking.getStatus().name(),
@@ -31,7 +36,9 @@ public record BookingLookupResponse(
                 booking.getCheckOutDate(),
                 ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate()),
                 booking.getTotalAmount(),
-                depositAmount);
+                depositAmount,
+                checkInTime,
+                checkOutTime);
     }
 
     static String statusLabel(BookingStatus status) {

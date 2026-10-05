@@ -77,6 +77,9 @@ export function PublicRoomListPage({ onSelectRoomType }: PublicRoomListPageProps
             <a href="/dat-phong" className="nav-link">
               Đặt phòng trực tuyến
             </a>
+            <a href="/tra-cuu-booking" className="nav-link">
+              Tra cứu booking
+            </a>
             <a href="/" className="nav-link nav-link-login">
               Quản trị viên
             </a>
