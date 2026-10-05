@@ -6,6 +6,15 @@ import './PublicRoomSearchPage.css'
 
 const MAX_STAY_NIGHTS = 30
 
+/** Giới hạn trên cho ô ngày: không có thì trình duyệt cho gõ năm tới 6 chữ số. */
+const MAX_DATE = '9999-12-31'
+
+/** S2-04 AC4: mở từ trang chi tiết loại phòng (/tim-phong?roomTypeId=...) thì loại phòng đó được chọn sẵn. */
+function roomTypeIdFromUrl() {
+  const id = Number(new URLSearchParams(window.location.search).get('roomTypeId'))
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+
 function todayIso() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -29,6 +38,7 @@ function getErrorMessage(err: unknown) {
 }
 
 export function PublicRoomSearchPage() {
+  const [selectedRoomTypeId] = useState(roomTypeIdFromUrl)
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
   const [guestCount, setGuestCount] = useState('1')
@@ -82,6 +92,12 @@ export function PublicRoomSearchPage() {
   const selectedNights = checkIn && checkOut && checkOut > checkIn
     ? nightsBetween(checkIn, checkOut)
     : 0
+    
+  // Loại phòng chọn sẵn đứng đầu kết quả; nếu nó đã hết phòng thì báo và vẫn hiện các loại khác
+  const selectedRoom = results.find((room) => room.roomTypeId === selectedRoomTypeId)
+  const sortedResults = selectedRoom
+    ? [selectedRoom, ...results.filter((room) => room !== selectedRoom)]
+    : results
 
   return (
     <main className="login-layout public-room-search">
@@ -104,6 +120,12 @@ export function PublicRoomSearchPage() {
           <p className="eyebrow">Tra cứu phòng trống</p>
           <h2>Chọn kỳ lưu trú</h2>
           <p className="form-intro">Số khách được so với sức chứa tối đa của từng phòng.</p>
+                    {selectedRoomTypeId && (
+            <p className="room-search-selected-hint">
+              Bạn đang tra phòng trống cho loại phòng đã chọn ở trang chi tiết.
+              {' '}<a href="/tim-phong">Tra tất cả loại phòng</a>
+            </p>
+          )}
 
           {error && <p className="error-message" role="alert">{error}</p>}
 
@@ -115,6 +137,7 @@ export function PublicRoomSearchPage() {
                   id="search-check-in"
                   type="date"
                   min={todayIso()}
+                  max={MAX_DATE}
                   value={checkIn}
                   onChange={(event) => {
                     const nextCheckIn = event.target.value
@@ -136,7 +159,7 @@ export function PublicRoomSearchPage() {
                   id="search-check-out"
                   type="date"
                   min={minCheckOut}
-                  max={maxCheckOut}
+                  max={maxCheckOut ?? MAX_DATE}
                   value={checkOut}
                   onChange={(event) => {
                     setCheckOut(event.target.value)
@@ -173,12 +196,23 @@ export function PublicRoomSearchPage() {
             </button>
           </form>
 
+          {hasSearched && selectedRoomTypeId && !selectedRoom && (
+            <p className="room-search-selected-unavailable" role="status">
+              Loại phòng bạn chọn đã hết phòng trong khoảng ngày này.
+              {results.length > 0 && ' Các loại phòng khác còn trống:'}
+            </p>
+          )}
+
           {hasSearched && (
             results.length > 0 ? (
               <ul className="room-search-results" aria-label="Loại phòng còn trống">
-                {results.map((room) => (
-                  <li className="room-search-result" key={room.roomTypeId}>
+                {sortedResults.map((room) => (
+                  <li
+                    className={room === selectedRoom ? 'room-search-result room-search-result--selected' : 'room-search-result'}
+                    key={room.roomTypeId}
+                  >
                     <div>
+                      {room === selectedRoom && <span className="room-search-selected-badge">Loại phòng bạn chọn</span>}
                       <h3>{room.name}</h3>
                       <p>Sức chứa tối đa {room.capacity} khách</p>
                     </div>

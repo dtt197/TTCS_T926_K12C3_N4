@@ -43,6 +43,8 @@ function initialFormFromSearchParams(): FormState {
 
 const money = new Intl.NumberFormat('vi-VN')
 
+/** Giới hạn trên cho ô ngày: không có thì trình duyệt cho gõ năm tới 6 chữ số. */
+const MAX_DATE = '9999-12-31'
 /** Ngày hôm nay theo giờ máy, dạng yyyy-MM-dd (dùng làm ngày nhỏ nhất cho ô chọn ngày). */
 function todayIso() {
   const now = new Date()
@@ -323,6 +325,7 @@ export function GuestBookingPage() {
                   id="guest-check-in"
                   type="date"
                   min={today}
+                  max={MAX_DATE}
                   value={form.checkInDate}
                   onChange={(event) => {
                     const newCheckIn = event.target.value;
@@ -353,6 +356,7 @@ export function GuestBookingPage() {
                     d.setDate(d.getDate() + 1);
                     return d.toISOString().split('T')[0];
                   })() : today}
+                  max={MAX_DATE}
                   value={form.checkOutDate}
                   onChange={(event) => update('checkOutDate', event.target.value)}
                 />

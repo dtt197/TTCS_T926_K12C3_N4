@@ -11,9 +11,6 @@ type RoomDetailPageProps = {
 
 const money = new Intl.NumberFormat('vi-VN')
 
-// Fallback images in case network image cannot be loaded
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80'
 
 export function RoomDetailPage({
   roomTypeId: propRoomTypeId,
@@ -72,19 +69,17 @@ export function RoomDetailPage({
       window.location.href = '/danh-sach-loai-phong'
     }
   }
-
-  const handleBooking = (id: number) => {
+  // S2-04 AC4: chuyển thẳng sang màn hình tra phòng trống với loại phòng đã chọn sẵn
+  const handleSearchAvailability = (id: number) => {
     if (onBookNow) {
       onBookNow(id)
     } else {
-      window.location.href = `/dat-phong?roomTypeId=${id}`
+      window.location.href = `/tim-phong?roomTypeId=${id}`
     }
   }
 
-  const galleryImages =
-    roomType?.images && roomType.images.length > 0
-      ? roomType.images
-      : [FALLBACK_IMAGE]
+  // Chỉ hiện ảnh thật của homestay (S2-09); chưa có ảnh thì hiện khung "Chưa có ảnh"
+  const galleryImages = roomType?.images ?? []
 
   const nextImage = () => {
     setActiveImageIndex((prev) => (prev + 1) % galleryImages.length)
@@ -217,22 +212,24 @@ export function RoomDetailPage({
               {/* Photo Gallery */}
               <section className="room-gallery-section" aria-label="Bộ ảnh phòng">
                 <div className="gallery-main-viewport">
-                  <img
-                    src={
-                      imageErrorMap[activeImageIndex]
-                        ? FALLBACK_IMAGE
-                        : galleryImages[activeImageIndex]
-                    }
-                    alt={`${roomType.name} - Ảnh ${activeImageIndex + 1}`}
-                    className="gallery-main-img"
-                    onError={() =>
-                      setImageErrorMap((prev) => ({
-                        ...prev,
-                        [activeImageIndex]: true,
-                      }))
-                    }
-                    id="room-main-image"
-                  />
+                     {galleryImages.length === 0 || imageErrorMap[activeImageIndex] ? (
+                    <div className="gallery-main-img gallery-no-image" role="img" aria-label={`${roomType.name} - chưa có ảnh`}>
+                      📷 Chưa có ảnh
+                    </div>
+                  ) : (
+                    <img
+                      src={galleryImages[activeImageIndex]}
+                      alt={`${roomType.name} - Ảnh ${activeImageIndex + 1}`}
+                      className="gallery-main-img"
+                      onError={() =>
+                        setImageErrorMap((prev) => ({
+                          ...prev,
+                          [activeImageIndex]: true,
+                        }))
+                      }
+                      id="room-main-image"
+                    />
+                  )}
 
                   {galleryImages.length > 1 && (
                     <>
@@ -276,10 +273,11 @@ export function RoomDetailPage({
                         onClick={() => setActiveImageIndex(idx)}
                         id={`gallery-thumb-${idx}`}
                       >
-                        <img
-                          src={imageErrorMap[idx] ? FALLBACK_IMAGE : img}
-                          alt={`Thumbnail ${idx + 1}`}
-                        />
+                                           {imageErrorMap[idx] ? (
+                          <span className="gallery-thumb-missing">📷</span>
+                        ) : (
+                          <img src={img} alt={`Ảnh nhỏ ${idx + 1}`} />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -436,7 +434,7 @@ export function RoomDetailPage({
                     <div className="policy-block-body">
                       <div className="extra-fee-highlight" id="policy-extra-fee">
                         <span className="fee-amount">
-                          +{money.format(roomType.extraPersonFee || 200000)} đ
+                          +{money.format(roomType.extraPersonFee)} đ
                         </span>
                         <span className="fee-unit">/ người / đêm</span>
                       </div>
@@ -444,7 +442,7 @@ export function RoomDetailPage({
                         Sức chứa tiêu chuẩn: <strong>{roomType.standardCapacity} khách</strong>. Tối đa:{' '}
                         <strong>{roomType.maxCapacity} khách</strong>.
                         {roomType.maxCapacity > roomType.standardCapacity ? (
-                          <> Phụ thu thêm {money.format(roomType.extraPersonFee || 200000)} đ cho mỗi khách vượt quá số lượng tiêu chuẩn {roomType.standardCapacity} người.</>
+                          <> Phụ thu thêm {money.format(roomType.extraPersonFee)} đ cho mỗi khách vượt quá số lượng tiêu chuẩn {roomType.standardCapacity} người.</>
                         ) : (
                           <> Loại phòng này chỉ nhận tối đa đúng sức chứa tiêu chuẩn, không nhận thêm người.</>
                         )}
@@ -532,7 +530,7 @@ export function RoomDetailPage({
                     </div>
                   ) : (
                     <div className="cancellation-tiers-fallback">
-                      <p>Hủy trước 72 giờ: Miễn phí hủy (hoàn 100%). Hủy trước 24 giờ: Phí phạt 50%. Sát ngày: Phạt 100%.</p>
+                    <p>Homestay chưa khai báo các mốc hoàn cọc. Vui lòng liên hệ lễ tân để biết chi tiết.</p>
                     </div>
                   )}
                 </div>
@@ -578,7 +576,7 @@ export function RoomDetailPage({
                   </div>
                   <div className="summary-line">
                     <span>Phụ thu thêm khách:</span>
-                    <strong id="sidebar-extra-fee">+{money.format(roomType.extraPersonFee || 200000)} đ</strong>
+                    <strong id="sidebar-extra-fee">+{money.format(roomType.extraPersonFee)} đ</strong>
                   </div>
                   <div className="summary-line">
                     <span>Số giường ngủ:</span>
@@ -606,11 +604,10 @@ export function RoomDetailPage({
                   <button
                     type="button"
                     className="book-now-button"
-                    disabled={isOutOfStock}
-                    onClick={() => handleBooking(roomType.id)}
+                    onClick={() => handleSearchAvailability(roomType.id)}
                     id="book-room-now-btn"
                   >
-                    {isOutOfStock ? 'Tạm thời hết phòng' : 'Đặt phòng này ngay'}
+                    Tra phòng trống
                   </button>
 
                   <button

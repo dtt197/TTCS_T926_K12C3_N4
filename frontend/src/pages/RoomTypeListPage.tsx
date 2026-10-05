@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
+import { getPublicRoomTypesCatalog } from '../services/guestBookingService'
 import { getPublicRoomTypeCards } from '../services/publicRoomTypeService'
 import type { PublicRoomTypeCard } from '../types/publicRoomType'
+import type { PublicRoomTypeDetail } from '../types/roomDetail'
 import './RoomTypeListPage.css'
+
+/** Số tiện nghi hiện trên thẻ, phần còn lại gộp thành "+N tiện nghi khác". */
+const MAX_CARD_AMENITIES = 4
 
 const DEFAULT_COVER_IMAGE = '/room-images/room-1.jpg'
 const HERO_IMAGE = '/assets/hero-room.jpg'
@@ -25,11 +30,20 @@ export function RoomTypeListPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  // Chuyển từ trang /loai-phong cũ: số phòng còn, số giường, mô tả, tiện nghi và ô tìm kiếm
+  const [details, setDetails] = useState<Record<number, PublicRoomTypeDetail>>({})
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
-    setHasError(false)
+    // Không tải được phần thêm thì thẻ vẫn hiện ảnh, tên, sức chứa và giá như cũ
+    getPublicRoomTypesCatalog()
+      .then((data) => {
+        if (!cancelled) {
+          setDetails(Object.fromEntries(data.map((detail) => [detail.id, detail])))
+        }
+      })
+      .catch(() => undefined)
     getPublicRoomTypeCards()
       .then((data) => {
         if (!cancelled) {
@@ -50,6 +64,19 @@ export function RoomTypeListPage() {
       cancelled = true
     }
   }, [retryCount])
+
+  const term = searchTerm.trim().toLowerCase()
+  const visibleCards = term
+    ? cards.filter((card) => {
+        const detail = details[card.id]
+        return [
+          card.name,
+          detail?.code,
+          detail?.description,
+          ...(detail?.amenities ?? []).map((amenity) => amenity.name),
+        ].some((text) => text?.toLowerCase().includes(term))
+      })
+    : cards
 
   return (
     <div className="customer-home">
@@ -160,6 +187,16 @@ export function RoomTypeListPage() {
                 <p className="room-section__description">
                   Chọn loại phòng phù hợp với nhu cầu và ngân sách của bạn.
                 </p>
+                <div className="room-search">
+                  <input
+                    className="room-search__input"
+                    type="search"
+                    placeholder="Tìm kiếm loại phòng theo tên, tiện nghi..."
+                    aria-label="Tìm kiếm loại phòng theo tên, tiện nghi"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                  />
+                </div>
               </div>
               <ul className="room-trust-list" aria-label="Cam kết lưu trú">
                 <li className="room-trust-item">
@@ -206,37 +243,94 @@ export function RoomTypeListPage() {
             ) : hasError ? (
               <div className="room-section__state room-section__state--error" role="alert">
                 <p>Không thể tải danh sách loại phòng. Vui lòng thử lại.</p>
-                <button type="button" onClick={() => setRetryCount((count) => count + 1)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoading(true)
+                    setHasError(false)
+                    setRetryCount((count) => count + 1)
+                  }}
+                >
                   Thử lại
                 </button>
               </div>
             ) : cards.length === 0 ? (
               <p className="room-section__state" role="status">Hiện chưa có loại phòng nào.</p>
+            ) : visibleCards.length === 0 ? (
+              <div className="room-section__state" role="status">
+                <p>Không tìm thấy loại phòng nào phù hợp với từ khóa của bạn.</p>
+                <button type="button" className="room-search__clear" onClick={() => setSearchTerm('')}>
+                  Xóa từ khóa tìm kiếm
+                </button>
+              </div>
             ) : (
               <ul className="room-grid">
-                {cards.map((card) => (
-                  <li key={card.id} className="room-card">
-                    <img
-                      className="room-card__image"
-                      src={card.imageUrl || DEFAULT_COVER_IMAGE}
-                      alt={card.imageAlt || `Ảnh ${card.name}`}
-                      loading="lazy"
-                      decoding="async"
-                      onError={(event) => {
-                        event.currentTarget.onerror = null
-                        event.currentTarget.src = DEFAULT_COVER_IMAGE
-                      }}
-                    />
-                    <div className="room-card__body">
-                      <h3 className="room-card__name">{card.name}</h3>
-                      <p className="room-card__capacity">{formatCapacity(card)}</p>
-                      <p className="room-card__price">{formatPrice(card.fromPrice)}</p>
-                      <a className="room-card__details" href={`/loai-phong/${card.id}`}>
-                        Xem chi tiết
-                      </a>
-                    </div>
-                  </li>
-                ))}
+                {visibleCards.map((card) => {
+                  const detail = details[card.id]
+                  const amenities = detail?.amenities ?? []
+                  return (
+                    <li key={card.id} className="room-card">
+                      <div className="room-card__media">
+                        <img
+                          className="room-card__image"
+                          src={card.imageUrl || DEFAULT_COVER_IMAGE}
+                          alt={card.imageAlt || `Ảnh ${card.name}`}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null
+                            event.currentTarget.src = DEFAULT_COVER_IMAGE
+                          }}
+                        />
+                        {detail && (
+                          <span
+                            className={`room-card__stock ${
+                              detail.availableRooms <= 0
+                                ? 'room-card__stock--out'
+                                : detail.availableRooms <= 2
+                                  ? 'room-card__stock--low'
+                                  : ''
+                            }`}
+                            title="Số phòng còn trống cho đêm nay"
+                          >
+                            {detail.availableRooms <= 0 ? 'Đã hết phòng' : `Còn ${detail.availableRooms} phòng`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="room-card__body">
+                        <h3 className="room-card__name">{card.name}</h3>
+                        <p className="room-card__capacity">
+                          {formatCapacity(card)}
+                          {detail && ` · ${detail.numberOfBeds} giường`}
+                        </p>
+                        {detail?.description && <p className="room-card__desc">{detail.description}</p>}
+                        {amenities.length > 0 && (
+                          <ul className="room-card__amenities" aria-label="Tiện nghi">
+                            {amenities.slice(0, MAX_CARD_AMENITIES).map((amenity) => (
+                              <li key={amenity.id} className="room-card__amenity">
+                                {amenity.icon} {amenity.name}
+                              </li>
+                            ))}
+                            {amenities.length > MAX_CARD_AMENITIES && (
+                              <li className="room-card__amenity room-card__amenity--more">
+                                +{amenities.length - MAX_CARD_AMENITIES} tiện nghi khác
+                              </li>
+                            )}
+                          </ul>
+                        )}
+                        <p className="room-card__price">{formatPrice(card.fromPrice)}</p>
+                        <div className="room-card__actions">
+                          <a className="room-card__details" href={`/loai-phong/${card.id}`}>
+                            Xem chi tiết
+                          </a>
+                          <a className="room-card__book" href={`/dat-phong?roomTypeId=${card.id}`}>
+                            Đặt phòng
+                          </a>
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
