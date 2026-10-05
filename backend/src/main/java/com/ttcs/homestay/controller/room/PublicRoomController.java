@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.repository.RoomTypeRepository;
+import com.ttcs.homestay.service.PublicBookingDatePolicy;
 import com.ttcs.homestay.service.RoomAvailabilityService;
 
 @RestController
@@ -40,8 +41,12 @@ public class PublicRoomController {
         if (guestCount < 1) {
             throw badRequest("Số lượng khách phải lớn hơn hoặc bằng 1.");
         }
-        if (checkIn.isBefore(LocalDate.now())) {
+        LocalDate today = PublicBookingDatePolicy.today();
+        if (checkIn.isBefore(today)) {
             throw badRequest("Ngày nhận phòng không được trước ngày hiện tại.");
+        }
+        if (PublicBookingDatePolicy.isCheckInTooFar(checkIn, today)) {
+            throw badRequest(PublicBookingDatePolicy.CHECK_IN_TOO_FAR_MESSAGE);
         }
         if (!checkOut.isAfter(checkIn)) {
             throw badRequest("Ngày trả phòng phải sau ngày nhận phòng ít nhất một đêm.");

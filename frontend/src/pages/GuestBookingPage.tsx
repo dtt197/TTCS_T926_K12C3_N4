@@ -43,12 +43,24 @@ function initialFormFromSearchParams(): FormState {
 
 const money = new Intl.NumberFormat('vi-VN')
 
-/** Giới hạn trên cho ô ngày: không có thì trình duyệt cho gõ năm tới 6 chữ số. */
-const MAX_DATE = '9999-12-31'
 /** Ngày hôm nay theo giờ máy, dạng yyyy-MM-dd (dùng làm ngày nhỏ nhất cho ô chọn ngày). */
 function todayIso() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+function addDays(isoDate: string, days: number) {
+  const date = new Date(`${isoDate}T00:00:00`)
+  date.setDate(date.getDate() + days)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function addMonths(isoDate: string, months: number) {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const target = new Date(year, month - 1 + months, 1)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(day, lastDay))
+  return `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}`
 }
 
 /** Lỗi mạng (fetch ném TypeError, ví dụ "Failed to fetch") đổi thành câu tiếng Việt cho khách. */
@@ -84,6 +96,7 @@ function validateEmail(email: string) {
 /** S2-07 Lát 1: khách điền thông tin và gửi yêu cầu đặt phòng, không cần đăng nhập. */
 export function GuestBookingPage() {
   const [today] = useState(todayIso)
+  const maxCheckInDate = addMonths(today, 12)
   const [roomTypes, setRoomTypes] = useState<PublicRoomTypeOption[]>([])
   const [form, setForm] = useState<FormState>(initialFormFromSearchParams)
   const [error, setError] = useState('')
@@ -136,6 +149,10 @@ export function GuestBookingPage() {
 
     if (!form.checkOutDate) {
       errors.checkOutDate = 'Vui lòng chọn ngày trả phòng'
+    }
+
+    if (form.checkInDate && form.checkInDate > maxCheckInDate) {
+      errors.checkInDate = 'Ngày nhận phòng không được quá 12 tháng kể từ ngày hiện tại'
     }
 
     if (!form.guestName.trim()) {
@@ -325,15 +342,13 @@ export function GuestBookingPage() {
                   id="guest-check-in"
                   type="date"
                   min={today}
-                  max={MAX_DATE}
+                  max={maxCheckInDate}
                   value={form.checkInDate}
                   onChange={(event) => {
                     const newCheckIn = event.target.value;
                     let newCheckOut = form.checkOutDate;
                     if (!newCheckOut || newCheckOut <= newCheckIn) {
-                      const d = new Date(newCheckIn);
-                      d.setDate(d.getDate() + 1);
-                      newCheckOut = d.toISOString().split('T')[0];
+                      newCheckOut = addDays(newCheckIn, 1)
                     }
                     setForm(current => ({
                       ...current,
@@ -352,11 +367,11 @@ export function GuestBookingPage() {
                   id="guest-check-out"
                   type="date"
                   min={form.checkInDate ? (() => {
-                    const d = new Date(form.checkInDate);
-                    d.setDate(d.getDate() + 1);
-                    return d.toISOString().split('T')[0];
+                    return addDays(form.checkInDate, 1)
                   })() : today}
-                  max={MAX_DATE}
+                  max={form.checkInDate
+                    ? addDays(form.checkInDate, 30)
+                    : addDays(maxCheckInDate, 30)}
                   value={form.checkOutDate}
                   onChange={(event) => update('checkOutDate', event.target.value)}
                 />

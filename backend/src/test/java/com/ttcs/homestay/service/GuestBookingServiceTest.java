@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
+import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.dto.pricing.PriceType;
 import com.ttcs.homestay.entity.Booking;
@@ -81,10 +82,14 @@ class GuestBookingServiceTest {
     }
 
     private static GuestBookingRequest request(int guestCount) {
+        return request(guestCount, CHECK_IN, CHECK_OUT);
+    }
+
+    private static GuestBookingRequest request(int guestCount, LocalDate checkIn, LocalDate checkOut) {
         return new GuestBookingRequest(
         1L,
-        CHECK_IN,
-        CHECK_OUT,
+        checkIn,
+        checkOut,
         "  Nguyễn Văn A  ",
         "0912345678",
         "Khach@Gmail.com",
@@ -96,8 +101,12 @@ class GuestBookingServiceTest {
 
     /** Còn 1 phòng, giá 2 đêm 500.000 + 700.000. */
     private void conPhong() {
+        conPhong(CHECK_IN, CHECK_OUT);
+    }
+
+    private void conPhong(LocalDate checkIn, LocalDate checkOut) {
         when(roomTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(phongDoi));
-        when(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).thenReturn(1);
+        when(roomAvailabilityService.availableRooms(phongDoi, checkIn, checkOut)).thenReturn(1);
         OperatingSettings settings = new OperatingSettings();
         settings.setWeekendDays("FRIDAY,SATURDAY");
         settings.setExtraPersonFee(200_000L);
@@ -184,6 +193,35 @@ class GuestBookingServiceTest {
     }
 
     @Test
+    void checkInToiDa12Thang_taoBookingHopLe() {
+        LocalDate checkIn = PublicBookingDatePolicy.maximumCheckInDate(PublicBookingDatePolicy.today());
+        LocalDate checkOut = checkIn.plusDays(2);
+        conPhong(checkIn, checkOut);
+        when(bookingCodeGenerator.next()).thenReturn("7KQ2M9XA");
+
+        GuestBookingResponse response = guestBookingService.createGuestBooking(
+                request(2, checkIn, checkOut));
+
+        assertThat(response.checkInDate()).isEqualTo(checkIn);
+        verify(bookingRepository).save(any(Booking.class));
+    }
+
+    @Test
+    void checkInQua12ThangVaNam9999_taoBookingBiChan() {
+        LocalDate maximumCheckIn = PublicBookingDatePolicy.maximumCheckInDate(PublicBookingDatePolicy.today());
+
+        assertThatThrownBy(() -> guestBookingService.createGuestBooking(
+                        request(2, maximumCheckIn.plusDays(1), maximumCheckIn.plusDays(2))))
+                .isInstanceOf(InvalidGuestBookingException.class)
+                .hasMessageContaining("không được quá 12 tháng");
+        assertThatThrownBy(() -> guestBookingService.createGuestBooking(
+                        request(2, LocalDate.of(9999, 1, 1), LocalDate.of(9999, 1, 2))))
+                .isInstanceOf(InvalidGuestBookingException.class)
+                .hasMessageContaining("không được quá 12 tháng");
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
     void loaiPhongNgungBan_biChan() {
         phongDoi.setStatus(false);
         when(roomTypeRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(phongDoi));
@@ -196,6 +234,9 @@ class GuestBookingServiceTest {
     @Test
     void chiTietLoaiPhongDangBan_duocTraVeChoKhach() {
         when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+        OperatingSettings settings = new OperatingSettings();
+        settings.setExtraPersonFee(200_000L);
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
 
         var details = guestBookingService.getPublicRoomType(1L);
 
@@ -238,5 +279,25 @@ class GuestBookingServiceTest {
         assertThat(booking.getSurchargeAmount()).isEqualTo(400_000L); // 1 người × 200.000 × 2 đêm
         assertThat(booking.getTotalAmount()).isEqualTo(1_600_000L);
         assertThat(response.totalAmount()).isEqualTo(1_600_000L);
+    }
+
+    @Test
+    void quoteVaBookingDungCungMucPhuThuRiengCuaLoaiPhong() {
+        conPhong();
+        phongDoi.setExtraPersonFee(250_000L);
+        when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
+        when(bookingCodeGenerator.next()).thenReturn("7KQ2M9XA");
+
+        GuestQuoteResponse quote = guestBookingService.quote(1L, CHECK_IN, CHECK_OUT, 3);
+        GuestBookingResponse response = guestBookingService.createGuestBooking(request(3));
+
+        ArgumentCaptor<Booking> saved = ArgumentCaptor.forClass(Booking.class);
+        verify(bookingRepository).save(saved.capture());
+        Booking booking = saved.getValue();
+        assertThat(quote.extraPersonFee()).isEqualTo(250_000L);
+        assertThat(booking.getExtraPersonFeeSnapshot()).isEqualTo(quote.extraPersonFee());
+        assertThat(booking.getSurchargeAmount()).isEqualTo(quote.surchargeAmount()).isEqualTo(500_000L);
+        assertThat(booking.getTotalAmount()).isEqualTo(quote.totalAmount());
+        assertThat(response.totalAmount()).isEqualTo(quote.totalAmount());
     }
 }
