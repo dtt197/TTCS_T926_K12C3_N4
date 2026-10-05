@@ -996,3 +996,27 @@
   }
 }
 
+
+/* S2-04: loại phòng chưa có ảnh thật thì hiện khung "Chưa có ảnh" thay cho ảnh mạng */
+.gallery-no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  background: #eef3f0;
+  color: #6b7c74;
+  font-weight: 600;
+}
+
+.gallery-no-image:hover {
+  transform: none;
+}
+
+.gallery-thumb-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #eef3f0;
+}
