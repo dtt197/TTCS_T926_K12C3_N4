@@ -22,26 +22,53 @@ function formatDate(isoDate: string) {
   return `${day}/${month}/${year}`
 }
 
+/** Giờ dạng HH:mm:ss từ máy chủ, hiển thị HH:mm. */
+function formatTime(isoTime: string) {
+  return isoTime.slice(0, 5)
+}
+
 /** Lỗi mạng (fetch ném TypeError, ví dụ "Failed to fetch") đổi thành câu tiếng Việt cho khách. */
 function errorMessage(err: unknown) {
   if (err instanceof TypeError) return 'Không kết nối được tới homestay, vui lòng thử lại sau'
   return err instanceof Error ? err.message : 'Không tra cứu được booking, vui lòng thử lại'
 }
 
+/** S2-08 Lát 3: mã booking 8 ký tự gồm chữ và số (S2-07). */
+function codeError(code: string) {
+  if (!code.trim()) return 'Vui lòng nhập mã booking'
+  if (!/^[A-Za-z0-9]{8}$/.test(code.trim())) return 'Mã booking gồm đúng 8 ký tự chữ và số'
+  return ''
+}
+
+/** S2-08 Lát 3: cùng quy tắc email với trang đặt phòng. */
+function emailError(email: string) {
+  if (!email.trim()) return 'Vui lòng nhập email'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Email không đúng định dạng'
+  return ''
+}
+
+/** S2-08 Lát 3: mở từ đường dẫn /tra-cuu-booking?ma=XXXXXXXX thì điền sẵn mã. */
+function codeFromUrl() {
+  return new URLSearchParams(window.location.search).get('ma')?.trim() ?? ''
+}
+
 /** S2-08: khách nhập mã booking và email để xem lại booking, không cần tài khoản. */
 export function BookingLookupPage() {
-  const [bookingCode, setBookingCode] = useState('')
+  const [bookingCode, setBookingCode] = useState(codeFromUrl)
   const [email, setEmail] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({ bookingCode: '', email: '' })
   const [result, setResult] = useState<BookingLookupResult | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-    // S2-08 Lát 2: quá 10 lần tra cứu sai trong 15 phút thì thông báo hiện màu cảnh báo riêng
+  // S2-08 Lát 2: quá 10 lần tra cứu sai trong 15 phút thì thông báo hiện màu cảnh báo riêng
   const [limited, setLimited] = useState(false)
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!bookingCode.trim() || !email.trim()) {
-      setLimited(false)
-      setError('Vui lòng nhập mã booking và email')
+    const errors = { bookingCode: codeError(bookingCode), email: emailError(email) }
+    setFieldErrors(errors)
+    if (errors.bookingCode || errors.email) {
+      setError('')
       return
     }
 
@@ -62,6 +89,7 @@ export function BookingLookupPage() {
     setResult(null)
     setBookingCode('')
     setEmail('')
+    setFieldErrors({ bookingCode: '', email: '' })
     setError('')
   }
 
@@ -99,10 +127,10 @@ export function BookingLookupPage() {
               </dd>
               <dt>Loại phòng</dt>
               <dd>{result.roomTypeName}</dd>
-              <dt>Ngày nhận phòng</dt>
-              <dd>{formatDate(result.checkInDate)}</dd>
-              <dt>Ngày trả phòng</dt>
-              <dd>{formatDate(result.checkOutDate)}</dd>
+              <dt>Nhận phòng</dt>
+              <dd>{formatDate(result.checkInDate)}, từ {formatTime(result.checkInTime)}</dd>
+              <dt>Trả phòng</dt>
+              <dd>{formatDate(result.checkOutDate)}, trước {formatTime(result.checkOutTime)}</dd>
               <dt>Số đêm</dt>
               <dd>{result.nights} đêm</dd>
               <dt>Tổng tiền</dt>
@@ -124,7 +152,7 @@ export function BookingLookupPage() {
             <h2>Xem lại đặt phòng</h2>
             <p className="form-intro">Mã booking gồm 8 ký tự, có trong thông báo khi bạn đặt phòng thành công.</p>
 
-              {error && (
+            {error && (
               <p className={limited ? 'error-message booking-lookup-limit' : 'error-message'} role="alert">
                 {error}
               </p>
@@ -136,11 +164,19 @@ export function BookingLookupPage() {
                 id="lookup-code"
                 className="booking-lookup-code-input"
                 value={bookingCode}
-                onChange={(event) => setBookingCode(event.target.value)}
+                onChange={(event) => {
+                  setBookingCode(event.target.value)
+                  setFieldErrors((current) => ({ ...current, bookingCode: '' }))
+                }}
                 placeholder="VD: ABCD2345"
                 autoComplete="off"
                 autoCapitalize="characters"
+                aria-invalid={Boolean(fieldErrors.bookingCode)}
+                aria-describedby={fieldErrors.bookingCode ? 'lookup-code-error' : undefined}
               />
+              {fieldErrors.bookingCode && (
+                <p id="lookup-code-error" className="field-error">{fieldErrors.bookingCode}</p>
+              )}
             </div>
 
             <div className="field">
@@ -149,10 +185,19 @@ export function BookingLookupPage() {
                 id="lookup-email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value)
+                  setFieldErrors((current) => ({ ...current, email: '' }))
+                }}
                 placeholder="email@example.com"
                 autoComplete="email"
+                autoFocus={Boolean(bookingCode)}
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? 'lookup-email-error' : undefined}
               />
+              {fieldErrors.email && (
+                <p id="lookup-email-error" className="field-error">{fieldErrors.email}</p>
+              )}
             </div>
 
             <button className="submit-button" type="submit" disabled={submitting}>

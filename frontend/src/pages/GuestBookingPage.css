@@ -255,3 +255,20 @@
 .guest-booking .field-row {
   align-items: start;
 }
+
+/* S2-08 Lát 3: nút mở trang tra cứu booking trên màn hình đặt phòng thành công */
+.guest-booking-lookup-link {
+  display: block;
+  margin-bottom: 12px;
+  border: 1.5px solid #10513f;
+  border-radius: 6px;
+  padding: 12px 18px;
+  color: #10513f;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.guest-booking-lookup-link:hover {
+  background: #edf5ef;
+}

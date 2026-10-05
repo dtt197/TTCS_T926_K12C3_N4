@@ -263,6 +263,13 @@ export function GuestBookingPage() {
               <dt>Giữ chỗ đến</dt>
               <dd>{formatDateTime(result.holdExpiresAt)}</dd>
             </dl>
+            {/* S2-08 Lát 3: mở trang tra cứu với mã booking điền sẵn */}
+            <a
+              className="guest-booking-lookup-link"
+              href={`/tra-cuu-booking?ma=${encodeURIComponent(result.bookingCode)}`}
+            >
+              Tra cứu booking này
+            </a>
             <button className="submit-button" type="button" onClick={handleBookAnother}>
               Đặt thêm phòng khác
             </button>
