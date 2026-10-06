@@ -1,5 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { getPublicRoomTypes } from '../services/guestBookingService'
 import { searchAvailableRooms, type RoomAvailabilityResponse } from '../services/roomService'
+import type { PublicRoomTypeOption } from '../types/guestBooking'
 import './AuthPages.css'
 import './GuestBookingPage.css'
 import './PublicRoomSearchPage.css'
@@ -9,7 +11,7 @@ const MAX_STAY_NIGHTS = 30
 /** S2-04 AC4: mở từ trang chi tiết loại phòng (/tim-phong?roomTypeId=...) thì loại phòng đó được chọn sẵn. */
 function roomTypeIdFromUrl() {
   const id = Number(new URLSearchParams(window.location.search).get('roomTypeId'))
-  return Number.isSafeInteger(id) && id > 0 ? id : null
+  return Number.isSafeInteger(id) && id > 0 ? String(id) : ''
 }
 
 function todayIso() {
@@ -45,7 +47,9 @@ function getErrorMessage(err: unknown) {
 export function PublicRoomSearchPage() {
   const [today] = useState(todayIso)
   const maxCheckInDate = addMonths(today, 12)
-  const [selectedRoomTypeId] = useState(roomTypeIdFromUrl)
+  // S2-04 AC4: loại phòng chọn sẵn; '' = tất cả loại phòng (đúng S2-05 khi vào thẳng trang)
+  const [roomTypeId, setRoomTypeId] = useState(roomTypeIdFromUrl)
+  const [roomTypes, setRoomTypes] = useState<PublicRoomTypeOption[] | null>(null)
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
   const [guestCount, setGuestCount] = useState('1')
@@ -53,6 +57,21 @@ export function PublicRoomSearchPage() {
   const [hasSearched, setHasSearched] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    getPublicRoomTypes()
+      .then((list) => {
+        if (!cancelled) setRoomTypes(list)
+      })
+      .catch(() => {
+        // Không tải được danh sách thì vẫn tra được tất cả loại phòng như trước
+        if (!cancelled) setRoomTypes([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -103,11 +122,12 @@ export function PublicRoomSearchPage() {
   const selectedNights = checkIn && checkOut && checkOut > checkIn
     ? nightsBetween(checkIn, checkOut)
     : 0
-    
-  // Loại phòng chọn sẵn đứng đầu kết quả; nếu nó đã hết phòng thì báo và vẫn hiện các loại khác
-  const selectedRoom = results.find((room) => room.roomTypeId === selectedRoomTypeId)
-  const sortedResults = selectedRoom
-    ? [selectedRoom, ...results.filter((room) => room !== selectedRoom)]
+
+  // Loại phòng trên đường dẫn không còn bán (không có trong danh sách) thì coi như tra tất cả
+  const selectedRoomType = roomTypes?.find((roomType) => String(roomType.id) === roomTypeId) ?? null
+  const activeRoomTypeId = roomTypes === null || selectedRoomType ? roomTypeId : ''
+  const visibleResults = activeRoomTypeId
+    ? results.filter((room) => String(room.roomTypeId) === activeRoomTypeId)
     : results
 
   return (
@@ -131,16 +151,32 @@ export function PublicRoomSearchPage() {
           <p className="eyebrow">Tra cứu phòng trống</p>
           <h2>Chọn kỳ lưu trú</h2>
           <p className="form-intro">Số khách được so với sức chứa tối đa của từng phòng.</p>
-                    {selectedRoomTypeId && (
+          {selectedRoomType && (
             <p className="room-search-selected-hint">
-              Bạn đang tra phòng trống cho loại phòng đã chọn ở trang chi tiết.
-              {' '}<a href="/tim-phong">Tra tất cả loại phòng</a>
+              Đã chọn sẵn loại phòng <strong>{selectedRoomType.name}</strong> từ trang chi tiết.
             </p>
           )}
 
           {error && <p className="error-message" role="alert">{error}</p>}
 
           <form onSubmit={handleSearch} noValidate>
+            <div className="field">
+              <label htmlFor="search-room-type">Loại phòng</label>
+              <select
+                id="search-room-type"
+                value={activeRoomTypeId}
+                disabled={roomTypes === null}
+                onChange={(event) => setRoomTypeId(event.target.value)}
+              >
+                <option value="">Tất cả loại phòng</option>
+                {(roomTypes ?? []).map((roomType) => (
+                  <option key={roomType.id} value={String(roomType.id)}>
+                    {roomType.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="field-row">
               <div className="field">
                 <label htmlFor="search-check-in">Ngày nhận phòng</label>
@@ -207,23 +243,12 @@ export function PublicRoomSearchPage() {
             </button>
           </form>
 
-          {hasSearched && selectedRoomTypeId && !selectedRoom && (
-            <p className="room-search-selected-unavailable" role="status">
-              Loại phòng bạn chọn đã hết phòng trong khoảng ngày này.
-              {results.length > 0 && ' Các loại phòng khác còn trống:'}
-            </p>
-          )}
-
           {hasSearched && (
-            results.length > 0 ? (
+            visibleResults.length > 0 ? (
               <ul className="room-search-results" aria-label="Loại phòng còn trống">
-                {sortedResults.map((room) => (
-                  <li
-                    className={room === selectedRoom ? 'room-search-result room-search-result--selected' : 'room-search-result'}
-                    key={room.roomTypeId}
-                  >
+                {visibleResults.map((room) => (
+                  <li className="room-search-result" key={room.roomTypeId}>
                     <div>
-                      {room === selectedRoom && <span className="room-search-selected-badge">Loại phòng bạn chọn</span>}
                       <h3>{room.name}</h3>
                       <p>Sức chứa tối đa {room.capacity} khách</p>
                     </div>
@@ -246,6 +271,19 @@ export function PublicRoomSearchPage() {
                   </li>
                 ))}
               </ul>
+            ) : activeRoomTypeId && results.length > 0 ? (
+              <div className="room-search-selected-unavailable" role="status">
+                <p>
+                  Loại phòng {selectedRoomType?.name} không còn phòng trống phù hợp trong khoảng ngày này.
+                </p>
+                <button
+                  className="room-search-show-all"
+                  type="button"
+                  onClick={() => setRoomTypeId('')}
+                >
+                  Xem các loại phòng khác còn trống
+                </button>
+              </div>
             ) : (
               <p className="room-search-empty" role="status">Không còn phòng phù hợp</p>
             )
