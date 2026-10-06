@@ -247,25 +247,32 @@ export function GuestBookingPage() {
   return (
     <main className="login-layout guest-booking">
       <section className="brand-panel" aria-label="HomeStay">
-        <div>
-          <p className="eyebrow">HomeStay</p>
-          <h1>Đặt phòng.</h1>
+        <div className="guest-booking-hero-copy">
+          <p className="eyebrow">Homestay</p>
+          <h1>Đặt phòng<br />cho kỳ nghỉ<br />của bạn.</h1>
           <p className="brand-copy">
-            Gửi yêu cầu ngay khi còn phòng. Homestay giữ chỗ cho bạn 24 giờ trong lúc lễ tân xác nhận.
+            Gửi yêu cầu đặt phòng nhanh chóng. Homestay giữ chỗ trong 24 giờ để lễ tân xác nhận.
           </p>
+          <ul className="guest-booking-benefits" aria-label="Lợi ích khi đặt phòng">
+            <li><span aria-hidden="true">✓</span> Xác nhận nhanh</li>
+            <li><span aria-hidden="true">✓</span> Giá minh bạch</li>
+            <li><span aria-hidden="true">✓</span> Không cần tài khoản</li>
+          </ul>
         </div>
         <div className="brand-footer">
           <span className="brand-mark" aria-hidden="true">H</span>
-          <span>Không cần tạo tài khoản</span>
+          <span className="guest-booking-hero-note">Tra cứu booking dễ dàng sau khi gửi yêu cầu.</span>
         </div>
       </section>
 
       <section className="form-panel">
         {result ? (
           <div className="login-form guest-booking-success" role="status">
-            <p className="eyebrow">Đã gửi yêu cầu</p>
-            <h2>Cảm ơn bạn!</h2>
-            <p className="form-intro">Hãy lưu lại mã booking để tra cứu sau.</p>
+            <header className="guest-booking-form-header">
+              <p className="eyebrow">Đã gửi yêu cầu</p>
+              <h2>Cảm ơn bạn!</h2>
+              <p className="form-intro">Hãy lưu lại mã booking để tra cứu sau.</p>
+            </header>
             <div className="guest-booking-code">
               <span>Mã booking</span>
               <strong>{result.bookingCode}</strong>
@@ -295,199 +302,202 @@ export function GuestBookingPage() {
           </div>
         ) : (
           <form className="login-form" onSubmit={handleSubmit} noValidate>
-            <div style={{ marginBottom: '14px' }}>
-              <a
-                href="/danh-sach-loai-phong"
-                style={{
-                  color: '#10513f',
-                  textDecoration: 'none',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
+            <div className="guest-booking-back">
+              <a href="/danh-sach-loai-phong">
                 ← Quay lại xem danh sách phòng
               </a>
             </div>
-            <p className="eyebrow">Yêu cầu đặt phòng</p>
-            <h2>Thông tin đặt phòng</h2>
-            <p className="form-intro">Điền thông tin bên dưới, lễ tân sẽ liên hệ xác nhận.</p>
+            <header className="guest-booking-form-header">
+              <p className="eyebrow">Yêu cầu đặt phòng</p>
+              <h2>Thông tin đặt phòng</h2>
+              <p className="form-intro">Điền thông tin bên dưới, lễ tân sẽ liên hệ xác nhận.</p>
+            </header>
 
             {error && <p className="error-message" role="alert">{error}</p>}
 
-            <div className="field">
-              <label htmlFor="guest-room-type">Loại phòng</label>
-              <select id="guest-room-type" value={form.roomTypeId}
-                onChange={(event) => update('roomTypeId', event.target.value)}>
-                <option value="">Chọn loại phòng...</option>
-                {roomTypes.map((roomType) => (
-                  <option key={roomType.id} value={roomType.id}>
-                    {roomType.name} (tối đa {roomType.maxCapacity} khách)
-                  </option>
-                ))}
-              </select>
-              {selectedRoomType && (
-                <a className="guest-room-type-details-link" href={`/loai-phong/${selectedRoomType.id}`}>
-                  Xem chi tiết loại phòng
-                </a>
-              )}
-            </div>
-
-            <div className="field-row">
+            <section className="guest-booking-section" aria-labelledby="guest-stay-heading">
+              <h3 className="guest-booking-section-title" id="guest-stay-heading">Thông tin lưu trú</h3>
               <div className="field">
-                <label htmlFor="guest-check-in">Ngày nhận phòng</label>
-                <input
-                  id="guest-check-in"
-                  type="date"
-                  min={today}
-                  max={maxCheckInDate}
-                  value={form.checkInDate}
-                  onChange={(event) => {
-                    const newCheckIn = event.target.value;
-                    let newCheckOut = form.checkOutDate;
-                    if (!newCheckOut || newCheckOut <= newCheckIn) {
-                      newCheckOut = addDays(newCheckIn, 1)
-                    }
-                    setForm(current => ({
-                      ...current,
-                      checkInDate: newCheckIn,
-                      checkOutDate: newCheckOut
-                    }));
-                  }}
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor="guest-check-out">
-                  Ngày trả phòng {nights > 0 && `(${nights} đêm)`}
-                </label>
-                <input
-                  id="guest-check-out"
-                  type="date"
-                  min={form.checkInDate ? (() => {
-                    return addDays(form.checkInDate, 1)
-                  })() : today}
-                  max={form.checkInDate
-                    ? addDays(form.checkInDate, 30)
-                    : addDays(maxCheckInDate, 30)}
-                  value={form.checkOutDate}
-                  onChange={(event) => update('checkOutDate', event.target.value)}
-                />
-                {nights > 30 && (
-                  <p className="field-error">Khoảng thời gian tra cứu tối đa là 30 đêm.</p>
-                )}
-              </div>
-            </div>
-
-            <GuestQuoteTable
-              roomTypeId={form.roomTypeId}
-              roomTypeName={selectedRoomType?.name ?? ''}
-              maxCapacity={selectedRoomType?.maxCapacity ?? Number.MAX_SAFE_INTEGER}
-              checkInDate={form.checkInDate}
-              checkOutDate={form.checkOutDate}
-              guestCount={form.guestCount}
-              onSelectRoomType={(roomTypeId) => update('roomTypeId', String(roomTypeId))}
-            />
-            <div className="field">
-              <label htmlFor="guest-name">Họ tên</label>
-              <input id="guest-name" autoComplete="name" maxLength={120} value={form.guestName}
-                onChange={(event) => update('guestName', event.target.value)} />
-            </div>
-
-            <div className="field-row">
-              <div className="field">
-                <label htmlFor="guest-phone">Số điện thoại</label>
-                <input
-                  id="guest-phone"
-                  type="tel"
-                  autoComplete="tel"
-                  maxLength={15}
-                  value={form.phone}
-                  onChange={(event) => {
-                    update('phone', event.target.value)
-                    setFieldErrors((current) => ({ ...current, phone: '' }))
-                  }}
-                  aria-invalid={Boolean(fieldErrors.phone)}
-                />
-
-                {fieldErrors.phone && (
-                  <p className="field-error">{fieldErrors.phone}</p>
-                )}
-              </div>
-              <div className="field">
-                <label htmlFor="guest-count">Số khách</label>
-                <input id="guest-count" type="number" min={1} max={selectedRoomType?.maxCapacity}
-                  value={form.guestCount} onChange={(event) => update('guestCount', event.target.value)} />
+                <label htmlFor="guest-room-type">Loại phòng</label>
+                <select id="guest-room-type" value={form.roomTypeId}
+                  onChange={(event) => update('roomTypeId', event.target.value)}>
+                  <option value="">Chọn loại phòng...</option>
+                  {roomTypes.map((roomType) => (
+                    <option key={roomType.id} value={roomType.id}>
+                      {roomType.name} (tối đa {roomType.maxCapacity} khách)
+                    </option>
+                  ))}
+                </select>
                 {selectedRoomType && (
-                  <p className="guest-capacity-hint">
-                    Tiêu chuẩn {selectedRoomType.standardCapacity}, tối đa {selectedRoomType.maxCapacity} khách
+                  <a className="guest-room-type-details-link" href={`/loai-phong/${selectedRoomType.id}`}>
+                    Xem chi tiết loại phòng
+                  </a>
+                )}
+              </div>
+
+              <div className="field-row guest-booking-stay-row">
+                <div className="field">
+                  <label htmlFor="guest-check-in">Ngày nhận phòng</label>
+                  <input
+                    id="guest-check-in"
+                    type="date"
+                    min={today}
+                    max={maxCheckInDate}
+                    value={form.checkInDate}
+                    onChange={(event) => {
+                      const newCheckIn = event.target.value;
+                      let newCheckOut = form.checkOutDate;
+                      if (!newCheckOut || newCheckOut <= newCheckIn) {
+                        newCheckOut = addDays(newCheckIn, 1)
+                      }
+                      setForm(current => ({
+                        ...current,
+                        checkInDate: newCheckIn,
+                        checkOutDate: newCheckOut
+                      }));
+                    }}
+                  />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="guest-check-out">
+                    Ngày trả phòng {nights > 0 && `(${nights} đêm)`}
+                  </label>
+                  <input
+                    id="guest-check-out"
+                    type="date"
+                    min={form.checkInDate ? (() => {
+                      return addDays(form.checkInDate, 1)
+                    })() : today}
+                    max={form.checkInDate
+                      ? addDays(form.checkInDate, 30)
+                      : addDays(maxCheckInDate, 30)}
+                    value={form.checkOutDate}
+                    onChange={(event) => update('checkOutDate', event.target.value)}
+                  />
+                  {nights > 30 && (
+                    <p className="field-error">Khoảng thời gian tra cứu tối đa là 30 đêm.</p>
+                  )}
+                </div>
+
+                <div className="field guest-booking-guest-count">
+                  <label htmlFor="guest-count">Số khách</label>
+                  <input id="guest-count" type="number" min={1} max={selectedRoomType?.maxCapacity}
+                    value={form.guestCount} onChange={(event) => update('guestCount', event.target.value)} />
+                  {selectedRoomType && (
+                    <p className="guest-capacity-hint">
+                      Tiêu chuẩn {selectedRoomType.standardCapacity}, tối đa {selectedRoomType.maxCapacity} khách
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <div className="guest-booking-section guest-booking-pricing" aria-label="Giá tạm tính">
+              <GuestQuoteTable
+                roomTypeId={form.roomTypeId}
+                roomTypeName={selectedRoomType?.name ?? ''}
+                maxCapacity={selectedRoomType?.maxCapacity ?? Number.MAX_SAFE_INTEGER}
+                checkInDate={form.checkInDate}
+                checkOutDate={form.checkOutDate}
+                guestCount={form.guestCount}
+                onSelectRoomType={(roomTypeId) => update('roomTypeId', String(roomTypeId))}
+              />
+            </div>
+
+            <section className="guest-booking-section guest-booking-guest-details" aria-labelledby="guest-details-heading">
+              <h3 className="guest-booking-section-title" id="guest-details-heading">Thông tin khách</h3>
+              <div className="field">
+                <label htmlFor="guest-name">Họ tên</label>
+                <input id="guest-name" autoComplete="name" maxLength={120} value={form.guestName}
+                  onChange={(event) => update('guestName', event.target.value)} />
+              </div>
+
+              <div className="field-row">
+                <div className="field">
+                  <label htmlFor="guest-phone">Số điện thoại</label>
+                  <input
+                    id="guest-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    maxLength={15}
+                    value={form.phone}
+                    onChange={(event) => {
+                      update('phone', event.target.value)
+                      setFieldErrors((current) => ({ ...current, phone: '' }))
+                    }}
+                    aria-invalid={Boolean(fieldErrors.phone)}
+                  />
+
+                  {fieldErrors.phone && (
+                    <p className="field-error">{fieldErrors.phone}</p>
+                  )}
+                </div>
+                <div className="field">
+                  <label htmlFor="guest-email">Email</label>
+                  <input
+                    id="guest-email"
+                    type="email"
+                    autoComplete="email"
+                    maxLength={150}
+                    value={form.email}
+                    onChange={(event) => {
+                      update('email', event.target.value)
+                      setFieldErrors((current) => ({ ...current, email: '' }))
+                    }}
+                    aria-invalid={Boolean(fieldErrors.email)}
+                  />
+
+                  {fieldErrors.email && (
+                    <p className="field-error">{fieldErrors.email}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="field">
+                <label htmlFor="guest-note">Ghi chú (không bắt buộc)</label>
+                <textarea id="guest-note" rows={3} maxLength={500} value={form.note}
+                  placeholder="Ví dụ: đến muộn khoảng 22h"
+                  onChange={(event) => update('note', event.target.value)} />
+              </div>
+            </section>
+
+            <section className="guest-booking-section guest-booking-confirmation" aria-labelledby="guest-confirmation-heading">
+              <h3 className="guest-booking-section-title" id="guest-confirmation-heading">Xác nhận</h3>
+              <div className="policy-checkbox">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={form.acceptedCancellationPolicy}
+                    onChange={(event) => {
+                      setForm((current) => ({
+                        ...current,
+                        acceptedCancellationPolicy: event.target.checked,
+                      }))
+
+                      setFieldErrors((current) => ({
+                        ...current,
+                        acceptedCancellationPolicy: '',
+                      }))
+                    }}
+                  />
+
+                  <span>
+                    Tôi xác nhận đã đọc và đồng ý với chính sách hủy phòng.
+                  </span>
+                </label>
+
+                {fieldErrors.acceptedCancellationPolicy && (
+                  <p className="field-error">
+                    {fieldErrors.acceptedCancellationPolicy}
                   </p>
                 )}
               </div>
-            </div>
 
-            <div className="field">
-              <label htmlFor="guest-email">Email</label>
-              <input
-                id="guest-email"
-                type="email"
-                autoComplete="email"
-                maxLength={150}
-                value={form.email}
-                onChange={(event) => {
-                  update('email', event.target.value)
-                  setFieldErrors((current) => ({ ...current, email: '' }))
-                }}
-                aria-invalid={Boolean(fieldErrors.email)}
-              />
-
-              {fieldErrors.email && (
-                <p className="field-error">{fieldErrors.email}</p>
-              )}
-            </div>
-
-            <div className="field">
-              <label htmlFor="guest-note">Ghi chú (không bắt buộc)</label>
-              <textarea id="guest-note" rows={3} maxLength={500} value={form.note}
-                placeholder="Ví dụ: đến muộn khoảng 22h"
-                onChange={(event) => update('note', event.target.value)} />
-            </div>
-
-            <div className="policy-checkbox">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={form.acceptedCancellationPolicy}
-                  onChange={(event) => {
-                    setForm((current) => ({
-                      ...current,
-                      acceptedCancellationPolicy: event.target.checked,
-                    }))
-
-                    setFieldErrors((current) => ({
-                      ...current,
-                      acceptedCancellationPolicy: '',
-                    }))
-                  }}
-                />
-
-                <span>
-                  Tôi xác nhận đã đọc và đồng ý với chính sách hủy phòng.
-                </span>
-              </label>
-
-              {fieldErrors.acceptedCancellationPolicy && (
-                <p className="field-error">
-                  {fieldErrors.acceptedCancellationPolicy}
-                </p>
-              )}
-            </div>
-
-            <button className="submit-button" type="submit" disabled={isSubmitting || overCapacity}>
-              {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu đặt phòng'}
-            </button>
+              <button className="submit-button" type="submit" disabled={isSubmitting || overCapacity}>
+                {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu đặt phòng'}
+              </button>
+            </section>
           </form>
         )}
       </section>
