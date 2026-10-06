@@ -1,31 +1,365 @@
+.app-shell:has(> .public-room-search) {
+  min-height: 100vh;
+  padding: 0;
+  background-color: #e9e8db;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(8, 48, 38, 0.66) 0%,
+      rgba(13, 57, 44, 0.51) 27%,
+      rgba(37, 72, 53, 0.28) 45%,
+      rgba(213, 215, 195, 0.2) 66%,
+      rgba(249, 246, 237, 0.65) 100%
+    ),
+    url("/assets/room-search-bg.png");
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.public-room-search {
+  --search-green-950: #092f27;
+  --search-green-900: #103d32;
+  --search-green-800: #185342;
+  --search-green-700: #2d6a55;
+  --search-ivory: #faf8f1;
+  --search-ink: #17372f;
+  --search-muted: #68766f;
+  --search-line: #dce3d9;
+  --search-coral: #cf6d53;
+  display: grid;
+  background: transparent;
+  width: min(100%, 1450px);
+  min-height: 100vh;
+  min-height: 100svh;
+  grid-template-columns: minmax(0, 0.44fr) minmax(0, 0.56fr);
+  margin-inline: auto;
+  color: var(--search-ink);
+}
+
+.public-room-search .brand-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 40px;
+  padding: clamp(44px, 5.2vw, 76px) clamp(30px, 4.1vw, 60px);
+  background: transparent;
+  color: #fffdf6;
+}
+
+.public-room-search .room-search-hero-copy {
+  width: min(100%, 520px);
+  margin-block: auto;
+}
+
+.public-room-search .brand-panel .eyebrow {
+  margin: 0 0 21px;
+  color: #d0e0d0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.public-room-search .brand-panel h1 {
+  max-width: 540px;
+  margin: 0;
+  color: #fffdf6;
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-size: clamp(54px, 5vw, 82px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.03;
+  text-wrap: balance;
+}
+
+.public-room-search .brand-copy {
+  max-width: 470px;
+  margin: 23px 0 24px;
+  color: rgba(250, 249, 240, 0.9);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.room-search-benefits {
+  display: grid;
+  gap: 11px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-search-benefits li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  color: rgba(250, 250, 243, 0.94);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.room-search-benefit-icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  color: #d8e7d5;
+}
+
+.room-search-benefit-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.public-room-search .brand-footer {
+  align-items: center;
+  gap: 11px;
+  margin-top: 0;
+  color: rgba(250, 249, 240, 0.84);
+}
+
+.public-room-search .brand-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border: 1px solid rgba(235, 240, 220, 0.62);
+  border-radius: 50%;
+  color: #fffdf6;
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+}
+
+.room-search-hero-note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.public-room-search .form-panel {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(28px, 4vw, 58px) clamp(24px, 3.6vw, 52px);
+  background: transparent;
+}
+
 .public-room-search .login-form {
-  width: min(100%, 560px);
+  width: min(650px, 100%);
+  margin: auto;
+  border: 1px solid rgba(79, 100, 76, 0.19);
+  border-radius: 30px;
+  padding: clamp(36px, 3.6vw, 52px);
+  background: rgba(250, 248, 241, 0.95);
+  box-shadow:
+    0 24px 70px rgba(29, 49, 37, 0.14),
+    0 4px 16px rgba(29, 49, 37, 0.07);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+
+.room-search-form-header {
+  margin-bottom: 26px;
+  border-bottom: 1px solid rgba(37, 92, 71, 0.12);
+  padding-bottom: 23px;
+}
+
+.public-room-search .room-search-form-header .eyebrow {
+  margin: 0 0 11px;
+  color: var(--search-green-700);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.public-room-search .login-form h2 {
+  color: var(--search-green-900);
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-size: clamp(2.6rem, 3.2vw, 3.125rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.public-room-search .form-intro {
+  margin: 10px 0 0;
+  color: var(--search-muted);
+  font-size: 0.91rem;
+  line-height: 1.55;
+}
+
+.public-room-search .field {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  margin-bottom: 19px;
+}
+
+.public-room-search .field label {
+  color: var(--search-ink);
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.public-room-search .field input,
+.public-room-search .field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  border: 1px solid var(--search-line);
+  border-radius: 13px;
+  padding: 15px;
+  background: #fffdf8;
+  color: var(--search-ink);
+  font: inherit;
+  font-size: 0.94rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.public-room-search .field input:focus,
+.public-room-search .field select:focus {
+  outline: 0;
+  border-color: #79a28a;
+  box-shadow: 0 0 0 3px rgba(73, 127, 98, 0.11);
 }
 
 .public-room-search .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
+  gap: 0 16px;
+}
+
+.public-room-search .field-row .field {
+  min-width: 0;
+}
+
+.room-search-selected-hint {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 20px;
+  border: 1px solid #d6e5d5;
+  border-left: 3px solid #77a083;
+  border-radius: 10px;
+  padding: 10px 13px;
+  background: #edf5ef;
+  color: #315f47;
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.room-search-selected-hint::before {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: #d6e9d8;
+  color: #2c704e;
+  content: "✓";
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.public-room-search .error-message {
+  margin: 0 0 20px;
+  border-radius: 0 10px 10px 0;
+}
+
+.public-room-search .submit-button {
+  min-height: 60px;
+  border-radius: 13px;
+  background: var(--search-coral);
+  box-shadow: 0 8px 18px rgba(176, 86, 62, 0.16);
+  font-size: 0.98rem;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.public-room-search .submit-button:hover:not(:disabled) {
+  background: #bd5f47;
+  box-shadow: 0 11px 22px rgba(176, 86, 62, 0.2);
+  filter: none;
+  transform: translateY(-1px);
+}
+
+.public-room-search .submit-button:focus-visible,
+.room-search-book-button:focus-visible,
+.room-search-show-all:focus-visible {
+  outline: 3px solid rgba(45, 106, 85, 0.32);
+  outline-offset: 3px;
+}
+
+.room-search-trust {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px 0 0;
+  border-top: 1px solid rgba(37, 92, 71, 0.13);
+  padding: 19px 0 0;
+  color: #586c60;
+  font-size: 0.8rem;
+  list-style: none;
+}
+
+.room-search-trust li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  line-height: 1.4;
+}
+
+.room-search-trust li > span:first-child {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e4efe4;
+  color: #43805e;
+  font-size: 0.7rem;
+  font-weight: 800;
 }
 
 .room-search-results {
   display: grid;
-  gap: 10px;
-  margin: 24px 0 0;
+  gap: 11px;
+  margin: 25px 0 0;
   padding: 0;
   list-style: none;
 }
 
 .room-search-result {
-  display: flex;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--auth-line);
-  border-radius: 8px;
-  padding: 14px 16px;
-  background: var(--auth-panel);
+  gap: 12px;
+  border: 1px solid rgba(37, 92, 71, 0.13);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 254, 250, 0.97);
+  box-shadow: 0 7px 20px rgba(31, 63, 48, 0.055);
+}
+
+.room-search-result > div {
+  min-width: 0;
 }
 
 .room-search-result h3,
@@ -34,90 +368,62 @@
 }
 
 .room-search-result h3 {
-  font-size: 1rem;
+  overflow-wrap: anywhere;
+  color: var(--search-green-900);
+  font-size: 0.98rem;
 }
 
 .room-search-result p {
   margin-top: 5px;
-  color: var(--auth-muted);
-  font-size: 0.88rem;
+  color: var(--search-muted);
+  font-size: 0.82rem;
 }
 
 .room-search-result strong {
-  flex-shrink: 0;
-  color: var(--auth-teal-dark);
+  color: var(--search-green-700);
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .room-search-book-button {
   flex-shrink: 0;
   border: 0;
-  border-radius: 6px;
-  padding: 9px 12px;
-  background: var(--auth-coral);
+  border-radius: 9px;
+  padding: 10px 13px;
+  background: var(--search-coral);
   color: white;
   font: inherit;
+  font-size: 0.83rem;
   font-weight: 700;
-  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease;
 }
 
 .room-search-book-button:hover {
-  filter: brightness(0.94);
+  background: #bd5f47;
+  transform: translateY(-1px);
 }
 
 .room-search-empty {
   margin: 24px 0 0;
-  border-left: 3px solid var(--auth-coral);
-  padding: 12px 14px;
-  background: #fff0eb;
+  border: 1px solid #f1d9ce;
+  border-left: 3px solid var(--search-coral);
+  border-radius: 0 12px 12px 0;
+  padding: 14px 16px;
+  background: #fff2ed;
   color: #963f2c;
-}
-
-@media (max-width: 520px) {
-  .public-room-search .field-row {
-    grid-template-columns: 1fr;
-  }
-
-  .room-search-result {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .room-search-result strong {
-    margin-left: auto;
-  }
-}
-/* S2-04 AC4: ô "Loại phòng" chọn sẵn loại đang xem ở trang chi tiết */
-.public-room-search .field select {
-  box-sizing: border-box;
-  width: 100%;
-  border: 1px solid var(--auth-line);
-  border-radius: 6px;
-  padding: 14px 15px;
-  background: var(--auth-panel);
-  color: var(--auth-ink);
-  font: inherit;
-}
-
-.public-room-search .field select:focus {
-  outline: 3px solid rgba(23, 107, 100, 0.18);
-  border-color: var(--auth-teal);
-}
-
-.room-search-selected-hint {
-  margin: 0 0 16px;
-  border-left: 3px solid #10513f;
-  padding: 10px 12px;
-  background: #edf5ef;
-  color: #10513f;
   font-size: 0.9rem;
 }
 
 .room-search-selected-unavailable {
   margin: 24px 0 0;
+  border: 1px solid #f0dfbd;
   border-left: 3px solid #d97706;
-  padding: 12px 14px;
-  background: #fff7e6;
-  color: #8a5a00;
+  border-radius: 0 12px 12px 0;
+  padding: 14px 16px;
+  background: #fff8e9;
+  color: #795719;
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
 .room-search-selected-unavailable p {
@@ -125,13 +431,163 @@
 }
 
 .room-search-show-all {
-  margin-top: 8px;
+  margin-top: 9px;
   border: 0;
   padding: 0;
   background: none;
-  color: #10513f;
+  color: #315f47;
   cursor: pointer;
   font: inherit;
   font-weight: 700;
+  text-align: left;
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .app-shell:has(> .public-room-search) {
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(8, 48, 38, 0.62) 0%,
+        rgba(13, 57, 44, 0.46) 24%,
+        rgba(72, 94, 68, 0.24) 43%,
+        rgba(247, 243, 232, 0.76) 63%,
+        rgba(249, 247, 240, 0.9) 100%
+      ),
+      url("/assets/room-search-bg.png");
+    background-position: center, 53% center;
+  }
+
+  .public-room-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-room-search .brand-panel {
+    min-height: auto;
+    gap: 28px;
+    padding: 48px clamp(28px, 7vw, 72px) 30px;
+  }
+
+  .public-room-search .room-search-hero-copy {
+    margin-block: 0;
+  }
+
+  .public-room-search .brand-panel h1 {
+    font-size: clamp(50px, 7vw, 64px);
+  }
+
+  .public-room-search .brand-copy {
+    max-width: 520px;
+    margin-block: 17px 18px;
+  }
+
+  .room-search-benefits {
+    gap: 8px;
+  }
+
+  .public-room-search .form-panel {
+    padding: 30px clamp(24px, 6vw, 64px) 52px;
+  }
+
+  .public-room-search .login-form {
+    width: min(650px, 100%);
+  }
+}
+
+@media (max-width: 768px) {
+  .public-room-search .brand-panel h1 {
+    font-size: clamp(44px, 7vw, 52px);
+  }
+
+  .public-room-search .field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-room-search .login-form {
+    padding: 30px;
+  }
+}
+
+@media (max-width: 520px) {
+  .public-room-search .brand-panel {
+    gap: 24px;
+    padding: 35px 22px 25px;
+  }
+
+  .public-room-search .brand-panel .eyebrow {
+    margin-bottom: 15px;
+  }
+
+  .public-room-search .brand-panel h1 {
+    font-size: clamp(44px, 12vw, 50px);
+  }
+
+  .public-room-search .brand-copy {
+    margin-block: 14px 17px;
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+
+  .room-search-benefits li {
+    font-size: 0.83rem;
+  }
+
+  .public-room-search .form-panel {
+    padding: 24px 16px 38px;
+  }
+
+  .public-room-search .login-form {
+    border-radius: 24px;
+    padding: 25px 20px;
+  }
+
+  .room-search-form-header {
+    margin-bottom: 23px;
+    padding-bottom: 19px;
+  }
+
+  .public-room-search .login-form h2 {
+    font-size: clamp(2.1rem, 9vw, 2.6rem);
+  }
+
+  .public-room-search .field input,
+  .public-room-search .field select {
+    min-height: 58px;
+    padding-inline: 12px;
+    font-size: 0.9rem;
+  }
+
+  .room-search-trust {
+    gap: 7px;
+    font-size: 0.72rem;
+  }
+
+  .room-search-trust li {
+    gap: 5px;
+  }
+
+  .room-search-result {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 11px 8px;
+    padding: 14px;
+  }
+
+  .room-search-result h3 {
+    font-size: 0.91rem;
+  }
+
+  .room-search-result p {
+    font-size: 0.78rem;
+  }
+
+  .room-search-result strong {
+    font-size: 0.75rem;
+  }
+
+  .room-search-book-button {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 44px;
+  }
 }

@@ -133,24 +133,46 @@ export function PublicRoomSearchPage() {
   return (
     <main className="login-layout public-room-search">
       <section className="brand-panel" aria-label="HomeStay">
-        <div>
+        <div className="room-search-hero-copy">
           <p className="eyebrow">HomeStay</p>
-          <h1>Tìm phòng.</h1>
+          <h1>Tìm phòng<br />phù hợp.</h1>
           <p className="brand-copy">
-            Chọn ngày lưu trú và số khách để xem loại phòng còn trống phù hợp.
+            Chọn ngày lưu trú và số khách để khám phá những căn phòng phù hợp cho kỳ nghỉ của bạn.
           </p>
+          <ul className="room-search-benefits" aria-label="Lợi ích khi tra cứu">
+            <li>
+              <span className="room-search-benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m5 12.5 4.2 4.2L19 7" /></svg>
+              </span>
+              <span>Phòng trống theo thời gian thực</span>
+            </li>
+            <li>
+              <span className="room-search-benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m5 12.5 4.2 4.2L19 7" /></svg>
+              </span>
+              <span>Giá rõ ràng</span>
+            </li>
+            <li>
+              <span className="room-search-benefit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m5 12.5 4.2 4.2L19 7" /></svg>
+              </span>
+              <span>Đặt phòng nhanh chóng</span>
+            </li>
+          </ul>
         </div>
         <div className="brand-footer">
           <span className="brand-mark" aria-hidden="true">H</span>
-          <span>Tra cứu không cần đăng nhập</span>
+          <span className="room-search-hero-note">Không cần tài khoản · Tra cứu nhanh chóng</span>
         </div>
       </section>
 
       <section className="form-panel">
         <div className="login-form">
-          <p className="eyebrow">Tra cứu phòng trống</p>
-          <h2>Chọn kỳ lưu trú</h2>
-          <p className="form-intro">Số khách được so với sức chứa tối đa của từng phòng.</p>
+          <header className="room-search-form-header">
+            <p className="eyebrow">Tra cứu phòng trống</p>
+            <h2>Chọn kỳ lưu trú</h2>
+            <p className="form-intro">Chọn loại phòng, thời gian lưu trú và số khách.</p>
+          </header>
           {selectedRoomType && (
             <p className="room-search-selected-hint">
               Đã chọn sẵn loại phòng <strong>{selectedRoomType.name}</strong> từ trang chi tiết.
@@ -241,6 +263,20 @@ export function PublicRoomSearchPage() {
             <button className="submit-button" type="submit" disabled={isSearching}>
               {isSearching ? 'Đang tra phòng...' : 'Tra phòng'}
             </button>
+            <ul className="room-search-trust" aria-label="Cam kết dịch vụ">
+              <li>
+                <span aria-hidden="true">✓</span>
+                <span>Phòng trống</span>
+              </li>
+              <li>
+                <span aria-hidden="true">✓</span>
+                <span>Giá tốt nhất</span>
+              </li>
+              <li>
+                <span aria-hidden="true">✓</span>
+                <span>An tâm lưu trú</span>
+              </li>
+            </ul>
           </form>
 
           {hasSearched && (
