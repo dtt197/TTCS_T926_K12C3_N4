@@ -105,7 +105,6 @@ export function RoomTypeListPage() {
             <a href="tel:0389123456">0389 123 456</a>
             <small>Hỗ trợ 8:00 - 22:00</small>
           </div>
-          <a className="customer-header__admin" href="/">Quản trị viên</a>
         </div>
       </header>
 

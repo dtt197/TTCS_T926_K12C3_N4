@@ -40,7 +40,7 @@
   width: min(100% - 48px, 1320px);
   min-width: 0;
   height: 100%;
-  grid-template-columns: minmax(190px, 1fr) auto max-content max-content;
+  grid-template-columns: minmax(190px, 1fr) auto max-content;
   align-items: center;
   gap: 24px;
   margin: 0 auto;
@@ -143,25 +143,6 @@
 .customer-header__contact small {
   color: var(--muted);
   font-size: 0.66rem;
-}
-
-.customer-header__admin {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-self: end;
-  border-radius: 4px;
-  padding: 0 13px;
-  background: var(--green-800);
-  color: var(--cream);
-  font-size: 0.76rem;
-  font-weight: 650;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.customer-header__admin:hover {
-  background: var(--green-900);
 }
 
 .customer-hero {
@@ -714,7 +695,7 @@
 
 @media (max-width: 1120px) {
   .customer-header__inner {
-    grid-template-columns: minmax(170px, 1fr) auto max-content;
+    grid-template-columns: minmax(170px, 1fr) auto;
     gap: 15px;
   }
 
@@ -809,13 +790,7 @@
   .customer-nav__link {
     font-size: 0.73rem;
   }
-
-  .customer-header__admin {
-    min-height: 32px;
-    padding: 0 10px;
-    font-size: 0.7rem;
-  }
-
+  
   .customer-hero__copy {
     padding: 38px 20px 24px;
   }
