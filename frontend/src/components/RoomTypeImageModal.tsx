@@ -27,6 +27,7 @@ export function RoomTypeImageModal({
   const [images, setImages] = useState<RoomTypeImage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [isSavingOrder, setIsSavingOrder] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successNotice, setSuccessNotice] = useState<string | null>(null)
@@ -97,48 +98,85 @@ export function RoomTypeImageModal({
     }
   }
 
-  async function handleFileProcess(file: File) {
+  async function handleFileProcess(files: File[]) {
     setError(null)
     setSuccessNotice(null)
 
-    // Kiểm tra định dạng (JPG hoặc PNG)
-    const validTypes = ['image/jpeg', 'image/png']
-    const hasValidExt = /\.(jpg|jpeg|png)$/i.test(file.name)
-    if (!validTypes.includes(file.type) && !hasValidExt) {
-      setError('Định dạng tệp không hợp lệ. Chỉ chấp nhận tệp JPG hoặc PNG.')
-      return
-    }
+    if (files.length === 0) return
 
-    // Kiểm tra kích thước tối đa 5MB
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError('Kích thước tệp vượt quá giới hạn tối đa 5MB.')
-      return
-    }
-
-    // Kiểm tra giới hạn 8 ảnh
-    if (images.length >= MAX_IMAGES) {
+    const remainingSlots = MAX_IMAGES - images.length
+    if (remainingSlots <= 0) {
       setError('Mỗi loại phòng chỉ được tối đa 8 ảnh.')
       return
     }
 
+    const validFiles: File[] = []
+    for (const file of files) {
+      const validTypes = ['image/jpeg', 'image/png']
+      const hasValidExt = /\.(jpg|jpeg|png)$/i.test(file.name)
+      if (!validTypes.includes(file.type) && !hasValidExt) {
+        setError('Chỉ hỗ trợ ảnh JPG hoặc PNG.')
+        continue
+      }
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setError('Mỗi ảnh không được vượt quá 5MB.')
+        continue
+      }
+
+      validFiles.push(file)
+    }
+
+    if (validFiles.length === 0) {
+      return
+    }
+
+    const filesToUpload = validFiles.slice(0, remainingSlots)
+    if (validFiles.length > filesToUpload.length) {
+      setError('Mỗi loại phòng chỉ được tối đa 8 ảnh.')
+    }
+
     try {
       setIsUploading(true)
-      await uploadRoomTypeImage(roomType.id, file)
+      setUploadProgress({ current: 0, total: filesToUpload.length })
+
+      let uploadedCount = 0
+      let failedCount = 0
+      for (let index = 0; index < filesToUpload.length; index += 1) {
+        const file = filesToUpload[index]
+        setUploadProgress({ current: index + 1, total: filesToUpload.length })
+
+        try {
+          await uploadRoomTypeImage(roomType.id, file)
+          uploadedCount += 1
+        } catch (err) {
+          failedCount += 1
+          setError(err instanceof Error ? err.message : 'Tải ảnh lên thất bại.')
+        }
+      }
+
       await fetchImages()
-      setSuccessNotice('Đã tải ảnh lên thành công.')
-      setTimeout(() => setSuccessNotice(null), 3000)
+      if (uploadedCount > 0) {
+        const message =
+          failedCount === 0
+            ? `Đã tải ${uploadedCount}/${filesToUpload.length} ảnh thành công.`
+            : `Đã tải ${uploadedCount}/${filesToUpload.length} ảnh thành công. ${failedCount} ảnh không tải lên được.`
+        setSuccessNotice(message)
+        setTimeout(() => setSuccessNotice(null), 4000)
+      } else if (failedCount > 0) {
+        setError('Không tải được ảnh nào. Vui lòng thử lại.')
+      }
       onImagesUpdated()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Tải ảnh lên thất bại.')
     } finally {
       setIsUploading(false)
+      setUploadProgress(null)
     }
   }
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (file) {
-      void handleFileProcess(file)
+    const files = event.target.files ? Array.from(event.target.files) : []
+    if (files.length > 0) {
+      void handleFileProcess(files)
     }
     event.target.value = ''
   }
@@ -160,9 +198,9 @@ export function RoomTypeImageModal({
     setIsDraggingFile(false)
     if (!canManage || isUploading || images.length >= MAX_IMAGES || draggedIndex !== null) return
 
-    const file = e.dataTransfer.files?.[0]
-    if (file) {
-      void handleFileProcess(file)
+    const files = e.dataTransfer.files ? Array.from(e.dataTransfer.files) : []
+    if (files.length > 0) {
+      void handleFileProcess(files)
     }
   }
 
@@ -357,56 +395,6 @@ export function RoomTypeImageModal({
             </div>
           )}
 
-          {canManage && (
-            <div
-              className={`room-type-upload-zone ${isDraggingFile ? 'dragging' : ''} ${
-                isFull || isUploading ? 'disabled' : ''
-              }`}
-              onDragOver={handleDropzoneDragOver}
-              onDragLeave={handleDropzoneDragLeave}
-              onDrop={handleDropzoneDrop}
-              onClick={() => {
-                if (!isFull && !isUploading) {
-                  fileInputRef.current?.click()
-                }
-              }}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="room-type-upload-input"
-                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-                disabled={isFull || isUploading}
-                onChange={handleFileChange}
-              />
-
-              {isUploading ? (
-                <div className="room-type-upload-loading">
-                  <div className="room-type-upload-spinner" />
-                  <span>Đang tải lên và xử lý ảnh...</span>
-                </div>
-              ) : isFull ? (
-                <div>
-                  <span className="room-type-upload-icon">🔒</span>
-                  <div className="room-type-upload-title">Đã đạt tối đa 8 ảnh</div>
-                  <p className="room-type-upload-subtitle">
-                    Loại phòng này đã có đủ 8 ảnh, không thể tải thêm.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <span className="room-type-upload-icon">🖼️</span>
-                  <div className="room-type-upload-title">
-                    Kéo thả ảnh vào đây hoặc <span>chọn tệp từ máy tính</span>
-                  </div>
-                  <p className="room-type-upload-subtitle">
-                    Hỗ trợ JPG, PNG dưới 5MB. Kéo thả các ảnh bên dưới để thay đổi thứ tự hiển thị.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
           <div>
             <div className="room-type-image-grid-title">
               <span>
@@ -414,7 +402,7 @@ export function RoomTypeImageModal({
               </span>
               <span className="room-type-image-grid-hint">
                 {canManage
-                  ? '💡 Kéo thả để đổi thứ tự | Nút 🗑️ để xoá ảnh có xác nhận'
+                  ? '↕ Kéo ảnh để đổi thứ tự · 🗑 Xóa có xác nhận'
                   : 'Ảnh đầu tiên là ảnh đại diện'}
               </span>
             </div>
@@ -554,6 +542,60 @@ export function RoomTypeImageModal({
               </div>
             )}
           </div>
+
+          {canManage && (
+            <section className="room-type-image-add-section" aria-label="Thêm ảnh">
+              <h3>THÊM ẢNH</h3>
+              <div
+                className={`room-type-upload-zone ${isDraggingFile ? 'dragging' : ''} ${
+                  isFull || isUploading ? 'disabled' : ''
+                }`}
+                onDragOver={handleDropzoneDragOver}
+                onDragLeave={handleDropzoneDragLeave}
+                onDrop={handleDropzoneDrop}
+                onClick={() => {
+                  if (!isFull && !isUploading) {
+                    fileInputRef.current?.click()
+                  }
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="room-type-upload-input"
+                  accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                  multiple
+                  disabled={isFull || isUploading}
+                  onChange={handleFileChange}
+                />
+
+                {isUploading ? (
+                  <div className="room-type-upload-loading">
+                    <div className="room-type-upload-spinner" />
+                    <span>
+                      {uploadProgress
+                        ? `Đang tải ${uploadProgress.current}/${uploadProgress.total} ảnh...`
+                        : 'Đang tải ảnh lên...'}
+                    </span>
+                  </div>
+                ) : isFull ? (
+                  <div className="room-type-upload-full-message">
+                    <strong>🔒 Đã đạt tối đa 8 ảnh</strong>
+                    <span>Không thể tải thêm ảnh.</span>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="room-type-upload-title">
+                      🖼 Kéo ảnh vào đây hoặc <span>chọn ảnh từ máy tính</span>
+                    </div>
+                    <p className="room-type-upload-subtitle">
+                      JPG/PNG · ≤5MB · còn {MAX_IMAGES - images.length} ảnh
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="room-type-image-modal-footer">

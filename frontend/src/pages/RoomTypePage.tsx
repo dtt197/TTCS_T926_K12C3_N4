@@ -10,6 +10,7 @@ import {
   getRoomTypes,
   updateRoomType,
   updateRoomTypeStatus,
+  uploadRoomTypeImage,
 } from '../services/roomTypeService'
 import type { Amenity } from '../types/amenity'
 import type { RoomType, RoomTypePayload } from '../types/roomType'
@@ -94,13 +95,34 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
     [roomTypes],
   )
 
-  async function handleCreate(payload: RoomTypePayload) {
+  async function handleCreate(payload: RoomTypePayload, files?: File[]) {
     const created = await createRoomType(payload)
 
-    setNotice({
-      type: 'success',
-      text: `Đã thêm loại phòng ${created.name}`,
-    })
+    if (files && files.length > 0) {
+      let uploadedCount = 0
+      for (const file of files) {
+        try {
+          await uploadRoomTypeImage(created.id, file)
+          uploadedCount += 1
+        } catch {
+          // Intentionally ignore failed image uploads so the room type remains created.
+        }
+      }
+
+      const remainingCount = files.length - uploadedCount
+      setNotice({
+        type: 'success',
+        text:
+          remainingCount === 0
+            ? `Đã thêm loại phòng ${created.name} và tải lên ${uploadedCount}/${files.length} ảnh.`
+            : `Đã tạo loại phòng ${created.name}. ${uploadedCount}/${files.length} ảnh tải lên thành công. Bạn có thể bổ sung các ảnh còn thiếu trong Quản lý ảnh.`,
+      })
+    } else {
+      setNotice({
+        type: 'success',
+        text: `Đã thêm loại phòng ${created.name}`,
+      })
+    }
 
     await load()
   }
@@ -235,7 +257,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
             : 'room-type-workspace readonly'
         }
       >
-        <div className="room-type-list-panel">
+        <section className="room-type-list-section">
           <div className="room-type-section-heading">
             <div>
               <span className="room-type-kicker">
@@ -500,10 +522,10 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
               ))}
             </div>
           )}
-        </div>
+        </section>
 
         {canManage && (
-          <aside className="room-type-form-panel">
+          <section className="room-type-create-section">
             <div className="room-type-section-heading compact">
               <div>
                 <span className="room-type-kicker">
@@ -540,7 +562,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                   : undefined
               }
             />
-          </aside>
+          </section>
         )}
       </section>
 
