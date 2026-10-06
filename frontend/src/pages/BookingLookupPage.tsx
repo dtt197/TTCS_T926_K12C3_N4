@@ -116,7 +116,6 @@ export function BookingLookupPage() {
               Tra cứu booking
             </a>
           </nav>
-          <a className="booking-lookup-admin" href="/">Quản trị viên</a>
         </div>
       </header>
 
