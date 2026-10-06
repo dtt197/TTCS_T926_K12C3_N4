@@ -86,6 +86,7 @@ class GuestQuoteTest {
         roomType.setStatus(true);
         roomType.setStandardCapacity(2);
         roomType.setMaxCapacity(3);
+        roomType.setExtraGuestFee(200_000L);
         roomType.setWeekdayPrice(weekdayPrice);
         roomType.setWeekendPrice(weekendPrice);
         return roomType;
@@ -232,7 +233,7 @@ class GuestQuoteTest {
     @Test
     void vuot1Nguoi_loaiPhongCoPhuThuRieng_quoteDungMucRieng() {
         RoomType phongDoi = roomType(1L, "Phòng đôi", 500_000L, 700_000L);
-        phongDoi.setExtraPersonFee(250_000L);
+        phongDoi.setExtraGuestFee(250_000L);
         coSan(phongDoi);
 
         GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 3);
@@ -242,14 +243,14 @@ class GuestQuoteTest {
     }
 
     @Test
-    void vuot1Nguoi_loaiPhongKhongCoPhuThuRieng_quoteFallbackVeOperatingSettings() {
+    void vuot1Nguoi_loaiPhongKhongDungPhuThuChung() {
         settings.setExtraPersonFee(300_000L);
         coSan(roomType(1L, "Phòng đôi", 500_000L, 700_000L));
 
         GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 3);
 
-        assertThat(quote.extraPersonFee()).isEqualTo(300_000L);
-        assertThat(quote.surchargeAmount()).isEqualTo(600_000L);
+        assertThat(quote.extraPersonFee()).isEqualTo(200_000L);
+        assertThat(quote.surchargeAmount()).isEqualTo(400_000L);
     }
 
     @Test
@@ -318,13 +319,37 @@ class GuestQuoteTest {
     }
 
     @Test
-    void doiMucPhuThuTrongThamSo_tamTinhDungMucMoi() {
+    void doiMucPhuThuChung_khongDoiMucPhuThuTheoLoaiPhong() {
         settings.setExtraPersonFee(300_000L);
         coSan(roomType(1L, "Phòng đôi", 500_000L, 700_000L));
 
         GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(2), 3);
 
-        assertThat(quote.surchargeAmount()).isEqualTo(600_000L);
+        assertThat(quote.surchargeAmount()).isEqualTo(400_000L);
+    }
+
+    @Test
+    void baLoaiPhongDungMucPhuThuRiengTheoLoai() {
+        RoomType phongDon = roomType(10L, "Phòng đơn", 300_000L, 400_000L);
+        phongDon.setStandardCapacity(1);
+        phongDon.setMaxCapacity(2);
+        phongDon.setExtraGuestFee(150_000L);
+        RoomType phongDoi = roomType(11L, "Phòng đôi", 500_000L, 700_000L);
+        phongDoi.setExtraGuestFee(250_000L);
+        RoomType phongGiaDinh = roomType(12L, "Phòng gia đình", 900_000L, 1_200_000L);
+        phongGiaDinh.setStandardCapacity(6);
+        phongGiaDinh.setMaxCapacity(8);
+        phongGiaDinh.setExtraGuestFee(300_000L);
+        coSan(phongDon);
+        coSan(phongDoi);
+        coSan(phongGiaDinh);
+
+        assertThat(guestBookingService.quote(10L, MONDAY, MONDAY.plusDays(2), 2).surchargeAmount())
+                .isEqualTo(300_000L);
+        assertThat(guestBookingService.quote(11L, MONDAY, MONDAY.plusDays(2), 3).surchargeAmount())
+                .isEqualTo(500_000L);
+        assertThat(guestBookingService.quote(12L, MONDAY, MONDAY.plusDays(2), 8).surchargeAmount())
+                .isEqualTo(1_200_000L);
     }
 
     @Test

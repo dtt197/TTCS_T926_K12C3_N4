@@ -14,6 +14,7 @@ type FormState = {
   name: string
   standardCapacity: string
   maxCapacity: string
+  extraGuestFee: string
   numberOfBeds: string
   description: string
   weekdayPrice: string
@@ -26,6 +27,7 @@ function toFormState(roomType?: RoomType): FormState {
     name: roomType?.name ?? '',
     standardCapacity: roomType ? String(roomType.standardCapacity) : '2',
     maxCapacity: roomType ? String(roomType.maxCapacity) : '2',
+    extraGuestFee: roomType ? String(roomType.extraGuestFee ?? 0) : '0',
     numberOfBeds: roomType ? String(roomType.numberOfBeds) : '1',
     description: roomType?.description ?? '',
     weekdayPrice:
@@ -86,6 +88,7 @@ export function RoomTypeForm({
 
     const standardCapacity = Number(form.standardCapacity)
     const maxCapacity = Number(form.maxCapacity)
+    const extraGuestFee = Number(form.extraGuestFee)
     const numberOfBeds = Number(form.numberOfBeds)
     const weekdayPrice = Number(form.weekdayPrice)
     const weekendPrice = Number(form.weekendPrice)
@@ -101,6 +104,11 @@ export function RoomTypeForm({
       )
     ) {
       setError('Sức chứa và số giường phải là số nguyên từ 1 trở lên')
+      return
+    }
+
+    if (!Number.isInteger(extraGuestFee) || extraGuestFee < 0) {
+      setError('Phụ thu thêm người phải là số nguyên từ 0 trở lên (VND)')
       return
     }
 
@@ -138,6 +146,7 @@ export function RoomTypeForm({
         name: form.name.trim(),
         standardCapacity,
         maxCapacity,
+        extraGuestFee,
         numberOfBeds,
         description: form.description.trim(),
         amenityIds,
@@ -234,6 +243,21 @@ export function RoomTypeForm({
               event.target.value,
             )
           }
+        />
+      </label>
+
+      <label className="form-label">
+        Phụ thu thêm người (VND/người/đêm)
+
+        <input
+          className="form-control"
+          type="number"
+          min={0}
+          step="1"
+          inputMode="numeric"
+          value={form.extraGuestFee}
+          placeholder="250000"
+          onChange={(event) => update('extraGuestFee', event.target.value)}
         />
       </label>
 

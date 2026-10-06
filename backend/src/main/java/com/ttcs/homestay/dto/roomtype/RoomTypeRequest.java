@@ -55,7 +55,25 @@ public record RoomTypeRequest(
         /** S2-01 Lát 2: giá cuối tuần theo VND/đêm. */
         @NotNull(message = "Vui lòng nhập giá cuối tuần")
         @Min(value = 1, message = "Giá cuối tuần phải lớn hơn 0")
-        Long weekendPrice
+        Long weekendPrice,
+
+        @NotNull(message = "Vui lòng nhập phụ thu thêm người")
+        @Min(value = 0, message = "Phụ thu thêm người không được âm")
+        Long extraGuestFee
 
 ) {
+    public RoomTypeRequest(
+            String code,
+            String name,
+            Integer standardCapacity,
+            Integer maxCapacity,
+            Integer numberOfBeds,
+            String description,
+            Boolean active,
+            List<Long> amenityIds,
+            Long weekdayPrice,
+            Long weekendPrice) {
+        this(code, name, standardCapacity, maxCapacity, numberOfBeds, description,
+                active, amenityIds, weekdayPrice, weekendPrice, 0L);
+    }
 }

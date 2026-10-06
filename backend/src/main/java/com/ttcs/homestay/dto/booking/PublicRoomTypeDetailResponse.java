@@ -42,6 +42,7 @@ public record PublicRoomTypeDetailResponse(
         String checkOutTime,
         boolean allowChildren,
         String childPolicy,
+        long extraGuestFee,
         long extraPersonFee,
         String cancellationPolicy,
         List<CancellationTierPolicy> cancellationTiers
@@ -94,9 +95,8 @@ public record PublicRoomTypeDetailResponse(
                         ? "Cho phép mang theo trẻ nhỏ. Trẻ dưới 6 tuổi được miễn phí phụ thu khi ngủ chung giường sẵn có với người lớn."
                         : "Không cho phép mang theo trẻ nhỏ (loại phòng này chỉ dành cho người lớn từ 18 tuổi trở lên).");
 
-        // 3. Mức phụ thu thêm người
-        long effectiveExtraFee = roomType.effectiveExtraPersonFee(
-                settings != null ? settings.getExtraPersonFee() : null);
+        // 3. Mức phụ thu thêm người riêng của loại phòng
+        long effectiveExtraFee = roomType.getExtraGuestFee() == null ? 0L : roomType.getExtraGuestFee();
 
         // 4. Chính sách hủy phòng
         String effectiveCancellationPolicy = (roomType.getCancellationPolicy() != null && !roomType.getCancellationPolicy().isBlank())
@@ -123,6 +123,7 @@ public record PublicRoomTypeDetailResponse(
                 effectiveCheckOut.format(TIME_FORMATTER),
                 allowKids,
                 effectiveChildPolicy,
+                effectiveExtraFee,
                 effectiveExtraFee,
                 effectiveCancellationPolicy,
                 tierPolicies

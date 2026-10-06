@@ -27,7 +27,8 @@ public record RoomTypeResponse(
         long roomCount,
         List<AmenitySummary> amenities,
         String avatarUrl,
-        List<RoomTypeImageResponse> images) {
+        List<RoomTypeImageResponse> images,
+        Long extraGuestFee) {
 
     public RoomTypeResponse(
             Long id,
@@ -42,7 +43,7 @@ public record RoomTypeResponse(
             boolean active,
             long roomCount,
             List<AmenitySummary> amenities) {
-        this(id, code, name, standardCapacity, maxCapacity, numberOfBeds, description, weekdayPrice, weekendPrice, active, roomCount, amenities, null, List.of());
+        this(id, code, name, standardCapacity, maxCapacity, numberOfBeds, description, weekdayPrice, weekendPrice, active, roomCount, amenities, null, List.of(), 0L);
     }
 
     public static RoomTypeResponse from(RoomType roomType, long roomCount) {
@@ -82,7 +83,8 @@ public record RoomTypeResponse(
                 roomCount,
                 activeAmenities,
                 avatar,
-                imageResponses
+                imageResponses,
+                roomType.getExtraGuestFee() == null ? 0L : roomType.getExtraGuestFee()
         );
     }
 }

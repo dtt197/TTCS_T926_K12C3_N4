@@ -73,9 +73,11 @@ class GuestBookingServiceTest {
         phongDoi.setStatus(true);
         phongDoi.setStandardCapacity(2);
         phongDoi.setMaxCapacity(3);
+        phongDoi.setExtraGuestFee(200_000L);
         phongDoi.setNumberOfBeds(1);
         phongDoi.setWeekdayPrice(500_000L);
         phongDoi.setWeekendPrice(700_000L);
+        phongDoi.setExtraGuestFee(200_000L);
         
         // S2-07 Lát 3: gắn bộ đếm lượt đặt thật (mỗi test một bộ đếm mới, chưa có lượt nào) để không bị null.
         ReflectionTestUtils.setField(guestBookingService, "bookingRateLimiter", new BookingRateLimiter());
@@ -284,7 +286,7 @@ class GuestBookingServiceTest {
     @Test
     void quoteVaBookingDungCungMucPhuThuRiengCuaLoaiPhong() {
         conPhong();
-        phongDoi.setExtraPersonFee(250_000L);
+        phongDoi.setExtraGuestFee(250_000L);
         when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(phongDoi));
         when(bookingCodeGenerator.next()).thenReturn("7KQ2M9XA");
 

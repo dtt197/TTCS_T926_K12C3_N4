@@ -46,25 +46,27 @@ class PublicRoomTypeDetailResponseTest {
     }
 
     @Test
-    void from_usesRoomTypeExtraPersonFeeWhenConfigured() {
+    void from_usesRoomTypeExtraGuestFeeWhenConfigured() {
         RoomType roomType = roomType();
-        roomType.setExtraPersonFee(250_000L);
+        roomType.setExtraGuestFee(250_000L);
         OperatingSettings settings = settings();
         settings.setExtraPersonFee(200_000L);
 
         PublicRoomTypeDetailResponse response = PublicRoomTypeDetailResponse.from(roomType, 1, settings);
 
+        assertEquals(250_000L, response.extraGuestFee());
         assertEquals(250_000L, response.extraPersonFee());
     }
 
     @Test
-    void from_fallsBackToOperatingSettingsWhenRoomTypeFeeIsNotConfigured() {
+    void from_doesNotUseLegacyOperatingSettingsFeeWhenRoomTypeFeeIsNotConfigured() {
         OperatingSettings settings = settings();
         settings.setExtraPersonFee(200_000L);
 
         PublicRoomTypeDetailResponse response = PublicRoomTypeDetailResponse.from(roomType(), 1, settings);
 
-        assertEquals(200_000L, response.extraPersonFee());
+        assertEquals(0L, response.extraGuestFee());
+        assertEquals(0L, response.extraPersonFee());
     }
 
     private static OperatingSettings settings() {

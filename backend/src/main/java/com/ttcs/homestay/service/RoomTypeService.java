@@ -173,6 +173,7 @@ public class RoomTypeService {
 roomType.setName(name);
 roomType.setStandardCapacity(request.standardCapacity());
 roomType.setMaxCapacity(request.maxCapacity());
+roomType.setExtraGuestFee(request.extraGuestFee() == null ? 0L : request.extraGuestFee());
 roomType.setNumberOfBeds(request.numberOfBeds());
 roomType.setWeekdayPrice(request.weekdayPrice());
 roomType.setWeekendPrice(request.weekendPrice());
