@@ -18,6 +18,7 @@ export type RoomType = {
   name: string
   standardCapacity: number
   maxCapacity: number
+  extraGuestFee: number
   numberOfBeds: number
   description: string | null
   weekdayPrice: number | null
@@ -34,6 +35,7 @@ export type RoomTypePayload = {
   name: string
   standardCapacity: number
   maxCapacity: number
+  extraGuestFee: number
   numberOfBeds: number
   description: string
   amenityIds: number[]

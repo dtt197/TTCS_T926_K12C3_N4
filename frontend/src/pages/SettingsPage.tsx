@@ -207,13 +207,6 @@ export function SettingsPage({ role }: SettingsPageProps) {
                     <p>/ giờ</p>
                   </article>
 
-                  <article className="settings-info-card">
-                    <span className="settings-info-label">
-                      Phụ thu thêm người
-                    </span>
-                    <strong>{formatMoney(current.extraPersonFee)}</strong>
-                    <p>/ người / đêm</p>
-                  </article>
                 </div>
 
                 <div className="settings-cancellation">
@@ -280,7 +273,7 @@ export function SettingsPage({ role }: SettingsPageProps) {
                             <th>Thời điểm</th>
                             <th>Người sửa</th>
                             <th>Nhận / trả</th>
-                            <th>Phụ thu</th>
+                            <th>Phụ thu trả muộn</th>
                             <th>Chính sách huỷ</th>
                           </tr>
                         </thead>
@@ -305,9 +298,6 @@ export function SettingsPage({ role }: SettingsPageProps) {
                                   )}
                                   /giờ
                                 </strong>
-                                <small>
-                                  {formatMoney(version.extraPersonFee)}/người
-                                </small>
                               </td>
                               <td>
                                 <span className="settings-history-policy">

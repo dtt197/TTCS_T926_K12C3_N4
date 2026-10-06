@@ -178,16 +178,9 @@ export function SettingsForm({
       return
     }
 
-    if (
-      !isWholeNumber(
-        form.lateCheckoutFeePerHour,
-      ) ||
-      !isWholeNumber(
-        form.extraPersonFee,
-      )
-    ) {
+    if (!isWholeNumber(form.lateCheckoutFeePerHour)) {
       setError(
-        'Phụ thu phải là số nguyên từ 0 trở lên (VND)',
+        'Phụ thu trả muộn phải là số nguyên từ 0 trở lên (VND)',
       )
       return
     }
@@ -389,24 +382,6 @@ export function SettingsForm({
         />
       </label>
 
-      <label className="form-label">
-        Phụ thu thêm người
-        (VND / người / đêm)
-
-        <input
-          className="form-control"
-          inputMode="numeric"
-          value={
-            form.extraPersonFee
-          }
-          onChange={(e) =>
-            update(
-              'extraPersonFee',
-              e.target.value,
-            )
-          }
-        />
-      </label>
 <fieldset className="weekend-days-fieldset">
   <legend>Ngày được tính là cuối tuần</legend>
 

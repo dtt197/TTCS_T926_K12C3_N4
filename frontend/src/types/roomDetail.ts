@@ -36,7 +36,7 @@ export type PublicRoomTypeDetail = {
   checkOutTime: string
   allowChildren: boolean
   childPolicy: string
-  extraPersonFee: number
+  extraGuestFee: number
   cancellationPolicy: string
   cancellationTiers: CancellationTierPolicy[]
 }

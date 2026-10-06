@@ -434,7 +434,7 @@ export function RoomDetailPage({
                     <div className="policy-block-body">
                       <div className="extra-fee-highlight" id="policy-extra-fee">
                         <span className="fee-amount">
-                          +{money.format(roomType.extraPersonFee)} đ
+                          +{money.format(roomType.extraGuestFee)} đ
                         </span>
                         <span className="fee-unit">/ người / đêm</span>
                       </div>
@@ -442,7 +442,7 @@ export function RoomDetailPage({
                         Sức chứa tiêu chuẩn: <strong>{roomType.standardCapacity} khách</strong>. Tối đa:{' '}
                         <strong>{roomType.maxCapacity} khách</strong>.
                         {roomType.maxCapacity > roomType.standardCapacity ? (
-                          <> Phụ thu thêm {money.format(roomType.extraPersonFee)} đ cho mỗi khách vượt quá số lượng tiêu chuẩn {roomType.standardCapacity} người.</>
+                          <> Phụ thu thêm {money.format(roomType.extraGuestFee)} đ cho mỗi khách vượt quá số lượng tiêu chuẩn {roomType.standardCapacity} người.</>
                         ) : (
                           <> Loại phòng này chỉ nhận tối đa đúng sức chứa tiêu chuẩn, không nhận thêm người.</>
                         )}
@@ -576,7 +576,7 @@ export function RoomDetailPage({
                   </div>
                   <div className="summary-line">
                     <span>Phụ thu thêm khách:</span>
-                    <strong id="sidebar-extra-fee">+{money.format(roomType.extraPersonFee)} đ</strong>
+                    <strong id="sidebar-extra-fee">+{money.format(roomType.extraGuestFee)} đ</strong>
                   </div>
                   <div className="summary-line">
                     <span>Số giường ngủ:</span>

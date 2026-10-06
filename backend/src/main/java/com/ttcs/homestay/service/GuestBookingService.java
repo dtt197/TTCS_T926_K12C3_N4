@@ -270,7 +270,7 @@ public class GuestBookingService {
         long nightsTotal = PricingService.total(nightlyPrices);
         int extraGuests = Math.max(0, guestCount - roomType.getStandardCapacity());
         int minimumRooms = (guestCount - 1) / roomType.getMaxCapacity() + 1;
-        long extraPersonFee = roomType.effectiveExtraPersonFee(settings.getExtraPersonFee());
+        long extraPersonFee = roomType.getExtraGuestFee() == null ? 0L : roomType.getExtraGuestFee();
         long surchargeAmount = Math.multiplyExact(
                 Math.multiplyExact((long) extraGuests, extraPersonFee), nightlyPrices.size());
         return new GuestQuoteResponse(

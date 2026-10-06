@@ -89,7 +89,7 @@ class PublicRoomDetailIntegrationTest {
         standardRoomType.setCheckOutTime(LocalTime.of(12, 0));
         standardRoomType.setAllowChildren(true);
         standardRoomType.setChildPolicy("Cho phép mang theo trẻ nhỏ. Trẻ dưới 6 tuổi ở cùng người lớn miễn phí.");
-        standardRoomType.setExtraPersonFee(150000L);
+        standardRoomType.setExtraGuestFee(150000L);
         standardRoomType.setCancellationPolicy("Chính sách hủy linh hoạt chuẩn homestay");
         standardRoomType = roomTypeRepository.save(standardRoomType);
 
@@ -113,7 +113,7 @@ class PublicRoomDetailIntegrationTest {
         customPolicyRoomType.setCheckOutTime(LocalTime.of(11, 0));
         customPolicyRoomType.setAllowChildren(false);
         customPolicyRoomType.setChildPolicy("Không cho phép mang theo trẻ nhỏ để đảm bảo không gian nghỉ dưỡng yên tĩnh tuyệt đối.");
-        customPolicyRoomType.setExtraPersonFee(300000L);
+        customPolicyRoomType.setExtraGuestFee(300000L);
         customPolicyRoomType.setCancellationPolicy("Chính sách hủy nghiêm ngặt dành riêng cho phòng Studio");
         
         if (customPolicyRoomType.getCancellationTiers().isEmpty()) {
@@ -147,6 +147,7 @@ class PublicRoomDetailIntegrationTest {
     void kiemTraHienThiPhiHuyPhongVaMocThoiGianApDung() throws Exception {
         mockMvc.perform(get("/api/public/room-types/" + standardRoomType.getId()))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.extraGuestFee").value(150000))
                 .andExpect(jsonPath("$.extraPersonFee").value(150000))
                 .andExpect(jsonPath("$.cancellationPolicy").value("Chính sách hủy linh hoạt chuẩn homestay"))
                 .andExpect(jsonPath("$.cancellationTiers").isArray())
@@ -177,6 +178,7 @@ class PublicRoomDetailIntegrationTest {
                 .andExpect(jsonPath("$.checkInTime").value("14:00"))
                 .andExpect(jsonPath("$.checkOutTime").value("12:00"))
                 .andExpect(jsonPath("$.allowChildren").value(true))
+                .andExpect(jsonPath("$.extraGuestFee").value(150000))
                 .andExpect(jsonPath("$.extraPersonFee").value(150000))
                 .andExpect(jsonPath("$.cancellationTiers", hasSize(3)));
 
@@ -187,6 +189,7 @@ class PublicRoomDetailIntegrationTest {
                 .andExpect(jsonPath("$.checkOutTime").value("11:00"))
                 .andExpect(jsonPath("$.allowChildren").value(false))
                 .andExpect(jsonPath("$.childPolicy").value("Không cho phép mang theo trẻ nhỏ để đảm bảo không gian nghỉ dưỡng yên tĩnh tuyệt đối."))
+                .andExpect(jsonPath("$.extraGuestFee").value(300000))
                 .andExpect(jsonPath("$.extraPersonFee").value(300000))
                 .andExpect(jsonPath("$.cancellationPolicy").value("Chính sách hủy nghiêm ngặt dành riêng cho phòng Studio"))
                 .andExpect(jsonPath("$.cancellationTiers", hasSize(2)))

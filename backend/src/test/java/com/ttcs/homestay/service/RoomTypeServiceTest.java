@@ -54,6 +54,17 @@ class RoomTypeServiceTest {
     }
 
     @Test
+    void taoLoaiPhong_luuPhuThuThemNguoiRiengTheoLoai() {
+        when(roomTypeRepository.save(any(RoomType.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        RoomTypeRequest request = new RoomTypeRequest(
+                "DON", "Phòng đơn", 1, 2, 1, null, true, null, 300_000L, 400_000L, 150_000L);
+
+        RoomTypeResponse response = roomTypeService.createRoomType(request);
+
+        assertThat(response.extraGuestFee()).isEqualTo(150_000L);
+    }
+
+    @Test
     void taoLoaiPhong_sucChuaToiDaNhoHonTieuChuan_biChan() {
         // AC2
         assertThatThrownBy(() -> roomTypeService.createRoomType(request("DOI", "Phòng đôi", 3, 2)))
