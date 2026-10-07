@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { getPublicRoomTypes } from '../services/guestBookingService'
 import { searchAvailableRooms, type RoomAvailabilityResponse } from '../services/roomService'
 import type { PublicRoomTypeOption } from '../types/guestBooking'
@@ -45,18 +45,20 @@ function getErrorMessage(err: unknown) {
 }
 
 export function PublicRoomSearchPage() {
+  const initialSearchParams = new URLSearchParams(window.location.search)
   const [today] = useState(todayIso)
   const maxCheckInDate = addMonths(today, 12)
   // S2-04 AC4: loại phòng chọn sẵn; '' = tất cả loại phòng (đúng S2-05 khi vào thẳng trang)
   const [roomTypeId, setRoomTypeId] = useState(roomTypeIdFromUrl)
   const [roomTypes, setRoomTypes] = useState<PublicRoomTypeOption[] | null>(null)
-  const [checkIn, setCheckIn] = useState('')
-  const [checkOut, setCheckOut] = useState('')
-  const [guestCount, setGuestCount] = useState('1')
+  const [checkIn, setCheckIn] = useState(() => initialSearchParams.get('checkInDate') ?? '')
+  const [checkOut, setCheckOut] = useState(() => initialSearchParams.get('checkOutDate') ?? '')
+  const [guestCount, setGuestCount] = useState(() => initialSearchParams.get('guestCount') ?? '1')
   const [results, setResults] = useState<RoomAvailabilityResponse[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState('')
+  const autoSearchQuery = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -73,32 +75,31 @@ export function PublicRoomSearchPage() {
     }
   }, [])
 
-  async function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function searchRooms(checkInValue: string, checkOutValue: string, guestCountValue: string) {
     setError('')
 
-    if (!checkIn || !checkOut) {
+    if (!checkInValue || !checkOutValue) {
       setError('Vui lòng chọn ngày nhận phòng và ngày trả phòng.')
       return
     }
-    if (checkIn < today) {
+    if (checkInValue < today) {
       setError('Ngày nhận phòng không được trước ngày hiện tại.')
       return
     }
-    if (checkIn > maxCheckInDate) {
+    if (checkInValue > maxCheckInDate) {
       setError('Ngày nhận phòng không được quá 12 tháng kể từ ngày hiện tại.')
       return
     }
-    if (checkOut <= checkIn) {
+    if (checkOutValue <= checkInValue) {
       setError('Ngày trả phòng phải sau ngày nhận phòng.')
       return
     }
-    if (nightsBetween(checkIn, checkOut) > MAX_STAY_NIGHTS) {
+    if (nightsBetween(checkInValue, checkOutValue) > MAX_STAY_NIGHTS) {
       setError('Khoảng thời gian tra cứu tối đa là 30 đêm.')
       return
     }
 
-    const guests = Number(guestCount)
+    const guests = Number(guestCountValue)
     if (!Number.isInteger(guests) || guests < 1) {
       setError('Số khách phải là số nguyên lớn hơn hoặc bằng 1.')
       return
@@ -106,7 +107,7 @@ export function PublicRoomSearchPage() {
 
     setIsSearching(true)
     try {
-      const availableRooms = await searchAvailableRooms(checkIn, checkOut, guests)
+      const availableRooms = await searchAvailableRooms(checkInValue, checkOutValue, guests)
       setResults(availableRooms)
       setHasSearched(true)
     } catch (err) {
@@ -116,6 +117,29 @@ export function PublicRoomSearchPage() {
       setIsSearching(false)
     }
   }
+
+  async function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    await searchRooms(checkIn, checkOut, guestCount)
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const checkInParam = params.get('checkInDate')
+    const checkOutParam = params.get('checkOutDate')
+    const guestCountParam = params.get('guestCount')
+
+    if (checkInParam === null || checkOutParam === null || guestCountParam === null) {
+      return
+    }
+
+    const queryKey = `${checkInParam}|${checkOutParam}|${guestCountParam}`
+    if (autoSearchQuery.current === queryKey) {
+      return
+    }
+    autoSearchQuery.current = queryKey
+    void searchRooms(checkInParam, checkOutParam, guestCountParam)
+  }, [])
 
   const minCheckOut = checkIn ? addDays(checkIn, 1) : today
   const maxCheckOut = checkIn ? addDays(checkIn, MAX_STAY_NIGHTS) : undefined
