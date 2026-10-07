@@ -28,16 +28,69 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   }
 
   return (
-    <main className="login-layout">
+    <main className="login-layout login-page">
       <section className="brand-panel" aria-label="HomeStay">
-        <div>
-          <p className="eyebrow">HomeStay operations</p>
-          <h1>Welcome back.</h1>
-          <p className="brand-copy">Một không gian làm việc gọn gàng cho đội ngũ vận hành lưu trú.</p>
+        <div className="login-brand-content">
+          <div className="login-brand-identity">
+            <span className="login-wordmark">HomeStay</span>
+            <span className="login-tagline">Nghỉ dưỡng như ở nhà</span>
+          </div>
+          <p className="eyebrow">Homestay operations</p>
+          <h1>
+            Nơi mỗi
+            <br />
+            kỳ nghỉ
+            <br />
+            <span>đều đặc biệt</span>
+          </h1>
+          <p className="brand-copy">
+            Quản lý homestay dễ dàng,
+            <br />
+            trải nghiệm lưu trú trọn vẹn hơn.
+          </p>
         </div>
+
+        <ul className="login-features">
+          <li>
+            <span className="login-feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3.5" y="5" width="17" height="16" rx="2" />
+                <path d="M7.5 3v4M16.5 3v4M3.5 10h17M8 14h3M8 17h6" />
+              </svg>
+            </span>
+            <span>
+              <strong>Quản lý đặt phòng</strong>
+              <small>Nhanh chóng, chính xác</small>
+            </span>
+          </li>
+          <li>
+            <span className="login-feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 19.5h16M6.5 16V11M12 16V5M17.5 16V8" />
+                <path d="m5 8 5-4 4 2 5-4" />
+              </svg>
+            </span>
+            <span>
+              <strong>Vận hành hiệu quả</strong>
+              <small>Dành cho mọi vai trò</small>
+            </span>
+          </li>
+          <li>
+            <span className="login-feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 3.5 19 6v5.6c0 4.2-2.8 7.1-7 8.9-4.2-1.8-7-4.7-7-8.9V6l7-2.5Z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </span>
+            <span>
+              <strong>An toàn và bảo mật</strong>
+              <small>Bảo vệ dữ liệu của bạn</small>
+            </span>
+          </li>
+        </ul>
+
         <div className="brand-footer">
-          <span className="brand-mark" aria-hidden="true">H</span>
-          <span>Internal workspace</span>
+          <span>Home Away From Home</span>
         </div>
       </section>
 
@@ -74,7 +127,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               required
             />
           </div>
-          <p style={{ textAlign: 'right' }}>
+          <p className="forgot-password-link">
             <a href="/forgot-password">Quên mật khẩu?</a>
           </p>
 
@@ -82,14 +135,13 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
 
-          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(0,0,0,0.08)', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#74817b' }}>Bạn là khách hàng đang tìm phòng nghỉ?</p>
-            <a href="/danh-sach-loai-phong" style={{ color: '#10513f', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}>
-              🌿 Khám phá danh sách loại phòng & Đặt ngay →
+          <div className="customer-links">
+            <p>Bạn là khách hàng đang tìm phòng nghỉ?</p>
+            <a href="/danh-sach-loai-phong">
+              Khám phá danh sách loại phòng &amp; Đặt ngay <span aria-hidden="true">→</span>
             </a>
-            {/* S2-08 Lát 3: lối vào trang tra cứu booking cho khách */}
-            <a href="/tra-cuu-dat-phong" style={{ display: 'block', marginTop: '8px', color: '#10513f', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}>
-              🔎 Đã đặt phòng? Tra cứu booking →
+            <a href="/tra-cuu-dat-phong">
+              Đã đặt phòng? Tra cứu booking <span aria-hidden="true">→</span>
             </a>
           </div>
         </form>
