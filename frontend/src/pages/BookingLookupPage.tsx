@@ -95,7 +95,7 @@ export function BookingLookupPage() {
     <div className="booking-lookup-site">
       <header className="booking-lookup-header">
         <div className="booking-lookup-header__inner">
-          <a className="booking-lookup-brand" href="/danh-sach-loai-phong" aria-label="HomeStay - Trang chủ">
+          <a className="booking-lookup-brand" href="/trang-chu" aria-label="HomeStay - Trang chủ">
             <span className="booking-lookup-brand__mark" aria-hidden="true">
               <svg viewBox="0 0 40 40">
                 <path d="m5.5 18 14.5-12L34.5 18" />
@@ -109,10 +109,10 @@ export function BookingLookupPage() {
             </span>
           </a>
           <nav className="booking-lookup-nav" aria-label="Điều hướng khách hàng">
-            <a href="/danh-sach-loai-phong">Trang chủ</a>
+            <a href="/trang-chu">Trang chủ</a>
             <a href="/danh-sach-loai-phong">Các loại phòng</a>
             <a href="/tim-phong">Tra phòng trống</a>
-            <a className="booking-lookup-nav__active" href="/tra-cuu-booking" aria-current="page">
+            <a className="booking-lookup-nav__active" href="/tra-cuu-dat-phong" aria-current="page">
               Tra cứu booking
             </a>
           </nav>

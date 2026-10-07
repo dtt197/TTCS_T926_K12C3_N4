@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { BookingLookupPage } from '../pages/BookingLookupPage'
 import { ChangePasswordPage } from '../pages/ChangePasswordPage'
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage'
 import { GuestBookingPage } from '../pages/GuestBookingPage'
+import { HomePage } from '../pages/HomePage'
 import { InternalHomePage } from '../pages/InternalHomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { PublicRoomSearchPage } from '../pages/PublicRoomSearchPage'
@@ -23,9 +25,19 @@ export function AppRoutes({
   onLogout,
   onPasswordChanged,
 }: AppRoutesProps) {
+  const [, setRouteVersion] = useState(0)
+
+  useEffect(() => {
+    const handlePopState = () => setRouteVersion((version) => version + 1)
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
     // /loai-phong là địa chỉ của trang danh sách tạm cũ (S2-04 làm trước S2-03) đã xoá:
   // đổi thanh địa chỉ sang trang danh sách chính thức để link cũ vẫn dùng được
-  if (window.location.pathname === '/loai-phong') {
+  if (window.location.pathname === '/') {
+    window.history.replaceState(null, '', '/trang-chu')
+  } else if (window.location.pathname === '/loai-phong') {
     window.history.replaceState(null, '', '/danh-sach-loai-phong')
   }
     // /phong/:id là địa chỉ của trang chi tiết trùng cũ: đổi sang /loai-phong/:id
@@ -36,7 +48,9 @@ export function AppRoutes({
 
   let page
 
-  if (pathname === '/forgot-password') {
+  if (pathname === '/trang-chu') {
+    page = <HomePage />
+  } else if (pathname === '/forgot-password') {
     page = <ForgotPasswordPage />
   } else if (pathname === '/reset-password') {
     page = <ResetPasswordPage />
@@ -45,7 +59,7 @@ export function AppRoutes({
   } else if (pathname === '/dat-phong') {
     // S2-07: trang đặt phòng công khai, khách không cần đăng nhập
     page = <GuestBookingPage />
-  } else if (pathname === '/tra-cuu-booking') {
+  } else if (pathname === '/tra-cuu-booking' || pathname === '/tra-cuu-dat-phong') {
     // S2-08: khách tra cứu booking bằng mã và email, không cần đăng nhập
     page = <BookingLookupPage />
 
