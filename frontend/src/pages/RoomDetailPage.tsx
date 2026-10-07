@@ -69,12 +69,12 @@ export function RoomDetailPage({
       window.location.href = '/danh-sach-loai-phong'
     }
   }
-  // S2-04 AC4: chuyển thẳng sang màn hình tra phòng trống với loại phòng đã chọn sẵn
-  const handleSearchAvailability = (id: number) => {
+  // S2-04: chuyển thẳng sang màn hình đặt phòng với loại phòng đã chọn sẵn.
+  const handleBookNow = (id: number) => {
     if (onBookNow) {
       onBookNow(id)
     } else {
-      window.location.href = `/tim-phong?roomTypeId=${id}`
+      window.location.href = `/dat-phong?roomTypeId=${id}`
     }
   }
 
@@ -604,10 +604,11 @@ export function RoomDetailPage({
                   <button
                     type="button"
                     className="book-now-button"
-                    onClick={() => handleSearchAvailability(roomType.id)}
+                    onClick={() => handleBookNow(roomType.id)}
+                    disabled={roomType.activeRoomCount <= 0}
                     id="book-room-now-btn"
                   >
-                    Tra phòng trống
+                    {roomType.activeRoomCount <= 0 ? 'Hết phòng' : 'Đặt phòng ngay'}
                   </button>
 
                   <button

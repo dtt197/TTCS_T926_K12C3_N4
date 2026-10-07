@@ -53,6 +53,12 @@ public class RoomAvailabilityService {
         return (int) Math.max(minAvailable, 0);
     }
 
+    /** Số phòng vật lý đang hoạt động, không phụ thuộc khoảng ngày được chọn. */
+    @Transactional(readOnly = true)
+    public long activeRoomCount(RoomType roomType) {
+        return roomRepository.countByRoomTypeIgnoreCaseAndActiveTrue(roomType.getName());
+    }
+
     /** Bảo trì từ ngày bắt đầu đến hết ngày kết thúc; trạng thái bảo trì mà không có ngày thì coi như bảo trì mọi đêm. */
     private static boolean isUnderMaintenance(Room room, LocalDate night) {
         if (room.getMaintenanceStartDate() == null) {

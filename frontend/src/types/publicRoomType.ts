@@ -6,4 +6,5 @@ export type PublicRoomTypeCard = {
   fromPrice: number | null
   imageUrl: string | null
   imageAlt: string
+  activeRoomCount: number
 }

@@ -23,6 +23,9 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     /** S1-06: đếm số phòng đang gắn với một loại phòng (so theo tên, không phân biệt hoa thường). */
     long countByRoomTypeIgnoreCase(String roomType);
 
+    /** Đếm số phòng vật lý đang hoạt động của một loại phòng. */
+    long countByRoomTypeIgnoreCaseAndActiveTrue(String roomType);
+
     /** S1-06: đổi tên loại phòng thì đổi luôn tên loại phòng lưu trong các phòng để không mất liên kết. */
     @Modifying
     @Query("update Room room set room.roomType = :newName where lower(room.roomType) = lower(:oldName)")
