@@ -16,15 +16,20 @@ public class PublicRoomTypeService {
                     .thenComparing(PublicRoomTypeCard::name, String.CASE_INSENSITIVE_ORDER);
 
     private final RoomTypeRepository roomTypeRepository;
+    private final RoomAvailabilityService roomAvailabilityService;
 
-    public PublicRoomTypeService(RoomTypeRepository roomTypeRepository) {
+    public PublicRoomTypeService(
+            RoomTypeRepository roomTypeRepository,
+            RoomAvailabilityService roomAvailabilityService) {
         this.roomTypeRepository = roomTypeRepository;
+        this.roomAvailabilityService = roomAvailabilityService;
     }
 
     @Transactional(readOnly = true)
     public List<PublicRoomTypeCard> listRoomTypes() {
         return roomTypeRepository.findAllByStatusTrueOrderByCodeAsc().stream()
-                .map(PublicRoomTypeCard::from)
+                .map(roomType -> PublicRoomTypeCard.from(
+                        roomType, roomAvailabilityService.activeRoomCount(roomType)))
                 .sorted(DISPLAY_ORDER)
                 .toList();
     }

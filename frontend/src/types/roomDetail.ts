@@ -29,6 +29,7 @@ export type PublicRoomTypeDetail = {
   weekdayPrice: number
   weekendPrice: number
   availableRooms: number
+  activeRoomCount: number
   amenities: PublicAmenity[]
   images: string[]
   // S2-04 Policy fields

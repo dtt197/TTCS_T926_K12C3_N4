@@ -117,7 +117,8 @@ public class GuestBookingService {
         }
         int available = roomAvailabilityService.availableRooms(roomType, today, tomorrow);
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
-        return PublicRoomTypeDetailResponse.from(roomType, available, settings);
+        return PublicRoomTypeDetailResponse.from(
+                roomType, available, roomAvailabilityService.activeRoomCount(roomType), settings);
     }
 
     /**
@@ -133,7 +134,8 @@ public class GuestBookingService {
                 .filter(GuestBookingService::isBookable)
                 .map(rt -> {
                     int available = roomAvailabilityService.availableRooms(rt, today, tomorrow);
-                    return PublicRoomTypeDetailResponse.from(rt, available, settings);
+                    return PublicRoomTypeDetailResponse.from(
+                            rt, available, roomAvailabilityService.activeRoomCount(rt), settings);
                 })
                 .toList();
     }
@@ -153,7 +155,8 @@ public class GuestBookingService {
                         "Không tìm thấy thông tin loại phòng #" + id));
         int available = roomAvailabilityService.availableRooms(roomType, today, tomorrow);
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
-        return PublicRoomTypeDetailResponse.from(roomType, available, settings);
+        return PublicRoomTypeDetailResponse.from(
+                roomType, available, roomAvailabilityService.activeRoomCount(roomType), settings);
     }
 
     @Transactional

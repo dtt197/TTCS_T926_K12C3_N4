@@ -35,6 +35,7 @@ public record PublicRoomTypeDetailResponse(
         Long weekdayPrice,
         Long weekendPrice,
         int availableRooms,
+        long activeRoomCount,
         List<AmenitySummary> amenities,
         List<String> images,
         // S2-04 Policies:
@@ -59,10 +60,15 @@ public record PublicRoomTypeDetailResponse(
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     public static PublicRoomTypeDetailResponse from(RoomType roomType, int availableRooms) {
-        return from(roomType, availableRooms, null);
+        return from(roomType, availableRooms, 0, null);
     }
 
     public static PublicRoomTypeDetailResponse from(RoomType roomType, int availableRooms, OperatingSettings settings) {
+        return from(roomType, availableRooms, 0, settings);
+    }
+
+    public static PublicRoomTypeDetailResponse from(
+            RoomType roomType, int availableRooms, long activeRoomCount, OperatingSettings settings) {
         List<AmenitySummary> activeAmenities = roomType.getAmenities() != null ? roomType.getAmenities().stream()
                 .filter(Amenity::isActive)
                 .sorted(Comparator.comparing(Amenity::getName))
@@ -117,6 +123,7 @@ public record PublicRoomTypeDetailResponse(
                 roomType.getWeekdayPrice(),
                 roomType.getWeekendPrice(),
                 availableRooms,
+                activeRoomCount,
                 activeAmenities,
                 images,
                 effectiveCheckIn.format(TIME_FORMATTER),

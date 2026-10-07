@@ -46,6 +46,14 @@ class PublicRoomTypeDetailResponseTest {
     }
 
     @Test
+    void from_includesActiveRoomCountSeparatelyFromDateAvailability() {
+        PublicRoomTypeDetailResponse response = PublicRoomTypeDetailResponse.from(roomType(), 0, 3, settings());
+
+        assertEquals(0, response.availableRooms());
+        assertEquals(3, response.activeRoomCount());
+    }
+
+    @Test
     void from_usesRoomTypeExtraGuestFeeWhenConfigured() {
         RoomType roomType = roomType();
         roomType.setExtraGuestFee(250_000L);

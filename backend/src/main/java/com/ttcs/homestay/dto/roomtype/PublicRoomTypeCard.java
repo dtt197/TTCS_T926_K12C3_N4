@@ -11,9 +11,10 @@ public record PublicRoomTypeCard(
         int maxCapacity,
         Long fromPrice,
         String imageUrl,
-        String imageAlt) {
+        String imageAlt,
+        long activeRoomCount) {
 
-    public static PublicRoomTypeCard from(RoomType roomType) {
+    public static PublicRoomTypeCard from(RoomType roomType, long activeRoomCount) {
         String alt = roomType.getImageAlt();
         if (alt == null || alt.isBlank()) {
             alt = roomType.getName() == null || roomType.getName().isBlank()
@@ -40,7 +41,8 @@ public record PublicRoomTypeCard(
                 roomType.getMaxCapacity(),
                 lowestPrice(roomType.getWeekdayPrice(), roomType.getWeekendPrice()),
                 imageUrl,
-                alt);
+                alt,
+                activeRoomCount);
     }
 
     private static String nonBlankOrNull(String value) {
