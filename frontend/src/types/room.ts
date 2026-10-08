@@ -19,6 +19,8 @@ export type Room = {
   maintenanceReason: string | null
   maintenanceStartDate: string | null
   maintenanceEndDate: string | null
+  hasGuestCheckInToday?: boolean
+  expectedCheckInTime?: string | null
 }
 
 export type RoomStatusHistory = {

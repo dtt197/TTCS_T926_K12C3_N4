@@ -164,7 +164,23 @@ public class H2DevDataLoader implements ApplicationRunner {
             jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'letan.demo@homestay.local'", demoPasswordHash);
         }
 
-        // 9. Khởi tạo danh sách booking mẫu để demo cập nhật
+        // 8b. Khởi tạo tài khoản Buồng phòng mẫu: buongphong.demo@homestay.local / password (S3-09)
+        Long housekeepingRoleId = jdbcTemplate.queryForObject("SELECT id FROM roles WHERE code = 'HOUSEKEEPING'", Long.class);
+        Integer hkCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email = 'buongphong.demo@homestay.local'", Integer.class);
+        if (hkCount == null || hkCount == 0) {
+            jdbcTemplate.update("""
+                INSERT INTO users (
+                    full_name, email, password_hash, role_id, is_active,
+                    failed_login_count, token_version, must_change_password, created_at, updated_at)
+                VALUES ('Buồng phòng Demo', 'buongphong.demo@homestay.local',
+                        ?, ?, TRUE, 0, 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, demoPasswordHash, housekeepingRoleId);
+        } else {
+            jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'buongphong.demo@homestay.local'", demoPasswordHash);
+        }
+
+        // 9. Khởi tạo danh sách booking mẫu để demo cập nhật và ưu tiên phòng cần dọn
         Integer bookingCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM bookings", Integer.class);
         if (bookingCount == null || bookingCount == 0) {
             Long doiId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'DOI'", Long.class);
@@ -183,8 +199,11 @@ public class H2DevDataLoader implements ApplicationRunner {
                  500000, 650000, 'FRIDAY,SATURDAY', 1650000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0),
                 ('BK-DEMO02', 'Trần Thị Bình', '0987654321', 'binh.tran@example.com', 1,
                  ?, 'Phòng đơn', CURRENT_DATE + 7, CURRENT_DATE + 10,
-                 300000, 400000, 'FRIDAY,SATURDAY', 1000000, 'CHO_XAC_NHAN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + 1, 0, 0, 0)
-            """, doiId, donId);
+                 300000, 400000, 'FRIDAY,SATURDAY', 1000000, 'CHO_XAC_NHAN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + 1, 0, 0, 0),
+                ('BK-DEMO03', 'Lê Hoàng Minh', '0933333333', 'minh.le@example.com', 2,
+                 ?, 'Phòng đôi', CURRENT_DATE, CURRENT_DATE + 2,
+                 500000, 650000, 'FRIDAY,SATURDAY', 1000000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0)
+            """, doiId, donId, doiId);
         }
     }
 }
