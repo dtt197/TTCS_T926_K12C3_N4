@@ -1,6 +1,7 @@
 package com.ttcs.homestay.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,9 +14,11 @@ import com.ttcs.homestay.service.RoomService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.server.ResponseStatusException;
 
 class RoomControllerTest {
 
@@ -150,6 +153,93 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
         assertThat(result.get(1).roomNumber()).isEqualTo("102");
         assertThat(result.get(1).hasGuestCheckInToday()).isFalse();
     }
+
+    @Test
+    void housekeepingCannotMarkNonDirtyRoom_throwsForbidden() {
+        JwtAuthenticationToken authentication = authentication(
+                "Buồng phòng Demo",
+                "buongphong@homestay.local",
+                "HOUSEKEEPING"
+        );
+
+        RoomResponse occupiedRoom = new RoomResponse(
+                1L,
+                "101",
+                1,
+                "Phòng đôi",
+                RoomStatus.DANG_O,
+                true
+        );
+
+        when(roomService.getRooms())
+                .thenReturn(List.of(occupiedRoom));
+
+        assertThatThrownBy(() -> controller.updateStatus(
+                1L,
+                new UpdateRoomStatusRequest(RoomStatus.TRONG_SACH),
+                authentication,
+                httpRequest
+        ))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    void housekeepingCannotChangeToNonCleanStatus_throwsForbidden() {
+        JwtAuthenticationToken authentication = authentication(
+                "Buồng phòng Demo",
+                "buongphong@homestay.local",
+                "HOUSEKEEPING"
+        );
+
+        RoomResponse dirtyRoom = new RoomResponse(
+                1L,
+                "101",
+                1,
+                "Phòng đôi",
+                RoomStatus.TRONG_BAN,
+                true
+        );
+
+        when(roomService.getRooms())
+                .thenReturn(List.of(dirtyRoom));
+
+        assertThatThrownBy(() -> controller.updateStatus(
+                1L,
+                new UpdateRoomStatusRequest(RoomStatus.BAO_TRI),
+                authentication,
+                httpRequest
+        ))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    void housekeepingCleanedRoom_disappearsFromDirtyRoomsList() {
+        JwtAuthenticationToken authentication = authentication(
+                "Buồng phòng Demo",
+                "buongphong@homestay.local",
+                "HOUSEKEEPING"
+        );
+
+        // Ban đầu có 2 phòng trống bẩn: 101 và 102
+        RoomResponse dirty101 = new RoomResponse(1L, "101", 1, "Phòng đôi", RoomStatus.TRONG_BAN, true);
+        RoomResponse dirty102 = new RoomResponse(2L, "102", 1, "Phòng đôi", RoomStatus.TRONG_BAN, true);
+
+        when(roomService.getRooms()).thenReturn(List.of(dirty101, dirty102));
+        List<RoomResponse> dirtyListBefore = controller.getRooms(authentication);
+        assertThat(dirtyListBefore).hasSize(2);
+
+        // Sau khi phòng 101 được báo sạch (status chuyển sang TRONG_SACH)
+        RoomResponse clean101 = new RoomResponse(1L, "101", 1, "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        when(roomService.getRooms()).thenReturn(List.of(clean101, dirty102));
+
+        // Phòng 101 biến mất khỏi danh sách phòng của buồng phòng, chỉ còn lại phòng 102
+        List<RoomResponse> dirtyListAfter = controller.getRooms(authentication);
+        assertThat(dirtyListAfter).hasSize(1);
+        assertThat(dirtyListAfter.get(0).roomNumber()).isEqualTo("102");
+    }
+
 
     private JwtAuthenticationToken authentication(
             String fullName,

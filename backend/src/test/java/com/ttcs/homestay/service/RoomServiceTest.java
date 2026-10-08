@@ -229,4 +229,55 @@ class RoomServiceTest {
         assertThat(resp2.hasGuestCheckInToday()).isFalse();
         assertThat(resp2.expectedCheckInTime()).isNull();
     }
+
+    @Test
+    @DisplayName("S3-09: Chuyển phòng từ trống bẩn sang trống sạch, ghi nhận người thao tác và thời điểm")
+    void markRoomClean_fromDirtyToClean_updatesStatusAndRecordsHistoryWithOperatorAndTimestamp() {
+        Long roomId = 101L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("101");
+        room.setFloor(1);
+        room.setRoomType("Phòng đôi");
+        room.setStatus(RoomStatus.TRONG_BAN);
+        room.setActive(true);
+
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RoomResponse response = roomService.updateStatus(roomId, RoomStatus.TRONG_SACH, "Buồng phòng Demo");
+
+        assertThat(response.status()).isEqualTo(RoomStatus.TRONG_SACH);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_SACH);
+
+        ArgumentCaptor<RoomStatusHistory> historyCaptor = ArgumentCaptor.forClass(RoomStatusHistory.class);
+        verify(roomStatusHistoryRepository).save(historyCaptor.capture());
+        RoomStatusHistory history = historyCaptor.getValue();
+        assertThat(history.getPreviousStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        assertThat(history.getNewStatus()).isEqualTo(RoomStatus.TRONG_SACH);
+        assertThat(history.getChangedBy()).isEqualTo("Buồng phòng Demo");
+        assertThat(history.getChangedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("S3-09: Thao tác đổi trạng thái lỗi không làm đổi trạng thái phòng và không ghi nhận lịch sử")
+    void updateStatus_whenErrorOccurs_doesNotChangeRoomStatusAndDoesNotRecordHistory() {
+        Long roomId = 102L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("102");
+        room.setStatus(RoomStatus.TRONG_BAN);
+
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+
+        // Cố gắng chuyển sang BAO_TRI mà không thông qua form bảo trì hợp lệ
+        assertThatThrownBy(() -> roomService.updateStatus(roomId, RoomStatus.BAO_TRI, "Buồng phòng Demo"))
+                .isInstanceOf(RoomStatusConflictException.class);
+
+        // Trạng thái giữ nguyên
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        verify(roomRepository, never()).save(any(Room.class));
+        verify(roomStatusHistoryRepository, never()).save(any(RoomStatusHistory.class));
+    }
 }
+

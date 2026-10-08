@@ -241,33 +241,26 @@ const statusClassName: Record<RoomStatus, string> = {
 
 
 type RoomStatusPageProps = {
-
   role: string
-
+  currentUser?: {
+    fullName?: string
+    email?: string
+    role?: string
+  }
 }
 
 type VisualIconProps = {
-
   type:
-
     | 'clean'
-
     | 'dirty'
-
     | 'occupied'
-
     | 'maintenance'
-
     | 'room'
-
     | 'checkin'
-
     | 'history'
-
     | 'save'
-
     | 'checkout'
-
+    | 'check'
 }
 
 
@@ -448,35 +441,32 @@ function VisualIcon({ type }: VisualIconProps) {
 
 
 
+  if (type === 'check') {
+    return (
+      <svg {...commonProps}>
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    )
+  }
+
   return (
-
     <svg {...commonProps}>
-
       <path d="M9 6 3 12l6 6" />
-
       <path d="M3 12h12" />
-
       <path d="M15 5h5v14h-5" />
-
     </svg>
-
   )
-
 }
 
-export function RoomStatusPage({ role }: RoomStatusPageProps) {
-
+export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   const isHousekeeping = role === 'HOUSEKEEPING'
-
-    // S1-04: ẩn nút theo quyền của vai trò (Chủ homestay chỉ xem). Quyền khai báo ở rolePermissions.ts.
-
-  const canChangeStatus = hasPermission(role, 'rooms:status:update') || hasPermission(role, 'rooms:clean')
-
+  const canCleanRoom = hasPermission(role, 'rooms:clean')
+  const canChangeStatus = hasPermission(role, 'rooms:status:update') || canCleanRoom
   const canUseCheckIn = hasPermission(role, 'rooms:check-in')
-
   const canUseCheckOut = hasPermission(role, 'rooms:check-out')
 
   const [rooms, setRooms] = useState<Room[]>([])
+  const [cleaningRoomId, setCleaningRoomId] = useState<number | null>(null)
 
   const [draftStatuses, setDraftStatuses] = useState<
 
@@ -1042,11 +1032,76 @@ const counts = useMemo(
       )
 
     } finally {
-
       setIsSaving(false)
+    }
+  }
 
+  async function handleMarkClean(room: Room) {
+    if (cleaningRoomId === room.id || isSaving) {
+      return
     }
 
+    setCleaningRoomId(room.id)
+    setIsSaving(true)
+    setNotice(null)
+
+    try {
+      const savedRoom: Room = isDemoMode
+        ? {
+            ...room,
+            status: 'TRONG_SACH',
+          }
+        : await updateRoomStatus(room.id, 'TRONG_SACH')
+
+      // Cập nhật state danh sách phòng ngay lập tức (phòng biến mất khỏi danh sách phòng cần dọn của Housekeeping)
+      setRooms((current) =>
+        current.map((item) => (item.id === room.id ? savedRoom : item)),
+      )
+
+      const operator =
+        currentUser?.fullName ||
+        (isHousekeeping ? 'Nhân viên buồng phòng' : 'Lễ tân')
+
+      const historyRecord: RoomStatusHistory = {
+        id: Date.now(),
+        roomId: room.id,
+        roomNumber: room.roomNumber,
+        previousStatus: room.status,
+        newStatus: 'TRONG_SACH',
+        changedBy: operator,
+        changedAt: new Date().toISOString(),
+      }
+
+      setHistoryByRoom((current) => ({
+        ...current,
+        [room.id]: [
+          ...(current[room.id] ?? DEMO_HISTORY[room.id] ?? []),
+          historyRecord,
+        ],
+      }))
+
+      if (!isDemoMode && selectedHistoryRoomId === room.id) {
+        getRoomHistory(room.id)
+          .then((hist) => {
+            setHistoryByRoom((curr) => ({ ...curr, [room.id]: hist }))
+          })
+          .catch(() => {})
+      }
+
+      setNotice({
+        type: 'success',
+        text: `Đã báo phòng ${room.roomNumber} đã sạch thành công.`,
+      })
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể báo phòng sạch. Vui lòng thử lại.',
+      )
+    } finally {
+      setIsSaving(false)
+      setCleaningRoomId(null)
+    }
   }
 
 
@@ -2088,6 +2143,25 @@ const counts = useMemo(
                             : 'Xem lịch sử'}
                         </span>
                       </button>
+
+                      {/* S3-09: Thao tác 1 nút chuyển phòng từ trống bẩn sang trống sạch */}
+                      {room.status === 'TRONG_BAN' && (isHousekeeping || canCleanRoom) && (
+                        <button
+                          className="primary-button mark-clean-button"
+                          type="button"
+                          disabled={isSaving || cleaningRoomId === room.id}
+                          onClick={() => void handleMarkClean(room)}
+                        >
+                          <span className="button-icon">
+                            <VisualIcon type="check" />
+                          </span>
+                          <span>
+                            {cleaningRoomId === room.id
+                              ? 'Đang xử lý...'
+                              : 'Báo đã sạch'}
+                          </span>
+                        </button>
+                      )}
 
                       {canUseCheckOut && room.status === 'DANG_O' && (
                         <button
