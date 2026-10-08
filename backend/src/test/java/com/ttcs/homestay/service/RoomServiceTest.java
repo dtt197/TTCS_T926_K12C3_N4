@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -20,11 +21,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
+import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomStatusHistory;
 import com.ttcs.homestay.exception.RoomStatusConflictException;
+import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.CheckInRepository;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 
@@ -42,6 +47,12 @@ class RoomServiceTest {
 
     @Mock
     RoomStatusHistoryRepository roomStatusHistoryRepository;
+
+    @Mock
+    BookingRepository bookingRepository;
+
+    @Mock
+    OperatingSettingsRepository operatingSettingsRepository;
 
     @InjectMocks
     RoomService roomService;
@@ -176,5 +187,46 @@ class RoomServiceTest {
                 .hasMessageContaining("Không thể trả phòng 101 vì phòng không ở trạng thái Đang ở.");
 
         verify(roomStatusHistoryRepository, never()).save(any(RoomStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("S3-09: getRooms gắn cờ khách nhận trong ngày và giờ nhận phòng dự kiến")
+    void getRooms_identifiesGuestCheckingInTodayAndExpectedCheckInTime() {
+        Room room1 = new Room();
+        room1.setId(1L);
+        room1.setRoomNumber("101");
+        room1.setRoomType("Phòng đôi");
+        room1.setStatus(RoomStatus.TRONG_BAN);
+        room1.setActive(true);
+
+        Room room2 = new Room();
+        room2.setId(2L);
+        room2.setRoomNumber("102");
+        room2.setRoomType("Phòng đơn");
+        room2.setStatus(RoomStatus.TRONG_BAN);
+        room2.setActive(true);
+
+        when(roomRepository.findAllByActiveTrueOrderByRoomNumberAsc()).thenReturn(List.of(room1, room2));
+
+        Booking todayBooking = new Booking();
+        todayBooking.setRoomTypeNameSnapshot("Phòng đôi");
+        todayBooking.setCheckInDate(LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")));
+        todayBooking.setStatus(BookingStatus.DA_XAC_NHAN);
+
+        when(bookingRepository.findByCheckInDateAndStatusIn(any(LocalDate.class), any()))
+                .thenReturn(List.of(todayBooking));
+
+        List<RoomResponse> responses = roomService.getRooms();
+
+        assertThat(responses).hasSize(2);
+        RoomResponse resp1 = responses.get(0);
+        assertThat(resp1.roomNumber()).isEqualTo("101");
+        assertThat(resp1.hasGuestCheckInToday()).isTrue();
+        assertThat(resp1.expectedCheckInTime()).isEqualTo("14:00");
+
+        RoomResponse resp2 = responses.get(1);
+        assertThat(resp2.roomNumber()).isEqualTo("102");
+        assertThat(resp2.hasGuestCheckInToday()).isFalse();
+        assertThat(resp2.expectedCheckInTime()).isNull();
     }
 }

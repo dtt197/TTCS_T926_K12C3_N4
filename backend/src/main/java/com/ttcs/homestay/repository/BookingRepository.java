@@ -50,6 +50,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             BookingStatus status,
             OffsetDateTime now);
 
+    /** S3-09: tìm danh sách booking nhận phòng trong ngày theo danh sách trạng thái. */
+    @Query("select b from Booking b where b.checkInDate = :checkInDate and b.status in :statuses")
+    List<Booking> findByCheckInDateAndStatusIn(
+            @Param("checkInDate") LocalDate checkInDate,
+            @Param("statuses") Collection<BookingStatus> statuses);
+
     default Page<Booking> search(
             BookingStatus status,
             LocalDate checkInFrom,

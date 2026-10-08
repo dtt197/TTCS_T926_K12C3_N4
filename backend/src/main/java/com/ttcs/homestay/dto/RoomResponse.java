@@ -13,10 +13,17 @@ public record RoomResponse(
         boolean active,
         String maintenanceReason,
         LocalDate maintenanceStartDate,
-        LocalDate maintenanceEndDate
+        LocalDate maintenanceEndDate,
+        Boolean hasGuestCheckInToday,
+        String expectedCheckInTime
 ) {
     public RoomResponse(Long id, String roomNumber, Integer floor, String roomType, RoomStatus status, boolean active) {
-        this(id, roomNumber, floor, roomType, status, active, null, null, null);
+        this(id, roomNumber, floor, roomType, status, active, null, null, null, false, null);
+    }
+
+    public RoomResponse(Long id, String roomNumber, Integer floor, String roomType, RoomStatus status, boolean active,
+                        String maintenanceReason, LocalDate maintenanceStartDate, LocalDate maintenanceEndDate) {
+        this(id, roomNumber, floor, roomType, status, active, maintenanceReason, maintenanceStartDate, maintenanceEndDate, false, null);
     }
 
     public static RoomResponse from(Room room) {
@@ -29,7 +36,25 @@ public record RoomResponse(
                 room.isActive(),
                 room.getMaintenanceReason(),
                 room.getMaintenanceStartDate(),
-                room.getMaintenanceEndDate()
+                room.getMaintenanceEndDate(),
+                false,
+                null
+        );
+    }
+
+    public static RoomResponse from(Room room, boolean hasGuestCheckInToday, String expectedCheckInTime) {
+        return new RoomResponse(
+                room.getId(),
+                room.getRoomNumber(),
+                room.getFloor(),
+                room.getRoomType(),
+                room.getStatus(),
+                room.isActive(),
+                room.getMaintenanceReason(),
+                room.getMaintenanceStartDate(),
+                room.getMaintenanceEndDate(),
+                hasGuestCheckInToday,
+                expectedCheckInTime
         );
     }
 }
