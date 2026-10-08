@@ -1,5 +1,6 @@
 package com.ttcs.homestay.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -107,6 +108,48 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
             "Buồng phòng"
     );
 }
+
+    @Test
+    void housekeepingGetRooms_onlyReturnsDirtyRooms_andPrioritizesGuestCheckInToday() {
+        JwtAuthenticationToken authentication = authentication(
+                "Buồng phòng",
+                "buongphong@homestay.local",
+                "HOUSEKEEPING"
+        );
+
+        RoomResponse cleanRoom = new RoomResponse(
+                1L, "101", 1, "Phòng đôi", RoomStatus.TRONG_SACH, true
+        );
+        RoomResponse dirtyNoGuest = new RoomResponse(
+                2L, "102", 1, "Phòng đôi", RoomStatus.TRONG_BAN, true, null, null, null, false, null
+        );
+        RoomResponse dirtyWithGuest = new RoomResponse(
+                3L, "105", 1, "Phòng đôi", RoomStatus.TRONG_BAN, true, null, null, null, true, "14:00"
+        );
+        RoomResponse occupiedRoom = new RoomResponse(
+                4L, "201", 2, "Phòng gia đình", RoomStatus.DANG_O, true
+        );
+        RoomResponse maintenanceRoom = new RoomResponse(
+                5L, "202", 2, "Phòng đơn", RoomStatus.BAO_TRI, true
+        );
+
+        when(roomService.getRooms())
+                .thenReturn(List.of(cleanRoom, dirtyNoGuest, dirtyWithGuest, occupiedRoom, maintenanceRoom));
+
+        List<RoomResponse> result = controller.getRooms(authentication);
+
+        // S3-09 Test 1: Chỉ hiển thị phòng trống bẩn
+        assertThat(result).hasSize(2);
+        assertThat(result).allMatch(room -> room.status() == RoomStatus.TRONG_BAN);
+
+        // S3-09 Test 2: Phòng có khách nhận trong ngày đứng trước
+        assertThat(result.get(0).roomNumber()).isEqualTo("105");
+        assertThat(result.get(0).hasGuestCheckInToday()).isTrue();
+        assertThat(result.get(0).expectedCheckInTime()).isEqualTo("14:00");
+
+        assertThat(result.get(1).roomNumber()).isEqualTo("102");
+        assertThat(result.get(1).hasGuestCheckInToday()).isFalse();
+    }
 
     private JwtAuthenticationToken authentication(
             String fullName,

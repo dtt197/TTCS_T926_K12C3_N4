@@ -166,7 +166,18 @@ public class SecurityConfig {
                         .hasRole("OWNER")
 
                         // S2-01 & S3-04: booking tạo và xem trước thay đổi bởi Admin, Chủ homestay hoặc Lễ tân.
-                        .requestMatchers(HttpMethod.POST, "/api/bookings", "/api/bookings/**")
+                        .requestMatchers(HttpMethod.POST, "/api/bookings", "/api/bookings/*/preview")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
+                        // S3-01: Le tan xac nhan booking va ghi nhan tien coc.
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/deposit",
+                                "/api/bookings/*/deposits/**")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.DELETE, "/api/bookings/*/deposit",
+                                "/api/bookings/*/deposits/**", "/api/bookings/*")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
 
                         // Lễ tân có thể cập nhật ngày lưu trú và loại phòng của booking hiện có.

@@ -25,6 +25,8 @@ function formatDate(value: string) {
 function actionLabel(action: string) {
   const labels: Record<string, string> = {
     LOGIN: 'Đăng nhập',
+    BOOKING_CONFIRMED: 'Xác nhận đặt phòng',
+    ROOM_TYPE_IMAGE_DELETED: 'Xóa ảnh loại phòng',
     ROLE_CHANGED: 'Đổi vai trò',
     ACCOUNT_DISABLED: 'Vô hiệu hóa tài khoản',
     GUEST_DOCUMENT_VIEWED: 'Xem giấy tờ khách',

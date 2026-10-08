@@ -1,6 +1,7 @@
 package com.ttcs.homestay.controller.booking;
 
-import com.ttcs.homestay.dto.booking.BookingCreateRequest;
+import com.ttcs.homestay.dto.booking.BookingConfirmRequest;
+import com.ttcs.homestay.dto.booking.BookingConfirmResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
@@ -15,7 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -48,11 +49,24 @@ public class BookingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(request));
     }
 
+    @PutMapping("/{id}/confirm")
+    public BookingConfirmResponse confirmBooking(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingConfirmRequest request) {
+        return bookingService.confirmBooking(id, request);
+    }
+
     @PutMapping("/{id}")
     public BookingResponse updateBooking(
             @PathVariable Long id,
             @Valid @RequestBody BookingUpdateRequest request) {
         return bookingService.updateBooking(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteBooking(@PathVariable Long id) {
+        throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED,
+                "Không hỗ trợ xóa booking trực tiếp");
     }
 
     @PostMapping("/{id}/preview")

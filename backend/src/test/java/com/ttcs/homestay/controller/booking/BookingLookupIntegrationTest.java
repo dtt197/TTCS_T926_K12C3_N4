@@ -32,6 +32,40 @@ import org.springframework.transaction.annotation.Transactional;
 class BookingLookupIntegrationTest {
 
     @Autowired
+    private com.ttcs.homestay.repository.BookingDepositRepository deposits;
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"500000", "500000.1234"})
+    void publicLookupReturnsStoredDepositWithoutInternalPaymentData(String amount) throws Exception {
+        var booking = bookingRepository.findByBookingCode("LKUP2345").orElseThrow();
+        var deposit = new com.ttcs.homestay.entity.BookingDeposit();
+        deposit.setBooking(booking);
+        deposit.setAmount(new java.math.BigDecimal(amount));
+        deposit.setPaymentMethod("CASH");
+        deposit.setReceivedDate(LocalDate.of(2026, 10, 8));
+        deposit.setCreatedBy("internal-receptionist");
+        deposit.setPaymentReference("internal-payment-reference");
+        deposits.saveAndFlush(deposit);
+
+        mockMvc.perform(post("/api/public/bookings/lookup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("LKUP2345", "khach@example.com")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.depositAmount").value(Double.parseDouble(amount)))
+                .andExpect(jsonPath("$.*").value(org.hamcrest.Matchers.hasSize(11)))
+                .andExpect(jsonPath("$.deposit").doesNotExist())
+                .andExpect(jsonPath("$.createdBy").doesNotExist())
+                .andExpect(jsonPath("$.paymentReference").doesNotExist())
+                .andExpect(jsonPath("$.accessToken").doesNotExist());
+
+        mockMvc.perform(post("/api/public/bookings/lookup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("LKUP2345", "wrong@example.com")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.depositAmount").doesNotExist());
+    }
+
+    @Autowired
     private MockMvc mockMvc;
 
     @Autowired

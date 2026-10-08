@@ -32,7 +32,8 @@ class BookingLookupServiceLimitTest {
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
         rateLimiter = mock(BookingLookupRateLimiter.class);
-        service = new BookingLookupService(bookingRepository, rateLimiter);
+        service = new BookingLookupService(bookingRepository, rateLimiter, null,
+                org.mockito.Mockito.mock(com.ttcs.homestay.repository.BookingDepositRepository.class));
 
         Booking booking = new Booking();
         booking.setBookingCode("ABCD2345");

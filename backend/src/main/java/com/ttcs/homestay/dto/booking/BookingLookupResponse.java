@@ -3,6 +3,7 @@ package com.ttcs.homestay.dto.booking;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 
@@ -21,12 +22,12 @@ public record BookingLookupResponse(
         LocalDate checkOutDate,
         long nights,
         long totalAmount,
-        long depositAmount,
+        BigDecimal depositAmount,
         LocalTime checkInTime,
         LocalTime checkOutTime) {
 
     public static BookingLookupResponse from(
-            Booking booking, long depositAmount, LocalTime checkInTime, LocalTime checkOutTime) {
+            Booking booking, BigDecimal depositAmount, LocalTime checkInTime, LocalTime checkOutTime) {
         return new BookingLookupResponse(
                 booking.getBookingCode(),
                 booking.getStatus().name(),

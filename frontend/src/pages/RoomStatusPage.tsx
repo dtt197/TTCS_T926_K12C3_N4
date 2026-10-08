@@ -58,95 +58,71 @@ const STATUS_OPTIONS: RoomStatus[] = [
 
 
 const DEMO_ROOMS: Room[] = [
-
   {
-
     id: 1,
-
     roomNumber: '101',
-
     floor: 1,
-
     roomType: 'Phòng đôi',
-
     status: 'TRONG_SACH',
-
     active: true,
-
     maintenanceReason: null,
-
     maintenanceStartDate: null,
-
     maintenanceEndDate: null,
-
+    hasGuestCheckInToday: false,
+    expectedCheckInTime: null,
   },
-
   {
-
     id: 2,
-
     roomNumber: '102',
-
     floor: 1,
-
     roomType: 'Phòng đôi',
-
     status: 'TRONG_BAN',
-
     active: true,
-
     maintenanceReason: null,
-
     maintenanceStartDate: null,
-
     maintenanceEndDate: null,
-
+    hasGuestCheckInToday: false,
+    expectedCheckInTime: null,
   },
-
   {
-
+    id: 5,
+    roomNumber: '105',
+    floor: 1,
+    roomType: 'Phòng đôi',
+    status: 'TRONG_BAN',
+    active: true,
+    maintenanceReason: null,
+    maintenanceStartDate: null,
+    maintenanceEndDate: null,
+    hasGuestCheckInToday: true,
+    expectedCheckInTime: '14:00',
+  },
+  {
     id: 3,
-
     roomNumber: '201',
-
     floor: 2,
-
     roomType: 'Phòng gia đình',
-
     status: 'DANG_O',
-
     active: true,
-
     maintenanceReason: null,
-
     maintenanceStartDate: null,
-
     maintenanceEndDate: null,
-
+    hasGuestCheckInToday: false,
+    expectedCheckInTime: null,
   },
-
   {
-
     id: 4,
-
     roomNumber: '202',
-
     floor: 2,
-
     roomType: 'Phòng đơn',
-
     status: 'BAO_TRI',
-
     active: true,
-
     maintenanceReason: 'Sửa điều hòa',
-
     maintenanceStartDate: '2026-09-26',
-
     maintenanceEndDate: '2026-09-28',
-
+    hasGuestCheckInToday: false,
+    expectedCheckInTime: null,
   },
-
 ]
 
 
@@ -655,19 +631,25 @@ export function RoomStatusPage({ role }: RoomStatusPageProps) {
 
 
 
-  const visibleRooms = useMemo(
-
-  () =>
-
-    isHousekeeping
-
+  const visibleRooms = useMemo(() => {
+    const list = isHousekeeping
       ? rooms.filter((room) => room.status === 'TRONG_BAN')
+      : rooms
 
-      : rooms,
-
-  [rooms, isHousekeeping],
-
-)
+    return [...list].sort((a, b) => {
+      // S3-09: Sắp xếp phòng có khách nhận trong ngày lên trước
+      const aToday = Boolean(a.hasGuestCheckInToday)
+      const bToday = Boolean(b.hasGuestCheckInToday)
+      if (aToday !== bToday) {
+        return aToday ? -1 : 1
+      }
+      if (a.expectedCheckInTime && b.expectedCheckInTime) {
+        const timeDiff = a.expectedCheckInTime.localeCompare(b.expectedCheckInTime)
+        if (timeDiff !== 0) return timeDiff
+      }
+      return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })
+    })
+  }, [rooms, isHousekeeping])
 
 
 
@@ -1704,18 +1686,12 @@ const counts = useMemo(
 
 
 
-              <h2>Danh sách phòng</h2>
-
-
+              <h2>{isHousekeeping ? 'Danh sách phòng cần dọn' : 'Danh sách phòng'}</h2>
 
               <p>
-
                 {isHousekeeping
-
-                  ? 'Cập nhật phòng sang Trống sạch sau khi hoàn tất vệ sinh.'
-
+                  ? 'Theo dõi phòng trống bẩn, ưu tiên phòng có khách nhận trong ngày.'
                   : 'Theo dõi và cập nhật trạng thái của từng phòng.'}
-
               </p>
 
             </div>
@@ -1831,114 +1807,75 @@ const counts = useMemo(
 
 
                       <span
-
                         className={
-
                           `status-badge ${
-
                             statusClassName[room.status]
-
                           }`
-
                         }
-
                       >
-
                         {ROOM_STATUS_LABELS[room.status]}
-
                       </span>
-
                     </div>
 
-
-
-                    <div className="modern-room-status">
-
-                      <span className="status-help">
-
-                        {ROOM_STATUS_HELP[room.status]}
-
-                      </span>
-
-
-
-                      <label>
-
-                        <span>Trạng thái</span>
-
-
-
-                        <select
-
-                          className="status-select"
-
-                          disabled={!canChangeStatus}
-
-                          value={currentDraftStatus}
-
-                          onChange={(event) => {
-
-                            setNotice(null)
-
-
-
-                            setDraftStatuses((current) => ({
-
-                              ...current,
-
-                              [room.id]:
-
-                                event.target.value as RoomStatus,
-
-                            }))
-
-                          }}
-
-                          aria-label={
-
-                            `Trạng thái mới cho phòng ` +
-
-                            `${room.roomNumber}`
-
-                          }
-
-                        >
-
-                          {(isHousekeeping
-
-                            ? STATUS_OPTIONS.filter(
-
-                                (status) =>
-
-                                  status === 'TRONG_BAN' ||
-
-                                  status === 'TRONG_SACH',
-
-                              )
-
-                            : STATUS_OPTIONS
-
-                          ).map((status) => (
-
-                            <option
-
-                              value={status}
-
-                              key={status}
-
-                            >
-
-                              {ROOM_STATUS_LABELS[status]}
-
-                            </option>
-
-                          ))}
-
-                        </select>
-
-                      </label>
-
+                    {/* S3-09: Thời gian nhận khách dự kiến & tag ưu tiên */}
+                    <div className="room-checkin-info">
+                      {room.hasGuestCheckInToday ? (
+                        <div className="priority-banner">
+                          <span className="priority-pill">⚡ Ưu tiên: Có khách nhận hôm nay</span>
+                          <div className="checkin-time-row">
+                            <span className="checkin-label">Thời gian nhận khách dự kiến:</span>
+                            <span className="checkin-time-val">{room.expectedCheckInTime ?? '14:00'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="standard-checkin-banner">
+                          <div className="checkin-time-row">
+                            <span className="checkin-label">Thời gian nhận khách dự kiến:</span>
+                            <span className="checkin-time-val empty">Chưa có khách đặt hôm nay</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+
+                    {!isHousekeeping && (
+                      <div className="modern-room-status">
+                        <span className="status-help">
+                          {ROOM_STATUS_HELP[room.status]}
+                        </span>
+
+                        <label>
+                          <span>Trạng thái</span>
+
+                          <select
+                            className="status-select"
+                            disabled={!canChangeStatus}
+                            value={currentDraftStatus}
+                            onChange={(event) => {
+                              setNotice(null)
+
+                              setDraftStatuses((current) => ({
+                                ...current,
+                                [room.id]:
+                                  event.target.value as RoomStatus,
+                              }))
+                            }}
+                            aria-label={
+                              `Trạng thái mới cho phòng ` +
+                              `${room.roomNumber}`
+                            }
+                          >
+                            {STATUS_OPTIONS.map((status) => (
+                              <option
+                                value={status}
+                                key={status}
+                              >
+                                {ROOM_STATUS_LABELS[status]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    )}
 
 
 
@@ -2167,7 +2104,7 @@ const counts = useMemo(
                         </button>
                       )}
 
-                      {canChangeStatus && (
+                      {canChangeStatus && !isHousekeeping && (
                         <button
                           className="primary-button room-save-button"
                           type="button"

@@ -164,69 +164,46 @@ public class H2DevDataLoader implements ApplicationRunner {
             jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'letan.demo@homestay.local'", demoPasswordHash);
         }
 
-        // 9. Khởi tạo danh sách booking mẫu (bao gồm seed cho Task S3-08: Thiếu phòng, Vừa đủ, Còn dư)
-        Long doiId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'DOI'", Long.class);
-        Long donId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'DON'", Long.class);
-        Long giaDinhId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'GIA_DINH'", Long.class);
+        // 8b. Khởi tạo tài khoản Buồng phòng mẫu: buongphong.demo@homestay.local / password (S3-09)
+        Long housekeepingRoleId = jdbcTemplate.queryForObject("SELECT id FROM roles WHERE code = 'HOUSEKEEPING'", Long.class);
+        Integer hkCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email = 'buongphong.demo@homestay.local'", Integer.class);
+        if (hkCount == null || hkCount == 0) {
+            jdbcTemplate.update("""
+                INSERT INTO users (
+                    full_name, email, password_hash, role_id, is_active,
+                    failed_login_count, token_version, must_change_password, created_at, updated_at)
+                VALUES ('Buồng phòng Demo', 'buongphong.demo@homestay.local',
+                        ?, ?, TRUE, 0, 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, demoPasswordHash, housekeepingRoleId);
+        } else {
+            jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'buongphong.demo@homestay.local'", demoPasswordHash);
+        }
 
-        // Xoá các booking seed S3-08 cũ nếu đã tồn tại để chạy lại nhiều lần không bị trùng lặp
-        jdbcTemplate.execute("DELETE FROM bookings WHERE booking_code LIKE 'BK-S308-%'");
+        // 9. Khởi tạo danh sách booking mẫu để demo cập nhật và ưu tiên phòng cần dọn
+        Integer bookingCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM bookings", Integer.class);
+        if (bookingCount == null || bookingCount == 0) {
+            Long doiId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'DOI'", Long.class);
+            Long donId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'DON'", Long.class);
 
-        // Task S3-08 Seed:
-        // 1. Loại THIẾU phòng: Phòng đơn (1 phòng khả dụng 101), có 2 booking hiệu lực trùng đêm ngày mai + 1
-        //    - BK-S308-DON-01: nhiều đêm (từ ngày mai đến +4 ngày)
-        //    - BK-S308-DON-02: 1 đêm (từ ngày mai + 1 đến +2 ngày)
-        //    => Đêm (ngày mai + 1) có 2 booking > 1 phòng khả dụng => CẢNH BÁO THIẾU PHÒNG!
-        jdbcTemplate.update("""
-            INSERT INTO bookings (
-                booking_code, guest_name, guest_phone, guest_email, guest_count,
-                room_type_id, room_type_name_snapshot, check_in_date, check_out_date,
-                weekday_price_snapshot, weekend_price_snapshot, weekend_days_snapshot,
-                total_amount, status, created_at, hold_expires_at, extra_guest_count,
-                extra_person_fee_snapshot, surcharge_amount)
-            VALUES
-            ('BK-S308-DON-01', 'Hoàng Văn Thiếu (Booking dài ngày)', '0911223344', 'thieu.hoang@example.com', 1,
-             ?, 'Phòng đơn', CURRENT_DATE + 1, CURRENT_DATE + 4,
-             300000, 400000, 'FRIDAY,SATURDAY', 1000000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0),
-            ('BK-S308-DON-02', 'Lê Thị Trùng (Booking tạm thời)', '0922334455', 'trung.le@example.com', 1,
-             ?, 'Phòng đơn', CURRENT_DATE + 2, CURRENT_DATE + 3,
-             300000, 400000, 'FRIDAY,SATURDAY', 300000, 'CHO_XAC_NHAN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + 1, 0, 0, 0)
-        """, donId, donId);
-
-        // 2. Loại VỪA ĐỦ: Phòng đôi (2 phòng khả dụng 102, 201), có đúng 2 booking hiệu lực trùng đêm
-        //    - BK-S308-DOI-01: 2 đêm (từ ngày mai + 1 đến +3 ngày)
-        //    - BK-S308-DOI-02: 2 đêm (từ ngày mai + 1 đến +3 ngày)
-        //    => 2 booking == 2 phòng khả dụng => VỪA ĐỦ (KHÔNG CẢNH BÁO)
-        jdbcTemplate.update("""
-            INSERT INTO bookings (
-                booking_code, guest_name, guest_phone, guest_email, guest_count,
-                room_type_id, room_type_name_snapshot, check_in_date, check_out_date,
-                weekday_price_snapshot, weekend_price_snapshot, weekend_days_snapshot,
-                total_amount, status, created_at, hold_expires_at, extra_guest_count,
-                extra_person_fee_snapshot, surcharge_amount)
-            VALUES
-            ('BK-S308-DOI-01', 'Phạm Quốc Đủ 1', '0933445566', 'du1.pham@example.com', 2,
-             ?, 'Phòng đôi', CURRENT_DATE + 1, CURRENT_DATE + 3,
-             500000, 650000, 'FRIDAY,SATURDAY', 1000000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0),
-            ('BK-S308-DOI-02', 'Phạm Quốc Đủ 2', '0944556677', 'du2.pham@example.com', 2,
-             ?, 'Phòng đôi', CURRENT_DATE + 1, CURRENT_DATE + 3,
-             500000, 650000, 'FRIDAY,SATURDAY', 1000000, 'DA_NHAN_PHONG', CURRENT_TIMESTAMP, NULL, 0, 0, 0)
-        """, doiId, doiId);
-
-        // 3. Loại CÒN DƯ: Phòng gia đình (1 phòng khả dụng 301), có 1 booking ĐÃ HUỶ để minh hoạ
-        //    - BK-S308-GD-CANCELLED: DA_HUY (từ ngày mai + 1 đến +3 ngày)
-        //    => Booking hiệu lực = 0 < 1 phòng khả dụng => CÒN DƯ (KHÔNG CẢNH BÁO, booking đã huỷ không tính)
-        jdbcTemplate.update("""
-            INSERT INTO bookings (
-                booking_code, guest_name, guest_phone, guest_email, guest_count,
-                room_type_id, room_type_name_snapshot, check_in_date, check_out_date,
-                weekday_price_snapshot, weekend_price_snapshot, weekend_days_snapshot,
-                total_amount, status, created_at, hold_expires_at, extra_guest_count,
-                extra_person_fee_snapshot, surcharge_amount)
-            VALUES
-            ('BK-S308-GD-CANCELLED', 'Vũ Đình Huỷ (Đã huỷ)', '0955667788', 'huy.vu@example.com', 4,
-             ?, 'Phòng gia đình', CURRENT_DATE + 1, CURRENT_DATE + 3,
-             900000, 1200000, 'FRIDAY,SATURDAY', 1800000, 'DA_HUY', CURRENT_TIMESTAMP, NULL, 0, 0, 0)
-        """, giaDinhId);
+            jdbcTemplate.update("""
+                INSERT INTO bookings (
+                    booking_code, guest_name, guest_phone, guest_email, guest_count,
+                    room_type_id, room_type_name_snapshot, check_in_date, check_out_date,
+                    weekday_price_snapshot, weekend_price_snapshot, weekend_days_snapshot,
+                    total_amount, status, created_at, hold_expires_at, extra_guest_count,
+                    extra_person_fee_snapshot, surcharge_amount)
+                VALUES
+                ('BK-DEMO01', 'Nguyễn Văn An', '0912345678', 'an.nguyen@example.com', 2,
+                 ?, 'Phòng đôi', CURRENT_DATE + 2, CURRENT_DATE + 5,
+                 500000, 650000, 'FRIDAY,SATURDAY', 1650000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0),
+                ('BK-DEMO02', 'Trần Thị Bình', '0987654321', 'binh.tran@example.com', 1,
+                 ?, 'Phòng đơn', CURRENT_DATE + 7, CURRENT_DATE + 10,
+                 300000, 400000, 'FRIDAY,SATURDAY', 1000000, 'CHO_XAC_NHAN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + 1, 0, 0, 0),
+                ('BK-DEMO03', 'Lê Hoàng Minh', '0933333333', 'minh.le@example.com', 2,
+                 ?, 'Phòng đôi', CURRENT_DATE, CURRENT_DATE + 2,
+                 500000, 650000, 'FRIDAY,SATURDAY', 1000000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0)
+            """, doiId, donId, doiId);
+        }
     }
 }

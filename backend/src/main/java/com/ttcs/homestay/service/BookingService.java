@@ -22,9 +22,15 @@ import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.ttcs.homestay.dto.booking.BookingConfirmResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
+import com.ttcs.homestay.dto.booking.BookingConfirmRequest;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -40,6 +46,8 @@ public class BookingService {
     private final RoomTypeRepository roomTypeRepository;
     private final OperatingSettingsService operatingSettingsService;
     private final PricingService pricingService;
+    private final BookingDepositService bookingDepositService;
+    private final AuditLogService auditLogService;
     private final RoomAvailabilityService roomAvailabilityService;
 
     public BookingService(
@@ -47,12 +55,50 @@ public class BookingService {
             RoomTypeRepository roomTypeRepository,
             OperatingSettingsService operatingSettingsService,
             PricingService pricingService,
+            BookingDepositService bookingDepositService,
+            AuditLogService auditLogService,
             RoomAvailabilityService roomAvailabilityService) {
         this.bookingRepository = bookingRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.operatingSettingsService = operatingSettingsService;
         this.pricingService = pricingService;
+        this.bookingDepositService = bookingDepositService;
+        this.auditLogService = auditLogService;
         this.roomAvailabilityService = roomAvailabilityService;
+    }
+
+    @Transactional
+    public BookingConfirmResponse confirmBooking(Long id, BookingConfirmRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long actorId = null;
+        String actorEmail = null;
+        String actorName = null;
+        if (authentication instanceof JwtAuthenticationToken token) {
+            try {
+                actorId = Long.valueOf(token.getToken().getSubject());
+            } catch (NumberFormatException ignored) {
+                // The JWT subject may not be a numeric user ID.
+            }
+            actorEmail = token.getToken().getClaimAsString("email");
+            actorName = token.getToken().getClaimAsString("fullName");
+        }
+        if ((actorEmail == null || actorEmail.isBlank()) && authentication != null) {
+            actorEmail = authentication.getName();
+        }
+        if ((actorName == null || actorName.isBlank()) && authentication != null) {
+            actorName = authentication.getName();
+        }
+        BookingConfirmResponse response = bookingDepositService.confirmBooking(id, request, actorName);
+        String ipAddress = null;
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+            ipAddress = attrs.getRequest().getRemoteAddr();
+        }
+        // Join the booking/deposit transaction: audit failure must roll back confirmation.
+        // user_id references users, so identify the booking in the existing target label instead.
+        auditLogService.recordSensitiveAction(
+                actorId, actorEmail, null, "Booking " + response.bookingCode(),
+                "BOOKING_CONFIRMED", ipAddress);
+        return response;
     }
 
     @Transactional
@@ -175,10 +221,14 @@ public class BookingService {
     public BookingResponse updateBooking(Long id, BookingUpdateRequest request) {
         validateUpdateRequest(request);
 
-        Booking booking = bookingRepository.findById(id)
+        Booking booking = bookingRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Không tìm thấy booking"));
+        if (bookingDepositService.hasDeposit(booking)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Booking có tiền cọc đã ghi nhận, không thể cập nhật trực tiếp");
+        }
 
         RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
                 .orElseThrow(RoomTypeNotFoundException::new);

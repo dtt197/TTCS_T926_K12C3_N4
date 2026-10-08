@@ -1,9 +1,12 @@
 package com.ttcs.homestay.service;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,13 +15,18 @@ import com.ttcs.homestay.dto.CheckInResponse;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
+import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.CheckIn;
+import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomStatusHistory;
 import com.ttcs.homestay.exception.RoomNotFoundException;
 import com.ttcs.homestay.exception.RoomStatusConflictException;
+import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.CheckInRepository;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 
@@ -26,24 +34,80 @@ import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 public class RoomService {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final RoomRepository roomRepository;
     private final CheckInRepository checkInRepository;
     private final RoomStatusHistoryRepository roomStatusHistoryRepository;
+    private final BookingRepository bookingRepository;
+    private final OperatingSettingsRepository operatingSettingsRepository;
 
     public RoomService(
             RoomRepository roomRepository,
             CheckInRepository checkInRepository,
             RoomStatusHistoryRepository roomStatusHistoryRepository) {
+        this(roomRepository, checkInRepository, roomStatusHistoryRepository, null, null);
+    }
+
+    @Autowired
+    public RoomService(
+            RoomRepository roomRepository,
+            CheckInRepository checkInRepository,
+            RoomStatusHistoryRepository roomStatusHistoryRepository,
+            BookingRepository bookingRepository,
+            OperatingSettingsRepository operatingSettingsRepository) {
         this.roomRepository = roomRepository;
         this.checkInRepository = checkInRepository;
         this.roomStatusHistoryRepository = roomStatusHistoryRepository;
+        this.bookingRepository = bookingRepository;
+        this.operatingSettingsRepository = operatingSettingsRepository;
     }
-        @Transactional(readOnly = true)
+
+    @Transactional(readOnly = true)
     public List<RoomResponse> getRooms() {
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
+        List<Booking> todayBookings = (bookingRepository != null)
+                ? bookingRepository.findByCheckInDateAndStatusIn(
+                        today,
+                        List.of(BookingStatus.DA_XAC_NHAN, BookingStatus.CHO_XAC_NHAN))
+                : List.of();
+
+        LocalTime defaultCheckIn = LocalTime.of(14, 0);
+        if (operatingSettingsRepository != null) {
+            defaultCheckIn = operatingSettingsRepository.findFirstByOrderByCreatedAtDescIdDesc()
+                    .map(OperatingSettings::getCheckInTime)
+                    .orElse(LocalTime.of(14, 0));
+        }
+
+        final LocalTime effectiveDefaultCheckIn = defaultCheckIn;
+
         return roomRepository.findAllByActiveTrueOrderByRoomNumberAsc()
                 .stream()
-                .map(RoomResponse::from)
+                .map(room -> {
+                    // S3-09: Tìm booking nhận phòng trong ngày tương ứng với loại phòng
+                    Booking matchingBooking = todayBookings.stream()
+                            .filter(booking -> {
+                                String bookingRt = booking.getRoomType() != null
+                                        ? booking.getRoomType().getName()
+                                        : booking.getRoomTypeNameSnapshot();
+                                return bookingRt != null && bookingRt.equalsIgnoreCase(room.getRoomType());
+                            })
+                            .findFirst()
+                            .orElse(null);
+
+                    boolean hasGuestToday = matchingBooking != null;
+                    String expectedCheckInTimeStr = null;
+                    if (hasGuestToday) {
+                        LocalTime roomCheckInTime = (matchingBooking.getRoomType() != null && matchingBooking.getRoomType().getCheckInTime() != null)
+                                ? matchingBooking.getRoomType().getCheckInTime()
+                                : effectiveDefaultCheckIn;
+                        expectedCheckInTimeStr = (roomCheckInTime != null)
+                                ? roomCheckInTime.format(TIME_FORMATTER)
+                                : "14:00";
+                    }
+
+                    return RoomResponse.from(room, hasGuestToday, expectedCheckInTimeStr);
+                })
                 .toList();
     }
     @Transactional(readOnly = true)

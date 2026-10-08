@@ -46,6 +46,18 @@ public class RoomController {
         if (isHousekeeping(authentication)) {
             return rooms.stream()
                     .filter(room -> room.status() == RoomStatus.TRONG_BAN)
+                    .sorted((a, b) -> {
+                        boolean aToday = Boolean.TRUE.equals(a.hasGuestCheckInToday());
+                        boolean bToday = Boolean.TRUE.equals(b.hasGuestCheckInToday());
+                        if (aToday != bToday) {
+                            return aToday ? -1 : 1;
+                        }
+                        if (a.expectedCheckInTime() != null && b.expectedCheckInTime() != null) {
+                            int cmp = a.expectedCheckInTime().compareTo(b.expectedCheckInTime());
+                            if (cmp != 0) return cmp;
+                        }
+                        return a.roomNumber().compareTo(b.roomNumber());
+                    })
                     .toList();
         }
 

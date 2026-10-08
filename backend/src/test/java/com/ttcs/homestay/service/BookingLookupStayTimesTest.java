@@ -30,7 +30,8 @@ class BookingLookupStayTimesTest {
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
         settingsRepository = mock(OperatingSettingsRepository.class);
-        service = new BookingLookupService(bookingRepository, new BookingLookupRateLimiter(), settingsRepository);
+        service = new BookingLookupService(bookingRepository, new BookingLookupRateLimiter(), settingsRepository,
+                org.mockito.Mockito.mock(com.ttcs.homestay.repository.BookingDepositRepository.class));
 
         Booking booking = new Booking();
         booking.setBookingCode("ABCD2345");

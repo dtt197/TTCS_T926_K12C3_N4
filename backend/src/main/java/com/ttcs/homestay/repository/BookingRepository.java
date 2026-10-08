@@ -19,6 +19,10 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpecificationExecutor<Booking> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Booking b where b.id = :id")
+    Optional<Booking> findByIdForUpdate(@Param("id") Long id);
+
     List<Booking> findAllByOrderByCreatedAtDescIdDesc();
 
     /** S2-07: mã booking đã có chưa (sinh lại nếu trùng). */
@@ -41,20 +45,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("checkOut") LocalDate checkOut,
             @Param("statuses") Collection<BookingStatus> statuses);
 
-    /**
-     * S3-08: Tìm tất cả booking có trạng thái hợp lệ trong khoảng quét ngày [scanStart, scanEnd].
-     */
-    @Query("select b from Booking b left join fetch b.roomType"
-            + " where b.status in :statuses"
-            + " and b.checkInDate <= :scanEnd and b.checkOutDate > :scanStart")
-    List<Booking> findActiveBookingsInDateRange(
-            @Param("scanStart") LocalDate scanStart,
-            @Param("scanEnd") LocalDate scanEnd,
-            @Param("statuses") Collection<BookingStatus> statuses);
-
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     List<Booking> findByStatusAndHoldExpiresAtLessThanEqual(
             BookingStatus status,
             OffsetDateTime now);
+
+    /** S3-09: tìm danh sách booking nhận phòng trong ngày theo danh sách trạng thái. */
+    @Query("select b from Booking b where b.checkInDate = :checkInDate and b.status in :statuses")
+    List<Booking> findByCheckInDateAndStatusIn(
+            @Param("checkInDate") LocalDate checkInDate,
+            @Param("statuses") Collection<BookingStatus> statuses);
 
     default Page<Booking> search(
             BookingStatus status,
