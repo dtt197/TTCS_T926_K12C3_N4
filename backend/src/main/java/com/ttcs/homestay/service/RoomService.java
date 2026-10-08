@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ttcs.homestay.dto.CheckInRequest;
 import com.ttcs.homestay.dto.CheckInResponse;
+import com.ttcs.homestay.dto.IncidentReportRequest;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
@@ -194,6 +195,44 @@ public List<RoomStatusHistoryResponse> getHistory(
                 savedRoom.getMaintenanceReason(),
                 savedRoom.getMaintenanceStartDate(),
                 savedRoom.getMaintenanceEndDate());
+
+        return RoomResponse.from(savedRoom);
+    }
+
+    /**
+     * S3-09 AC4: Buồng phòng báo sự cố cho phòng TRONG_BAN.
+     * Ghi chú không được rỗng; phòng chuyển sang BAO_TRI ngay lập tức để lễ tân thấy.
+     */
+    @Transactional
+    public RoomResponse reportIncident(Long roomId, IncidentReportRequest request, String operatorName) {
+        Room room = roomRepository.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new RoomNotFoundException(roomId));
+
+        if (room.getStatus() != RoomStatus.TRONG_BAN) {
+            throw new RoomStatusConflictException(
+                    "Chỉ có thể báo sự cố cho phòng đang ở trạng thái Trống bẩn. "
+                            + "Phòng " + room.getRoomNumber() + " hiện đang ở trạng thái "
+                            + RoomStatusPolicy.displayName(room.getStatus()) + ".");
+        }
+
+        RoomStatus previousStatus = room.getStatus();
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
+
+        room.setStatus(RoomStatus.BAO_TRI);
+        room.setMaintenanceReason(request.note().trim());
+        room.setMaintenanceStartDate(today);
+        room.setMaintenanceEndDate(null);
+
+        Room savedRoom = roomRepository.save(room);
+
+        saveHistory(
+                savedRoom,
+                previousStatus,
+                RoomStatus.BAO_TRI,
+                operatorName,
+                savedRoom.getMaintenanceReason(),
+                savedRoom.getMaintenanceStartDate(),
+                null);
 
         return RoomResponse.from(savedRoom);
     }

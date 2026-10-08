@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.ttcs.homestay.dto.IncidentReportRequest;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.entity.Booking;
@@ -279,5 +280,58 @@ class RoomServiceTest {
         verify(roomRepository, never()).save(any(Room.class));
         verify(roomStatusHistoryRepository, never()).save(any(RoomStatusHistory.class));
     }
+
+    @Test
+    @DisplayName("S3-09: Báo sự cố phòng trống bẩn chuyển sang bảo trì kèm ghi chú và lưu lịch sử")
+    void reportIncident_onDirtyRoom_switchesToMaintenanceWithNoteAndSavesHistory() {
+        Long roomId = 103L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("103");
+        room.setStatus(RoomStatus.TRONG_BAN);
+        room.setActive(true);
+
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        IncidentReportRequest req = new IncidentReportRequest("Hỏng vòi sen nhà tắm và chập công tắc");
+        RoomResponse response = roomService.reportIncident(roomId, req, "Nhân viên buồng phòng");
+
+        assertThat(response.status()).isEqualTo(RoomStatus.BAO_TRI);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.BAO_TRI);
+        assertThat(room.getMaintenanceReason()).isEqualTo("Hỏng vòi sen nhà tắm và chập công tắc");
+        assertThat(room.getMaintenanceStartDate()).isNotNull();
+        assertThat(room.getMaintenanceEndDate()).isNull();
+
+        ArgumentCaptor<RoomStatusHistory> captor = ArgumentCaptor.forClass(RoomStatusHistory.class);
+        verify(roomStatusHistoryRepository).save(captor.capture());
+        RoomStatusHistory savedHist = captor.getValue();
+        assertThat(savedHist.getPreviousStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        assertThat(savedHist.getNewStatus()).isEqualTo(RoomStatus.BAO_TRI);
+        assertThat(savedHist.getChangedBy()).isEqualTo("Nhân viên buồng phòng");
+        assertThat(savedHist.getMaintenanceReason()).isEqualTo("Hỏng vòi sen nhà tắm và chập công tắc");
+    }
+
+    @Test
+    @DisplayName("S3-09: Không thể báo sự cố cho phòng không phải là trống bẩn")
+    void reportIncident_onNonDirtyRoom_throwsConflictException() {
+        Long roomId = 104L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("104");
+        room.setStatus(RoomStatus.TRONG_SACH);
+        room.setActive(true);
+
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+
+        IncidentReportRequest req = new IncidentReportRequest("Hỏng đèn trần");
+        assertThatThrownBy(() -> roomService.reportIncident(roomId, req, "Buồng phòng"))
+                .isInstanceOf(RoomStatusConflictException.class)
+                .hasMessageContaining("Chỉ có thể báo sự cố cho phòng đang ở trạng thái Trống bẩn");
+
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_SACH);
+        verify(roomRepository, never()).save(any(Room.class));
+    }
 }
+
 

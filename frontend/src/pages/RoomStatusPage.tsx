@@ -19,6 +19,8 @@ import {
 
   putRoomIntoMaintenance,
 
+  reportRoomIncident,
+
   updateRoomStatus,
 
 } from '../services/roomService'
@@ -465,9 +467,18 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   const canChangeStatus = hasPermission(role, 'rooms:status:update') || canCleanRoom
   const canUseCheckIn = hasPermission(role, 'rooms:check-in')
   const canUseCheckOut = hasPermission(role, 'rooms:check-out')
+  const canReportIncident = hasPermission(role, 'rooms:report-incident')
 
   const [rooms, setRooms] = useState<Room[]>([])
   const [cleaningRoomId, setCleaningRoomId] = useState<number | null>(null)
+
+  // S3-09 AC4: Modal nhập ghi chú sự cố
+  const [incidentModal, setIncidentModal] = useState<{
+    roomId: number
+    roomNumber: string
+    note: string
+    submitting: boolean
+  } | null>(null)
 
   const [draftStatuses, setDraftStatuses] = useState<
 
@@ -1105,9 +1116,81 @@ const counts = useMemo(
     }
   }
 
+  /** S3-09 AC4: Xử lý gửi báo sự cố từ modal */
+  async function handleReportIncident(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!incidentModal) return
+
+    const trimmedNote = incidentModal.note.trim()
+    if (!trimmedNote) {
+      setNotice({ type: 'error', text: 'Ghi chú sự cố không được để trống.' })
+      return
+    }
+
+    setIncidentModal((prev) => prev && { ...prev, submitting: true })
+    setNotice(null)
+
+    try {
+      const { roomId, roomNumber } = incidentModal
+
+      const savedRoom: Room = isDemoMode
+        ? { ...rooms.find((r) => r.id === roomId)!, status: 'BAO_TRI', maintenanceReason: trimmedNote }
+        : await reportRoomIncident(roomId, trimmedNote)
+
+      setRooms((current) =>
+        current.map((item) => (item.id === roomId ? savedRoom : item)),
+      )
+
+      const operator =
+        currentUser?.fullName ||
+        (isHousekeeping ? 'Nhân viên buồng phòng' : 'Lễ tân')
+
+      const historyRecord: RoomStatusHistory = {
+        id: Date.now(),
+        roomId,
+        roomNumber,
+        previousStatus: 'TRONG_BAN',
+        newStatus: 'BAO_TRI',
+        changedBy: operator,
+        changedAt: new Date().toISOString(),
+        maintenanceReason: trimmedNote,
+      }
+
+      setHistoryByRoom((current) => ({
+        ...current,
+        [roomId]: [
+          ...(current[roomId] ?? DEMO_HISTORY[roomId] ?? []),
+          historyRecord,
+        ],
+      }))
+
+      if (!isDemoMode && selectedHistoryRoomId === roomId) {
+        getRoomHistory(roomId)
+          .then((hist) => {
+            setHistoryByRoom((curr) => ({ ...curr, [roomId]: hist }))
+          })
+          .catch(() => {})
+      }
+
+      setIncidentModal(null)
+      setNotice({
+        type: 'success',
+        text: `Đã báo sự cố phòng ${roomNumber}. Phòng chuyển sang bảo trì.`,
+      })
+    } catch (error) {
+      setIncidentModal((prev) => prev && { ...prev, submitting: false })
+      showError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể báo sự cố. Vui lòng thử lại.',
+      )
+    }
+  }
+
 
 
   async function handleCheckIn(
+
 
     event: FormEvent<HTMLFormElement>,
 
@@ -2109,7 +2192,11 @@ const counts = useMemo(
 
                         <div className="maintenance-summary">
 
-                          <strong>
+                          <div className="maintenance-label-badge" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#dc2626', marginBottom: '4px' }}>
+                            ⚠️ Ghi chú sự cố / Bảo trì:
+                          </div>
+
+                          <strong className="maintenance-reason-text" style={{ color: '#991b1b', fontSize: '0.95rem' }}>
 
                             {room.maintenanceReason}
 
@@ -2118,9 +2205,8 @@ const counts = useMemo(
 
 
                           <span>
-                            {room.maintenanceStartDate}
-                            {' → '}
-                            {room.maintenanceEndDate ?? 'Chưa có ngày kết thúc dự kiến'}
+                            {room.maintenanceStartDate ? `Từ: ${room.maintenanceStartDate}` : ''}
+                            {room.maintenanceEndDate ? ` → Đến: ${room.maintenanceEndDate}` : ' (Chưa có ngày kết thúc)'}
                           </span>
 
                         </div>
@@ -2161,6 +2247,28 @@ const counts = useMemo(
                               ? 'Đang xử lý...'
                               : 'Báo đã sạch'}
                           </span>
+                        </button>
+                      )}
+
+                      {/* S3-09: Báo sự cố cho phòng trống bẩn */}
+                      {room.status === 'TRONG_BAN' && (isHousekeeping || canReportIncident) && (
+                        <button
+                          className="secondary-button report-incident-button"
+                          type="button"
+                          disabled={isSaving || cleaningRoomId === room.id}
+                          onClick={() =>
+                            setIncidentModal({
+                              roomId: room.id,
+                              roomNumber: room.roomNumber,
+                              note: '',
+                              submitting: false,
+                            })
+                          }
+                        >
+                          <span className="button-icon">
+                            <VisualIcon type="maintenance" />
+                          </span>
+                          <span>Báo sự cố</span>
                         </button>
                       )}
 
@@ -2390,6 +2498,79 @@ const counts = useMemo(
 
           </section>
 
+        )}
+
+        {/* S3-09 AC4: Modal nhập và gửi ghi chú sự cố */}
+        {incidentModal && (
+          <div
+            className="incident-modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="incident-modal-title"
+          >
+            <div className="incident-modal-card">
+              <div className="incident-modal-header">
+                <h3 id="incident-modal-title">
+                  Báo sự cố - Phòng {incidentModal.roomNumber}
+                </h3>
+                <button
+                  type="button"
+                  className="incident-modal-close"
+                  onClick={() => setIncidentModal(null)}
+                  disabled={incidentModal.submitting}
+                  aria-label="Đóng"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={(e) => void handleReportIncident(e)}>
+                <div className="incident-modal-body">
+                  <div className="form-group">
+                    <label htmlFor="incident-note-input">
+                      Ghi chú về sự cố <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <textarea
+                      id="incident-note-input"
+                      className="incident-textarea"
+                      rows={4}
+                      placeholder="Nhập chi tiết sự cố tại phòng (VD: Hỏng khóa cửa, hỏng điều hòa, sự cố đường ống nước...)"
+                      value={incidentModal.note}
+                      onChange={(e) =>
+                        setIncidentModal((prev) =>
+                          prev ? { ...prev, note: e.target.value } : null,
+                        )
+                      }
+                      disabled={incidentModal.submitting}
+                      required
+                      autoFocus
+                    />
+                    <p className="incident-hint">
+                      Phòng sẽ được chuyển sang trạng thái Bảo trì và ghi chú sự cố sẽ hiển thị cho Lễ tân.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="incident-modal-footer">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setIncidentModal(null)}
+                    disabled={incidentModal.submitting}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="submit-incident-btn"
+                    disabled={incidentModal.submitting || !incidentModal.note.trim()}
+                  >
+                    {incidentModal.submitting ? 'Đang gửi...' : 'Gửi báo cáo sự cố'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
       </main>

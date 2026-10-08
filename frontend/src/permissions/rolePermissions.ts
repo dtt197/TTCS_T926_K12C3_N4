@@ -12,6 +12,7 @@ export type Permission =
   | 'rooms:status:update'
   | 'rooms:clean'
   | 'rooms:maintenance'
+  | 'rooms:report-incident'
   | 'rooms:check-in'
   | 'rooms:check-out'
   | 'roomTypes:view'
@@ -78,6 +79,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   HOUSEKEEPING: [
     'rooms:view',
     'rooms:clean',
+    'rooms:report-incident',
   ],
 }
 

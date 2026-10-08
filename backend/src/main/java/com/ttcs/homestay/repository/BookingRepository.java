@@ -56,6 +56,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("checkInDate") LocalDate checkInDate,
             @Param("statuses") Collection<BookingStatus> statuses);
 
+    /** S3-08: tìm danh sách booking còn hiệu lực trong khoảng ngày quét. */
+    @Query("select b from Booking b where b.checkInDate < :endDate and b.checkOutDate > :startDate and b.status in :statuses")
+    List<Booking> findActiveBookingsInDateRange(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") Collection<BookingStatus> statuses);
+
     default Page<Booking> search(
             BookingStatus status,
             LocalDate checkInFrom,

@@ -2,6 +2,7 @@ package com.ttcs.homestay.controller.room;
 
 import com.ttcs.homestay.dto.CheckInRequest;
 import com.ttcs.homestay.dto.CheckInResponse;
+import com.ttcs.homestay.dto.IncidentReportRequest;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
@@ -126,6 +127,39 @@ public class RoomController {
                 authentication,
                 roomId,
                 "ROOM_MAINTENANCE_UPDATED",
+                httpRequest
+        );
+
+        return response;
+    }
+
+    /**
+     * S3-09 AC4: Buồng phòng báo sự cố cho phòng TRONG_BAN (không cần chọn ngày).
+     * Ghi chú rỗng bị từ chối 400.
+     */
+    @PatchMapping("/{roomId}/incident")
+    public RoomResponse reportIncident(
+            @PathVariable Long roomId,
+            @Valid @RequestBody IncidentReportRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+
+        // Kiểm tra bảo vệ tầng controller: chỉ HOUSEKEEPING mới được dùng endpoint này
+        if (!isHousekeeping(authentication)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Chỉ nhân viên buồng phòng mới có thể báo sự cố.");
+        }
+
+        RoomResponse response = roomService.reportIncident(
+                roomId,
+                request,
+                operatorName(authentication)
+        );
+
+        recordRoomAction(
+                authentication,
+                roomId,
+                "ROOM_INCIDENT_REPORTED",
                 httpRequest
         );
 
