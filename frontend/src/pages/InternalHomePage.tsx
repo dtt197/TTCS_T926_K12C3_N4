@@ -346,7 +346,7 @@ export function InternalHomePage({
           ) : activeView === 'settings' ? (
             <SettingsPage role={user.role} />
           ) : (
-            <RoomStatusPage role={user.role} />
+            <RoomStatusPage role={user.role} currentUser={user} />
           )}
         </div>
       </section>

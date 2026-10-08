@@ -1749,6 +1749,39 @@
   box-sizing: border-box;
 }
 
+/* S3-09: Nút báo phòng đã sạch */
+.mark-clean-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #059669 !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.25) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+  min-height: 44px !important;
+}
+
+.mark-clean-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.mark-clean-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.mark-clean-button:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
 /* S3-09: Đáp ứng bề rộng 360px và không tràn nội dung */
 @media (max-width: 480px) {
   .internal-layout,
