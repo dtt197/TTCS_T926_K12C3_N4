@@ -7,6 +7,8 @@ import type {
 } from '../types/booking'
 import { useEffect, useState, type FormEvent } from 'react'
 import type { BookingDetailResponse } from '../services/bookingService'
+import { createBookingDepositAdjustment } from '../services/bookingService'
+import { hasPermission } from '../permissions/rolePermissions'
 import {
   confirmBooking,
   getBookingDetails,
@@ -61,7 +63,8 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-export function BookingListPage() {
+export function BookingListPage({ role }: { role: string }) {
+  const canAdjustDeposit = hasPermission(role, 'bookings:deposit-adjust')
   const [bookings, setBookings] = useState<BookingListItem[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -81,6 +84,13 @@ export function BookingListPage() {
   const [detailData, setDetailData] = useState<BookingDetailResponse | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const [editDetailData, setEditDetailData] = useState<BookingDetailResponse | null>(null)
+  const [editDetailLoading, setEditDetailLoading] = useState(false)
+  const [editDetailError, setEditDetailError] = useState<string | null>(null)
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false)
+  const [adjustmentSaving, setAdjustmentSaving] = useState(false)
+  const [adjustmentError, setAdjustmentError] = useState<string | null>(null)
+  const [adjustmentForm, setAdjustmentForm] = useState({ type: 'TANG' as 'TANG' | 'GIAM', amount: '', reason: '' })
   const [editingBooking, setEditingBooking] = useState<BookingListItem | null>(null)
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [roomTypesLoading, setRoomTypesLoading] = useState(false)
@@ -320,6 +330,13 @@ export function BookingListPage() {
     setPreviewLoading(false)
     setEditError(null)
     setEditSuccess(null)
+    setEditDetailData(null)
+    setEditDetailError(null)
+    setEditDetailLoading(true)
+    getBookingDetails(booking.id)
+      .then(setEditDetailData)
+      .catch((err: unknown) => setEditDetailError(err instanceof Error ? err.message : 'Không tải được thông tin tiền cọc.'))
+      .finally(() => setEditDetailLoading(false))
     setRoomTypesLoading(true)
     getRoomTypes()
       .then(setRoomTypes)
@@ -331,6 +348,37 @@ export function BookingListPage() {
         )
       })
       .finally(() => setRoomTypesLoading(false))
+  }
+
+  async function handleCreateDepositAdjustment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingBooking || !editDetailData?.deposit || adjustmentSaving) return
+    const amount = Number(adjustmentForm.amount)
+    const currentTotal = Number(editDetailData.currentDepositTotal ?? editDetailData.deposit.amount)
+    const projectedTotal = currentTotal + (adjustmentForm.type === 'TANG' ? amount : -amount)
+    if (!Number.isSafeInteger(amount) || amount <= 0 || !adjustmentForm.reason.trim() || adjustmentForm.reason.length > 500) return
+    if (projectedTotal < 0 || projectedTotal > editingBooking.totalAmount) {
+      setAdjustmentError('Tổng tiền cọc sau điều chỉnh phải từ 0 đến tổng tiền booking.')
+      return
+    }
+    setAdjustmentSaving(true)
+    setAdjustmentError(null)
+    try {
+      await createBookingDepositAdjustment(editingBooking.id, {
+        type: adjustmentForm.type,
+        amount,
+        reason: adjustmentForm.reason.trim(),
+      })
+      const refreshed = await getBookingDetails(editingBooking.id)
+      setEditDetailData(refreshed)
+      setAdjustmentOpen(false)
+      setAdjustmentForm({ type: 'TANG', amount: '', reason: '' })
+      setEditSuccess(`Đã ghi nhận điều chỉnh tiền cọc cho booking ${editingBooking.bookingCode}.`)
+    } catch (err) {
+      setAdjustmentError(err instanceof Error ? err.message : 'Không thể lưu điều chỉnh tiền cọc.')
+    } finally {
+      setAdjustmentSaving(false)
+    }
   }
 
   async function handleUpdateBooking(event: FormEvent<HTMLFormElement>) {
@@ -736,6 +784,28 @@ export function BookingListPage() {
               <span>Tổng tiền: {formatCurrency(editingBooking.totalAmount)}</span>
             </div>
 
+            <section className="booking-deposit-panel" aria-labelledby="booking-deposit-title">
+              <h4 id="booking-deposit-title">Thông tin tiền cọc</h4>
+              {editDetailLoading && <p>Đang tải thông tin tiền cọc...</p>}
+              {editDetailError && <div className="alert" role="alert">{editDetailError}</div>}
+              {editDetailData && (editDetailData.deposit ? <>
+                <dl className="booking-detail-grid">
+                  <div><dt>Tổng tiền booking</dt><dd>{formatCurrency(editingBooking.totalAmount)}</dd></div>
+                  <div><dt>Tiền cọc gốc</dt><dd>{formatCurrency(editDetailData.deposit.amount)}</dd></div>
+                  <div><dt>Tổng tiền cọc hiện tại</dt><dd>{formatCurrency(Number(editDetailData.currentDepositTotal ?? editDetailData.deposit.amount))}</dd></div>
+                </dl>
+                <h5>Lịch sử điều chỉnh</h5>
+                {(editDetailData.depositAdjustments ?? []).length ? <div className="booking-adjustment-list">
+                  {editDetailData.depositAdjustments.map((item) => <article className="booking-adjustment-item" key={item.id}>
+                    <strong className={item.adjustmentType === 'TANG' ? 'deposit-increase' : 'deposit-decrease'}>{item.adjustmentType === 'TANG' ? 'TĂNG' : 'GIẢM'} {formatCurrency(item.amount)}</strong>
+                    <span>{item.reason}</span>
+                    <small>{item.createdBy || 'Không rõ người thực hiện'} · {item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : 'Không có thời điểm'}</small>
+                  </article>)}
+                </div> : <p>Chưa có bút toán điều chỉnh.</p>}
+                {canAdjustDeposit && editDetailData.status === 'DA_XAC_NHAN' && <button type="button" className="booking-save-button" disabled={editDetailLoading} onClick={() => { setAdjustmentError(null); setAdjustmentOpen(true) }}>Điều chỉnh tiền cọc</button>}
+              </> : <p>Booking chưa có tiền cọc gốc được ghi nhận.</p>)}
+            </section>
+
             <form className="booking-edit-form" id="booking-edit-form" onSubmit={handleUpdateBooking}>
               <label htmlFor="booking-edit-checkin">
                 Ngày nhận phòng
@@ -887,6 +957,22 @@ export function BookingListPage() {
                   {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
               </div>
+            </form>
+          </section>
+        </div>
+      )}
+      {adjustmentOpen && editingBooking && editDetailData?.deposit && (
+        <div className="booking-dialog-backdrop booking-adjustment-backdrop">
+          <section className="booking-edit-dialog booking-adjustment-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-adjustment-title">
+            <div className="booking-edit-heading"><div><h3 id="booking-adjustment-title">Điều chỉnh tiền cọc</h3><p>{editingBooking.bookingCode} · {editingBooking.guestName}</p></div>
+              <button type="button" className="booking-dialog-close" aria-label="Đóng" disabled={adjustmentSaving} onClick={() => setAdjustmentOpen(false)}>×</button></div>
+            <form className="booking-edit-form" onSubmit={handleCreateDepositAdjustment}>
+              <label>Loại điều chỉnh<select value={adjustmentForm.type} disabled={adjustmentSaving} onChange={(event) => setAdjustmentForm((f) => ({ ...f, type: event.target.value as 'TANG' | 'GIAM' }))}><option value="TANG">TĂNG</option><option value="GIAM">GIẢM</option></select></label>
+              <label>Số tiền điều chỉnh<input type="number" min="1" step="1" required value={adjustmentForm.amount} disabled={adjustmentSaving} onChange={(event) => setAdjustmentForm((f) => ({ ...f, amount: event.target.value }))} /></label>
+              <label>Lý do điều chỉnh<textarea required maxLength={500} rows={3} value={adjustmentForm.reason} disabled={adjustmentSaving} onChange={(event) => setAdjustmentForm((f) => ({ ...f, reason: event.target.value }))} /></label>
+              <div className="booking-adjustment-projection">Tổng cọc dự kiến: <strong>{formatCurrency(Number(editDetailData.currentDepositTotal ?? editDetailData.deposit.amount) + (adjustmentForm.type === 'TANG' ? 1 : -1) * (Number(adjustmentForm.amount) || 0))}</strong><small>Không được thấp hơn 0 hoặc vượt tổng tiền booking ({formatCurrency(editingBooking.totalAmount)}).</small></div>
+              {adjustmentError && <div className="alert" role="alert">{adjustmentError}</div>}
+              <div className="booking-edit-actions"><button type="button" className="booking-cancel-button" disabled={adjustmentSaving} onClick={() => setAdjustmentOpen(false)}>Hủy</button><button type="submit" className="booking-save-button" disabled={adjustmentSaving || !Number.isSafeInteger(Number(adjustmentForm.amount)) || Number(adjustmentForm.amount) <= 0 || !adjustmentForm.reason.trim() || adjustmentForm.reason.length > 500}>{adjustmentSaving ? 'Đang lưu...' : 'Lưu điều chỉnh'}</button></div>
             </form>
           </section>
         </div>

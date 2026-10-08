@@ -325,7 +325,7 @@ export function InternalHomePage({
 
         <div className="internal-page-content">
           {activeView === 'bookings' ? (
-            <BookingListPage />
+            <BookingListPage role={user.role} />
           ) : activeView === 'walkInBooking' ? (
             <WalkInBookingPage />
           ) : activeView === 'audit-logs' ? (

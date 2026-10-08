@@ -2,6 +2,8 @@ package com.ttcs.homestay.controller.booking;
 
 import com.ttcs.homestay.dto.booking.BookingConfirmRequest;
 import com.ttcs.homestay.dto.booking.BookingConfirmResponse;
+import com.ttcs.homestay.dto.booking.BookingDepositAdjustmentRequest;
+import com.ttcs.homestay.dto.booking.BookingDepositAdjustmentResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
@@ -10,6 +12,7 @@ import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.dto.booking.RoomShortageAlertResponse;
 import com.ttcs.homestay.service.BookingService;
 import com.ttcs.homestay.service.RoomShortageAlertService;
+import com.ttcs.homestay.service.BookingDepositAdjustmentService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -26,13 +29,15 @@ public class BookingController {
 
     private final BookingService bookingService;
     private final RoomShortageAlertService roomShortageAlertService;
+    private final BookingDepositAdjustmentService bookingDepositAdjustmentService;
 
     public BookingController(
             BookingService bookingService,
-            RoomShortageAlertService roomShortageAlertService
-    ) {
+            RoomShortageAlertService roomShortageAlertService,
+            BookingDepositAdjustmentService bookingDepositAdjustmentService) {
         this.bookingService = bookingService;
         this.roomShortageAlertService = roomShortageAlertService;
+        this.bookingDepositAdjustmentService = bookingDepositAdjustmentService;
     }
 
     /**
@@ -54,6 +59,14 @@ public class BookingController {
             @PathVariable Long id,
             @Valid @RequestBody BookingConfirmRequest request) {
         return bookingService.confirmBooking(id, request);
+    }
+
+    @PostMapping("/{id}/deposit-adjustments")
+    public ResponseEntity<BookingDepositAdjustmentResponse> createDepositAdjustment(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingDepositAdjustmentRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(bookingDepositAdjustmentService.createAdjustment(id, request));
     }
 
     @PutMapping("/{id}")

@@ -1,5 +1,5 @@
 .booking-page {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .booking-filters {
@@ -561,3 +561,17 @@
   font-style: italic;
 }
 
+.booking-deposit-panel { padding: 14px; margin: 14px 0; border: 1px solid #d6e2d8; border-radius: 10px; background: #fbfcf8; }
+.booking-deposit-panel h4 { margin: 0 0 12px; color: #183e2c; }
+.booking-deposit-panel h5 { margin: 16px 0 8px; color: #385748; }
+.booking-adjustment-list { display: grid; gap: 8px; margin-bottom: 12px; }
+.booking-adjustment-item { display: grid; gap: 4px; padding: 10px 12px; border-radius: 8px; background: #f0f5ef; }
+.booking-adjustment-item small { color: #63746a; }
+.deposit-increase { color: #176c45; }
+.deposit-decrease { color: #a32626; }
+.booking-adjustment-backdrop { z-index: 1001; }
+.booking-adjustment-dialog { max-height: 88vh; overflow-y: auto; }
+.booking-adjustment-dialog textarea { width: 100%; resize: vertical; }
+.booking-adjustment-projection { display: grid; gap: 5px; padding: 12px; border-radius: 8px; background: #f1f8f3; color: #174d37; }
+.booking-adjustment-projection strong { font-size: 18px; }
+.booking-adjustment-projection small { color: #63746a; }

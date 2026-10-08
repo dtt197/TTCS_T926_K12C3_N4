@@ -11,6 +11,7 @@ import com.ttcs.homestay.dto.booking.BookingConfirmResponse;
 import com.ttcs.homestay.dto.booking.BookingDepositResponse;
 import com.ttcs.homestay.exception.InvalidDepositException;
 import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.service.BookingDepositAdjustmentService;
 import com.ttcs.homestay.service.BookingService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class BookingConfirmControllerTest {
     @Autowired private MockMvc mockMvc;
     @MockitoBean private BookingService bookingService;
+    @MockitoBean private BookingDepositAdjustmentService bookingDepositAdjustmentService;
     @MockitoBean private UserRepository userRepository;
     @MockitoBean private com.ttcs.homestay.service.RoomShortageAlertService roomShortageAlertService;
 
