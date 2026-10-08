@@ -38,6 +38,14 @@ public class RoomAvailabilityService {
     /** Số phòng trống suốt cả khoảng ngày = đêm ít phòng trống nhất. */
     @Transactional(readOnly = true)
     public int availableRooms(RoomType roomType, LocalDate checkIn, LocalDate checkOut) {
+        return availableRooms(roomType, checkIn, checkOut, null);
+    }
+
+    /**
+     * S3-04: kiểm tra số phòng trống khi thay đổi booking, loại trừ booking đang xét để không tự chặn chính nó.
+     */
+    @Transactional(readOnly = true)
+    public int availableRooms(RoomType roomType, LocalDate checkIn, LocalDate checkOut, Long excludeBookingId) {
         List<Room> rooms = roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue(roomType.getName());
         List<Booking> bookings =
                 bookingRepository.findOverlapping(roomType.getId(), checkIn, checkOut, OCCUPYING_STATUSES);
@@ -47,7 +55,10 @@ public class RoomAvailabilityService {
         for (LocalDate night = checkIn; night.isBefore(checkOut); night = night.plusDays(1)) {
             LocalDate currentNight = night;
             long freeRooms = rooms.stream().filter(room -> !isUnderMaintenance(room, currentNight)).count();
-            long occupied = bookings.stream().filter(booking -> occupies(booking, currentNight, now)).count();
+            long occupied = bookings.stream()
+                    .filter(booking -> excludeBookingId == null || !excludeBookingId.equals(booking.getId()))
+                    .filter(booking -> occupies(booking, currentNight, now))
+                    .count();
             minAvailable = Math.min(minAvailable, freeRooms - occupied);
         }
         return (int) Math.max(minAvailable, 0);

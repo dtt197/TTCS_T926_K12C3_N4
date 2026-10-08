@@ -52,3 +52,24 @@ export type BookingFilter = {
   page?: number
   size?: number
 }
+
+export type NightlyPrice = {
+  date: string
+  priceType: 'WEEKDAY' | 'WEEKEND' | 'OVERRIDE'
+  label?: string
+  price: number
+}
+
+/** S3-04: kết quả xem trước kiểm tra phòng trống và tính lại tiền. */
+export type BookingChangePreview = {
+  bookingId: number
+  roomTypeId: number
+  roomTypeName: string
+  checkInDate: string
+  checkOutDate: string
+  numberOfNights: number
+  totalAmount: number
+  availableRooms: number
+  available: boolean
+  nightlyPrices: NightlyPrice[]
+}

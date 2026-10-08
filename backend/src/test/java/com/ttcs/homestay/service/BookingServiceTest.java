@@ -3,17 +3,20 @@ package com.ttcs.homestay.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
-import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
+import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.PriceOverride;
 import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.exception.RoomUnavailableException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.PriceOverrideRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
@@ -21,9 +24,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -39,7 +42,7 @@ class BookingServiceTest {
     @Mock
     private OperatingSettingsService operatingSettingsService;
 
-        @Mock
+    @Mock
     private PriceOverrideRepository priceOverrideRepository;
 
     @Mock
@@ -47,6 +50,9 @@ class BookingServiceTest {
 
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private RoomAvailabilityService roomAvailabilityService;
 
     private BookingService bookingService;
 
@@ -57,7 +63,7 @@ class BookingServiceTest {
                 new PricingService(roomTypeRepository, priceOverrideRepository, operatingSettingsService);
         bookingService = new BookingService(
                 bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
-                auditLogService);
+                auditLogService, roomAvailabilityService);
     }
 
     @Test
@@ -172,6 +178,14 @@ class BookingServiceTest {
         RoomType roomType = new RoomType();
         roomType.setId(1L);
         roomType.setName("Phòng Deluxe");
+        roomType.setStatus(true);
+        roomType.setWeekdayPrice(400_000L);
+        roomType.setWeekendPrice(400_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("SATURDAY,SUNDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(roomAvailabilityService.availableRooms(any(), any(), any(), any())).thenReturn(2);
 
         Booking existing = new Booking();
         existing.setId(10L);
@@ -212,6 +226,14 @@ class BookingServiceTest {
         RoomType newRoomType = new RoomType();
         newRoomType.setId(2L);
         newRoomType.setName("Phòng Suite VIP");
+        newRoomType.setStatus(true);
+        newRoomType.setWeekdayPrice(400_000L);
+        newRoomType.setWeekendPrice(400_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("SATURDAY,SUNDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(roomAvailabilityService.availableRooms(any(), any(), any(), any())).thenReturn(1);
 
         Booking existing = new Booking();
         existing.setId(20L);
@@ -236,6 +258,7 @@ class BookingServiceTest {
         assertThat(response.roomTypeNameSnapshot()).isEqualTo("Phòng Suite VIP");
         assertThat(response.checkInDate()).isEqualTo(existing.getCheckInDate());
         assertThat(response.checkOutDate()).isEqualTo(existing.getCheckOutDate());
+        assertThat(response.totalAmount()).isEqualTo(1_200_000L);
     }
 
     @Test
@@ -247,6 +270,14 @@ class BookingServiceTest {
         RoomType newRoomType = new RoomType();
         newRoomType.setId(3L);
         newRoomType.setName("Phòng Gia Đình");
+        newRoomType.setStatus(true);
+        newRoomType.setWeekdayPrice(500_000L);
+        newRoomType.setWeekendPrice(500_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("SATURDAY,SUNDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(roomAvailabilityService.availableRooms(any(), any(), any(), any())).thenReturn(3);
 
         Booking existing = new Booking();
         existing.setId(30L);
@@ -276,6 +307,7 @@ class BookingServiceTest {
         assertThat(response.roomTypeNameSnapshot()).isEqualTo("Phòng Gia Đình");
         assertThat(response.bookingCode()).isEqualTo("BK-3003");
         assertThat(response.guestName()).isEqualTo("Phạm Văn D");
+        assertThat(response.totalAmount()).isEqualTo(3_000_000L); // 6 đêm * 500k = 3.000k
     }
 
     @Test
@@ -352,6 +384,14 @@ class BookingServiceTest {
         RoomType newRoomType = new RoomType();
         newRoomType.setId(6L);
         newRoomType.setName("Phòng Mới");
+        newRoomType.setStatus(true);
+        newRoomType.setWeekdayPrice(1_000_000L);
+        newRoomType.setWeekendPrice(1_000_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("SATURDAY,SUNDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(roomAvailabilityService.availableRooms(any(), any(), any(), any())).thenReturn(2);
 
         Booking existing = new Booking();
         existing.setId(50L);
@@ -388,8 +428,191 @@ class BookingServiceTest {
         assertThat(saved.getBookingCode()).isEqualTo("BK-5005");
         assertThat(saved.getGuestName()).isEqualTo("Hoàng Văn E");
         assertThat(saved.getStatus()).isEqualTo(BookingStatus.DA_XAC_NHAN);
-        assertThat(saved.getTotalAmount()).isEqualTo(5_000_000L);
+        assertThat(saved.getTotalAmount()).isEqualTo(5_000_000L); // 5 đêm * 1.000k
         assertThat(saved.getWeekdayPriceSnapshot()).isEqualTo(1_000_000L);
-        assertThat(saved.getWeekendPriceSnapshot()).isEqualTo(1_500_000L);
+        assertThat(saved.getWeekendPriceSnapshot()).isEqualTo(1_000_000L);
+    }
+
+    @Test
+    void thayDoiSangNgayConPhong_choPhepVaTinhLaiDungTien() {
+        RoomType roomType = new RoomType();
+        roomType.setId(10L);
+        roomType.setName("Phòng Deluxe");
+        roomType.setStatus(true);
+        roomType.setWeekdayPrice(200_000L);
+        roomType.setWeekendPrice(300_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("SATURDAY,SUNDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(roomAvailabilityService.availableRooms(eq(roomType), any(), any(), eq(100L))).thenReturn(3);
+
+        Booking existing = new Booking();
+        existing.setId(100L);
+        existing.setBookingCode("BK-100");
+        existing.setGuestName("Nguyễn Văn A");
+        existing.setStatus(BookingStatus.DA_XAC_NHAN);
+        existing.setRoomType(roomType);
+        existing.setRoomTypeNameSnapshot("Phòng Deluxe");
+        existing.setCheckInDate(LocalDate.of(2027, 10, 1)); // Thứ Sáu
+        existing.setCheckOutDate(LocalDate.of(2027, 10, 3)); // 2 đêm: 200k + 300k = 500k
+        existing.setTotalAmount(500_000L);
+
+        when(bookingRepository.findById(100L)).thenReturn(Optional.of(existing));
+        when(roomTypeRepository.findById(10L)).thenReturn(Optional.of(roomType));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Đổi sang: Thứ Sáu 2027-10-01 đến Thứ Hai 2027-10-04 (3 đêm: T6=200k, T7=300k, CN=300k -> 800k)
+        LocalDate newCheckIn = LocalDate.of(2027, 10, 1);
+        LocalDate newCheckOut = LocalDate.of(2027, 10, 4);
+        BookingUpdateRequest request = new BookingUpdateRequest(10L, newCheckIn, newCheckOut);
+
+        BookingResponse response = bookingService.updateBooking(100L, request);
+
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.checkInDate()).isEqualTo(newCheckIn);
+        assertThat(response.checkOutDate()).isEqualTo(newCheckOut);
+        assertThat(response.totalAmount()).isEqualTo(800_000L);
+    }
+
+    @Test
+    void thayDoiSangNgayHetPhong_biTuChoiVaNemLoiRoomUnavailableException() {
+        RoomType roomType = new RoomType();
+        roomType.setId(10L);
+        roomType.setName("Phòng Deluxe");
+        roomType.setStatus(true);
+
+        Booking existing = new Booking();
+        existing.setId(101L);
+        existing.setBookingCode("BK-101");
+        existing.setRoomType(roomType);
+        existing.setCheckInDate(LocalDate.of(2027, 10, 1));
+        existing.setCheckOutDate(LocalDate.of(2027, 10, 3));
+
+        when(bookingRepository.findById(101L)).thenReturn(Optional.of(existing));
+        when(roomTypeRepository.findById(10L)).thenReturn(Optional.of(roomType));
+        // Giả lập hết phòng
+        when(roomAvailabilityService.availableRooms(eq(roomType), any(), any(), eq(101L))).thenReturn(0);
+
+        LocalDate newCheckIn = LocalDate.of(2027, 10, 5);
+        LocalDate newCheckOut = LocalDate.of(2027, 10, 8);
+        BookingUpdateRequest request = new BookingUpdateRequest(10L, newCheckIn, newCheckOut);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> bookingService.updateBooking(101L, request))
+                .isInstanceOf(RoomUnavailableException.class)
+                .hasMessageContaining("đã hết phòng trống");
+
+        org.mockito.Mockito.verify(bookingRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void doiSangLoaiPhongKhacConPhong_choPhepVaTinhLaiTienTheoGiaLoaiPhongMoi() {
+        RoomType oldType = new RoomType();
+        oldType.setId(1L);
+        oldType.setName("Phòng Standard");
+
+        RoomType newType = new RoomType();
+        newType.setId(2L);
+        newType.setName("Phòng VIP");
+        newType.setStatus(true);
+        newType.setWeekdayPrice(800_000L);
+        newType.setWeekendPrice(1_200_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("SATURDAY,SUNDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(roomAvailabilityService.availableRooms(eq(newType), any(), any(), eq(102L))).thenReturn(1);
+
+        Booking existing = new Booking();
+        existing.setId(102L);
+        existing.setBookingCode("BK-102");
+        existing.setRoomType(oldType);
+        existing.setRoomTypeNameSnapshot("Phòng Standard");
+        existing.setCheckInDate(LocalDate.of(2027, 10, 11)); // Thứ Hai
+        existing.setCheckOutDate(LocalDate.of(2027, 10, 13)); // Thứ Tư (2 đêm)
+        existing.setTotalAmount(400_000L);
+
+        when(bookingRepository.findById(102L)).thenReturn(Optional.of(existing));
+        when(roomTypeRepository.findById(2L)).thenReturn(Optional.of(newType));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // Giữ nguyên ngày hoặc đổi loại phòng: 2 đêm ngày thường * 800k = 1.600.000đ
+        BookingUpdateRequest request = new BookingUpdateRequest(2L, existing.getCheckInDate(), existing.getCheckOutDate());
+        BookingResponse response = bookingService.updateBooking(102L, request);
+
+        assertThat(response.roomTypeId()).isEqualTo(2L);
+        assertThat(response.roomTypeNameSnapshot()).isEqualTo("Phòng VIP");
+        assertThat(response.totalAmount()).isEqualTo(1_600_000L);
+    }
+
+    @Test
+    void doiSangLoaiPhongKhacHetPhong_biTuChoiVaNemLoiRoomUnavailableException() {
+        RoomType oldType = new RoomType();
+        oldType.setId(1L);
+        oldType.setName("Phòng Standard");
+
+        RoomType newType = new RoomType();
+        newType.setId(2L);
+        newType.setName("Phòng VIP");
+        newType.setStatus(true);
+
+        Booking existing = new Booking();
+        existing.setId(103L);
+        existing.setBookingCode("BK-103");
+        existing.setRoomType(oldType);
+        existing.setCheckInDate(LocalDate.of(2027, 10, 11));
+        existing.setCheckOutDate(LocalDate.of(2027, 10, 13));
+
+        when(bookingRepository.findById(103L)).thenReturn(Optional.of(existing));
+        when(roomTypeRepository.findById(2L)).thenReturn(Optional.of(newType));
+        when(roomAvailabilityService.availableRooms(eq(newType), any(), any(), eq(103L))).thenReturn(0);
+
+        BookingUpdateRequest request = new BookingUpdateRequest(2L, existing.getCheckInDate(), existing.getCheckOutDate());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> bookingService.updateBooking(103L, request))
+                .isInstanceOf(RoomUnavailableException.class)
+                .hasMessageContaining("đã hết phòng trống");
+
+        org.mockito.Mockito.verify(bookingRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void previewBookingChange_traVeDungSoDemTinhTrangPhongVaTongTien() {
+        RoomType roomType = new RoomType();
+        roomType.setId(10L);
+        roomType.setName("Phòng Deluxe");
+        roomType.setStatus(true);
+        roomType.setWeekdayPrice(200_000L);
+        roomType.setWeekendPrice(300_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("SATURDAY,SUNDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(roomAvailabilityService.availableRooms(eq(roomType), any(), any(), eq(105L))).thenReturn(2);
+
+        Booking existing = new Booking();
+        existing.setId(105L);
+        existing.setBookingCode("BK-105");
+        existing.setRoomType(roomType);
+        existing.setCheckInDate(LocalDate.of(2027, 10, 1));
+        existing.setCheckOutDate(LocalDate.of(2027, 10, 3));
+
+        when(bookingRepository.findById(105L)).thenReturn(Optional.of(existing));
+        when(roomTypeRepository.findById(10L)).thenReturn(Optional.of(roomType));
+
+        LocalDate newCheckIn = LocalDate.of(2027, 10, 1); // Thứ Sáu: 200k
+        LocalDate newCheckOut = LocalDate.of(2027, 10, 4); // Thứ Hai: T7=300k, CN=300k -> 800k total
+        BookingUpdateRequest request = new BookingUpdateRequest(10L, newCheckIn, newCheckOut);
+
+        BookingChangePreviewResponse preview = bookingService.previewBookingChange(105L, request);
+
+        assertThat(preview.bookingId()).isEqualTo(105L);
+        assertThat(preview.roomTypeId()).isEqualTo(10L);
+        assertThat(preview.roomTypeName()).isEqualTo("Phòng Deluxe");
+        assertThat(preview.numberOfNights()).isEqualTo(3);
+        assertThat(preview.availableRooms()).isEqualTo(2);
+        assertThat(preview.available()).isTrue();
+        assertThat(preview.totalAmount()).isEqualTo(800_000L);
+        assertThat(preview.nightlyPrices()).hasSize(3);
     }
 }
