@@ -613,3 +613,450 @@
     padding: 28px 22px;
   }
 }
+/* =========================================================
+   LOGIN TYPOGRAPHY FINAL
+   ========================================================= */
+
+.login-page,
+.login-page button,
+.login-page input,
+.login-page a,
+.login-page p,
+.login-page span,
+.login-page small,
+.login-page label {
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* ================= LEFT SIDE ================= */
+
+.login-page .login-wordmark {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: #fffdf8;
+}
+
+.login-page .login-tagline {
+  margin-top: 4px;
+  font-size: 0.83rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  color: rgba(255, 253, 248, 0.78);
+}
+
+.login-page .eyebrow {
+  margin-bottom: 13px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  color: #d0dba5;
+}
+
+/* MAIN HERO TITLE */
+.login-page .brand-panel h1 {
+  max-width: 540px;
+  margin: 0;
+
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif !important;
+  font-size: clamp(3rem, 3.9vw, 4.25rem) !important;
+  font-weight: 400 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -0.04em !important;
+
+  color: #fffdf8;
+  text-wrap: balance;
+}
+
+.login-page .brand-panel h1 span {
+  font-family: inherit;
+  font-weight: 400;
+  color: #d0dc9c;
+}
+
+/* DESCRIPTION */
+.login-page .brand-copy {
+  max-width: 410px;
+  margin: 24px 0 0;
+
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1.65;
+  letter-spacing: 0;
+
+  color: rgba(255, 253, 248, 0.88);
+}
+
+/* ================= FEATURES ================= */
+
+.login-page .login-features {
+  gap: 15px;
+}
+
+.login-page .login-features li {
+  gap: 13px;
+}
+
+.login-page .login-feature-icon {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+}
+
+.login-page .login-features strong {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.91rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0;
+  color: #fff;
+}
+
+.login-page .login-features small {
+  margin-top: 2px;
+
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.4;
+
+  color: rgba(255, 253, 248, 0.72);
+}
+
+/* HOME AWAY FROM HOME */
+.login-page .brand-footer {
+  padding-top: 14px;
+
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 0.98rem;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.4;
+  letter-spacing: 0;
+
+  color: rgba(255, 253, 248, 0.82);
+}
+
+/* ================= RIGHT LOGIN CARD ================= */
+
+/* SIGN IN */
+.login-page .login-form > .eyebrow {
+  margin-bottom: 10px;
+
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+
+  color: #39735f;
+}
+
+/* ĐĂNG NHẬP */
+.login-page .login-form h2 {
+  margin: 0;
+
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif !important;
+  font-size: 2.6rem !important;
+  font-weight: 400 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.035em !important;
+
+  color: #123f33;
+}
+
+/* INTRO */
+.login-page .form-intro {
+  margin: 14px 0 30px;
+
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.93rem;
+  font-weight: 400;
+  line-height: 1.55;
+
+  color: #6f7b77;
+}
+
+/* LABEL */
+.login-page .field label {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0;
+
+  color: #30453e;
+}
+
+/* INPUT */
+.login-page .field input {
+  font-family: "Segoe UI", Arial, sans-serif !important;
+  font-size: 0.96rem;
+  font-weight: 400;
+
+  color: #21322d;
+}
+
+/* FORGOT PASSWORD */
+.login-page .forgot-password-link,
+.login-page .forgot-password-link a {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.84rem;
+}
+
+.login-page .forgot-password-link a {
+  font-weight: 600;
+  color: #1c5c49;
+}
+
+/* LOGIN BUTTON */
+.login-page .submit-button {
+  font-family: "Segoe UI", Arial, sans-serif !important;
+  font-size: 0.95rem;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+}
+
+/* BOTTOM LINKS */
+.login-page .customer-links p {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 400;
+
+  color: #7a8581;
+}
+
+.login-page .customer-links a {
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+
+  color: #195844;
+}
+
+/* ================= DESKTOP ================= */
+
+@media (min-width: 1100px) {
+  .login-page .login-brand-content {
+    width: min(510px, 42vw);
+  }
+
+  .login-page .brand-panel h1 {
+    font-size: clamp(3.25rem, 3.9vw, 4.25rem) !important;
+  }
+}
+
+/* ================= TABLET ================= */
+
+@media (min-width: 768px) and (max-width: 1099px) {
+  .login-page .brand-panel h1 {
+    font-size: clamp(2.5rem, 4vw, 3.1rem) !important;
+    line-height: 1.1 !important;
+  }
+
+  .login-page .brand-copy {
+    font-size: 0.9rem;
+  }
+
+  .login-page .login-form h2 {
+    font-size: 2.2rem !important;
+  }
+}
+
+/* ================= MOBILE ================= */
+
+@media (max-width: 767px) {
+  .login-page .login-form h2 {
+    font-size: 2.2rem !important;
+  }
+
+  .login-page .form-intro {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-page .login-form h2 {
+    font-size: 2rem !important;
+  }
+}
+/* ===== FIX DENSE LOGIN TYPOGRAPHY ===== */
+
+.login-page .login-brand-content {
+  width: min(540px, 44vw);
+  max-width: 540px;
+}
+
+/* Title */
+.login-page .brand-panel h1 {
+  max-width: 520px;
+
+  font-size: clamp(3rem, 3.7vw, 4.1rem) !important;
+  line-height: 1.18 !important;
+  letter-spacing: -0.025em !important;
+
+  margin: 0 0 26px !important;
+}
+
+/* Highlight line */
+.login-page .brand-panel h1 span {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.14;
+}
+
+/* Intro */
+.login-page .brand-copy {
+  margin: 0 0 28px !important;
+
+  max-width: 430px;
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
+/* Features */
+.login-page .login-features {
+  gap: 18px;
+  margin-top: 0;
+}
+
+.login-page .login-features li {
+  gap: 14px;
+  min-height: 46px;
+}
+
+.login-page .login-features strong {
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.login-page .login-features small {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* Footer slogan */
+.login-page .brand-footer {
+  margin-top: 8px;
+  padding-top: 18px;
+  line-height: 1.6;
+}
+
+/* Give whole left panel more breathing room */
+.login-page .brand-panel {
+  gap: 26px;
+}
+
+/* ===== RIGHT CARD ===== */
+
+.login-page .login-form h2 {
+  line-height: 1.2 !important;
+  margin-bottom: 12px;
+}
+
+.login-page .form-intro {
+  margin: 0 0 32px !important;
+  line-height: 1.65;
+}
+
+.login-page .field {
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.login-page .field label {
+  line-height: 1.5;
+}
+
+.login-page .forgot-password-link {
+  margin: 2px 0 24px;
+}
+
+.login-page .customer-links {
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 22px;
+}
+
+.login-page .customer-links p,
+.login-page .customer-links a {
+  line-height: 1.65;
+}
+/* ===== LOGIN LEFT CONTENT BALANCE ===== */
+
+.login-page .login-brand-content {
+  width: min(650px, 46vw);
+  max-width: 650px;
+}
+
+.login-page .brand-panel h1 {
+  max-width: 560px;
+}
+
+.login-page .brand-copy {
+  max-width: 520px;
+}
+
+/* 3 feature chuyển thành hàng ngang */
+.login-page .login-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  width: min(650px, 46vw);
+  max-width: 650px;
+  margin-top: 8px;
+}
+
+.login-page .login-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.login-page .login-feature-icon {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  margin-top: 1px;
+}
+
+.login-page .login-features strong {
+  font-size: 0.88rem;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.login-page .login-features small {
+  margin-top: 3px;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+/* Footer trải đúng theo cụm content */
+.login-page .brand-footer {
+  width: min(650px, 46vw);
+  max-width: 650px;
+}
+
+/* Tablet quay lại 1 cột để tránh chật */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .login-page .login-brand-content {
+    width: min(360px, 38vw);
+  }
+
+  .login-page .login-features {
+    grid-template-columns: 1fr;
+    width: min(360px, 38vw);
+    gap: 11px;
+  }
+
+  .login-page .brand-footer {
+    width: min(360px, 38vw);
+  }
+}
