@@ -19,9 +19,15 @@ import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.ttcs.homestay.dto.booking.BookingConfirmResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
+import com.ttcs.homestay.dto.booking.BookingConfirmRequest;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -37,16 +43,51 @@ public class BookingService {
     private final RoomTypeRepository roomTypeRepository;
     private final OperatingSettingsService operatingSettingsService;
     private final PricingService pricingService;
+    private final BookingDepositService bookingDepositService;
+    private final AuditLogService auditLogService;
 
     public BookingService(
             BookingRepository bookingRepository,
             RoomTypeRepository roomTypeRepository,
             OperatingSettingsService operatingSettingsService,
-            PricingService pricingService) {
+            PricingService pricingService,
+            BookingDepositService bookingDepositService,
+            AuditLogService auditLogService) {
         this.bookingRepository = bookingRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.operatingSettingsService = operatingSettingsService;
         this.pricingService = pricingService;
+        this.bookingDepositService = bookingDepositService;
+        this.auditLogService = auditLogService;
+    }
+
+    @Transactional
+    public BookingConfirmResponse confirmBooking(Long id, BookingConfirmRequest request) {
+        BookingConfirmResponse response = bookingDepositService.confirmBooking(id, request);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long actorId = null;
+        String actorEmail = null;
+        if (authentication instanceof JwtAuthenticationToken token) {
+            try {
+                actorId = Long.valueOf(token.getToken().getSubject());
+            } catch (NumberFormatException ignored) {
+                // The JWT subject may not be a numeric user ID.
+            }
+            actorEmail = token.getToken().getClaimAsString("email");
+        }
+        if ((actorEmail == null || actorEmail.isBlank()) && authentication != null) {
+            actorEmail = authentication.getName();
+        }
+        String ipAddress = null;
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+            ipAddress = attrs.getRequest().getRemoteAddr();
+        }
+        // Join the booking/deposit transaction: audit failure must roll back confirmation.
+        // user_id references users, so identify the booking in the existing target label instead.
+        auditLogService.recordSensitiveAction(
+                actorId, actorEmail, null, "Booking " + response.bookingCode(),
+                "BOOKING_CONFIRMED", ipAddress);
+        return response;
     }
 
     @Transactional

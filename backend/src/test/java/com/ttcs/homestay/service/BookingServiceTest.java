@@ -42,6 +42,12 @@ class BookingServiceTest {
         @Mock
     private PriceOverrideRepository priceOverrideRepository;
 
+    @Mock
+    private BookingDepositService bookingDepositService;
+
+    @Mock
+    private AuditLogService auditLogService;
+
     private BookingService bookingService;
 
     @BeforeEach
@@ -50,7 +56,8 @@ class BookingServiceTest {
         PricingService pricingService =
                 new PricingService(roomTypeRepository, priceOverrideRepository, operatingSettingsService);
         bookingService = new BookingService(
-                bookingRepository, roomTypeRepository, operatingSettingsService, pricingService);
+                bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
+                auditLogService);
     }
 
     @Test

@@ -169,6 +169,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/bookings")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
 
+                        // S3-01: Le tan xac nhan booking va ghi nhan tien coc.
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
                         // Lễ tân có thể cập nhật ngày lưu trú và loại phòng của booking hiện có.
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")

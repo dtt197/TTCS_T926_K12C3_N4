@@ -1,7 +1,8 @@
 import './BookingListPage.css'
 import type { BookingStatus, BookingListItem } from '../types/booking'
 import { useEffect, useState, type FormEvent } from 'react'
-import { searchBookings, updateBooking } from '../services/bookingService'
+import { confirmBooking, getBookingDetails, searchBookings, updateBooking } from '../services/bookingService'
+import type { BookingDetailResponse } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
 
@@ -55,6 +56,20 @@ export function BookingListPage() {
   const [totalElements, setTotalElements] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingBooking, setConfirmingBooking] = useState<BookingListItem | null>(null)
+  const [confirmSaving, setConfirmSaving] = useState(false)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
+  const [confirmForm, setConfirmForm] = useState({
+    amount: '',
+    paymentMethod: 'CASH' as 'CASH' | 'BANK_TRANSFER',
+    receivedDate: new Date().toLocaleDateString('en-CA'),
+    paymentReference: '',
+    createdBy: '',
+  })
+  const [detailBooking, setDetailBooking] = useState<BookingListItem | null>(null)
+  const [detailData, setDetailData] = useState<BookingDetailResponse | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
   const [editingBooking, setEditingBooking] = useState<BookingListItem | null>(null)
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [roomTypesLoading, setRoomTypesLoading] = useState(false)
@@ -139,6 +154,69 @@ export function BookingListPage() {
     setAppliedFilters(EMPTY_FILTERS)
     setPage(0)
     setError(null)
+  }
+
+  function startConfirming(booking: BookingListItem) {
+    setConfirmingBooking(booking)
+    setConfirmError(null)
+    setConfirmForm({
+      amount: '',
+      paymentMethod: 'CASH',
+      receivedDate: new Date().toLocaleDateString('en-CA'),
+      paymentReference: '',
+      createdBy: '',
+    })
+  }
+
+  async function handleConfirmBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!confirmingBooking || confirmSaving) return
+    const amount = Number(confirmForm.amount)
+    if (!confirmForm.amount || !Number.isSafeInteger(amount) || amount <= 0) {
+      setConfirmError('Số tiền cọc phải là số nguyên dương.')
+      return
+    }
+    if (!confirmForm.receivedDate) {
+      setConfirmError('Vui lòng chọn ngày nhận tiền.')
+      return
+    }
+    if (confirmForm.paymentMethod === 'BANK_TRANSFER' && !confirmForm.paymentReference.trim()) {
+      setConfirmError('Chuyển khoản phải có mã giao dịch.')
+      return
+    }
+    setConfirmSaving(true)
+    setConfirmError(null)
+    try {
+      await confirmBooking(confirmingBooking.id, {
+        amount,
+        paymentMethod: confirmForm.paymentMethod,
+        receivedDate: confirmForm.receivedDate,
+        paymentReference: confirmForm.paymentReference.trim() || null,
+        createdBy: confirmForm.createdBy.trim() || 'receptionist',
+      })
+      setEditSuccess(`Đã xác nhận booking ${confirmingBooking.bookingCode} và ghi nhận tiền cọc.`)
+      setConfirmingBooking(null)
+      setRefreshVersion((version) => version + 1)
+    } catch (err) {
+      setConfirmError(err instanceof Error ? err.message : 'Không thể xác nhận booking.')
+    } finally {
+      setConfirmSaving(false)
+    }
+  }
+
+  async function openDetails(booking: BookingListItem) {
+    setDetailBooking(booking)
+    setDetailData(null)
+    setDetailError(null)
+    setDetailLoading(true)
+    try {
+      const data = await getBookingDetails(booking.id)
+      setDetailData(data)
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : 'Không tải được chi tiết booking.')
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
   function startEditing(booking: BookingListItem) {
@@ -339,6 +417,14 @@ export function BookingListPage() {
                       )}
                     </td>
                     <td>
+                      {booking.status === 'CHO_XAC_NHAN' && !booking.holdExpired && (
+                        <button type="button" className="booking-confirm-button" onClick={() => startConfirming(booking)}>
+                          Xác nhận
+                        </button>
+                      )}
+                      <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
+                        Chi tiết
+                      </button>
                       <button
                         type="button"
                         id={`booking-edit-btn-${booking.id}`}
@@ -376,6 +462,95 @@ export function BookingListPage() {
             </button>
           </div>
         </>
+      )}
+
+      {detailBooking && (
+        <div className="booking-dialog-backdrop">
+          <section className="booking-edit-dialog booking-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-detail-title">
+            <div className="booking-edit-heading">
+              <div>
+                <h3 id="booking-detail-title">Chi tiết đặt phòng</h3>
+                <p>{detailBooking.bookingCode} · {detailBooking.guestName}</p>
+              </div>
+              <button type="button" className="booking-dialog-close" aria-label="Đóng" onClick={() => setDetailBooking(null)}>×</button>
+            </div>
+            {detailLoading && <p>Đang tải thông tin từ máy chủ...</p>}
+            {detailError && <div className="alert" role="alert">{detailError}</div>}
+            {detailData && (
+              <div className="booking-detail-content">
+                <h4>Thông tin đặt phòng</h4>
+                <dl className="booking-detail-grid">
+                  <div><dt>Mã booking</dt><dd>{detailBooking.bookingCode}</dd></div>
+                  <div><dt>Trạng thái</dt><dd>{STATUS_LABELS[detailData.status] ?? detailData.status}</dd></div>
+                  <div><dt>Loại phòng</dt><dd>{detailBooking.roomTypeNameSnapshot}</dd></div>
+                  <div><dt>Tổng tiền</dt><dd>{formatCurrency(detailBooking.totalAmount)}</dd></div>
+                  <div><dt>Ngày nhận phòng</dt><dd>{formatDate(detailBooking.checkInDate)}</dd></div>
+                  <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>
+                  <div><dt>Hạn giữ chỗ</dt><dd>{detailData.holdExpiresAt ? new Date(detailData.holdExpiresAt).toLocaleString('vi-VN') : 'Đã gỡ / không có'}</dd></div>
+                </dl>
+                <h4>Thông tin tiền cọc</h4>
+                {detailData.deposit ? (
+                  <dl className="booking-detail-grid">
+                    <div><dt>Số tiền cọc</dt><dd>{formatCurrency(detailData.deposit.amount)}</dd></div>
+                    <div><dt>Phương thức</dt><dd>{detailData.deposit.paymentMethod === 'CASH' ? 'Tiền mặt' : detailData.deposit.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : detailData.deposit.paymentMethod}</dd></div>
+                    <div><dt>Ngày nhận tiền</dt><dd>{formatDate(detailData.deposit.receivedDate)}</dd></div>
+                    <div><dt>Mã giao dịch</dt><dd>{detailData.deposit.paymentReference || 'Không có'}</dd></div>
+                    <div><dt>Người ghi nhận</dt><dd>{detailData.deposit.createdBy || 'Không có'}</dd></div>
+                  </dl>
+                ) : <p>Booking chưa có tiền cọc được ghi nhận.</p>}
+              </div>
+            )}
+            <div className="booking-edit-actions">
+              <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {confirmingBooking && (
+        <div className="booking-dialog-backdrop">
+          <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-confirm-title">
+            <div className="booking-edit-heading">
+              <div>
+                <h3 id="booking-confirm-title">Xác nhận đặt phòng và nhận cọc</h3>
+                <p>{confirmingBooking.bookingCode} · {confirmingBooking.guestName}</p>
+              </div>
+              <button type="button" className="booking-dialog-close" aria-label="Đóng" disabled={confirmSaving} onClick={() => setConfirmingBooking(null)}>×</button>
+            </div>
+            <div className="booking-current-details">
+              <strong>Thông tin đặt phòng</strong>
+              <span>Loại phòng: {confirmingBooking.roomTypeNameSnapshot}</span>
+              <span>Ngày nhận: {formatDate(confirmingBooking.checkInDate)}</span>
+              <span>Ngày trả: {formatDate(confirmingBooking.checkOutDate)}</span>
+              <span>Tổng tiền: {formatCurrency(confirmingBooking.totalAmount)}</span>
+            </div>
+            <form className="booking-edit-form" onSubmit={handleConfirmBooking}>
+              <label>Số tiền cọc (VND)
+                <input type="number" min="1" step="1" required value={confirmForm.amount} onChange={(event) => setConfirmForm((f) => ({...f, amount: event.target.value}))} />
+              </label>
+              <label>Phương thức thanh toán
+                <select value={confirmForm.paymentMethod} onChange={(event) => setConfirmForm((f) => ({...f, paymentMethod: event.target.value as 'CASH' | 'BANK_TRANSFER'}))}>
+                  <option value="CASH">Tiền mặt</option>
+                  <option value="BANK_TRANSFER">Chuyển khoản</option>
+                </select>
+              </label>
+              <label>Ngày nhận tiền
+                <input type="date" required value={confirmForm.receivedDate} onChange={(event) => setConfirmForm((f) => ({...f, receivedDate: event.target.value}))} />
+              </label>
+              <label>Mã giao dịch {confirmForm.paymentMethod === 'BANK_TRANSFER' ? '(bắt buộc)' : '(không bắt buộc)'}
+                <input type="text" required={confirmForm.paymentMethod === 'BANK_TRANSFER'} value={confirmForm.paymentReference} onChange={(event) => setConfirmForm((f) => ({...f, paymentReference: event.target.value}))} />
+              </label>
+              <label>Người ghi nhận
+                <input type="text" placeholder="Lễ tân" value={confirmForm.createdBy} onChange={(event) => setConfirmForm((f) => ({...f, createdBy: event.target.value}))} />
+              </label>
+              {confirmError && <div className="alert" role="alert">{confirmError}</div>}
+              <div className="booking-edit-actions">
+                <button type="button" className="booking-cancel-button" disabled={confirmSaving} onClick={() => setConfirmingBooking(null)}>Huỷ</button>
+                <button type="submit" className="booking-save-button" disabled={confirmSaving}>{confirmSaving ? 'Đang xác nhận...' : 'Xác nhận và lưu cọc'}</button>
+              </div>
+            </form>
+          </section>
+        </div>
       )}
 
       {editingBooking && (
