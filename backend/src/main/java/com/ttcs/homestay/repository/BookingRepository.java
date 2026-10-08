@@ -41,6 +41,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("checkOut") LocalDate checkOut,
             @Param("statuses") Collection<BookingStatus> statuses);
 
+    /**
+     * S3-08: Tìm tất cả booking có trạng thái hợp lệ trong khoảng quét ngày [scanStart, scanEnd].
+     */
+    @Query("select b from Booking b left join fetch b.roomType"
+            + " where b.status in :statuses"
+            + " and b.checkInDate <= :scanEnd and b.checkOutDate > :scanStart")
+    List<Booking> findActiveBookingsInDateRange(
+            @Param("scanStart") LocalDate scanStart,
+            @Param("scanEnd") LocalDate scanEnd,
+            @Param("statuses") Collection<BookingStatus> statuses);
+
     List<Booking> findByStatusAndHoldExpiresAtLessThanEqual(
             BookingStatus status,
             OffsetDateTime now);

@@ -49,6 +49,9 @@ class BookingControllerTest {
     private BookingService bookingService;
 
     @MockitoBean
+    private com.ttcs.homestay.service.RoomShortageAlertService roomShortageAlertService;
+
+    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     @MockitoBean
@@ -282,5 +285,51 @@ class BookingControllerTest {
                         .content(jsonPayload))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Loại phòng Deluxe đã hết phòng trống trong khoảng thời gian đã chọn"));
+    }
+
+    @Test
+    void leTanXemCanhBaoThieuPhong_traVe200VaDanhSachCanhBao() throws Exception {
+        var alert1 = new com.ttcs.homestay.dto.booking.RoomShortageAlertResponse(
+                LocalDate.of(2026, 10, 15),
+                "DON",
+                "Phòng đơn",
+                3L,
+                1L
+        );
+        var alert2 = new com.ttcs.homestay.dto.booking.RoomShortageAlertResponse(
+                LocalDate.of(2026, 10, 15),
+                "DOI",
+                "Phòng đôi",
+                4L,
+                2L
+        );
+        when(roomShortageAlertService.getShortageAlerts()).thenReturn(List.of(alert1, alert2));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/bookings/shortage-alerts")
+                        .header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].date").value("2026-10-15"))
+                .andExpect(jsonPath("$[0].roomTypeCode").value("DON"))
+                .andExpect(jsonPath("$[0].roomTypeName").value("Phòng đơn"))
+                .andExpect(jsonPath("$[0].bookingCount").value(3))
+                .andExpect(jsonPath("$[0].availableRooms").value(1))
+                .andExpect(jsonPath("$[1].roomTypeCode").value("DOI"))
+                .andExpect(jsonPath("$[1].bookingCount").value(4))
+                .andExpect(jsonPath("$[1].availableRooms").value(2));
+    }
+
+    @Test
+    void buongPhongKhongCoQuyenXemCanhBao_traVe403() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/bookings/shortage-alerts")
+                        .header("Authorization", "Bearer housekeeping-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void chuaDangNhap_traVe401() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/bookings/shortage-alerts"))
+                .andExpect(status().isUnauthorized());
     }
 }

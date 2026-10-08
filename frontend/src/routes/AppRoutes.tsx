@@ -33,18 +33,31 @@ export function AppRoutes({
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-    // /loai-phong là địa chỉ của trang danh sách tạm cũ (S2-04 làm trước S2-03) đã xoá:
-  // đổi thanh địa chỉ sang trang danh sách chính thức để link cũ vẫn dùng được
-  if (window.location.pathname === '/') {
-    window.history.replaceState(null, '', '/trang-chu')
-  } else if (window.location.pathname === '/loai-phong') {
-    window.history.replaceState(null, '', '/danh-sach-loai-phong')
-  }
-    // /phong/:id là địa chỉ của trang chi tiết trùng cũ: đổi sang /loai-phong/:id
-  if (window.location.pathname.startsWith('/phong/')) {
-    window.history.replaceState(null, '', window.location.pathname.replace('/phong/', '/loai-phong/'))
-  }
   const pathname = window.location.pathname
+  const needsLegacyRedirect =
+    pathname === '/' ||
+    pathname === '/loai-phong' ||
+    pathname.startsWith('/phong/')
+
+  useEffect(() => {
+    if (!needsLegacyRedirect) {
+      return
+    }
+
+    if (pathname === '/') {
+      window.history.replaceState(null, '', '/trang-chu')
+      return
+    }
+
+    if (pathname === '/loai-phong') {
+      window.history.replaceState(null, '', '/danh-sach-loai-phong')
+      return
+    }
+
+    if (pathname.startsWith('/phong/')) {
+      window.history.replaceState(null, '', pathname.replace('/phong/', '/loai-phong/'))
+    }
+  }, [needsLegacyRedirect, pathname])
 
   let page
 

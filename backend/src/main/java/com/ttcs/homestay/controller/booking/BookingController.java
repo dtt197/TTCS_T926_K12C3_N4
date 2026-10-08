@@ -6,7 +6,9 @@ import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.dto.booking.PageResponse;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.dto.booking.RoomShortageAlertResponse;
 import com.ttcs.homestay.service.BookingService;
+import com.ttcs.homestay.service.RoomShortageAlertService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -22,9 +24,22 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final RoomShortageAlertService roomShortageAlertService;
 
-    public BookingController(BookingService bookingService) {
+    public BookingController(
+            BookingService bookingService,
+            RoomShortageAlertService roomShortageAlertService
+    ) {
         this.bookingService = bookingService;
+        this.roomShortageAlertService = roomShortageAlertService;
+    }
+
+    /**
+     * S3-08: Danh sách cảnh báo các cặp (ngày, loại phòng) có số booking còn hiệu lực vượt số phòng khả dụng.
+     */
+    @GetMapping("/shortage-alerts")
+    public List<RoomShortageAlertResponse> getShortageAlerts() {
+        return roomShortageAlertService.getShortageAlerts();
     }
 
     @PostMapping
