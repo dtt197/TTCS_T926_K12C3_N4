@@ -82,6 +82,53 @@ export function updateBooking(
   })
 }
 
+export type BookingConfirmRequest = {
+  amount: number
+  paymentMethod: 'CASH' | 'BANK_TRANSFER'
+  receivedDate: string
+  paymentReference: string | null
+  createdBy: string
+}
+
+export type BookingDepositResponse = {
+  id: number
+  amount: number
+  paymentMethod: string
+  receivedDate: string
+  paymentReference: string | null
+  createdBy: string | null
+  createdAt: string
+}
+
+export type BookingConfirmResponse = {
+  id: number
+  bookingCode: string
+  status: string
+  holdExpiresAt: string | null
+  deposit: BookingDepositResponse
+}
+
+export function confirmBooking(id: number, request: BookingConfirmRequest): Promise<BookingConfirmResponse> {
+  return apiRequest<BookingConfirmResponse>(`/api/bookings/${id}/confirm`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+}
+
+
+export type BookingDetailResponse = {
+  id: number
+  bookingCode: string
+  status: string
+  holdExpiresAt: string | null
+  deposit: BookingDepositResponse | null
+}
+
+export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
+  return apiRequest<BookingDetailResponse>(`/api/bookings/${id}/details`)
+}
+
 /** S3-04: xem trước tình trạng phòng trống và số tiền được tính lại. */
 export function previewBookingChange(
   id: number,

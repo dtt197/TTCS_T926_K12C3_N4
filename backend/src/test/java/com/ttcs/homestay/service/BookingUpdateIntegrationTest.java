@@ -60,7 +60,8 @@ class BookingUpdateIntegrationTest {
             s.setLateCheckoutFeePerHour(100_000L);
             s.setExtraPersonFee(200_000L);
             s.setCreatedByName("Hệ thống");
-            s.setCreatedAt(OffsetDateTime.now());
+            // Keep the fixture effective before the update, independent of database timestamp precision.
+            s.setCreatedAt(OffsetDateTime.now().minusDays(1));
             s.setWeekendDays("FRIDAY,SATURDAY");
             return operatingSettingsRepository.save(s);
         });
