@@ -8,9 +8,11 @@ export type BookingStatus =
 
 /** S2-10: một dòng trong danh sách booking (GET /api/bookings, có phân trang). */
 export type BookingListItem = {
+  id: number
   bookingCode: string
   guestName: string
   guestPhone?: string
+  roomTypeId: number | null
   roomTypeNameSnapshot: string
   checkInDate: string
   checkOutDate: string

@@ -7,6 +7,12 @@ import type {
 
 export type BookingPage = PageResponse<BookingListItem>
 
+export type BookingUpdateRequest = {
+  roomTypeId: number
+  checkInDate: string
+  checkOutDate: string
+}
+
 export type BookingFilters = {
   status: BookingStatus | ''
   checkInFrom: string
@@ -61,5 +67,16 @@ export function getLatestBookings(
     checkInFrom: filters?.checkInFrom,
     checkInTo: filters?.checkInTo,
     keyword: filters?.keyword,
+  })
+}
+
+export function updateBooking(
+  id: number,
+  request: BookingUpdateRequest,
+): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
   })
 }

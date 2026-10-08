@@ -1,0 +1,222 @@
+package com.ttcs.homestay.controller.booking;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
+import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.Role;
+import com.ttcs.homestay.entity.User;
+import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.service.BookingService;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class BookingControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private BookingService bookingService;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUp() {
+        mockUser(201L, "RECEPTIONIST");
+        mockUser(202L, "HOUSEKEEPING");
+
+        when(jwtDecoder.decode("receptionist-token"))
+                .thenReturn(createJwt(201L, "RECEPTIONIST"));
+        when(jwtDecoder.decode("housekeeping-token"))
+                .thenReturn(createJwt(202L, "HOUSEKEEPING"));
+    }
+
+    private void mockUser(long id, String roleCode) {
+        Role role = mock(Role.class);
+        when(role.getCode()).thenReturn(roleCode);
+
+        User user = mock(User.class);
+        when(user.isActive()).thenReturn(true);
+        when(user.isMustChangePassword()).thenReturn(false);
+        when(user.getRole()).thenReturn(role);
+        when(user.getTokenVersion()).thenReturn(0);
+
+        when(userRepository.findWithRoleById(id))
+                .thenReturn(Optional.of(user));
+    }
+
+    private Jwt createJwt(long userId, String roleCode) {
+        Instant now = Instant.now();
+        return Jwt.withTokenValue("jwt-token-" + userId)
+                .header("alg", "HS256")
+                .issuer("homestay")
+                .subject(String.valueOf(userId))
+                .audience(List.of("homestay-api"))
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(3600))
+                .claim("typ", "access")
+                .claim("role", roleCode)
+                .claim("tv", 0)
+                .build();
+    }
+
+    @Test
+    void leTanCapNhatNgayVaLoaiPhongThanhCong_traVe200() throws Exception {
+        BookingResponse mockResponse = new BookingResponse(
+                5L,
+                "BK-998877",
+                "Nguyễn Văn An",
+                2L,
+                "Phòng Đôi Hướng Biển",
+                LocalDate.of(2027, 7, 10),
+                LocalDate.of(2027, 7, 15),
+                600_000L,
+                800_000L,
+                "FRIDAY,SATURDAY",
+                3_000_000L,
+                BookingStatus.DA_XAC_NHAN,
+                OffsetDateTime.now(),
+                false
+        );
+
+        when(bookingService.updateBooking(eq(5L), any(BookingUpdateRequest.class)))
+                .thenReturn(mockResponse);
+
+        String jsonPayload = """
+                {
+                    "roomTypeId": 2,
+                    "checkInDate": "2027-07-10",
+                    "checkOutDate": "2027-07-15"
+                }
+                """;
+
+        mockMvc.perform(put("/api/bookings/5")
+                        .header("Authorization", "Bearer receptionist-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(5))
+                .andExpect(jsonPath("$.bookingCode").value("BK-998877"))
+                .andExpect(jsonPath("$.roomTypeId").value(2))
+                .andExpect(jsonPath("$.roomTypeNameSnapshot").value("Phòng Đôi Hướng Biển"))
+                .andExpect(jsonPath("$.checkInDate").value("2027-07-10"))
+                .andExpect(jsonPath("$.checkOutDate").value("2027-07-15"));
+
+        verify(bookingService).updateBooking(eq(5L), any(BookingUpdateRequest.class));
+    }
+
+    @Test
+    void leTanNhapNgayKhongHopLe_traVe400BadRequest() throws Exception {
+        when(bookingService.updateBooking(eq(5L), any(BookingUpdateRequest.class)))
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày trả phòng phải sau ngày nhận phòng"));
+
+        String invalidDatesJson = """
+                {
+                    "roomTypeId": 2,
+                    "checkInDate": "2027-07-15",
+                    "checkOutDate": "2027-07-10"
+                }
+                """;
+
+        mockMvc.perform(put("/api/bookings/5")
+                        .header("Authorization", "Bearer receptionist-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidDatesJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void thieuTruongBatBuoc_traVe400BadRequest() throws Exception {
+        // Thiếu roomTypeId
+        String missingRoomTypeJson = """
+                {
+                    "checkInDate": "2027-07-10",
+                    "checkOutDate": "2027-07-15"
+                }
+                """;
+
+        mockMvc.perform(put("/api/bookings/5")
+                        .header("Authorization", "Bearer receptionist-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(missingRoomTypeJson))
+                .andExpect(status().isBadRequest());
+
+        // Thiếu checkInDate
+        String missingCheckInJson = """
+                {
+                    "roomTypeId": 1,
+                    "checkOutDate": "2027-07-15"
+                }
+                """;
+
+        mockMvc.perform(put("/api/bookings/5")
+                        .header("Authorization", "Bearer receptionist-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(missingCheckInJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void housekeepingGoiCapNhatBooking_biChan403Forbidden() throws Exception {
+        String jsonPayload = """
+                {
+                    "roomTypeId": 2,
+                    "checkInDate": "2027-07-10",
+                    "checkOutDate": "2027-07-15"
+                }
+                """;
+
+        mockMvc.perform(put("/api/bookings/5")
+                        .header("Authorization", "Bearer housekeeping-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void khongDangNhapGoiCapNhatBooking_biChan401Unauthorized() throws Exception {
+        String jsonPayload = """
+                {
+                    "roomTypeId": 2,
+                    "checkInDate": "2027-07-10",
+                    "checkOutDate": "2027-07-15"
+                }
+                """;
+
+        mockMvc.perform(put("/api/bookings/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isUnauthorized());
+    }
+}

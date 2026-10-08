@@ -3,6 +3,7 @@ package com.ttcs.homestay.controller.booking;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.dto.booking.PageResponse;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.service.BookingService;
@@ -30,6 +31,13 @@ public class BookingController {
     public ResponseEntity<BookingResponse> createBooking(
             @Valid @RequestBody BookingCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(request));
+    }
+
+    @PutMapping("/{id}")
+    public BookingResponse updateBooking(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingUpdateRequest request) {
+        return bookingService.updateBooking(id, request);
     }
 
     @GetMapping("/latest")
