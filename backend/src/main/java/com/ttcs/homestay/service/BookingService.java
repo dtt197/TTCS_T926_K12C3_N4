@@ -69,10 +69,10 @@ public class BookingService {
 
     @Transactional
     public BookingConfirmResponse confirmBooking(Long id, BookingConfirmRequest request) {
-        BookingConfirmResponse response = bookingDepositService.confirmBooking(id, request);
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long actorId = null;
         String actorEmail = null;
+        String actorName = null;
         if (authentication instanceof JwtAuthenticationToken token) {
             try {
                 actorId = Long.valueOf(token.getToken().getSubject());
@@ -80,10 +80,15 @@ public class BookingService {
                 // The JWT subject may not be a numeric user ID.
             }
             actorEmail = token.getToken().getClaimAsString("email");
+            actorName = token.getToken().getClaimAsString("fullName");
         }
         if ((actorEmail == null || actorEmail.isBlank()) && authentication != null) {
             actorEmail = authentication.getName();
         }
+        if ((actorName == null || actorName.isBlank()) && authentication != null) {
+            actorName = authentication.getName();
+        }
+        BookingConfirmResponse response = bookingDepositService.confirmBooking(id, request, actorName);
         String ipAddress = null;
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
             ipAddress = attrs.getRequest().getRemoteAddr();
@@ -220,6 +225,10 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Không tìm thấy booking"));
+        if (bookingDepositService.hasDeposit(booking)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Booking có tiền cọc đã ghi nhận, không thể cập nhật trực tiếp");
+        }
 
         RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
                 .orElseThrow(RoomTypeNotFoundException::new);

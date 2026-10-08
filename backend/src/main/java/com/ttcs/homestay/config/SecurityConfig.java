@@ -173,6 +173,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
 
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/deposit",
+                                "/api/bookings/*/deposits/**")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.DELETE, "/api/bookings/*/deposit",
+                                "/api/bookings/*/deposits/**", "/api/bookings/*")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
                         // Lễ tân có thể cập nhật ngày lưu trú và loại phòng của booking hiện có.
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")

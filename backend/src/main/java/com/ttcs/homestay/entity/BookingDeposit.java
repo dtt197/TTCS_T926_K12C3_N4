@@ -11,12 +11,15 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Immutable;
 
 @Entity
 @Table(name = "booking_deposits")
+@Immutable
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,14 +49,16 @@ public class BookingDeposit {
     @Column(name = "reservation_code", length = 255)
     private String reservationCode;
 
-    @Column(name = "created_at", nullable = false)
-    private java.time.OffsetDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
 
-    @Column(name = "created_by", length = 120)
+    @Column(name = "created_by", length = 120, updatable = false)
     private String createdBy;
 
     @PrePersist
     void onCreate() {
-        createdAt = java.time.OffsetDateTime.now();
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
     }
 }

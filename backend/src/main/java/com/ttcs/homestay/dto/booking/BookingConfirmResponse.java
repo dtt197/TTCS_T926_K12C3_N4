@@ -19,7 +19,7 @@ public record BookingConfirmResponse(
                 booking.getBookingCode(),
                 booking.getStatus().name(),
                 BookingResponse.from(booking),
-                deposit != null ? deposit : new BookingDepositResponse(null, null, null, null, null, null, null)
+                deposit != null ? deposit : new BookingDepositResponse(null, null, null, null, null, null, null, null)
         );
     }
 }

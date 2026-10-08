@@ -87,7 +87,6 @@ export type BookingConfirmRequest = {
   paymentMethod: 'CASH' | 'BANK_TRANSFER'
   receivedDate: string
   paymentReference: string | null
-  createdBy: string
 }
 
 export type BookingDepositResponse = {
@@ -96,6 +95,7 @@ export type BookingDepositResponse = {
   paymentMethod: string
   receivedDate: string
   paymentReference: string | null
+  reservationCode: string | null
   createdBy: string | null
   createdAt: string
 }

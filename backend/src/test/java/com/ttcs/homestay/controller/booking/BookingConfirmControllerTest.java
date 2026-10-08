@@ -33,7 +33,7 @@ class BookingConfirmControllerTest {
     private BookingConfirmResponse response(String method, String reference, BigDecimal amount) {
         return new BookingConfirmResponse(1L, "BK-123456", "DA_XAC_NHAN", null,
                 new BookingDepositResponse(100L, amount, method, LocalDate.of(2026, 10, 8),
-                        reference, null, OffsetDateTime.now()));
+                        reference, null, "Receptionist", OffsetDateTime.now()));
     }
 
     private String body(String amount, String method, String reference) {
@@ -41,7 +41,7 @@ class BookingConfirmControllerTest {
                 (method == null ? "null" : "\"" + method + "\"") +
                 ",\"receivedDate\":\"2026-10-08\",\"paymentReference\":" +
                 (reference == null ? "null" : "\"" + reference + "\"") +
-                ",\"createdBy\":\"admin\"}";
+                "}";
     }
 
     @Test
