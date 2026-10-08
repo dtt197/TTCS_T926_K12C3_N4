@@ -48,6 +48,12 @@ public class BookingController {
         return bookingService.updateBooking(id, request);
     }
 
+    @DeleteMapping("/{id}")
+    public void deleteBooking(@PathVariable Long id) {
+        throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED,
+                "Không hỗ trợ xóa booking trực tiếp");
+    }
+
     @PostMapping("/{id}/preview")
     public com.ttcs.homestay.dto.booking.BookingChangePreviewResponse previewChange(
             @PathVariable Long id,

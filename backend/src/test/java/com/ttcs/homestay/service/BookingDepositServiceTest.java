@@ -47,7 +47,7 @@ class BookingDepositServiceTest {
         when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.empty());
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
-                BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null, null)))
+                BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null), "JWT actor"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Không tìm thấy booking");
         verify(bookingDepositRepository, never()).save(any());
@@ -63,7 +63,7 @@ class BookingDepositServiceTest {
         when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
-                BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null, null)))
+                BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null), "JWT actor"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("không ở trạng thái chờ xác nhận");
         verify(bookingDepositRepository, never()).save(any());
@@ -81,7 +81,7 @@ class BookingDepositServiceTest {
         booking.setTotalAmount(1_000_000L);
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
-                BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null, null)))
+                BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null), "JWT actor"))
                 .isInstanceOf(DuplicatePaymentException.class);
 
         verify(bookingRepository, never()).save(any());
@@ -96,7 +96,7 @@ class BookingDepositServiceTest {
         when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
-                null, "CASH", null, null, null)))
+                null, "CASH", null, null), "JWT actor"))
                 .isInstanceOf(InvalidDepositException.class);
 
         verify(bookingRepository, never()).save(any());
@@ -111,7 +111,7 @@ class BookingDepositServiceTest {
         when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
-                BigDecimal.valueOf(-1000), "CASH", null, null, null)))
+                BigDecimal.valueOf(-1000), "CASH", null, null), "JWT actor"))
                 .isInstanceOf(InvalidDepositException.class);
 
         verify(bookingRepository, never()).save(any());
@@ -126,7 +126,7 @@ class BookingDepositServiceTest {
         when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
-                BigDecimal.valueOf(500_000), null, null, null, null)))
+                BigDecimal.valueOf(500_000), null, null, null), "JWT actor"))
                 .isInstanceOf(InvalidDepositException.class);
 
         verify(bookingRepository, never()).save(any());
@@ -141,7 +141,7 @@ class BookingDepositServiceTest {
         when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
-                BigDecimal.valueOf(500_000), "BANK_TRANSFER", LocalDate.now(), null, null)))
+                BigDecimal.valueOf(500_000), "BANK_TRANSFER", LocalDate.now(), null), "JWT actor"))
                 .isInstanceOf(InvalidDepositException.class)
                 .hasMessageContaining("Mã tham chiếu");
 
@@ -158,8 +158,7 @@ class BookingDepositServiceTest {
                 BigDecimal.valueOf(500_000),
                 "BANK_TRANSFER",
                 LocalDate.now(),
-                "123456789",
-                "admin"
+                "123456789"
         );
         booking.setTotalAmount(1_000_000L);
 
@@ -167,10 +166,23 @@ class BookingDepositServiceTest {
         when(bookingDepositRepository.save(any(BookingDeposit.class))).thenAnswer(inv -> inv.getArgument(0));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        BookingConfirmResponse result = service.confirmBooking(1L, request);
+        BookingConfirmResponse result = service.confirmBooking(1L, request, "JWT actor");
 
         assertThat(result.deposit().paymentReference()).isEqualTo("123456789");
         assertThat(result.status()).isEqualTo("DA_XAC_NHAN");
+        assertThat(result.deposit().createdBy()).isEqualTo("JWT actor");
+        assertThat(result.deposit().createdAt()).isNotNull();
+    }
+
+    @Test
+    void depositEntityIsMarkedImmutableForOrmUpdates() throws NoSuchFieldException {
+        assertThat(org.hibernate.annotations.Immutable.class)
+                .isEqualTo(BookingDeposit.class.getAnnotation(org.hibernate.annotations.Immutable.class)
+                        .annotationType());
+        assertThat(BookingDeposit.class.getDeclaredField("createdAt")
+                .getAnnotation(jakarta.persistence.Column.class).updatable()).isFalse();
+        assertThat(BookingDeposit.class.getDeclaredField("createdBy")
+                .getAnnotation(jakarta.persistence.Column.class).updatable()).isFalse();
     }
     @Test
 void xacNhanBooking_daHuy_throwsConflict() {
@@ -186,11 +198,10 @@ void xacNhanBooking_daHuy_throwsConflict() {
             BigDecimal.valueOf(500_000),
             "CASH",
             LocalDate.now(),
-            null,
-            "le tan"
+            null
     );
 
-    assertThatThrownBy(() -> service.confirmBooking(1L, request))
+    assertThatThrownBy(() -> service.confirmBooking(1L, request, "JWT actor"))
             .isInstanceOf(ResponseStatusException.class)
             .satisfies(exception -> {
                 ResponseStatusException responseException =

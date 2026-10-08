@@ -75,7 +75,6 @@ export function BookingListPage() {
     paymentMethod: 'CASH' as 'CASH' | 'BANK_TRANSFER',
     receivedDate: new Date().toLocaleDateString('en-CA'),
     paymentReference: '',
-    createdBy: '',
   })
   const [detailBooking, setDetailBooking] = useState<BookingListItem | null>(null)
   const [detailData, setDetailData] = useState<BookingDetailResponse | null>(null)
@@ -245,7 +244,6 @@ export function BookingListPage() {
       paymentMethod: 'CASH',
       receivedDate: new Date().toLocaleDateString('en-CA'),
       paymentReference: '',
-      createdBy: '',
     })
   }
 
@@ -278,7 +276,6 @@ export function BookingListPage() {
         paymentMethod: confirmForm.paymentMethod,
         receivedDate: confirmForm.receivedDate,
         paymentReference: confirmForm.paymentReference.trim() || null,
-        createdBy: confirmForm.createdBy.trim() || 'receptionist',
       })
       setEditSuccess(`Đã xác nhận booking ${confirmingBooking.bookingCode} và ghi nhận tiền cọc.`)
       setConfirmingBooking(null)
@@ -596,6 +593,7 @@ export function BookingListPage() {
                     <div><dt>Ngày nhận tiền</dt><dd>{formatDate(detailData.deposit.receivedDate)}</dd></div>
                     <div><dt>Mã giao dịch</dt><dd>{detailData.deposit.paymentReference || 'Không có'}</dd></div>
                     <div><dt>Người ghi nhận</dt><dd>{detailData.deposit.createdBy || 'Không có'}</dd></div>
+                    <div><dt>Thời điểm ghi nhận</dt><dd>{detailData.deposit.createdAt ? new Date(detailData.deposit.createdAt).toLocaleString('vi-VN') : 'Không có'}</dd></div>
                   </dl>
                 ) : <p>Booking chưa có tiền cọc được ghi nhận.</p>}
               </div>
@@ -644,9 +642,6 @@ export function BookingListPage() {
               </label>
               <label>Mã giao dịch {confirmForm.paymentMethod === 'BANK_TRANSFER' ? '(bắt buộc)' : '(không bắt buộc)'}
                 <input type="text" required={confirmForm.paymentMethod === 'BANK_TRANSFER'} value={confirmForm.paymentReference} onChange={(event) => setConfirmForm((f) => ({...f, paymentReference: event.target.value}))} />
-              </label>
-              <label>Người ghi nhận
-                <input type="text" placeholder="Lễ tân" value={confirmForm.createdBy} onChange={(event) => setConfirmForm((f) => ({...f, createdBy: event.target.value}))} />
               </label>
               {confirmError && <div className="alert" role="alert">{confirmError}</div>}
               <div className="booking-edit-actions">

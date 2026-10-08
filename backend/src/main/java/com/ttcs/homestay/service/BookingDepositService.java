@@ -10,6 +10,7 @@ import com.ttcs.homestay.repository.BookingDepositRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,8 +29,13 @@ public class BookingDepositService {
         this.bookingRepository = bookingRepository;
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasDeposit(Booking booking) {
+        return bookingDepositRepository.existsByBooking(booking);
+    }
+
     @Transactional
-    public BookingConfirmResponse confirmBooking(Long id, BookingConfirmRequest request) {
+    public BookingConfirmResponse confirmBooking(Long id, BookingConfirmRequest request, String createdBy) {
         Booking booking = bookingRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
@@ -69,7 +75,8 @@ public class BookingDepositService {
         deposit.setPaymentMethod(request.paymentMethod().trim().toUpperCase(java.util.Locale.ROOT));
         deposit.setReceivedDate(request.receivedDate());
         deposit.setPaymentReference(normalizePaymentReference(request.paymentReference()));
-        deposit.setCreatedBy(request.createdBy());
+        deposit.setCreatedBy(createdBy);
+        deposit.setCreatedAt(OffsetDateTime.now());
 
         BookingDeposit savedDeposit = bookingDepositRepository.save(deposit);
 
@@ -88,6 +95,7 @@ public class BookingDepositService {
                 savedDeposit.getReceivedDate(),
                 savedDeposit.getPaymentReference(),
                 savedDeposit.getReservationCode(),
+                savedDeposit.getCreatedBy(),
                 savedDeposit.getCreatedAt()
         )
 );

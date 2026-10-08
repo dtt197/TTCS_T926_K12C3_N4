@@ -7,7 +7,6 @@ public record BookingConfirmRequest(
         BigDecimal amount,
         String paymentMethod,
         LocalDate receivedDate,
-        String paymentReference,
-        String createdBy
+        String paymentReference
 ) {
 }

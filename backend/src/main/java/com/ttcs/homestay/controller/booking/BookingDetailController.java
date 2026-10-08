@@ -40,6 +40,18 @@ public class BookingDetailController {
         return result;
     }
 
+    @org.springframework.web.bind.annotation.PutMapping("/{id}/deposit")
+    public void rejectDepositUpdate(@PathVariable Long id) {
+        throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED,
+                "Tiền cọc đã ghi nhận chỉ được xem, không thể cập nhật hoặc xóa");
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}/deposit")
+    public void rejectDepositDelete(@PathVariable Long id) {
+        throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED,
+                "Tiền cọc đã ghi nhận chỉ được xem, không thể cập nhật hoặc xóa");
+    }
+
     private static Map<String, Object> bookingRow(ResultSet rs) throws SQLException {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", rs.getLong("id"));

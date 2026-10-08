@@ -11,10 +11,12 @@ public record BookingDepositResponse(
         LocalDate receivedDate,
         String paymentReference,
         String reservationCode,
+        String createdBy,
         OffsetDateTime createdAt
 ) {
     public static BookingDepositResponse from(OffsetDateTime createdAt) {
         return new BookingDepositResponse(
+                null,
                 null,
                 null,
                 null,

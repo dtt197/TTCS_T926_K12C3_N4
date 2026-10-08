@@ -127,6 +127,8 @@ class BookingConfirmAuditIntegrationTest {
     @Autowired private RoleRepository roles;
     @Autowired private JwtTokenService tokens;
     @Autowired private PlatformTransactionManager transactionManager;
+    @jakarta.persistence.PersistenceContext
+private jakarta.persistence.EntityManager entityManager;
 
     private Booking booking;
     private User actor;
@@ -206,6 +208,10 @@ class BookingConfirmAuditIntegrationTest {
         assertThat(saved.getHoldExpiresAt()).isNull();
         assertThat(jdbc.queryForObject("SELECT amount FROM booking_deposits WHERE booking_id = ?",
                 java.math.BigDecimal.class, booking.getId())).isEqualByComparingTo("200000");
+        assertThat(jdbc.queryForObject("SELECT created_by FROM booking_deposits WHERE booking_id = ?",
+                String.class, booking.getId())).isEqualTo(actor.getFullName());
+        assertThat(jdbc.queryForObject("SELECT created_at FROM booking_deposits WHERE booking_id = ?",
+                OffsetDateTime.class, booking.getId())).isNotNull();
         confirm(booking.getId(), 200000).andExpect(status().isConflict());
         assertThat(auditCount()).isEqualTo(1);
     }
@@ -242,4 +248,52 @@ class BookingConfirmAuditIntegrationTest {
         });
         assertUnchanged();
     }
+
+@Test
+void depositRemainsImmutableAfterJpaModification() throws Exception {
+    // 1. Ghi nhận tiền cọc
+    confirm(booking.getId(), 200000).andExpect(status().isOk());
+
+    Long depositId = jdbc.queryForObject(
+            "SELECT id FROM booking_deposits WHERE booking_id = ?",
+            Long.class,
+            booking.getId()
+    );
+
+    // 2. Đọc dữ liệu gốc từ database
+    var original = jdbc.queryForMap(
+            "SELECT amount, created_by, created_at FROM booking_deposits WHERE id = ?",
+            depositId
+    );
+
+
+// 3. Thử thay đổi entity trong transaction do Spring quản lý
+new TransactionTemplate(transactionManager).executeWithoutResult(transaction -> {
+    var deposit = entityManager.find(
+            com.ttcs.homestay.entity.BookingDeposit.class,
+            depositId
+    );
+
+    assertThat(deposit).isNotNull();
+
+    deposit.setAmount(new java.math.BigDecimal("999999"));
+    deposit.setCreatedBy("FAKE USER");
+    deposit.setCreatedAt(OffsetDateTime.now().plusDays(1));
+
+    entityManager.flush();
+    entityManager.clear();
+});
+
+
+    // 4. Đọc lại database và so sánh
+    var after = jdbc.queryForMap(
+            "SELECT amount, created_by, created_at FROM booking_deposits WHERE id = ?",
+            depositId
+    );
+
+    assertThat(after.get("amount")).isEqualTo(original.get("amount"));
+    assertThat(after.get("created_by")).isEqualTo(original.get("created_by"));
+    assertThat(after.get("created_at")).isEqualTo(original.get("created_at"));
+}
+
 }
