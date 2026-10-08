@@ -6,12 +6,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
+import com.ttcs.homestay.exception.RoomUnavailableException;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
@@ -218,5 +221,66 @@ class BookingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void leTanXemTruocThayDoiBooking_traVe200VaThongTinPreview() throws Exception {
+        BookingChangePreviewResponse previewResponse = new BookingChangePreviewResponse(
+                5L,
+                2L,
+                "Phòng Suite Deluxe",
+                LocalDate.of(2027, 7, 10),
+                LocalDate.of(2027, 7, 15),
+                5,
+                3_500_000L,
+                3,
+                true,
+                List.of()
+        );
+
+        when(bookingService.previewBookingChange(eq(5L), any(BookingUpdateRequest.class)))
+                .thenReturn(previewResponse);
+
+        String jsonPayload = """
+                {
+                    "roomTypeId": 2,
+                    "checkInDate": "2027-07-10",
+                    "checkOutDate": "2027-07-15"
+                }
+                """;
+
+        mockMvc.perform(post("/api/bookings/5/preview")
+                        .header("Authorization", "Bearer receptionist-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bookingId").value(5))
+                .andExpect(jsonPath("$.roomTypeId").value(2))
+                .andExpect(jsonPath("$.roomTypeName").value("Phòng Suite Deluxe"))
+                .andExpect(jsonPath("$.numberOfNights").value(5))
+                .andExpect(jsonPath("$.totalAmount").value(3500000))
+                .andExpect(jsonPath("$.availableRooms").value(3))
+                .andExpect(jsonPath("$.available").value(true));
+    }
+
+    @Test
+    void capNhatBookingKhiHetPhong_traVe409Conflict() throws Exception {
+        when(bookingService.updateBooking(eq(5L), any(BookingUpdateRequest.class)))
+                .thenThrow(new RoomUnavailableException("Loại phòng Deluxe đã hết phòng trống trong khoảng thời gian đã chọn"));
+
+        String jsonPayload = """
+                {
+                    "roomTypeId": 2,
+                    "checkInDate": "2027-07-10",
+                    "checkOutDate": "2027-07-15"
+                }
+                """;
+
+        mockMvc.perform(put("/api/bookings/5")
+                        .header("Authorization", "Bearer receptionist-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Loại phòng Deluxe đã hết phòng trống trong khoảng thời gian đã chọn"));
     }
 }

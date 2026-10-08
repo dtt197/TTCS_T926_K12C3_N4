@@ -3,14 +3,17 @@ package com.ttcs.homestay.service;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
+import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
+import com.ttcs.homestay.exception.RoomUnavailableException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.DayOfWeek;
@@ -37,16 +40,19 @@ public class BookingService {
     private final RoomTypeRepository roomTypeRepository;
     private final OperatingSettingsService operatingSettingsService;
     private final PricingService pricingService;
+    private final RoomAvailabilityService roomAvailabilityService;
 
     public BookingService(
             BookingRepository bookingRepository,
             RoomTypeRepository roomTypeRepository,
             OperatingSettingsService operatingSettingsService,
-            PricingService pricingService) {
+            PricingService pricingService,
+            RoomAvailabilityService roomAvailabilityService) {
         this.bookingRepository = bookingRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.operatingSettingsService = operatingSettingsService;
         this.pricingService = pricingService;
+        this.roomAvailabilityService = roomAvailabilityService;
     }
 
     @Transactional
@@ -124,8 +130,97 @@ public class BookingService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public BookingChangePreviewResponse previewBookingChange(Long id, BookingUpdateRequest request) {
+        validateUpdateRequest(request);
+
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy booking"));
+
+        RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
+                .orElseThrow(RoomTypeNotFoundException::new);
+
+        if (!Boolean.TRUE.equals(roomType.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Loại phòng đã ngừng bán");
+        }
+
+        int availableRooms = roomAvailabilityService.availableRooms(
+                roomType, request.checkInDate(), request.checkOutDate(), booking.getId());
+
+        OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
+        Set<DayOfWeek> weekendDays = PricingService.parseWeekendDays(settings.getWeekendDays());
+
+        List<NightlyPrice> nightlyPrices = pricingService.priceNights(
+                roomType, request.checkInDate(), request.checkOutDate(), weekendDays);
+        long totalAmount = PricingService.total(nightlyPrices);
+        int numberOfNights = nightlyPrices.size();
+
+        return new BookingChangePreviewResponse(
+                booking.getId(),
+                roomType.getId(),
+                roomType.getName(),
+                request.checkInDate(),
+                request.checkOutDate(),
+                numberOfNights,
+                totalAmount,
+                availableRooms,
+                availableRooms > 0,
+                nightlyPrices
+        );
+    }
+
     @Transactional
     public BookingResponse updateBooking(Long id, BookingUpdateRequest request) {
+        validateUpdateRequest(request);
+
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy booking"));
+
+        RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
+                .orElseThrow(RoomTypeNotFoundException::new);
+
+        if (!Boolean.TRUE.equals(roomType.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Loại phòng đã ngừng bán");
+        }
+
+        // 1. Kiểm tra tính khả dụng (room availability)
+        int availableRooms = roomAvailabilityService.availableRooms(
+                roomType, request.checkInDate(), request.checkOutDate(), booking.getId());
+        if (availableRooms <= 0) {
+            throw new RoomUnavailableException(
+                    "Loại phòng " + roomType.getName() + " đã hết phòng trống trong khoảng thời gian đã chọn");
+        }
+
+        // 2. Tính lại tiền phòng theo khoảng ngày và loại phòng mới
+        OperatingSettings settings = operatingSettingsService.findEffectiveAt(OffsetDateTime.now());
+        Set<DayOfWeek> weekendDays = PricingService.parseWeekendDays(settings.getWeekendDays());
+
+        List<NightlyPrice> nightlyPrices = pricingService.priceNights(
+                roomType, request.checkInDate(), request.checkOutDate(), weekendDays);
+        long newTotalAmount = PricingService.total(nightlyPrices);
+
+        // 3. Cập nhật booking cũ
+        booking.setRoomType(roomType);
+        booking.setRoomTypeNameSnapshot(roomType.getName());
+        booking.setCheckInDate(request.checkInDate());
+        booking.setCheckOutDate(request.checkOutDate());
+        booking.setTotalAmount(newTotalAmount);
+        if (roomType.getWeekdayPrice() != null && roomType.getWeekdayPrice() > 0) {
+            booking.setWeekdayPriceSnapshot(roomType.getWeekdayPrice());
+        }
+        if (roomType.getWeekendPrice() != null && roomType.getWeekendPrice() > 0) {
+            booking.setWeekendPriceSnapshot(roomType.getWeekendPrice());
+        }
+        booking.setWeekendDaysSnapshot(settings.getWeekendDays());
+
+        return BookingResponse.from(bookingRepository.save(booking));
+    }
+
+    private void validateUpdateRequest(BookingUpdateRequest request) {
         if (request == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -145,20 +240,6 @@ public class BookingService {
                     HttpStatus.BAD_REQUEST,
                     "Ngày trả phòng phải sau ngày nhận phòng");
         }
-
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Không tìm thấy booking"));
-        RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
-                .orElseThrow(RoomTypeNotFoundException::new);
-
-        booking.setRoomType(roomType);
-        booking.setRoomTypeNameSnapshot(roomType.getName());
-        booking.setCheckInDate(request.checkInDate());
-        booking.setCheckOutDate(request.checkOutDate());
-
-        return BookingResponse.from(bookingRepository.save(booking));
     }
 
     @Transactional(readOnly = true)

@@ -3,6 +3,7 @@ import type {
   BookingListItem,
   BookingStatus,
   PageResponse,
+  BookingChangePreview,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -76,6 +77,18 @@ export function updateBooking(
 ): Promise<BookingListItem> {
   return apiRequest<BookingListItem>(`/api/bookings/${id}`, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+}
+
+/** S3-04: xem trước tình trạng phòng trống và số tiền được tính lại. */
+export function previewBookingChange(
+  id: number,
+  request: BookingUpdateRequest,
+): Promise<BookingChangePreview> {
+  return apiRequest<BookingChangePreview>(`/api/bookings/${id}/preview`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   })

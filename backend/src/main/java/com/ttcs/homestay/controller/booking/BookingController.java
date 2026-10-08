@@ -40,6 +40,13 @@ public class BookingController {
         return bookingService.updateBooking(id, request);
     }
 
+    @PostMapping("/{id}/preview")
+    public com.ttcs.homestay.dto.booking.BookingChangePreviewResponse previewChange(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingUpdateRequest request) {
+        return bookingService.previewBookingChange(id, request);
+    }
+
     @GetMapping("/latest")
     public List<BookingListItemResponse> getBookings() {
         return bookingService.getLatestBookings();
