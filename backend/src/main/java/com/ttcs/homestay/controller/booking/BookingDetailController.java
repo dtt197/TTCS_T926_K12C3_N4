@@ -37,6 +37,15 @@ public class BookingDetailController {
                         "FROM booking_deposits WHERE booking_id = ? ORDER BY id DESC LIMIT 1",
                 (rs, rowNum) -> depositRow(rs), id);
         result.put("deposit", deposits.isEmpty() ? null : deposits.get(0));
+
+        List<Map<String, Object>> histories = jdbcTemplate.query(
+                "SELECT id, booking_id, booking_code, old_check_in_date, new_check_in_date, " +
+                        "old_check_out_date, new_check_out_date, old_room_type_id, old_room_type_name, " +
+                        "new_room_type_id, new_room_type_name, old_total_amount, new_total_amount, " +
+                        "actor_user_id, actor_name, actor_email, created_at " +
+                        "FROM booking_audit_logs WHERE booking_id = ? ORDER BY created_at DESC, id DESC",
+                (rs, rowNum) -> historyRow(rs), id);
+        result.put("history", histories);
         return result;
     }
 
@@ -70,6 +79,28 @@ public class BookingDetailController {
         result.put("receivedDate", rs.getObject("received_date", java.time.LocalDate.class));
         result.put("paymentReference", rs.getString("payment_reference"));
         result.put("createdBy", rs.getString("created_by"));
+        result.put("createdAt", rs.getObject("created_at", java.time.OffsetDateTime.class));
+        return result;
+    }
+
+    private static Map<String, Object> historyRow(ResultSet rs) throws SQLException {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", rs.getLong("id"));
+        result.put("bookingId", rs.getLong("booking_id"));
+        result.put("bookingCode", rs.getString("booking_code"));
+        result.put("oldCheckInDate", rs.getObject("old_check_in_date", java.time.LocalDate.class));
+        result.put("newCheckInDate", rs.getObject("new_check_in_date", java.time.LocalDate.class));
+        result.put("oldCheckOutDate", rs.getObject("old_check_out_date", java.time.LocalDate.class));
+        result.put("newCheckOutDate", rs.getObject("new_check_out_date", java.time.LocalDate.class));
+        result.put("oldRoomTypeId", rs.getObject("old_room_type_id", Long.class));
+        result.put("oldRoomTypeName", rs.getString("old_room_type_name"));
+        result.put("newRoomTypeId", rs.getObject("new_room_type_id", Long.class));
+        result.put("newRoomTypeName", rs.getString("new_room_type_name"));
+        result.put("oldTotalAmount", rs.getLong("old_total_amount"));
+        result.put("newTotalAmount", rs.getLong("new_total_amount"));
+        result.put("actorUserId", rs.getObject("actor_user_id", Long.class));
+        result.put("actorName", rs.getString("actor_name"));
+        result.put("actorEmail", rs.getString("actor_email"));
         result.put("createdAt", rs.getObject("created_at", java.time.OffsetDateTime.class));
         return result;
     }
