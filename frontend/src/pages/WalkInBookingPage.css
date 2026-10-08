@@ -1,0 +1,133 @@
+.walk-in-page {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.walk-in-header {
+  margin-bottom: 22px;
+}
+
+.walk-in-eyebrow {
+  margin: 0 0 8px;
+  color: #2b7458;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.walk-in-header h2 {
+  margin: 0;
+  color: #18382d;
+  font-size: 30px;
+  text-align: left;
+  letter-spacing: normal;
+  word-spacing: normal;
+}
+
+.walk-in-header p:last-child {
+  margin-top: 8px;
+  color: #68766f;
+}
+
+.walk-in-card {
+  padding: 28px;
+  border: 1px solid #e4e0d8;
+  border-radius: 16px;
+  background: #fffdf8;
+  box-shadow: 0 8px 25px rgba(25, 50, 40, 0.06);
+}
+
+.walk-in-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.walk-in-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #18382d;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.walk-in-grid input,
+.walk-in-grid select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 1px solid #d1d8d2;
+  border-radius: 9px;
+  padding: 9px 12px;
+  background: #ffffff;
+  color: #18382d;
+  font: inherit;
+}
+
+.walk-in-grid input:focus,
+.walk-in-grid select:focus {
+  outline: none;
+  border-color: #2b7458;
+  box-shadow: 0 0 0 3px rgba(43, 116, 88, 0.12);
+}
+
+.walk-in-grid small {
+  color: #718078;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.walk-in-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid #e7e4dc;
+}
+
+.walk-in-primary {
+  min-height: 44px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 9px;
+  background: #1b4931;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.walk-in-primary:hover {
+  opacity: 0.9;
+}
+
+.walk-in-message {
+  margin-bottom: 20px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.walk-in-message.error {
+  border: 1px solid #efc2b9;
+  background: #fff1ee;
+  color: #a33d2a;
+}
+
+.walk-in-message.success {
+  border: 1px solid #b8ddc7;
+  background: #effaf2;
+  color: #24633d;
+}
+
+@media (max-width: 760px) {
+  .walk-in-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .walk-in-card {
+    padding: 20px;
+  }
+}
