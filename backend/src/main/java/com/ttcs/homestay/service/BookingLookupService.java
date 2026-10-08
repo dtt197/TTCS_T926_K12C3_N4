@@ -2,6 +2,9 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.booking.BookingLookupResponse;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingDeposit;
+import com.ttcs.homestay.repository.BookingDepositRepository;
+import java.math.BigDecimal;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.exception.BookingLookupLimitException;
 import com.ttcs.homestay.exception.BookingLookupNotFoundException;
@@ -31,23 +34,18 @@ public class BookingLookupService {
     private final BookingRepository bookingRepository;
     private final BookingLookupRateLimiter rateLimiter;
     private final OperatingSettingsRepository settingsRepository;
+    private final BookingDepositRepository depositRepository;
 
     @Autowired
     public BookingLookupService(
             BookingRepository bookingRepository,
             BookingLookupRateLimiter rateLimiter,
-            OperatingSettingsRepository settingsRepository) {
+            OperatingSettingsRepository settingsRepository,
+            BookingDepositRepository depositRepository) {
         this.bookingRepository = bookingRepository;
         this.rateLimiter = rateLimiter;
         this.settingsRepository = settingsRepository;
-    }
-
-    public BookingLookupService(BookingRepository bookingRepository, BookingLookupRateLimiter rateLimiter) {
-        this(bookingRepository, rateLimiter, null);
-    }
-
-    public BookingLookupService(BookingRepository bookingRepository) {
-        this(bookingRepository, new BookingLookupRateLimiter());
+        this.depositRepository = depositRepository;
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +73,8 @@ public class BookingLookupService {
         Optional<OperatingSettings> settings = settingsFor(booking);
         return BookingLookupResponse.from(
                 booking,
-                recordedDeposit(booking),
+                depositRepository.findByBooking(booking)
+                        .map(BookingDeposit::getAmount).orElse(BigDecimal.ZERO),
                 settings.map(OperatingSettings::getCheckInTime).orElse(DEFAULT_CHECK_IN_TIME),
                 settings.map(OperatingSettings::getCheckOutTime).orElse(DEFAULT_CHECK_OUT_TIME));
     }
@@ -97,8 +96,4 @@ public class BookingLookupService {
                 && bookingEmail.trim().toLowerCase(Locale.ROOT).equals(normalizedEmail);
     }
 
-    /** Sprint 3 (lễ tân ghi nhận cọc) sẽ cộng các lần ghi nhận cọc; hiện chưa có nên là 0. */
-    private static long recordedDeposit(Booking booking) {
-        return 0L;
-    }
 }

@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -58,6 +60,10 @@ class BookingControllerTest {
     void setUp() {
         mockUser(201L, "RECEPTIONIST");
         mockUser(202L, "HOUSEKEEPING");
+        mockUser(203L, "ADMIN");
+        mockUser(204L, "OWNER");
+        when(jwtDecoder.decode("admin-token")).thenReturn(createJwt(203L, "ADMIN"));
+        when(jwtDecoder.decode("owner-token")).thenReturn(createJwt(204L, "OWNER"));
 
         when(jwtDecoder.decode("receptionist-token"))
                 .thenReturn(createJwt(201L, "RECEPTIONIST"));
@@ -94,8 +100,9 @@ class BookingControllerTest {
                 .build();
     }
 
-    @Test
-    void leTanCapNhatNgayVaLoaiPhongThanhCong_traVe200() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"receptionist-token", "admin-token", "owner-token"})
+    void authorizedRolesCanUpdateConfirmedBooking(String token) throws Exception {
         BookingResponse mockResponse = new BookingResponse(
                 5L,
                 "BK-998877",
@@ -125,7 +132,7 @@ class BookingControllerTest {
                 """;
 
         mockMvc.perform(put("/api/bookings/5")
-                        .header("Authorization", "Bearer receptionist-token")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
                 .andExpect(status().isOk())
@@ -223,8 +230,9 @@ class BookingControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    @Test
-    void leTanXemTruocThayDoiBooking_traVe200VaThongTinPreview() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"receptionist-token", "admin-token", "owner-token"})
+    void authorizedRolesCanPreviewBooking(String token) throws Exception {
         BookingChangePreviewResponse previewResponse = new BookingChangePreviewResponse(
                 5L,
                 2L,
@@ -250,7 +258,7 @@ class BookingControllerTest {
                 """;
 
         mockMvc.perform(post("/api/bookings/5/preview")
-                        .header("Authorization", "Bearer receptionist-token")
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
                 .andExpect(status().isOk())
@@ -261,6 +269,40 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.totalAmount").value(3500000))
                 .andExpect(jsonPath("$.availableRooms").value(3))
                 .andExpect(jsonPath("$.available").value(true));
+        verify(bookingService).previewBookingChange(eq(5L), any(BookingUpdateRequest.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"preview", "update"})
+    void bookingChangesRequireAuthentication(String operation) throws Exception {
+        mockMvc.perform(changeRequest(operation)).andExpect(status().isUnauthorized());
+        org.mockito.Mockito.verifyNoInteractions(bookingService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"preview", "update"})
+    void housekeepingCannotChangeBookings(String operation) throws Exception {
+        mockMvc.perform(changeRequest(operation).header("Authorization", "Bearer housekeeping-token"))
+                .andExpect(status().isForbidden());
+        org.mockito.Mockito.verifyNoInteractions(bookingService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"preview", "update"})
+    void temporaryPasswordRestrictionStillApplies(String operation) throws Exception {
+        when(userRepository.findWithRoleById(201L).orElseThrow().isMustChangePassword()).thenReturn(true);
+        mockMvc.perform(changeRequest(operation).header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PASSWORD_CHANGE_REQUIRED"));
+        org.mockito.Mockito.verifyNoInteractions(bookingService);
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder changeRequest(String operation) {
+        return (operation.equals("preview") ? post("/api/bookings/5/preview") : put("/api/bookings/5"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"roomTypeId":2,"checkInDate":"2027-07-10","checkOutDate":"2027-07-15"}
+                        """);
     }
 
     @Test

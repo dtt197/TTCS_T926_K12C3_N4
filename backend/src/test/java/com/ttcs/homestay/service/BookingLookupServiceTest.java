@@ -26,7 +26,8 @@ class BookingLookupServiceTest {
     @BeforeEach
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
-        service = new BookingLookupService(bookingRepository);
+        service = new BookingLookupService(bookingRepository, new BookingLookupRateLimiter(), null,
+                mock(com.ttcs.homestay.repository.BookingDepositRepository.class));
         when(bookingRepository.findByBookingCode("ABCD2345"))
                 .thenReturn(Optional.of(booking(BookingStatus.CHO_XAC_NHAN)));
     }
