@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { PublicHeader } from '../components/PublicHeader'
+import { PublicHero } from '../components/PublicHero'
 import { getPublicRoomTypes } from '../services/guestBookingService'
 import { getPublicRoomTypeCards } from '../services/publicRoomTypeService'
 import { searchAvailableRooms, type RoomAvailabilityResponse } from '../services/roomService'
@@ -8,7 +9,6 @@ import type { PublicRoomTypeCard } from '../types/publicRoomType'
 import './RoomTypeListPage.css'
 import './HomePage.css'
 
-const HERO_IMAGE = '/assets/hero-room.jpg'
 const DEFAULT_ROOM_IMAGE = '/room-images/room-1.jpg'
 const money = new Intl.NumberFormat('vi-VN')
 
@@ -156,59 +156,7 @@ export function HomePage() {
       <PublicHeader />
 
       <main>
-        <section className="customer-hero" aria-labelledby="home-hero-title">
-          <div className="customer-hero__copy">
-            <p className="customer-eyebrow">HOMESTAY</p>
-            <h1 className="customer-hero__title" id="home-hero-title">
-              Tìm kỳ nghỉ<br />phù hợp với bạn
-            </h1>
-            <p className="customer-hero__description">
-              Không gian ấm cúng, tiện nghi hiện đại, gần gũi thiên nhiên.
-              Trải nghiệm homestay thoải mái và đáng nhớ.
-            </p>
-            <div className="customer-hero__actions">
-              <a className="customer-button customer-button--primary" href="/danh-sach-loai-phong">
-                Xem các loại phòng
-              </a>
-              <a className="customer-button customer-button--secondary" href="/tra-cuu-dat-phong">
-                Tra cứu booking
-              </a>
-            </div>
-            <ul className="customer-benefits" aria-label="Điểm nổi bật">
-              <li className="customer-benefit">
-                <span className="customer-benefit__icon" aria-hidden="true">✓</span>
-                <span className="customer-benefit__text">
-                  <strong>Không gian xanh</strong>
-                  <small>Gần gũi thiên nhiên</small>
-                </span>
-              </li>
-              <li className="customer-benefit">
-                <span className="customer-benefit__icon" aria-hidden="true">⌂</span>
-                <span className="customer-benefit__text">
-                  <strong>Tiện nghi đầy đủ</strong>
-                  <small>Thoải mái như ở nhà</small>
-                </span>
-              </li>
-              <li className="customer-benefit">
-                <span className="customer-benefit__icon" aria-hidden="true">♡</span>
-                <span className="customer-benefit__text">
-                  <strong>Phù hợp mọi nhu cầu</strong>
-                  <small>Cặp đôi, gia đình, nhóm bạn</small>
-                </span>
-              </li>
-            </ul>
-          </div>
-          <div className="customer-hero__visual">
-            <img src={HERO_IMAGE} alt="Phòng nghỉ ấm cúng nhìn ra núi xanh" />
-            <div className="customer-hero__info">
-              <span className="customer-hero__info-icon" aria-hidden="true">⌖</span>
-              <span className="customer-hero__info-text">
-                <strong>Không gian yên bình</strong>
-                <small>Trải nghiệm trọn vẹn tại HomeStay</small>
-              </span>
-            </div>
-          </div>
-        </section>
+        <PublicHero titleId="home-hero-title" />
 
         <section className="home-search" aria-label="Tìm phòng">
           <form className="home-search__card" onSubmit={handleSearch} noValidate>
