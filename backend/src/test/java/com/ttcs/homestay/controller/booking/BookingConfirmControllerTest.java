@@ -29,6 +29,7 @@ class BookingConfirmControllerTest {
     @Autowired private MockMvc mockMvc;
     @MockitoBean private BookingService bookingService;
     @MockitoBean private UserRepository userRepository;
+    @MockitoBean private com.ttcs.homestay.service.RoomShortageAlertService roomShortageAlertService;
 
     private BookingConfirmResponse response(String method, String reference, BigDecimal amount) {
         return new BookingConfirmResponse(1L, "BK-123456", "DA_XAC_NHAN", null,

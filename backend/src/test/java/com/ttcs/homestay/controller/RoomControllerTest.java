@@ -7,11 +7,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.controller.room.RoomController;
+import com.ttcs.homestay.dto.IncidentReportRequest;
 import com.ttcs.homestay.dto.UpdateRoomStatusRequest;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.service.AuditLogService;
 import com.ttcs.homestay.service.RoomService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -238,6 +240,67 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
         List<RoomResponse> dirtyListAfter = controller.getRooms(authentication);
         assertThat(dirtyListAfter).hasSize(1);
         assertThat(dirtyListAfter.get(0).roomNumber()).isEqualTo("102");
+    }
+
+    @Test
+    void housekeepingReportsIncident_roomSwitchesToMaintenance_disappearsFromDirtyRoomsList_andReceptionistSeesNote() {
+        JwtAuthenticationToken hkAuth = authentication(
+                "Buồng phòng Demo",
+                "buongphong@homestay.local",
+                "HOUSEKEEPING"
+        );
+        JwtAuthenticationToken recepAuth = authentication(
+                "Lễ tân Demo",
+                "letan@homestay.local",
+                "RECEPTIONIST"
+        );
+
+        // Ban đầu phòng 101 là TRONG_BAN
+        RoomResponse dirty101 = new RoomResponse(1L, "101", 1, "Phòng đôi", RoomStatus.TRONG_BAN, true);
+        when(roomService.getRooms()).thenReturn(List.of(dirty101));
+
+        // Buồng phòng thấy phòng 101 trong danh sách cần dọn
+        List<RoomResponse> hkBefore = controller.getRooms(hkAuth);
+        assertThat(hkBefore).hasSize(1);
+
+        // Buồng phòng gửi báo sự cố kèm ghi chú
+        IncidentReportRequest req = new IncidentReportRequest("Hỏng bình nóng lạnh");
+        RoomResponse maintenance101 = new RoomResponse(
+                1L, "101", 1, "Phòng đôi", RoomStatus.BAO_TRI, true,
+                "Hỏng bình nóng lạnh", LocalDate.of(2026, 10, 8), null, false, null
+        );
+        when(roomService.reportIncident(1L, req, "Buồng phòng Demo")).thenReturn(maintenance101);
+
+        RoomResponse reportResult = controller.reportIncident(1L, req, hkAuth, httpRequest);
+        assertThat(reportResult.status()).isEqualTo(RoomStatus.BAO_TRI);
+        assertThat(reportResult.maintenanceReason()).isEqualTo("Hỏng bình nóng lạnh");
+
+        // Sau khi báo sự cố: roomService.getRooms() trả về phòng ở trạng thái BAO_TRI
+        when(roomService.getRooms()).thenReturn(List.of(maintenance101));
+
+        // 1. Phòng biến mất khỏi danh sách cần dọn của buồng phòng (chỉ lọc TRONG_BAN)
+        List<RoomResponse> hkAfter = controller.getRooms(hkAuth);
+        assertThat(hkAfter).isEmpty();
+
+        // 2. Lễ tân thấy phòng ở trạng thái bảo trì cùng ghi chú sự cố
+        List<RoomResponse> recepRooms = controller.getRooms(recepAuth);
+        assertThat(recepRooms).hasSize(1);
+        assertThat(recepRooms.get(0).status()).isEqualTo(RoomStatus.BAO_TRI);
+        assertThat(recepRooms.get(0).maintenanceReason()).isEqualTo("Hỏng bình nóng lạnh");
+    }
+
+    @Test
+    void nonHousekeepingRole_cannotReportIncident_throwsForbidden() {
+        JwtAuthenticationToken recepAuth = authentication(
+                "Lễ tân Demo",
+                "letan@homestay.local",
+                "RECEPTIONIST"
+        );
+
+        IncidentReportRequest req = new IncidentReportRequest("Hỏng cửa sổ");
+        assertThatThrownBy(() -> controller.reportIncident(1L, req, recepAuth, httpRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 
 

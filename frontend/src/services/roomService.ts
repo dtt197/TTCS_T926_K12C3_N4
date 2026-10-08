@@ -79,6 +79,15 @@ export function checkOut(roomId: number) {
     method: 'POST',
   })
 }
+
+/** S3-09 AC4: Buồng phòng báo sự cố → phòng chuyển sang bảo trì */
+export function reportRoomIncident(roomId: number, note: string) {
+  return request<Room>(`/rooms/${roomId}/incident`, {
+    method: 'PATCH',
+    body: JSON.stringify({ note }),
+  })
+}
+
 export interface RoomAvailabilityResponse {
   roomTypeId: number;
   name: string;

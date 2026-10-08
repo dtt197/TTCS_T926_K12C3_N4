@@ -93,13 +93,22 @@ public class SecurityConfig {
                                 "HOUSEKEEPING"
                         )
 
-                        // Cập nhật bảo trì phòng
+                        // Cập nhật bảo trì phòng (lễ tân / admin)
                         .requestMatchers(
                                 HttpMethod.PATCH,
                                 "/api/rooms/*/maintenance"
                         ).hasAnyRole(
                                 "ADMIN",
                                 "RECEPTIONIST"
+                        )
+
+                        // S3-09: Buồng phòng báo sự cố → chuyển sang bảo trì
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/rooms/*/incident"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "HOUSEKEEPING"
                         )
 
                         // Check-in và check-out
