@@ -35,6 +35,25 @@ export function createGuestBooking(payload: GuestBookingPayload) {
   })
 }
 
+export type WalkInBookingPayload = {
+  roomTypeId: number
+  checkInDate: string
+  checkOutDate: string
+  guestName: string
+  phone: string
+  email?: string
+  guestCount: number
+  note?: string
+}
+
+export function createWalkInBooking(payload: WalkInBookingPayload) {
+  return apiRequest<GuestBookingResult>('/api/public/bookings/walk-in', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
 /** S2-06: giá tạm tính từng đêm và phụ thu thêm người, khách không cần đăng nhập. Ngày dạng yyyy-MM-dd. */
 export function getGuestQuote(roomTypeId: number, checkIn: string, checkOut: string, guestCount: number) {
   const query = new URLSearchParams({

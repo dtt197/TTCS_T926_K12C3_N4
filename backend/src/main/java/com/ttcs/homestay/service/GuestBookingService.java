@@ -2,12 +2,14 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.booking.GuestBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestBookingResponse;
+import com.ttcs.homestay.dto.booking.WalkInBookingRequest;
 import com.ttcs.homestay.dto.booking.GuestQuoteAlternative;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeDetailResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingSource;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
@@ -198,6 +200,7 @@ public class GuestBookingService {
         Booking booking = new Booking();
         booking.setBookingCode(newUniqueCode());
         booking.setStatus(BookingStatus.CHO_XAC_NHAN);
+        booking.setSource(BookingSource.TRUC_TUYEN);
         booking.setGuestName(request.guestName().trim());
         booking.setGuestPhone(request.phone().trim());
         booking.setGuestEmail(request.email().trim().toLowerCase(Locale.ROOT));
@@ -218,6 +221,112 @@ public class GuestBookingService {
         booking.setHoldExpiresAt(createdAt.plus(HOLD_DURATION));
 
         return GuestBookingResponse.from(bookingRepository.save(booking));
+    }
+    
+    @Transactional
+    public GuestBookingResponse createWalkInBooking(
+            WalkInBookingRequest request) {
+
+        validateDates(request.checkInDate(), request.checkOutDate());
+
+        if (request.guestCount() < 1) {
+            throw new InvalidGuestBookingException("Số khách ít nhất là 1");
+        }
+
+        RoomType roomType = roomTypeRepository
+                .findByIdForUpdate(request.roomTypeId())
+                .filter(GuestBookingService::isBookable)
+                .orElseThrow(() -> new InvalidGuestBookingException(
+                        "Loại phòng không tồn tại hoặc đã ngừng bán, vui lòng chọn lại"));
+
+        if (request.guestCount() > roomType.getMaxCapacity()) {
+            throw new InvalidGuestBookingException(
+                    roomType.getName() + " chỉ nhận tối đa "
+                            + roomType.getMaxCapacity()
+                            + " khách, bạn đang chọn "
+                            + request.guestCount() + " khách");
+        }
+
+        if (roomAvailabilityService.availableRooms(
+                roomType,
+                request.checkInDate(),
+                request.checkOutDate()) < 1) {
+
+            throw new RoomUnavailableException(
+                    "Loại phòng " + roomType.getName()
+                            + " đã hết phòng trong khoảng ngày bạn chọn. "
+                            + "Vui lòng chọn ngày hoặc loại phòng khác.");
+        }
+
+        OffsetDateTime createdAt = OffsetDateTime.now();
+
+        OperatingSettings settings = operatingSettingsService.findEffectiveAt(createdAt);
+
+        GuestQuoteResponse price = calculate(
+                roomType,
+                request.checkInDate(),
+                request.checkOutDate(),
+                request.guestCount(),
+                settings);
+
+        Booking booking = new Booking();
+
+        booking.setBookingCode(newUniqueCode());
+
+        // Booking tại quầy xác nhận ngay
+        booking.setStatus(BookingStatus.DA_XAC_NHAN);
+
+        booking.setSource(BookingSource.TRUC_TUYEN);
+
+        // Nguồn booking: tại quầy
+        booking.setSource(BookingSource.TAI_QUAY);
+
+        booking.setGuestName(request.guestName().trim());
+
+        booking.setGuestPhone(
+                request.phone() == null ? null : request.phone().trim());
+
+        booking.setGuestEmail(
+                request.email() == null || request.email().isBlank()
+                        ? null
+                        : request.email().trim().toLowerCase(Locale.ROOT));
+
+        booking.setGuestCount(request.guestCount());
+
+        booking.setNote(
+                request.note() == null || request.note().isBlank()
+                        ? null
+                        : request.note().trim());
+
+        booking.setRoomType(roomType);
+
+        booking.setRoomTypeNameSnapshot(roomType.getName());
+
+        booking.setCheckInDate(request.checkInDate());
+
+        booking.setCheckOutDate(request.checkOutDate());
+
+        booking.setWeekdayPriceSnapshot(roomType.getWeekdayPrice());
+
+        booking.setWeekendPriceSnapshot(roomType.getWeekendPrice());
+
+        booking.setWeekendDaysSnapshot(settings.getWeekendDays());
+
+        booking.setExtraGuestCount(price.extraGuests());
+
+        booking.setExtraPersonFeeSnapshot(price.extraPersonFee());
+
+        booking.setSurchargeAmount(price.surchargeAmount());
+
+        booking.setTotalAmount(price.totalAmount());
+
+        booking.setCreatedAt(createdAt);
+
+        // Booking tại quầy đã xác nhận nên không giữ chỗ 24 giờ
+        booking.setHoldExpiresAt(null);
+
+        return GuestBookingResponse.from(
+                bookingRepository.save(booking));
     }
 
     /**
