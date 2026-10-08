@@ -5,6 +5,9 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.ttcs.homestay.entity.BookingDepositAdjustment;
+import com.ttcs.homestay.repository.BookingDepositAdjustmentRepository;
+import com.ttcs.homestay.service.BookingDepositAdjustmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,9 +21,16 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/bookings")
 public class BookingDetailController {
     private final JdbcTemplate jdbcTemplate;
+    private final BookingDepositAdjustmentRepository adjustmentRepository;
+    private final BookingDepositAdjustmentService adjustmentService;
 
-    public BookingDetailController(JdbcTemplate jdbcTemplate) {
+    public BookingDetailController(
+            JdbcTemplate jdbcTemplate,
+            BookingDepositAdjustmentRepository adjustmentRepository,
+            BookingDepositAdjustmentService adjustmentService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.adjustmentRepository = adjustmentRepository;
+        this.adjustmentService = adjustmentService;
     }
 
     @GetMapping("/{id}/details")
@@ -31,7 +41,7 @@ public class BookingDetailController {
         if (bookings.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found");
         }
-        Map<String, Object> result = bookings.get(0);
+        Map<String, Object> result = new LinkedHashMap<>(bookings.get(0));
         List<Map<String, Object>> deposits = jdbcTemplate.query(
                 "SELECT id, amount, payment_method, received_date, payment_reference, created_by, created_at " +
                         "FROM booking_deposits WHERE booking_id = ? ORDER BY id DESC LIMIT 1",
@@ -46,6 +56,13 @@ public class BookingDetailController {
                         "FROM booking_audit_logs WHERE booking_id = ? ORDER BY created_at DESC, id DESC",
                 (rs, rowNum) -> historyRow(rs), id);
         result.put("history", histories);
+        List<BookingDepositAdjustment> adjustments = adjustmentRepository
+                .findAllByBookingIdOrderByCreatedAtAscIdAsc(id);
+        result.put("depositAdjustments", adjustments.stream()
+                .map(BookingDetailController::adjustmentRow).toList());
+        result.put("currentDepositTotal", deposits.isEmpty()
+                ? null
+                : adjustmentService.calculateCurrentDepositTotal(id));
         return result;
     }
 
@@ -102,6 +119,17 @@ public class BookingDetailController {
         result.put("actorName", rs.getString("actor_name"));
         result.put("actorEmail", rs.getString("actor_email"));
         result.put("createdAt", rs.getObject("created_at", java.time.OffsetDateTime.class));
+        return result;
+    }
+
+    private static Map<String, Object> adjustmentRow(BookingDepositAdjustment adjustment) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("id", adjustment.getId());
+        result.put("adjustmentType", adjustment.getAdjustmentType());
+        result.put("amount", adjustment.getAmount());
+        result.put("reason", adjustment.getReason());
+        result.put("createdBy", adjustment.getCreatedBy());
+        result.put("createdAt", adjustment.getCreatedAt());
         return result;
     }
 }

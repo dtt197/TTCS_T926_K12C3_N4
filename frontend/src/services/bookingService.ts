@@ -125,6 +125,28 @@ export type BookingDetailResponse = {
   holdExpiresAt: string | null
   deposit: BookingDepositResponse | null
   history?: BookingAuditLog[]
+  depositAdjustments: BookingDepositAdjustment[]
+  currentDepositTotal: number | null
+}
+
+export type BookingDepositAdjustment = {
+  id: number
+  adjustmentType: 'TANG' | 'GIAM'
+  amount: number
+  reason: string
+  createdBy: string | null
+  createdAt: string
+}
+
+export type BookingDepositAdjustmentRequest = {
+  type: 'TANG' | 'GIAM'
+  amount: number
+  reason: string
+}
+
+export type BookingDepositAdjustmentResult = BookingDepositAdjustment & {
+  bookingId: number
+  currentDepositTotal: number
 }
 
 export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
@@ -133,6 +155,17 @@ export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
 
 export function getBookingHistory(id: number): Promise<BookingAuditLog[]> {
   return apiRequest<BookingAuditLog[]>(`/api/bookings/${id}/history`)
+}
+
+export function createBookingDepositAdjustment(
+  id: number,
+  request: BookingDepositAdjustmentRequest,
+): Promise<BookingDepositAdjustmentResult> {
+  return apiRequest<BookingDepositAdjustmentResult>(`/api/bookings/${id}/deposit-adjustments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
 }
 
 /** S3-04: xem trước tình trạng phòng trống và số tiền được tính lại. */

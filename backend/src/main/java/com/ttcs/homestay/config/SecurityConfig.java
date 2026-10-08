@@ -178,6 +178,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/bookings", "/api/bookings/*/preview")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
 
+                        // S3-01: ghi bút toán điều chỉnh cọc dành cho Lễ tân và Chủ homestay.
+                        .requestMatchers(HttpMethod.POST, "/api/bookings/*/deposit-adjustments")
+                        .hasAnyRole("OWNER", "RECEPTIONIST")
+
                         // S3-01: Le tan xac nhan booking va ghi nhan tien coc.
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
