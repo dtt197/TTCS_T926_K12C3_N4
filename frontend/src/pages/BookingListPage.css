@@ -482,3 +482,82 @@
 .booking-detail-grid dt { font-size: 12px; color: #63746a; margin-bottom: 5px; }
 .booking-detail-grid dd { margin: 0; color: #183e2c; font-weight: 600; overflow-wrap: anywhere; }
 @media (max-width: 560px) { .booking-detail-grid { grid-template-columns: 1fr; } }
+
+/* SCRUM-96: Booking Audit Log / History styles */
+.booking-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.booking-history-card {
+  padding: 12px 14px;
+  border: 1px solid #dbe6df;
+  border-left: 4px solid var(--primary, #1b4931);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.booking-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #e2e8e4;
+  font-size: 12px;
+  color: var(--muted, #496356);
+}
+
+.booking-history-time {
+  font-weight: 600;
+  color: #234c38;
+}
+
+.booking-history-actor {
+  font-weight: 500;
+}
+
+.booking-history-diffs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.booking-history-diff-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-label {
+  min-width: 85px;
+  color: #63746a;
+  font-size: 12px;
+}
+
+.diff-value {
+  color: var(--text, #1c2e26);
+}
+
+.diff-arrow {
+  color: #176c45;
+  font-weight: bold;
+  margin: 0 4px;
+}
+
+.diff-price {
+  color: var(--primary, #1b4931);
+}
+
+.booking-history-empty {
+  margin: 10px 0;
+  font-size: 13px;
+  color: var(--muted, #63746a);
+  font-style: italic;
+}
+

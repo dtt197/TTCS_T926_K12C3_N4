@@ -599,6 +599,53 @@ export function BookingListPage() {
                     <div><dt>Thời điểm ghi nhận</dt><dd>{detailData.deposit.createdAt ? new Date(detailData.deposit.createdAt).toLocaleString('vi-VN') : 'Không có'}</dd></div>
                   </dl>
                 ) : <p>Booking chưa có tiền cọc được ghi nhận.</p>}
+
+                <h4 id="booking-history-section-title">Lịch sử thay đổi (Audit Log)</h4>
+                {detailData.history && detailData.history.length > 0 ? (
+                  <div className="booking-history-list" id="booking-history-list">
+                    {detailData.history.map((log) => (
+                      <div key={log.id} className="booking-history-card" id={`booking-history-item-${log.id}`}>
+                        <div className="booking-history-header">
+                          <span className="booking-history-time">
+                            ⏱️ {new Date(log.createdAt).toLocaleString('vi-VN')}
+                          </span>
+                          <span className="booking-history-actor">
+                            👤 {log.actorName || log.actorEmail || 'Hệ thống'}
+                            {log.actorEmail && log.actorName ? ` (${log.actorEmail})` : ''}
+                          </span>
+                        </div>
+                        <div className="booking-history-diffs">
+                          <div className="booking-history-diff-item">
+                            <span className="diff-label">Ngày ở:</span>
+                            <span className="diff-value">
+                              {formatDate(log.oldCheckInDate)} – {formatDate(log.oldCheckOutDate)}
+                              <span className="diff-arrow"> ➔ </span>
+                              <strong>{formatDate(log.newCheckInDate)} – {formatDate(log.newCheckOutDate)}</strong>
+                            </span>
+                          </div>
+                          <div className="booking-history-diff-item">
+                            <span className="diff-label">Loại phòng:</span>
+                            <span className="diff-value">
+                              {log.oldRoomTypeName}
+                              <span className="diff-arrow"> ➔ </span>
+                              <strong>{log.newRoomTypeName}</strong>
+                            </span>
+                          </div>
+                          <div className="booking-history-diff-item">
+                            <span className="diff-label">Tổng tiền:</span>
+                            <span className="diff-value">
+                              {formatCurrency(log.oldTotalAmount)}
+                              <span className="diff-arrow"> ➔ </span>
+                              <strong className="diff-price">{formatCurrency(log.newTotalAmount)}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="booking-history-empty" id="booking-history-empty">Chưa có lịch sử thay đổi nào cho booking này.</p>
+                )}
               </div>
             )}
             <div className="booking-edit-actions">

@@ -73,3 +73,25 @@ export type BookingChangePreview = {
   available: boolean
   nightlyPrices: NightlyPrice[]
 }
+
+/** SCRUM-96 (S3-04): Lịch sử thay đổi booking (Audit Log). */
+export type BookingAuditLog = {
+  id: number
+  bookingId: number
+  bookingCode: string
+  oldCheckInDate: string
+  newCheckInDate: string
+  oldCheckOutDate: string
+  newCheckOutDate: string
+  oldRoomTypeId: number | null
+  oldRoomTypeName: string
+  newRoomTypeId: number | null
+  newRoomTypeName: string
+  oldTotalAmount: number
+  newTotalAmount: number
+  actorUserId: number | null
+  actorName: string | null
+  actorEmail: string | null
+  createdAt: string
+}
+

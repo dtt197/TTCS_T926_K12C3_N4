@@ -69,6 +69,12 @@ public class BookingController {
                 "Không hỗ trợ xóa booking trực tiếp");
     }
 
+    @GetMapping("/{id}/history")
+    public List<com.ttcs.homestay.dto.booking.BookingAuditLogResponse> getBookingHistory(
+            @PathVariable Long id) {
+        return bookingService.getBookingHistory(id);
+    }
+
     @PostMapping("/{id}/preview")
     public com.ttcs.homestay.dto.booking.BookingChangePreviewResponse previewChange(
             @PathVariable Long id,

@@ -4,6 +4,7 @@ import type {
   BookingStatus,
   PageResponse,
   BookingChangePreview,
+  BookingAuditLog,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -123,10 +124,15 @@ export type BookingDetailResponse = {
   status: string
   holdExpiresAt: string | null
   deposit: BookingDepositResponse | null
+  history?: BookingAuditLog[]
 }
 
 export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
   return apiRequest<BookingDetailResponse>(`/api/bookings/${id}/details`)
+}
+
+export function getBookingHistory(id: number): Promise<BookingAuditLog[]> {
+  return apiRequest<BookingAuditLog[]>(`/api/bookings/${id}/history`)
 }
 
 /** S3-04: xem trước tình trạng phòng trống và số tiền được tính lại. */

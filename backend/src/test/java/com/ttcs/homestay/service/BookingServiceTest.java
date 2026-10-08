@@ -30,6 +30,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import org.mockito.ArgumentCaptor;
+import com.ttcs.homestay.dto.booking.BookingAuditLogResponse;
+import com.ttcs.homestay.entity.BookingAuditLog;
+import com.ttcs.homestay.repository.BookingAuditLogRepository;
+
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
 
@@ -54,6 +61,9 @@ class BookingServiceTest {
     @Mock
     private RoomAvailabilityService roomAvailabilityService;
 
+    @Mock
+    private BookingAuditLogRepository bookingAuditLogRepository;
+
     private BookingService bookingService;
 
     @BeforeEach
@@ -63,7 +73,7 @@ class BookingServiceTest {
                 new PricingService(roomTypeRepository, priceOverrideRepository, operatingSettingsService);
         bookingService = new BookingService(
                 bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
-                auditLogService, roomAvailabilityService);
+                auditLogService, roomAvailabilityService, bookingAuditLogRepository);
     }
 
     @Test
@@ -614,5 +624,98 @@ class BookingServiceTest {
         assertThat(preview.available()).isTrue();
         assertThat(preview.totalAmount()).isEqualTo(800_000L);
         assertThat(preview.nightlyPrices()).hasSize(3);
+    }
+
+    @Test
+    void updateBooking_ghiNhanAuditLogDayDuGiaTriCuVaMoi() {
+        RoomType oldRoomType = new RoomType();
+        oldRoomType.setId(1L);
+        oldRoomType.setName("Phòng Standard");
+        oldRoomType.setStatus(true);
+        oldRoomType.setWeekdayPrice(100_000L);
+        oldRoomType.setWeekendPrice(100_000L);
+
+        RoomType newRoomType = new RoomType();
+        newRoomType.setId(2L);
+        newRoomType.setName("Phòng VIP");
+        newRoomType.setStatus(true);
+        newRoomType.setWeekdayPrice(300_000L);
+        newRoomType.setWeekendPrice(300_000L);
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setWeekendDays("FRIDAY,SATURDAY");
+        when(operatingSettingsService.findEffectiveAt(any())).thenReturn(settings);
+
+        Booking existing = new Booking();
+        existing.setId(200L);
+        existing.setBookingCode("BK-200");
+        existing.setRoomType(oldRoomType);
+        existing.setRoomTypeNameSnapshot(oldRoomType.getName());
+        existing.setCheckInDate(LocalDate.of(2027, 5, 1));
+        existing.setCheckOutDate(LocalDate.of(2027, 5, 3));
+        existing.setTotalAmount(200_000L);
+        existing.setStatus(BookingStatus.DA_XAC_NHAN);
+
+        when(bookingRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(existing));
+        when(bookingDepositService.hasDeposit(existing)).thenReturn(false);
+        when(roomTypeRepository.findById(2L)).thenReturn(Optional.of(newRoomType));
+        when(roomAvailabilityService.availableRooms(eq(newRoomType), any(), any(), eq(200L))).thenReturn(3);
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BookingUpdateRequest request = new BookingUpdateRequest(2L, LocalDate.of(2027, 6, 1), LocalDate.of(2027, 6, 4));
+        BookingService.ActorInfo actor = new BookingService.ActorInfo(55L, "Lễ tân Hoa", "hoa@homestay.local");
+
+        BookingResponse response = bookingService.updateBooking(200L, request, actor);
+
+        assertThat(response.id()).isEqualTo(200L);
+        assertThat(response.roomTypeId()).isEqualTo(2L);
+
+        ArgumentCaptor<BookingAuditLog> captor = ArgumentCaptor.forClass(BookingAuditLog.class);
+        verify(bookingAuditLogRepository).save(captor.capture());
+
+        BookingAuditLog auditLog = captor.getValue();
+        assertThat(auditLog.getBookingCode()).isEqualTo("BK-200");
+        assertThat(auditLog.getOldCheckInDate()).isEqualTo(LocalDate.of(2027, 5, 1));
+        assertThat(auditLog.getNewCheckInDate()).isEqualTo(LocalDate.of(2027, 6, 1));
+        assertThat(auditLog.getOldCheckOutDate()).isEqualTo(LocalDate.of(2027, 5, 3));
+        assertThat(auditLog.getNewCheckOutDate()).isEqualTo(LocalDate.of(2027, 6, 4));
+        assertThat(auditLog.getOldRoomTypeId()).isEqualTo(1L);
+        assertThat(auditLog.getNewRoomTypeId()).isEqualTo(2L);
+        assertThat(auditLog.getOldRoomTypeName()).isEqualTo("Phòng Standard");
+        assertThat(auditLog.getNewRoomTypeName()).isEqualTo("Phòng VIP");
+        assertThat(auditLog.getOldTotalAmount()).isEqualTo(200_000L);
+        assertThat(auditLog.getNewTotalAmount()).isEqualTo(900_000L); // 3 đêm * 300k
+        assertThat(auditLog.getActorUserId()).isEqualTo(55L);
+        assertThat(auditLog.getActorName()).isEqualTo("Lễ tân Hoa");
+        assertThat(auditLog.getActorEmail()).isEqualTo("hoa@homestay.local");
+        assertThat(auditLog.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    void getBookingHistory_traVeDanhSachSapXepTheoCreatedAtGiamDan() {
+        when(bookingRepository.existsById(300L)).thenReturn(true);
+
+        Booking booking = new Booking();
+        booking.setId(300L);
+
+        BookingAuditLog log1 = new BookingAuditLog();
+        log1.setId(10L);
+        log1.setBooking(booking);
+        log1.setBookingCode("BK-300");
+        log1.setOldCheckInDate(LocalDate.of(2027, 1, 1));
+        log1.setNewCheckInDate(LocalDate.of(2027, 1, 2));
+        log1.setOldCheckOutDate(LocalDate.of(2027, 1, 3));
+        log1.setNewCheckOutDate(LocalDate.of(2027, 1, 5));
+        log1.setOldRoomTypeName("Phòng 1");
+        log1.setNewRoomTypeName("Phòng 2");
+
+        when(bookingAuditLogRepository.findByBookingIdOrderByCreatedAtDescIdDesc(300L))
+                .thenReturn(List.of(log1));
+
+        List<BookingAuditLogResponse> history = bookingService.getBookingHistory(300L);
+
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).bookingId()).isEqualTo(300L);
+        assertThat(history.get(0).bookingCode()).isEqualTo("BK-300");
     }
 }

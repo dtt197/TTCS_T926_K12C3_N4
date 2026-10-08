@@ -3,17 +3,20 @@ package com.ttcs.homestay.service;
 import java.util.Locale;
 import java.util.UUID;
 
+import com.ttcs.homestay.dto.booking.BookingAuditLogResponse;
 import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingAuditLog;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
 import com.ttcs.homestay.exception.RoomUnavailableException;
+import com.ttcs.homestay.repository.BookingAuditLogRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.DayOfWeek;
@@ -49,6 +52,27 @@ public class BookingService {
     private final BookingDepositService bookingDepositService;
     private final AuditLogService auditLogService;
     private final RoomAvailabilityService roomAvailabilityService;
+    private final BookingAuditLogRepository bookingAuditLogRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BookingService(
+            BookingRepository bookingRepository,
+            RoomTypeRepository roomTypeRepository,
+            OperatingSettingsService operatingSettingsService,
+            PricingService pricingService,
+            BookingDepositService bookingDepositService,
+            AuditLogService auditLogService,
+            RoomAvailabilityService roomAvailabilityService,
+            BookingAuditLogRepository bookingAuditLogRepository) {
+        this.bookingRepository = bookingRepository;
+        this.roomTypeRepository = roomTypeRepository;
+        this.operatingSettingsService = operatingSettingsService;
+        this.pricingService = pricingService;
+        this.bookingDepositService = bookingDepositService;
+        this.auditLogService = auditLogService;
+        this.roomAvailabilityService = roomAvailabilityService;
+        this.bookingAuditLogRepository = bookingAuditLogRepository;
+    }
 
     public BookingService(
             BookingRepository bookingRepository,
@@ -58,13 +82,8 @@ public class BookingService {
             BookingDepositService bookingDepositService,
             AuditLogService auditLogService,
             RoomAvailabilityService roomAvailabilityService) {
-        this.bookingRepository = bookingRepository;
-        this.roomTypeRepository = roomTypeRepository;
-        this.operatingSettingsService = operatingSettingsService;
-        this.pricingService = pricingService;
-        this.bookingDepositService = bookingDepositService;
-        this.auditLogService = auditLogService;
-        this.roomAvailabilityService = roomAvailabilityService;
+        this(bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
+                auditLogService, roomAvailabilityService, null);
     }
 
     @Transactional
@@ -217,8 +236,41 @@ public class BookingService {
         );
     }
 
+    public record ActorInfo(Long id, String name, String email) {}
+
+    public ActorInfo resolveCurrentActor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long actorId = null;
+        String actorEmail = null;
+        String actorName = null;
+        if (authentication instanceof JwtAuthenticationToken token) {
+            try {
+                actorId = Long.valueOf(token.getToken().getSubject());
+            } catch (NumberFormatException ignored) {
+                // The JWT subject may not be a numeric user ID.
+            }
+            actorEmail = token.getToken().getClaimAsString("email");
+            actorName = token.getToken().getClaimAsString("fullName");
+        }
+        if ((actorEmail == null || actorEmail.isBlank()) && authentication != null) {
+            actorEmail = authentication.getName();
+        }
+        if ((actorName == null || actorName.isBlank()) && authentication != null) {
+            actorName = authentication.getName();
+        }
+        if (actorName == null || actorName.isBlank()) {
+            actorName = "Hệ thống";
+        }
+        return new ActorInfo(actorId, actorName, actorEmail);
+    }
+
     @Transactional
     public BookingResponse updateBooking(Long id, BookingUpdateRequest request) {
+        return updateBooking(id, request, resolveCurrentActor());
+    }
+
+    @Transactional
+    public BookingResponse updateBooking(Long id, BookingUpdateRequest request, ActorInfo actor) {
         validateUpdateRequest(request);
 
         Booking booking = bookingRepository.findByIdForUpdate(id)
@@ -253,6 +305,13 @@ public class BookingService {
                 roomType, request.checkInDate(), request.checkOutDate(), weekendDays);
         long newTotalAmount = PricingService.total(nightlyPrices);
 
+        // Capture previous state for audit log / change history
+        LocalDate oldCheckInDate = booking.getCheckInDate();
+        LocalDate oldCheckOutDate = booking.getCheckOutDate();
+        Long oldRoomTypeId = booking.getRoomType() != null ? booking.getRoomType().getId() : null;
+        String oldRoomTypeName = booking.getRoomTypeNameSnapshot();
+        long oldTotalAmount = booking.getTotalAmount();
+
         // 3. Cập nhật booking cũ
         booking.setRoomType(roomType);
         booking.setRoomTypeNameSnapshot(roomType.getName());
@@ -267,7 +326,47 @@ public class BookingService {
         }
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
 
-        return BookingResponse.from(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // 4. Ghi nhận Booking Audit Log / History trong cùng Database Transaction
+        if (bookingAuditLogRepository != null) {
+            ActorInfo effectiveActor = actor != null ? actor : resolveCurrentActor();
+            BookingAuditLog auditLog = new BookingAuditLog();
+            auditLog.setBooking(savedBooking);
+            auditLog.setBookingCode(savedBooking.getBookingCode());
+            auditLog.setOldCheckInDate(oldCheckInDate);
+            auditLog.setNewCheckInDate(request.checkInDate());
+            auditLog.setOldCheckOutDate(oldCheckOutDate);
+            auditLog.setNewCheckOutDate(request.checkOutDate());
+            auditLog.setOldRoomTypeId(oldRoomTypeId);
+            auditLog.setOldRoomTypeName(oldRoomTypeName != null ? oldRoomTypeName : "");
+            auditLog.setNewRoomTypeId(roomType.getId());
+            auditLog.setNewRoomTypeName(roomType.getName());
+            auditLog.setOldTotalAmount(oldTotalAmount);
+            auditLog.setNewTotalAmount(newTotalAmount);
+            auditLog.setActorUserId(effectiveActor.id());
+            auditLog.setActorName(effectiveActor.name());
+            auditLog.setActorEmail(effectiveActor.email());
+            auditLog.setCreatedAt(OffsetDateTime.now());
+
+            bookingAuditLogRepository.save(auditLog);
+        }
+
+        return BookingResponse.from(savedBooking);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingAuditLogResponse> getBookingHistory(Long bookingId) {
+        if (!bookingRepository.existsById(bookingId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking");
+        }
+        if (bookingAuditLogRepository == null) {
+            return List.of();
+        }
+        return bookingAuditLogRepository.findByBookingIdOrderByCreatedAtDescIdDesc(bookingId)
+                .stream()
+                .map(BookingAuditLogResponse::from)
+                .toList();
     }
 
     private void validateUpdateRequest(BookingUpdateRequest request) {
