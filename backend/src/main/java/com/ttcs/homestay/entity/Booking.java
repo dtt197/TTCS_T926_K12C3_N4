@@ -57,14 +57,18 @@ public class Booking {
     private OffsetDateTime createdAt;
 
     @Column(name = "booking_code", nullable = false, unique = true, length = 40)
-private String bookingCode;
+    private String bookingCode;
 
-@Column(name = "guest_name", nullable = false, length = 120)
-private String guestName;
+    @Column(name = "guest_name", nullable = false, length = 120)
+    private String guestName;
 
-@Enumerated(EnumType.STRING)
-@Column(name = "status", nullable = false, length = 30)
-private BookingStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private BookingStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 30)
+    private BookingSource source;
 
     /** S2-07: thông tin khách tự đặt trên trang công khai (trống với booking nhân viên tạo). */
     @Column(name = "guest_phone", length = 20)

@@ -213,6 +213,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/room-type-cards").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/public/bookings/walk-in"
+                        ).hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
                         // S2-08: khách tra cứu booking bằng mã và email
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings/lookup").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getRoomTypes } from '../services/roomTypeService'
+import { createWalkInBooking } from '../services/guestBookingService'
 import type { RoomType } from '../types/roomType'
 import './WalkInBookingPage.css'
 
@@ -8,6 +9,10 @@ type WalkInForm = {
   checkInDate: string
   checkOutDate: string
   guestCount: string
+  guestName: string
+  phone: string
+  email: string
+  note: string
 }
 
 function todayIso() {
@@ -31,6 +36,10 @@ export function WalkInBookingPage() {
     checkInDate: todayIso(),
     checkOutDate: addDays(todayIso(), 1),
     guestCount: '1',
+    guestName: '',
+    phone: '',
+    email: '',
+    note: '',
   }))
 
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
@@ -74,11 +83,34 @@ export function WalkInBookingPage() {
     setMessage('')
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     setError('')
     setMessage('')
+
+    if (!form.guestName.trim()) {
+      setError('Vui lòng nhập họ tên khách.')
+      return
+    }
+
+    if (!form.phone.trim()) {
+      setError('Vui lòng nhập số điện thoại.')
+      return
+    }
+
+    if (!/^(03|05|07|08|09)[0-9]{8}$/.test(form.phone.trim())) {
+      setError('Số điện thoại phải có đúng 10 chữ số Việt Nam.')
+      return
+    }
+
+    if (
+      form.email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+    ) {
+      setError('Email không đúng định dạng.')
+      return
+    }
 
     if (!form.roomTypeId) {
       setError('Vui lòng chọn loại phòng.')
@@ -118,9 +150,28 @@ export function WalkInBookingPage() {
       return
     }
 
-    setMessage(
-      'Thông tin booking tại quầy hợp lệ.',
-    )
+    try {
+      const result = await createWalkInBooking({
+        roomTypeId: Number(form.roomTypeId),
+        checkInDate: form.checkInDate,
+        checkOutDate: form.checkOutDate,
+        guestName: form.guestName.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim() || undefined,
+        guestCount,
+        note: form.note.trim() || undefined,
+      })
+
+      setMessage(
+        `Tạo booking thành công. Mã booking: ${result.bookingCode}`,
+      )
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Không thể tạo booking tại quầy.',
+      )
+    }
   }
 
   if (loading) {
@@ -171,6 +222,47 @@ export function WalkInBookingPage() {
         )}
 
         <div className="walk-in-grid">
+          <label>
+            <span>Họ tên khách</span>
+
+            <input
+              type="text"
+              value={form.guestName}
+              maxLength={120}
+              placeholder="Nhập họ tên khách"
+              onChange={(event) =>
+                update('guestName', event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Số điện thoại</span>
+
+            <input
+              type="tel"
+              value={form.phone}
+              maxLength={10}
+              placeholder="Nhập số điện thoại"
+              onChange={(event) =>
+                update('phone', event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Email</span>
+
+            <input
+              type="email"
+              value={form.email}
+              maxLength={150}
+              placeholder="Không bắt buộc"
+              onChange={(event) =>
+                update('email', event.target.value)
+              }
+            />
+          </label>
           <label>
             <span>Loại phòng</span>
 
@@ -258,6 +350,20 @@ export function WalkInBookingPage() {
               </small>
             )}
           </label>
+
+          <label>
+            <span>Ghi chú</span>
+
+            <textarea
+              value={form.note}
+              maxLength={500}
+              placeholder="Ghi chú cho booking (không bắt buộc)"
+              onChange={(event) =>
+                update('note', event.target.value)
+              }
+            />
+          </label>
+
         </div>
 
         <div className="walk-in-actions">
@@ -265,7 +371,7 @@ export function WalkInBookingPage() {
             type="submit"
             className="walk-in-primary"
           >
-            Kiểm tra thông tin
+            Tạo booking
           </button>
         </div>
       </form>

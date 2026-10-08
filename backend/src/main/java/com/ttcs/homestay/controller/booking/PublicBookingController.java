@@ -5,6 +5,7 @@ import com.ttcs.homestay.dto.booking.GuestBookingResponse;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeDetailResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
+import com.ttcs.homestay.dto.booking.WalkInBookingRequest;
 import com.ttcs.homestay.service.GuestBookingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * S2-07 Lát 1: API công khai cho khách đặt phòng, không cần đăng nhập (khai báo
- * trong SecurityConfig).
+ * trong ).
  * S2-04: API công khai cho khách xem danh sách loại phòng và chi tiết loại phòng.
  */
 @RestController
@@ -75,5 +76,14 @@ public class PublicBookingController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(guestBookingService.createGuestBooking(request, ipAddress));
+    }
+
+    @PostMapping("/bookings/walk-in")
+    public ResponseEntity<GuestBookingResponse> createWalkInBooking(
+            @Valid @RequestBody WalkInBookingRequest request) {
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(guestBookingService.createWalkInBooking(request));
     }
 }
