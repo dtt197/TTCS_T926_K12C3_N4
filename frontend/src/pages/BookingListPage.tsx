@@ -16,6 +16,7 @@ import {
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
+import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -379,6 +380,8 @@ export function BookingListPage() {
           <p>Danh sách được sắp xếp theo thời điểm tạo mới nhất.</p>
         </div>
       </div>
+
+      <RoomShortageAlertSection />
 
       <form className="booking-filters" onSubmit={handleFilterSubmit}>
         <label>

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import '../App.css'
 
 import { hasPermission } from '../permissions/rolePermissions'
+import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
 
 
 
@@ -1418,7 +1419,7 @@ const counts = useMemo(
 
       <main className="main-content">
 
-
+        {!isHousekeeping && <RoomShortageAlertSection />}
 
         {/* =========================
 
