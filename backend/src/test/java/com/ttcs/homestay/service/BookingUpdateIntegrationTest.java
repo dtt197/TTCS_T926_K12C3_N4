@@ -7,10 +7,17 @@ import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.Room;
+import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.exception.RoomUnavailableException;
+import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.repository.BookingRepository;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
+import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,14 +40,33 @@ class BookingUpdateIntegrationTest {
     @Autowired
     private RoomTypeRepository roomTypeRepository;
 
+    @Autowired
+    private RoomRepository roomRepository;
+
+    @Autowired
+    private OperatingSettingsRepository operatingSettingsRepository;
+
     private Booking existingBooking;
     private RoomType originalRoomType;
     private RoomType newRoomType;
 
     @BeforeEach
     void setUp() {
-        originalRoomType = saveRoomType("UPDATE_ORIGINAL", "Phòng ban đầu");
-        newRoomType = saveRoomType("UPDATE_NEW", "Phòng mới");
+        operatingSettingsRepository.findAll().stream().findFirst().orElseGet(() -> {
+            OperatingSettings s = new OperatingSettings();
+            s.setHomestayName("HomeStay Test");
+            s.setCheckInTime(LocalTime.of(14, 0));
+            s.setCheckOutTime(LocalTime.of(12, 0));
+            s.setLateCheckoutFeePerHour(100_000L);
+            s.setExtraPersonFee(200_000L);
+            s.setCreatedByName("Hệ thống");
+            s.setCreatedAt(OffsetDateTime.now());
+            s.setWeekendDays("FRIDAY,SATURDAY");
+            return operatingSettingsRepository.save(s);
+        });
+
+        originalRoomType = saveRoomType("UPDATE_ORIGINAL", "Phòng ban đầu", 500_000L, 700_000L);
+        newRoomType = saveRoomType("UPDATE_NEW", "Phòng mới", 800_000L, 1_000_000L);
 
         existingBooking = new Booking();
         existingBooking.setBookingCode("UPDATEBK01");
@@ -58,14 +84,27 @@ class BookingUpdateIntegrationTest {
         existingBooking = bookingRepository.saveAndFlush(existingBooking);
     }
 
-    private RoomType saveRoomType(String code, String name) {
+    private RoomType saveRoomType(String code, String name, Long weekdayPrice, Long weekendPrice) {
         RoomType roomType = new RoomType();
         roomType.setCode(code);
         roomType.setName(name);
         roomType.setStandardCapacity(2);
         roomType.setMaxCapacity(3);
         roomType.setNumberOfBeds(1);
-        return roomTypeRepository.save(roomType);
+        roomType.setStatus(true);
+        roomType.setWeekdayPrice(weekdayPrice);
+        roomType.setWeekendPrice(weekendPrice);
+        RoomType saved = roomTypeRepository.save(roomType);
+
+        Room room = new Room();
+        room.setRoomNumber("R-" + code);
+        room.setFloor(1);
+        room.setRoomType(name);
+        room.setStatus(RoomStatus.TRONG_SACH);
+        room.setActive(true);
+        roomRepository.save(room);
+
+        return saved;
     }
 
     @Test
@@ -84,7 +123,8 @@ class BookingUpdateIntegrationTest {
         assertThat(saved.getCheckInDate()).isEqualTo(LocalDate.of(2027, 7, 1));
         assertThat(saved.getCheckOutDate()).isEqualTo(LocalDate.of(2027, 7, 5));
         assertThat(bookingRepository.count()).isEqualTo(1);
-        assertThat(saved.getTotalAmount()).isEqualTo(1_500_000L);
+        // 4 đêm: T5 (500k), T6 (700k), T7 (700k), CN (500k) => 2.400.000đ
+        assertThat(saved.getTotalAmount()).isEqualTo(2_400_000L);
     }
 
     @Test
@@ -103,6 +143,8 @@ class BookingUpdateIntegrationTest {
         assertThat(saved.getRoomType().getId()).isEqualTo(newRoomType.getId());
         assertThat(saved.getRoomTypeNameSnapshot()).isEqualTo(newRoomType.getName());
         assertThat(bookingRepository.count()).isEqualTo(1);
+        // 3 đêm theo giá phòng mới (800k, 1m, 1m) => 2.800.000đ
+        assertThat(saved.getTotalAmount()).isEqualTo(2_800_000L);
     }
 
     @Test
@@ -123,6 +165,8 @@ class BookingUpdateIntegrationTest {
         assertThat(saved.getRoomType().getId()).isEqualTo(newRoomType.getId());
         assertThat(saved.getRoomTypeNameSnapshot()).isEqualTo(newRoomType.getName());
         assertThat(bookingRepository.count()).isEqualTo(1);
+        // 4 đêm ngày thường: 4 * 800k = 3.200.000đ
+        assertThat(saved.getTotalAmount()).isEqualTo(3_200_000L);
     }
 
     @Test
@@ -231,10 +275,71 @@ class BookingUpdateIntegrationTest {
         assertThat(saved.getBookingCode()).isEqualTo("UPDATEBK01");
         assertThat(saved.getGuestName()).isEqualTo("Khách cập nhật");
         assertThat(saved.getStatus()).isEqualTo(BookingStatus.DA_XAC_NHAN);
-        assertThat(saved.getTotalAmount()).isEqualTo(1_500_000L);
-        assertThat(saved.getWeekdayPriceSnapshot()).isEqualTo(500_000L);
-        assertThat(saved.getWeekendPriceSnapshot()).isEqualTo(700_000L);
+        // Tái tính toán giá theo loại phòng mới (5 đêm = 4.400.000đ)
+        assertThat(saved.getTotalAmount()).isEqualTo(4_400_000L);
+        assertThat(saved.getWeekdayPriceSnapshot()).isEqualTo(800_000L);
+        assertThat(saved.getWeekendPriceSnapshot()).isEqualTo(1_000_000L);
         assertThat(saved.getWeekendDaysSnapshot()).isEqualTo("FRIDAY,SATURDAY");
         assertThat(bookingRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsUpdateWhenRoomTypeIsSoldOut() {
+        Long bookingId = existingBooking.getId();
+
+        // Tạo booking khác chiếm hết phòng của originalRoomType trong khoảng ngày 2027-07-01 đến 2027-07-05
+        Booking blocker = new Booking();
+        blocker.setBookingCode("BLOCKER01");
+        blocker.setGuestName("Khách giữ phòng");
+        blocker.setStatus(BookingStatus.DA_XAC_NHAN);
+        blocker.setRoomType(originalRoomType);
+        blocker.setRoomTypeNameSnapshot(originalRoomType.getName());
+        blocker.setCheckInDate(LocalDate.of(2027, 7, 1));
+        blocker.setCheckOutDate(LocalDate.of(2027, 7, 5));
+        blocker.setWeekdayPriceSnapshot(500_000L);
+        blocker.setWeekendPriceSnapshot(700_000L);
+        blocker.setWeekendDaysSnapshot("FRIDAY,SATURDAY");
+        blocker.setTotalAmount(2_400_000L);
+        blocker.setCreatedAt(OffsetDateTime.now());
+        bookingRepository.saveAndFlush(blocker);
+
+        assertThatThrownBy(() -> bookingService.updateBooking(
+                bookingId,
+                new BookingUpdateRequest(
+                        originalRoomType.getId(),
+                        LocalDate.of(2027, 7, 1),
+                        LocalDate.of(2027, 7, 5))))
+                .isInstanceOf(RoomUnavailableException.class)
+                .hasMessageContaining("đã hết phòng trống");
+    }
+
+    @Test
+    void rejectsUpdateWhenNewRoomTypeHasNoAvailableRooms() {
+        Long bookingId = existingBooking.getId();
+
+        // Tạo booking chiếm hết phòng của newRoomType
+        Booking blocker = new Booking();
+        blocker.setBookingCode("BLOCKER02");
+        blocker.setGuestName("Khách giữ phòng mới");
+        blocker.setStatus(BookingStatus.DA_XAC_NHAN);
+        blocker.setRoomType(newRoomType);
+        blocker.setRoomTypeNameSnapshot(newRoomType.getName());
+        blocker.setCheckInDate(LocalDate.of(2027, 8, 2));
+        blocker.setCheckOutDate(LocalDate.of(2027, 8, 6));
+        blocker.setWeekdayPriceSnapshot(800_000L);
+        blocker.setWeekendPriceSnapshot(1_000_000L);
+        blocker.setWeekendDaysSnapshot("FRIDAY,SATURDAY");
+        blocker.setTotalAmount(3_200_000L);
+        blocker.setCreatedAt(OffsetDateTime.now());
+        bookingRepository.saveAndFlush(blocker);
+
+        assertThatThrownBy(() -> bookingService.updateBooking(
+                bookingId,
+                new BookingUpdateRequest(
+                        newRoomType.getId(),
+                        LocalDate.of(2027, 8, 2),
+                        LocalDate.of(2027, 8, 6))))
+                .isInstanceOf(RoomUnavailableException.class)
+                .hasMessageContaining("đã hết phòng trống");
     }
 }
