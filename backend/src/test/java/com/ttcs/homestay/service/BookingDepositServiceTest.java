@@ -44,7 +44,7 @@ class BookingDepositServiceTest {
 
     @Test
     void xacNhanBooking_khongTimThay_throwsNotFound() {
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.empty());
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.empty());
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
                 BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null, null)))
@@ -60,7 +60,7 @@ class BookingDepositServiceTest {
         booking.setId(1L);
         booking.setStatus(BookingStatus.DA_XAC_NHAN);
 
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
                 BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null, null)))
@@ -76,8 +76,9 @@ class BookingDepositServiceTest {
         booking.setId(1L);
         booking.setStatus(BookingStatus.CHO_XAC_NHAN);
 
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
         when(bookingDepositRepository.existsByBooking(booking)).thenReturn(true);
+        booking.setTotalAmount(1_000_000L);
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
                 BigDecimal.valueOf(500_000), "CASH", LocalDate.now(), null, null)))
@@ -92,7 +93,7 @@ class BookingDepositServiceTest {
         booking.setId(1L);
         booking.setStatus(BookingStatus.CHO_XAC_NHAN);
 
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
                 null, "CASH", null, null, null)))
@@ -107,7 +108,7 @@ class BookingDepositServiceTest {
         booking.setId(1L);
         booking.setStatus(BookingStatus.CHO_XAC_NHAN);
 
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
                 BigDecimal.valueOf(-1000), "CASH", null, null, null)))
@@ -122,7 +123,7 @@ class BookingDepositServiceTest {
         booking.setId(1L);
         booking.setStatus(BookingStatus.CHO_XAC_NHAN);
 
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
                 BigDecimal.valueOf(500_000), null, null, null, null)))
@@ -137,7 +138,7 @@ class BookingDepositServiceTest {
         booking.setId(1L);
         booking.setStatus(BookingStatus.CHO_XAC_NHAN);
 
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
 
         assertThatThrownBy(() -> service.confirmBooking(1L, new BookingConfirmRequest(
                 BigDecimal.valueOf(500_000), "BANK_TRANSFER", LocalDate.now(), null, null)))
@@ -160,8 +161,9 @@ class BookingDepositServiceTest {
                 "123456789",
                 "admin"
         );
+        booking.setTotalAmount(1_000_000L);
 
-        when(bookingRepository.findById(1L)).thenReturn(java.util.Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(1L)).thenReturn(java.util.Optional.of(booking));
         when(bookingDepositRepository.save(any(BookingDeposit.class))).thenAnswer(inv -> inv.getArgument(0));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -170,4 +172,34 @@ class BookingDepositServiceTest {
         assertThat(result.deposit().paymentReference()).isEqualTo("123456789");
         assertThat(result.status()).isEqualTo("DA_XAC_NHAN");
     }
+    @Test
+void xacNhanBooking_daHuy_throwsConflict() {
+    Booking booking = new Booking();
+    booking.setId(1L);
+    booking.setStatus(BookingStatus.DA_HUY);
+    booking.setTotalAmount(1_000_000L);
+
+    when(bookingRepository.findByIdForUpdate(1L))
+            .thenReturn(java.util.Optional.of(booking));
+
+    BookingConfirmRequest request = new BookingConfirmRequest(
+            BigDecimal.valueOf(500_000),
+            "CASH",
+            LocalDate.now(),
+            null,
+            "le tan"
+    );
+
+    assertThatThrownBy(() -> service.confirmBooking(1L, request))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(exception -> {
+                ResponseStatusException responseException =
+                        (ResponseStatusException) exception;
+                assertThat(responseException.getStatusCode().value())
+                        .isEqualTo(409);
+            });
+
+    verify(bookingDepositRepository, never()).save(any());
+    verify(bookingRepository, never()).save(any());
+}
 }

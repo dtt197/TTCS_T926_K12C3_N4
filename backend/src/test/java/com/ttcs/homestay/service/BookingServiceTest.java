@@ -198,7 +198,7 @@ class BookingServiceTest {
         existing.setCheckOutDate(LocalDate.of(2027, 5, 5));
         existing.setTotalAmount(2_000_000L);
 
-        when(bookingRepository.findById(10L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(1L)).thenReturn(Optional.of(roomType));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -246,7 +246,7 @@ class BookingServiceTest {
         existing.setCheckOutDate(LocalDate.of(2027, 6, 4));
         existing.setTotalAmount(1_200_000L);
 
-        when(bookingRepository.findById(20L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(2L)).thenReturn(Optional.of(newRoomType));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -290,7 +290,7 @@ class BookingServiceTest {
         existing.setCheckOutDate(LocalDate.of(2027, 7, 14));
         existing.setTotalAmount(3_000_000L);
 
-        when(bookingRepository.findById(30L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(3L)).thenReturn(Optional.of(newRoomType));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -406,7 +406,7 @@ class BookingServiceTest {
         existing.setWeekdayPriceSnapshot(1_000_000L);
         existing.setWeekendPriceSnapshot(1_500_000L);
 
-        when(bookingRepository.findById(50L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(6L)).thenReturn(Optional.of(newRoomType));
 
         org.mockito.ArgumentCaptor<Booking> captor = org.mockito.ArgumentCaptor.forClass(Booking.class);
@@ -458,7 +458,7 @@ class BookingServiceTest {
         existing.setCheckOutDate(LocalDate.of(2027, 10, 3)); // 2 đêm: 200k + 300k = 500k
         existing.setTotalAmount(500_000L);
 
-        when(bookingRepository.findById(100L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(10L)).thenReturn(Optional.of(roomType));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -489,7 +489,7 @@ class BookingServiceTest {
         existing.setCheckInDate(LocalDate.of(2027, 10, 1));
         existing.setCheckOutDate(LocalDate.of(2027, 10, 3));
 
-        when(bookingRepository.findById(101L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(10L)).thenReturn(Optional.of(roomType));
         // Giả lập hết phòng
         when(roomAvailabilityService.availableRooms(eq(roomType), any(), any(), eq(101L))).thenReturn(0);
@@ -532,7 +532,7 @@ class BookingServiceTest {
         existing.setCheckOutDate(LocalDate.of(2027, 10, 13)); // Thứ Tư (2 đêm)
         existing.setTotalAmount(400_000L);
 
-        when(bookingRepository.findById(102L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(102L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(2L)).thenReturn(Optional.of(newType));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -563,7 +563,7 @@ class BookingServiceTest {
         existing.setCheckInDate(LocalDate.of(2027, 10, 11));
         existing.setCheckOutDate(LocalDate.of(2027, 10, 13));
 
-        when(bookingRepository.findById(103L)).thenReturn(Optional.of(existing));
+        when(bookingRepository.findByIdForUpdate(103L)).thenReturn(Optional.of(existing));
         when(roomTypeRepository.findById(2L)).thenReturn(Optional.of(newType));
         when(roomAvailabilityService.availableRooms(eq(newType), any(), any(), eq(103L))).thenReturn(0);
 

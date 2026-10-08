@@ -31,6 +31,95 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:booking_confirm_audit;MODE=PostgreSQL;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 class BookingConfirmAuditIntegrationTest {
+    @Test
+    void depositEqualToDatabaseTotalSucceeds() throws Exception {
+        confirm(booking.getId(), 500000).andExpect(status().isOk());
+        assertThat(auditCount()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT amount FROM booking_deposits", java.math.BigDecimal.class))
+                .isEqualByComparingTo("500000");
+    }
+
+    @Test
+    void existingDepositOnPendingBookingIsRejectedWithoutAnotherPayment() throws Exception {
+        jdbc.update("INSERT INTO booking_deposits (booking_id, amount, payment_method, created_at) VALUES (?, 100000, 'CASH', CURRENT_TIMESTAMP)", booking.getId());
+        confirm(booking.getId(), 200000).andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Đã có tiền cọc cho booking này"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM booking_deposits", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT amount FROM booking_deposits", java.math.BigDecimal.class))
+                .isEqualByComparingTo("100000");
+        assertThat(bookings.findById(booking.getId()).orElseThrow().getStatus()).isEqualTo(BookingStatus.CHO_XAC_NHAN);
+        assertThat(bookings.findById(booking.getId()).orElseThrow().getHoldExpiresAt()).isNotNull();
+        assertThat(auditCount()).isZero();
+    }
+
+    @Test
+    void depositAboveDatabaseTotalFailsWithoutChanges() throws Exception {
+        confirm(booking.getId(), 500001).andExpect(status().isBadRequest())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Tiền cọc không được lớn hơn tổng tiền đặt phòng"));
+        assertUnchanged();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(value = BookingStatus.class, names = "CHO_XAC_NHAN",
+            mode = org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE)
+    void rejectsEveryNonPendingStatusWithoutChanges(BookingStatus initialStatus) throws Exception {
+        booking.setStatus(initialStatus);
+        bookings.saveAndFlush(booking);
+        confirm(booking.getId(), 200000).andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Booking không ở trạng thái chờ xác nhận, không thể xác nhận tiền cọc"));
+        assertThat(bookings.findById(booking.getId()).orElseThrow().getStatus()).isEqualTo(initialStatus);
+        assertThat(bookings.findById(booking.getId()).orElseThrow().getHoldExpiresAt()).isNotNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM booking_deposits", Integer.class)).isZero();
+        assertThat(auditCount()).isZero();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+    void expiredPendingBookingCannotBeConfirmed(boolean explicitDeadline) throws Exception {
+        booking.setCreatedAt(OffsetDateTime.now().minusHours(25));
+        booking.setHoldExpiresAt(explicitDeadline ? OffsetDateTime.now().minusHours(1) : null);
+        bookings.saveAndFlush(booking);
+        var storedDeadline = bookings.findById(booking.getId()).orElseThrow().getHoldExpiresAt();
+        confirm(booking.getId(), 200000).andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Đặt phòng đã hết hạn giữ chỗ, không thể xác nhận"));
+        var saved = bookings.findById(booking.getId()).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(BookingStatus.CHO_XAC_NHAN);
+        assertThat(saved.getHoldExpiresAt()).isEqualTo(storedDeadline);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM booking_deposits", Integer.class)).isZero();
+        assertThat(auditCount()).isZero();
+    }
+
+    @Test
+    void concurrentRequestsCommitOnlyOneConfirmationAndAudit() throws Exception {
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var ready = new java.util.concurrent.CountDownLatch(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.Callable<Integer> request = () -> {
+            ready.countDown();
+            if (!start.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new AssertionError("Start timeout");
+            return confirm(booking.getId(), 200000).andReturn().getResponse().getStatus();
+        };
+        try {
+            var first = executor.submit(request);
+            var second = executor.submit(request);
+            assertThat(ready.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(java.util.List.of(first.get(15, java.util.concurrent.TimeUnit.SECONDS),
+                    second.get(15, java.util.concurrent.TimeUnit.SECONDS))).containsExactlyInAnyOrder(200, 409);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM booking_deposits", Integer.class)).isEqualTo(1);
+            assertThat(auditCount()).isEqualTo(1);
+            var saved = bookings.findById(booking.getId()).orElseThrow();
+            assertThat(saved.getStatus()).isEqualTo(BookingStatus.DA_XAC_NHAN);
+            assertThat(saved.getHoldExpiresAt()).isNull();
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+        }
+    }
     @Autowired private MockMvc mvc;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private BookingRepository bookings;

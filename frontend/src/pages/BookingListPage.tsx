@@ -1,4 +1,5 @@
 import './BookingListPage.css'
+import { ApiRequestError } from '../services/apiClient'
 import type {
   BookingStatus,
   BookingListItem,
@@ -236,6 +237,7 @@ export function BookingListPage() {
   }
 
   function startConfirming(booking: BookingListItem) {
+    if (booking.status !== 'CHO_XAC_NHAN' || booking.holdExpired) return
     setConfirmingBooking(booking)
     setConfirmError(null)
     setConfirmForm({
@@ -250,9 +252,14 @@ export function BookingListPage() {
   async function handleConfirmBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!confirmingBooking || confirmSaving) return
+    if (confirmingBooking.status !== 'CHO_XAC_NHAN' || confirmingBooking.holdExpired) return
     const amount = Number(confirmForm.amount)
     if (!confirmForm.amount || !Number.isSafeInteger(amount) || amount <= 0) {
       setConfirmError('Số tiền cọc phải là số nguyên dương.')
+      return
+    }
+    if (amount > confirmingBooking.totalAmount) {
+      setConfirmError('Tiền cọc không được lớn hơn tổng tiền đặt phòng.')
       return
     }
     if (!confirmForm.receivedDate) {
@@ -278,6 +285,11 @@ export function BookingListPage() {
       setRefreshVersion((version) => version + 1)
     } catch (err) {
       setConfirmError(err instanceof Error ? err.message : 'Không thể xác nhận booking.')
+      if (err instanceof ApiRequestError && err.status === 409) {
+        setConfirmingBooking(null)
+        setEditSuccess(null)
+        setRefreshVersion((version) => version + 1)
+      }
     } finally {
       setConfirmSaving(false)
     }
@@ -595,6 +607,7 @@ export function BookingListPage() {
         </div>
       )}
 
+      {!confirmingBooking && confirmError && <div className="alert" role="alert">{confirmError}</div>}
       {confirmingBooking && (
         <div className="booking-dialog-backdrop">
           <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-confirm-title">
@@ -614,7 +627,11 @@ export function BookingListPage() {
             </div>
             <form className="booking-edit-form" onSubmit={handleConfirmBooking}>
               <label>Số tiền cọc (VND)
-                <input type="number" min="1" step="1" required value={confirmForm.amount} onChange={(event) => setConfirmForm((f) => ({...f, amount: event.target.value}))} />
+                <strong>Tổng tiền đặt phòng: {formatCurrency(confirmingBooking.totalAmount)}</strong>
+                <input type="number" min="1" max={confirmingBooking.totalAmount} step="1" required value={confirmForm.amount} onChange={(event) => setConfirmForm((f) => ({...f, amount: event.target.value}))} />
+                {Number(confirmForm.amount) > confirmingBooking.totalAmount && (
+                  <span className="alert" role="alert">Tiền cọc không được lớn hơn tổng tiền đặt phòng.</span>
+                )}
               </label>
               <label>Phương thức thanh toán
                 <select value={confirmForm.paymentMethod} onChange={(event) => setConfirmForm((f) => ({...f, paymentMethod: event.target.value as 'CASH' | 'BANK_TRANSFER'}))}>
@@ -634,7 +651,7 @@ export function BookingListPage() {
               {confirmError && <div className="alert" role="alert">{confirmError}</div>}
               <div className="booking-edit-actions">
                 <button type="button" className="booking-cancel-button" disabled={confirmSaving} onClick={() => setConfirmingBooking(null)}>Huỷ</button>
-                <button type="submit" className="booking-save-button" disabled={confirmSaving}>{confirmSaving ? 'Đang xác nhận...' : 'Xác nhận và lưu cọc'}</button>
+                <button type="submit" className="booking-save-button" disabled={confirmSaving || !Number.isSafeInteger(Number(confirmForm.amount)) || Number(confirmForm.amount) <= 0 || Number(confirmForm.amount) > confirmingBooking.totalAmount || !confirmForm.receivedDate || (confirmForm.paymentMethod === 'BANK_TRANSFER' && !confirmForm.paymentReference.trim())}>{confirmSaving ? 'Đang xác nhận...' : 'Xác nhận và lưu cọc'}</button>
               </div>
             </form>
           </section>

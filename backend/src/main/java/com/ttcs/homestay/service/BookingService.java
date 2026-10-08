@@ -216,7 +216,7 @@ public class BookingService {
     public BookingResponse updateBooking(Long id, BookingUpdateRequest request) {
         validateUpdateRequest(request);
 
-        Booking booking = bookingRepository.findById(id)
+        Booking booking = bookingRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Không tìm thấy booking"));
