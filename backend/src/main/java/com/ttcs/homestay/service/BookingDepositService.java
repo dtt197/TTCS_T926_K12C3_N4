@@ -30,7 +30,7 @@ public class BookingDepositService {
 
     @Transactional
     public BookingConfirmResponse confirmBooking(Long id, BookingConfirmRequest request) {
-        Booking booking = bookingRepository.findById(id)
+        Booking booking = bookingRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
 
@@ -40,9 +40,22 @@ public class BookingDepositService {
                     "Booking không ở trạng thái chờ xác nhận, không thể xác nhận tiền cọc");
         }
 
+        var now = java.time.OffsetDateTime.now();
+        if ((booking.getHoldExpiresAt() != null && !booking.getHoldExpiresAt().isAfter(now))
+                || BookingHoldPolicy.isExpired(booking.getStatus(),
+                        booking.getCreatedAt() == null ? null : booking.getCreatedAt().toInstant(), now.toInstant())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Đặt phòng đã hết hạn giữ chỗ, không thể xác nhận");
+        }
+        if (request == null) {
+            throw new InvalidDepositException("Vui lòng nhập thông tin tiền cọc");
+        }
         validateDeposit(request.amount(), request.paymentMethod(), request.paymentReference());
+        if (request.amount().compareTo(BigDecimal.valueOf(booking.getTotalAmount())) > 0) {
+            throw new InvalidDepositException("Tiền cọc không được lớn hơn tổng tiền đặt phòng");
+        }
         if (request.receivedDate() == null) {
-            throw new InvalidDepositException("Ngay nhan coc la bat buoc");
+            throw new InvalidDepositException("Ngày nhận cọc là bắt buộc");
         }
 
         // Lát 1: mỗi booking chỉ có tối đa 1 khoản cọc
@@ -91,7 +104,7 @@ public class BookingDepositService {
 
         String method = paymentMethod.trim().toUpperCase(java.util.Locale.ROOT);
         if (!"CASH".equals(method) && !"BANK_TRANSFER".equals(method)) {
-            throw new InvalidDepositException("Phuong thuc thanh toan khong hop le");
+            throw new InvalidDepositException("Phương thức thanh toán không hợp lệ");
         }
         if ("BANK_TRANSFER".equals(method)) {
             if (paymentReference == null || paymentReference.isBlank()) {

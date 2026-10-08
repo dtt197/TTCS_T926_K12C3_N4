@@ -8,12 +8,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class InvalidDepositExceptionHandler {
 
+    @ExceptionHandler(DuplicatePaymentException.class)
+    public ResponseEntity<ApiError> handleDuplicatePayment(DuplicatePaymentException ex) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                .body(ApiError.of(ex.getMessage()));
+    }
+
     @ExceptionHandler(InvalidDepositException.class)
-    public ResponseEntity<String> handleInvalidDeposit(
+    public ResponseEntity<ApiError> handleInvalidDeposit(
             InvalidDepositException ex) {
 
         return ResponseEntity
                 .badRequest()
-                .body(ex.getMessage());
+                .body(ApiError.of(ex.getMessage()));
     }
 }

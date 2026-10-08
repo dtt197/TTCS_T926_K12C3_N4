@@ -19,6 +19,10 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpecificationExecutor<Booking> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Booking b where b.id = :id")
+    Optional<Booking> findByIdForUpdate(@Param("id") Long id);
+
     List<Booking> findAllByOrderByCreatedAtDescIdDesc();
 
     /** S2-07: mã booking đã có chưa (sinh lại nếu trùng). */
@@ -41,6 +45,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("checkOut") LocalDate checkOut,
             @Param("statuses") Collection<BookingStatus> statuses);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     List<Booking> findByStatusAndHoldExpiresAtLessThanEqual(
             BookingStatus status,
             OffsetDateTime now);
