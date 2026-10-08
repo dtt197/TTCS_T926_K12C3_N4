@@ -1,7 +1,15 @@
 import './BookingListPage.css'
-import type { BookingStatus, BookingListItem } from '../types/booking'
+import type {
+  BookingStatus,
+  BookingListItem,
+  BookingChangePreview,
+} from '../types/booking'
 import { useEffect, useState, type FormEvent } from 'react'
-import { searchBookings, updateBooking } from '../services/bookingService'
+import {
+  searchBookings,
+  updateBooking,
+  previewBookingChange,
+} from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
 
@@ -67,6 +75,9 @@ export function BookingListPage() {
     checkOutDate: '',
     roomTypeId: '',
   })
+  const [preview, setPreview] = useState<BookingChangePreview | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
 
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
@@ -117,6 +128,72 @@ export function BookingListPage() {
     }
   }, [page, appliedFilters, refreshVersion])
 
+  useEffect(() => {
+    if (!editingBooking) {
+      setPreview(null)
+      setPreviewError(null)
+      setPreviewLoading(false)
+      return
+    }
+
+    if (!editForm.checkInDate || !editForm.checkOutDate || !editForm.roomTypeId) {
+      setPreview(null)
+      setPreviewError(null)
+      setPreviewLoading(false)
+      return
+    }
+
+    if (editForm.checkInDate >= editForm.checkOutDate) {
+      setPreview(null)
+      setPreviewError('Ngày trả phòng phải sau ngày nhận phòng.')
+      setPreviewLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setPreviewLoading(true)
+    setPreviewError(null)
+
+    const timer = setTimeout(() => {
+      previewBookingChange(editingBooking.id, {
+        checkInDate: editForm.checkInDate,
+        checkOutDate: editForm.checkOutDate,
+        roomTypeId: Number(editForm.roomTypeId),
+      })
+        .then((result) => {
+          if (!cancelled) {
+            setPreview(result)
+            setPreviewError(null)
+          }
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) {
+            setPreview(null)
+            setPreviewError(
+              err instanceof Error
+                ? err.message
+                : 'Không thể tính toán giá phòng và kiểm tra phòng trống.',
+            )
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setPreviewLoading(false)
+          }
+        })
+    }, 250)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [
+    editingBooking?.id,
+    editForm.checkInDate,
+    editForm.checkOutDate,
+    editForm.roomTypeId,
+  ])
+
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -148,6 +225,9 @@ export function BookingListPage() {
       checkOutDate: booking.checkOutDate,
       roomTypeId: booking.roomTypeId === null ? '' : String(booking.roomTypeId),
     })
+    setPreview(null)
+    setPreviewError(null)
+    setPreviewLoading(false)
     setEditError(null)
     setEditSuccess(null)
     setRoomTypesLoading(true)
@@ -175,16 +255,22 @@ export function BookingListPage() {
       setEditError('Ngày trả phòng phải sau ngày nhận phòng.')
       return
     }
+    if (preview && !preview.available) {
+      setEditError('Loại phòng đã hết trong khoảng ngày đã chọn. Vui lòng chọn ngày hoặc loại phòng khác.')
+      return
+    }
 
     setEditSaving(true)
     setEditError(null)
     try {
-      await updateBooking(editingBooking.id, {
+      const updated = await updateBooking(editingBooking.id, {
         checkInDate: editForm.checkInDate,
         checkOutDate: editForm.checkOutDate,
         roomTypeId: Number(editForm.roomTypeId),
       })
-      setEditSuccess(`Đã cập nhật booking ${editingBooking.bookingCode}.`)
+      setEditSuccess(
+        `Đã cập nhật booking ${editingBooking.bookingCode}. Tổng tiền mới: ${formatCurrency(updated.totalAmount)}.`,
+      )
       setEditingBooking(null)
       setRefreshVersion((version) => version + 1)
     } catch (err) {
@@ -408,6 +494,7 @@ export function BookingListPage() {
               <span>Ngày nhận: {formatDate(editingBooking.checkInDate)}</span>
               <span>Ngày trả: {formatDate(editingBooking.checkOutDate)}</span>
               <span>Loại phòng: {editingBooking.roomTypeNameSnapshot}</span>
+              <span>Tổng tiền: {formatCurrency(editingBooking.totalAmount)}</span>
             </div>
 
             <form className="booking-edit-form" id="booking-edit-form" onSubmit={handleUpdateBooking}>
@@ -472,6 +559,70 @@ export function BookingListPage() {
                     ))}
                 </select>
               </label>
+
+              {previewLoading && (
+                <div className="booking-preview-card" id="booking-preview-card">
+                  <div className="preview-loading">Đang kiểm tra phòng trống và tính lại tiền...</div>
+                </div>
+              )}
+
+              {previewError && !previewLoading && (
+                <div className="booking-preview-card unavailable" id="booking-preview-card">
+                  <div className="preview-warning" id="booking-preview-error">⚠️ {previewError}</div>
+                </div>
+              )}
+
+              {preview && !previewLoading && (
+                <div
+                  className={`booking-preview-card ${preview.available ? 'available' : 'unavailable'}`}
+                  id="booking-preview-card"
+                >
+                  <div className="preview-row">
+                    <strong>Xem trước thay đổi</strong>
+                    <span
+                      id="preview-room-status"
+                      className={`preview-badge ${preview.available ? 'available' : 'sold-out'}`}
+                    >
+                      {preview.available
+                        ? `🟢 Còn ${preview.availableRooms} phòng trống`
+                        : '🔴 Hết phòng trong thời gian này'}
+                    </span>
+                  </div>
+
+                  <div className="preview-row">
+                    <span>Thời gian ở:</span>
+                    <span>
+                      <strong>{preview.numberOfNights} đêm</strong> ({formatDate(preview.checkInDate)} – {formatDate(preview.checkOutDate)})
+                    </span>
+                  </div>
+
+                  <div className="preview-row">
+                    <span>Loại phòng:</span>
+                    <span>{preview.roomTypeName}</span>
+                  </div>
+
+                  <div className="preview-row">
+                    <span>Tổng tiền mới:</span>
+                    <div>
+                      <span className="preview-price" id="preview-total-amount">
+                        {formatCurrency(preview.totalAmount)}
+                      </span>
+                      {preview.totalAmount !== editingBooking.totalAmount && (
+                        <span className="preview-price-old">
+                          {formatCurrency(editingBooking.totalAmount)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {!preview.available && (
+                    <p className="preview-warning" id="preview-sold-out-msg">
+                      ⚠️ Loại phòng này đã hết phòng trong khoảng thời gian đã chọn. Không thể lưu thay đổi.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {editError && <div className="alert" id="booking-edit-error" role="alert">{editError}</div>}
               <div className="booking-edit-actions">
                 <button
@@ -487,7 +638,12 @@ export function BookingListPage() {
                   type="submit"
                   id="booking-edit-submit-btn"
                   className="booking-save-button"
-                  disabled={editSaving || roomTypesLoading}
+                  disabled={
+                    editSaving ||
+                    roomTypesLoading ||
+                    previewLoading ||
+                    (preview !== null && !preview.available)
+                  }
                 >
                   {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>

@@ -362,6 +362,82 @@
   cursor: not-allowed;
 }
 
+.booking-preview-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #c9decb;
+  border-radius: 10px;
+  background: #f1f8f3;
+  color: var(--text, #1c2e26);
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.booking-preview-card.unavailable {
+  border-color: #f7c5c5;
+  background: #fff5f5;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.preview-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.preview-badge.available {
+  background: #dff6e8;
+  color: #176c45;
+}
+
+.preview-badge.sold-out {
+  background: #ffe3e3;
+  color: #a32626;
+}
+
+.preview-price {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary, #1b4931);
+}
+
+.preview-price-old {
+  font-size: 12px;
+  color: var(--muted, #496356);
+  text-decoration: line-through;
+  margin-left: 8px;
+}
+
+.preview-warning {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fce8e8;
+  color: #a32626;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.preview-loading {
+  font-size: 13px;
+  color: var(--muted, #496356);
+  font-style: italic;
+  text-align: center;
+  padding: 8px 0;
+}
+
+
 @media (max-width: 1000px) {
   .booking-filters {
     grid-template-columns: 1fr 1fr;
