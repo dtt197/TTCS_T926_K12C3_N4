@@ -11,6 +11,7 @@ import { RoomStatusPage } from './RoomStatusPage'
 import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
 import { BookingListPage } from './BookingListPage'
+import { WalkInBookingPage } from './WalkInBookingPage'
 import './AuthPages.css'
 
 type InternalHomePageProps = {
@@ -28,6 +29,7 @@ type View =
   | 'users'
   | 'audit-logs'
   | 'bookings'
+  | 'walkInBooking'
 
 type Tab = {
   view: View
@@ -54,6 +56,14 @@ const TABS: ReadonlyArray<Tab> = [
     label: 'Booking',
     title: 'Danh sách booking mới',
     icon: '▤',
+    permission: 'bookings:view',
+  },
+  {
+    view: 'walkInBooking',
+    path: '/booking-tai-quay',
+    label: 'Booking tại quầy',
+    title: 'Booking tại quầy',
+    icon: '+',
     permission: 'bookings:view',
   },
   {
@@ -316,6 +326,8 @@ export function InternalHomePage({
         <div className="internal-page-content">
           {activeView === 'bookings' ? (
             <BookingListPage />
+          ) : activeView === 'walkInBooking' ? (
+            <WalkInBookingPage />
           ) : activeView === 'audit-logs' ? (
             <AuditLogPage />
           ) : activeView === 'roomManagement' ? (
