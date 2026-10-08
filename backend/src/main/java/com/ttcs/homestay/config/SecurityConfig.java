@@ -168,6 +168,10 @@ public class SecurityConfig {
                         // S2-01: booking tạo bởi Admin, Chủ homestay hoặc Lễ tân.
                         .requestMatchers(HttpMethod.POST, "/api/bookings")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+
+                        // Lễ tân có thể cập nhật ngày lưu trú và loại phòng của booking hiện có.
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
                         
                         // S2-02 Lát 2: xem giá từng đêm (ma trận "Bảng giá": Chủ F, Admin R, Lễ tân R)
                         .requestMatchers(HttpMethod.GET, "/api/pricing/**")

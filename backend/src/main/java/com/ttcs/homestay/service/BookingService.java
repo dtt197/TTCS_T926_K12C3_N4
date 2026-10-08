@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -121,6 +122,43 @@ public class BookingService {
                 java.time.Instant.now()
             )
         );
+    }
+
+    @Transactional
+    public BookingResponse updateBooking(Long id, BookingUpdateRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Yêu cầu không được để trống");
+        }
+
+        if (request.roomTypeId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Loại phòng không được để trống");
+        }
+
+        if (request.checkInDate() == null
+                || request.checkOutDate() == null
+                || !request.checkOutDate().isAfter(request.checkInDate())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Ngày trả phòng phải sau ngày nhận phòng");
+        }
+
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy booking"));
+        RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
+                .orElseThrow(RoomTypeNotFoundException::new);
+
+        booking.setRoomType(roomType);
+        booking.setRoomTypeNameSnapshot(roomType.getName());
+        booking.setCheckInDate(request.checkInDate());
+        booking.setCheckOutDate(request.checkOutDate());
+
+        return BookingResponse.from(bookingRepository.save(booking));
     }
 
     @Transactional(readOnly = true)

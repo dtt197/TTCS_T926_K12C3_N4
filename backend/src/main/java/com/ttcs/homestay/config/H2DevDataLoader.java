@@ -147,5 +147,44 @@ public class H2DevDataLoader implements ApplicationRunner {
                 ('301', 3, 'Phòng gia đình', 'TRONG_SACH', TRUE)
             """);
         }
+
+        // 8. Khởi tạo tài khoản Lễ tân mẫu: letan.demo@homestay.local / password
+        Long receptionistRoleId = jdbcTemplate.queryForObject("SELECT id FROM roles WHERE code = 'RECEPTIONIST'", Long.class);
+        Integer recCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email = 'letan.demo@homestay.local'", Integer.class);
+        if (recCount == null || recCount == 0) {
+            jdbcTemplate.update("""
+                INSERT INTO users (
+                    full_name, email, password_hash, role_id, is_active,
+                    failed_login_count, token_version, must_change_password, created_at, updated_at)
+                VALUES ('Lễ tân Demo', 'letan.demo@homestay.local',
+                        ?, ?, TRUE, 0, 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, demoPasswordHash, receptionistRoleId);
+        } else {
+            jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'letan.demo@homestay.local'", demoPasswordHash);
+        }
+
+        // 9. Khởi tạo danh sách booking mẫu để demo cập nhật
+        Integer bookingCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM bookings", Integer.class);
+        if (bookingCount == null || bookingCount == 0) {
+            Long doiId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'DOI'", Long.class);
+            Long donId = jdbcTemplate.queryForObject("SELECT id FROM room_types WHERE code = 'DON'", Long.class);
+
+            jdbcTemplate.update("""
+                INSERT INTO bookings (
+                    booking_code, guest_name, guest_phone, guest_email, guest_count,
+                    room_type_id, room_type_name_snapshot, check_in_date, check_out_date,
+                    weekday_price_snapshot, weekend_price_snapshot, weekend_days_snapshot,
+                    total_amount, status, created_at, hold_expires_at, extra_guest_count,
+                    extra_person_fee_snapshot, surcharge_amount)
+                VALUES
+                ('BK-DEMO01', 'Nguyễn Văn An', '0912345678', 'an.nguyen@example.com', 2,
+                 ?, 'Phòng đôi', CURRENT_DATE + 2, CURRENT_DATE + 5,
+                 500000, 650000, 'FRIDAY,SATURDAY', 1650000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0),
+                ('BK-DEMO02', 'Trần Thị Bình', '0987654321', 'binh.tran@example.com', 1,
+                 ?, 'Phòng đơn', CURRENT_DATE + 7, CURRENT_DATE + 10,
+                 300000, 400000, 'FRIDAY,SATURDAY', 1000000, 'CHO_XAC_NHAN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + 1, 0, 0, 0)
+            """, doiId, donId);
+        }
     }
 }
