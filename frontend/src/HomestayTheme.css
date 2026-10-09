@@ -1992,4 +1992,17 @@
   .modern-room-actions button {
     width: 100% !important;
   }
+  @media (max-width: 760px) {
+  .internal-layout .app-sidebar {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: auto;
+  }
+
+  .internal-layout .internal-main {
+    width: 100%;
+    margin-left: 0;
+  }
+}
 }
