@@ -16,6 +16,8 @@ import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.PriceOverride;
 import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.entity.Room;
+import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.exception.RoomUnavailableException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.PriceOverrideRepository;
@@ -36,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import com.ttcs.homestay.dto.booking.BookingAuditLogResponse;
 import com.ttcs.homestay.entity.BookingAuditLog;
 import com.ttcs.homestay.repository.BookingAuditLogRepository;
+import com.ttcs.homestay.repository.RoomRepository;
 
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
@@ -64,6 +67,9 @@ class BookingServiceTest {
     @Mock
     private BookingAuditLogRepository bookingAuditLogRepository;
 
+    @Mock
+    private RoomRepository roomRepository;
+
     private BookingService bookingService;
 
     @BeforeEach
@@ -73,7 +79,7 @@ class BookingServiceTest {
                 new PricingService(roomTypeRepository, priceOverrideRepository, operatingSettingsService);
         bookingService = new BookingService(
                 bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
-                auditLogService, roomAvailabilityService, bookingAuditLogRepository);
+                auditLogService, roomAvailabilityService, bookingAuditLogRepository, roomRepository);
     }
 
     @Test
@@ -152,6 +158,77 @@ class BookingServiceTest {
         assertThat(result)
                 .extracting(BookingListItemResponse::bookingCode)
                 .containsExactly("BK-NEW", "BK-OLD");
+    }
+
+    @Test
+    void assignRoom_bookingDaXacNhanPhongHopLe_thanhCong() {
+        RoomType type = new RoomType();
+        type.setId(4L);
+        type.setName("Phòng đôi");
+        Room room = new Room();
+        room.setId(9L);
+        room.setRoomNumber("201");
+        room.setRoomType("Phòng đôi");
+        room.setFloor(2);
+        room.setStatus(RoomStatus.TRONG_SACH);
+        room.setActive(true);
+        Booking booking = new Booking();
+        booking.setId(7L);
+        booking.setBookingCode("BK-7");
+        booking.setGuestName("Khách A");
+        booking.setRoomType(type);
+        booking.setRoomTypeNameSnapshot(type.getName());
+        booking.setCheckInDate(LocalDate.of(2027, 6, 10));
+        booking.setCheckOutDate(LocalDate.of(2027, 6, 12));
+        booking.setStatus(BookingStatus.DA_XAC_NHAN);
+        booking.setCreatedAt(java.time.OffsetDateTime.now());
+        when(roomRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(booking));
+        when(roomAvailabilityService.isRoomAvailable(room, type, booking.getCheckInDate(), booking.getCheckOutDate(), 7L))
+                .thenReturn(true);
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        BookingResponse response = bookingService.assignRoom(7L, 9L);
+
+        assertThat(response.roomNumber()).isEqualTo("201");
+        assertThat(booking.getRoom()).isSameAs(room);
+        verify(bookingRepository).flush();
+    }
+
+    @Test
+    void assignRoom_saiTrangThaiBiTuChoi() {
+        Room room = new Room();
+        room.setId(9L);
+        Booking booking = new Booking();
+        booking.setId(7L);
+        booking.setStatus(BookingStatus.CHO_XAC_NHAN);
+        when(roomRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(booking));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> bookingService.assignRoom(7L, 9L))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    void assignRoom_daCoPhongChiChapNhanChonLaiCungPhong() {
+        Room existingRoom = new Room();
+        existingRoom.setId(10L);
+        existingRoom.setRoomNumber("202");
+        Room differentRoom = new Room();
+        differentRoom.setId(9L);
+        when(roomRepository.findByIdForUpdate(9L)).thenReturn(Optional.of(differentRoom));
+        Booking booking = new Booking();
+        booking.setId(7L);
+        booking.setStatus(BookingStatus.DA_XAC_NHAN);
+        booking.setRoom(existingRoom);
+        when(bookingRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(booking));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> bookingService.assignRoom(7L, 9L))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("chưa hỗ trợ đổi phòng có lịch sử");
+        verify(roomAvailabilityService, never()).isRoomAvailable(any(), any(), any(), any(), any());
+        verify(bookingRepository, never()).save(any());
     }
 
     @Test

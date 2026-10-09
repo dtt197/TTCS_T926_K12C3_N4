@@ -122,6 +122,43 @@ public class RoomAvailabilityService {
         return freeRooms.get(0);
     }
 
+    /** Trả về các phòng đủ điều kiện trong toàn bộ khoảng lưu trú nửa mở. */
+    @Transactional(readOnly = true)
+    public List<Room> listAvailableRooms(RoomType roomType, LocalDate checkIn, LocalDate checkOut, Long excludeBookingId) {
+        List<Room> rooms = roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue(roomType.getName());
+        if (rooms.isEmpty()) {
+            return List.of();
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        Set<Long> occupiedRoomIds = bookingRepository
+                .findOverlappingOnRooms(rooms, checkIn, checkOut, OCCUPYING_STATUSES)
+                .stream()
+                .filter(booking -> excludeBookingId == null || !excludeBookingId.equals(booking.getId()))
+                .filter(booking -> !isHoldExpired(booking, now))
+                .filter(booking -> booking.getRoom() != null)
+                .map(booking -> booking.getRoom().getId())
+                .collect(Collectors.toSet());
+        return rooms.stream()
+                .filter(room -> !occupiedRoomIds.contains(room.getId()))
+                .filter(room -> !isUnderMaintenanceAnyNight(room, checkIn, checkOut))
+                .sorted(Comparator.comparing(Room::getRoomNumber))
+                .toList();
+    }
+
+    /** Kiểm tra một phòng cụ thể còn đủ điều kiện gán ở thời điểm gọi. */
+    @Transactional(readOnly = true)
+    public boolean isRoomAvailable(
+            Room room, RoomType roomType, LocalDate checkIn, LocalDate checkOut, Long excludeBookingId) {
+        if (!room.isActive() || !room.getRoomType().equalsIgnoreCase(roomType.getName())
+                || isUnderMaintenanceAnyNight(room, checkIn, checkOut)) {
+            return false;
+        }
+        return bookingRepository.findOverlappingOnRooms(List.of(room), checkIn, checkOut, OCCUPYING_STATUSES)
+                .stream()
+                .noneMatch(booking -> (excludeBookingId == null || !excludeBookingId.equals(booking.getId()))
+                        && !isHoldExpired(booking, OffsetDateTime.now()));
+    }
+
     /** S3-02 Lát 1: lỗi do cơ sở dữ liệu từ chối vì hai booking cùng chiếm một phòng trong một đêm. */
     public static boolean isRoomOverlapViolation(DataIntegrityViolationException exception) {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {

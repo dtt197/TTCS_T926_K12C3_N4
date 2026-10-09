@@ -337,6 +337,20 @@ void setUp() {
     }
 
     @Test
+    void chiLeTanDuocGoiApiGanPhong() throws Exception {
+        mockMvc.perform(put("/api/bookings/987654/room")
+                        .header("Authorization", "Bearer owner-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roomId\":1}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/bookings/987654/room")
+                        .header("Authorization", "Bearer receptionist-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roomId\":1}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void doiLoaiPhongKhongCoBookingModuleCanXacNhanTruocKhiLuu() throws Exception {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String roomNumber = "AC3-" + suffix;

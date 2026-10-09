@@ -171,4 +171,52 @@ class RoomAvailabilityServiceTest {
 
         assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isEqualTo(1);
     }
+
+    @Test
+    void availableRooms_boPhongTrungLichHoacBaoTriMotDem() {
+        p202.setMaintenanceStartDate(LocalDate.of(2027, 6, 11));
+        p202.setMaintenanceEndDate(LocalDate.of(2027, 6, 11));
+        Booking occupied = booking(BookingStatus.DA_XAC_NHAN, CHECK_IN, CHECK_OUT);
+        occupied.setRoom(p201);
+        when(bookingRepository.findOverlappingOnRooms(any(), any(), any(), any())).thenReturn(List.of(occupied));
+
+        assertThat(roomAvailabilityService.listAvailableRooms(phongDoi, CHECK_IN, CHECK_OUT, 77L)).isEmpty();
+    }
+
+    @Test
+    void availableRooms_traPhongTrongCaKy() {
+        when(bookingRepository.findOverlappingOnRooms(any(), any(), any(), any())).thenReturn(List.of());
+        assertThat(roomAvailabilityService.listAvailableRooms(phongDoi, CHECK_IN, CHECK_OUT, 77L))
+                .extracting(Room::getRoomNumber).containsExactly("201", "202");
+    }
+
+    @Test
+    void availableRooms_loaiBookingHienTaiNhungVanGiuPhongHienTaiNeuHopLe() {
+        p201.setId(201L);
+        p202.setId(202L);
+        Booking currentBooking = booking(BookingStatus.DA_XAC_NHAN, CHECK_IN, CHECK_OUT);
+        currentBooking.setId(77L);
+        currentBooking.setRoom(p201);
+        when(bookingRepository.findOverlappingOnRooms(any(), any(), any(), any()))
+                .thenReturn(List.of(currentBooking));
+
+        assertThat(roomAvailabilityService.listAvailableRooms(phongDoi, CHECK_IN, CHECK_OUT, 77L))
+                .extracting(Room::getRoomNumber).containsExactly("201", "202");
+    }
+
+    @Test
+    void availableRooms_danhSachRongKhiTatCaPhongBiBookingKhacChiếm() {
+        p201.setId(201L);
+        p202.setId(202L);
+        Booking otherBooking201 = booking(BookingStatus.DA_XAC_NHAN, CHECK_IN, CHECK_OUT);
+        otherBooking201.setId(78L);
+        otherBooking201.setRoom(p201);
+        Booking otherBooking202 = booking(BookingStatus.DA_NHAN_PHONG, CHECK_IN, CHECK_OUT);
+        otherBooking202.setId(79L);
+        otherBooking202.setRoom(p202);
+        when(bookingRepository.findOverlappingOnRooms(any(), any(), any(), any()))
+                .thenReturn(List.of(otherBooking201, otherBooking202));
+
+        assertThat(roomAvailabilityService.listAvailableRooms(phongDoi, CHECK_IN, CHECK_OUT, 77L)).isEmpty();
+    }
 }
