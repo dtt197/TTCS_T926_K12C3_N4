@@ -1,0 +1,151 @@
+.cancel-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.cancel-dialog {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text, #1c2e26);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.cancel-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.cancel-dialog label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cancel-dialog select,
+.cancel-dialog textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #cfc8bd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  color: var(--text, #1c2e26);
+  font-family: inherit;
+}
+
+.cancel-dialog select:focus,
+.cancel-dialog textarea:focus {
+  outline: none;
+  border-color: #2b7458;
+  box-shadow: 0 0 0 2px rgba(43, 116, 88, 0.15);
+}
+
+.cancel-dialog-guest {
+  margin: 0;
+  font-weight: 600;
+}
+
+.cancel-dialog-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted, #496356);
+}
+
+.cancel-dialog-refund {
+  margin: 16px 0 0;
+  padding: 12px;
+  border: 1px solid var(--line, #e6ece8);
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.cancel-dialog-refund div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.cancel-dialog-refund dt {
+  color: var(--muted, #496356);
+}
+
+.cancel-dialog-refund dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.cancel-dialog-refund-total {
+  margin-top: 6px;
+  padding-top: 8px !important;
+  border-top: 1px solid var(--line, #e6ece8);
+}
+
+.cancel-dialog-refund-total dd {
+  color: var(--green, #176c45);
+  font-size: 15px;
+}
+
+.cancel-dialog-error {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--red-soft, #ffe3e3);
+  color: var(--red, #a32626);
+  font-size: 13px;
+}
+
+.cancel-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.cancel-dialog-actions button {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid #cfc8bd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text, #1c2e26);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-dialog-actions button.cancel-dialog-confirm {
+  border-color: var(--red, #a32626);
+  background: var(--red, #a32626);
+  color: #fff;
+}
+
+.cancel-dialog-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .cancel-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .cancel-dialog-actions button {
+    width: 100%;
+  }
+}
