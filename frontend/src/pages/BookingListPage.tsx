@@ -5,6 +5,7 @@ import type {
   BookingListItem,
   BookingChangePreview,
   AssignableRoom,
+  BookingRoomChangeHistory,
 } from '../types/booking'
 import { useEffect, useState, type FormEvent } from 'react'
 import type { BookingDetailResponse } from '../services/bookingService'
@@ -19,11 +20,14 @@ import {
   previewBookingChange,
   getAvailableRooms,
   assignBookingRoom,
+  changeBookingRoom,
+  getBookingRoomChangeHistory,
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
 import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
 import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
+import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -124,6 +128,35 @@ export function BookingListPage({ role }: { role: string }) {
   const [roomLoading, setRoomLoading] = useState(false)
   const [roomSaving, setRoomSaving] = useState(false)
   const [roomError, setRoomError] = useState<string | null>(null)
+  const [changeRoomBooking, setChangeRoomBooking] = useState<BookingListItem | null>(null)
+  const [changeRoomReason, setChangeRoomReason] = useState('')
+  const [changeRoomSaving, setChangeRoomSaving] = useState(false)
+  const [roomChangeHistory, setRoomChangeHistory] = useState<BookingRoomChangeHistory[]>([])
+
+  async function openRoomChange(booking: BookingListItem) {
+    setChangeRoomBooking(booking)
+    setChangeRoomReason('')
+    setRoomChangeHistory([])
+    setAssignableRooms([])
+    setSelectedRoomId(null)
+    setRoomError(null)
+    setRoomLoading(true)
+    try {
+      const [rooms, history] = await Promise.all([getAvailableRooms(booking.id), getBookingRoomChangeHistory(booking.id)])
+      setAssignableRooms(rooms.filter((room) => room.roomNumber !== booking.roomNumber))
+      setRoomChangeHistory(history)
+    } catch (err) {
+      setRoomError(err instanceof Error ? err.message : 'Không tải được dữ liệu đổi phòng.')
+    } finally { setRoomLoading(false) }
+  }
+
+  async function submitRoomChange() {
+    await runRoomChange(changeRoomBooking, selectedRoomId, changeRoomReason, {
+      changeBookingRoom, reloadBookingData, getBookingRoomChangeHistory,
+      setRoomChangeHistory, setRoomError, setRoomSaving: setChangeRoomSaving,
+      setChangeRoomBooking, setEditSuccess,
+    })
+  }
 
   async function reloadAssignableRooms() {
     await runRoomReload(roomBooking, selectedRoomId, {
@@ -410,8 +443,11 @@ export function BookingListPage({ role }: { role: string }) {
     setDetailError(null)
     setDetailLoading(true)
     try {
-      const data = await getBookingDetails(booking.id)
+      const [data, roomHistory] = await Promise.all([
+        getBookingDetails(booking.id), getBookingRoomChangeHistory(booking.id),
+      ])
       setDetailData(data)
+      setRoomChangeHistory(roomHistory)
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : 'Không tải được chi tiết booking.')
     } finally {
@@ -682,6 +718,9 @@ export function BookingListPage({ role }: { role: string }) {
                           Chốt phòng
                         </button>
                       )}
+                      {canManage && booking.status === 'DA_XAC_NHAN' && booking.roomConfirmedAt && new Date(booking.checkInDate).getTime() > new Date().setHours(0, 0, 0, 0) && (
+                        <button type="button" className="booking-edit-button" onClick={() => void openRoomChange(booking)}>Đổi phòng</button>
+                      )}
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
                         Chi tiết
                       </button>
@@ -814,6 +853,17 @@ export function BookingListPage({ role }: { role: string }) {
                 ) : (
                   <p className="booking-history-empty" id="booking-history-empty">Chưa có lịch sử thay đổi nào cho booking này.</p>
                 )}
+                <h4>Lịch sử đổi phòng</h4>
+                {roomChangeHistory.length ? roomChangeHistory.map((item) => (
+                  <div key={item.id} className="booking-history-card">
+                    <div className="booking-history-header">
+                      <span>{new Date(item.changedAt).toLocaleString('vi-VN')}</span>
+                      <span>{item.actorName}</span>
+                    </div>
+                    <div>Phòng {item.oldRoomNumber} → Phòng {item.newRoomNumber}</div>
+                    <div>Lý do: {item.reason}</div>
+                  </div>
+                )) : <p>Chưa có lịch sử đổi phòng.</p>}
               </div>
             )}
             <div className="booking-edit-actions">
@@ -929,6 +979,35 @@ export function BookingListPage({ role }: { role: string }) {
               <button type="button" disabled={roomSaving} onClick={() => setRoomBooking(null)}>Đóng</button>
               <button type="button" className="booking-save-button" disabled={roomSaving || roomLoading || selectedRoomId === null} onClick={() => void confirmRoomSelection()}>
                 {roomSaving ? 'Đang xác nhận...' : 'Xác nhận chọn phòng'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {changeRoomBooking && (
+        <div className="booking-dialog-backdrop">
+          <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-change-room-title">
+            <div className="booking-edit-heading">
+              <div><h3 id="booking-change-room-title">Đổi phòng cho {changeRoomBooking.bookingCode}</h3><p>Phòng hiện tại: {changeRoomBooking.roomNumber}</p></div>
+              <button type="button" className="booking-dialog-close" disabled={changeRoomSaving} onClick={() => setChangeRoomBooking(null)} aria-label="Đóng">×</button>
+            </div>
+            {roomLoading ? <p>Đang tải phòng khả dụng...</p> : (
+              <label className="booking-room-select">Phòng mới
+                <select value={selectedRoomId ?? ''} onChange={(event) => setSelectedRoomId(event.target.value ? Number(event.target.value) : null)}>
+                  <option value="">Chọn phòng</option>
+                  {assignableRooms.map((room) => <option key={room.id} value={room.id}>Phòng {room.roomNumber} · Tầng {room.floor}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="booking-room-select">Lý do đổi phòng (bắt buộc)
+              <textarea maxLength={500} value={changeRoomReason} onChange={(event) => setChangeRoomReason(event.target.value)} />
+            </label>
+            {roomError && <div className="alert" role="alert">{roomError}</div>}
+            <div className="booking-dialog-actions">
+              <button type="button" disabled={changeRoomSaving} onClick={() => setChangeRoomBooking(null)}>Đóng</button>
+              <button type="button" className="booking-save-button" disabled={roomLoading || changeRoomSaving || !changeRoomReason.trim() || selectedRoomId === null} onClick={() => void submitRoomChange()}>
+                {changeRoomSaving ? 'Đang đổi phòng...' : 'Xác nhận đổi phòng'}
               </button>
             </div>
           </section>

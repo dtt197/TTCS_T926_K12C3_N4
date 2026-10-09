@@ -75,6 +75,22 @@ public class BookingController {
     }
 
     public record AssignRoomRequest(Long roomId) {}
+
+    @PutMapping("/{id}/room-change")
+    public BookingResponse changeRoom(@PathVariable Long id, @RequestBody ChangeRoomRequest request) {
+        if (request == null || request.roomId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "roomId không được để trống");
+        }
+        return bookingService.changeConfirmedRoom(id, request.roomId(), request.reason());
+    }
+
+    public record ChangeRoomRequest(Long roomId, String reason) {}
+
+    @GetMapping("/{id}/room-change-history")
+    public List<com.ttcs.homestay.dto.booking.BookingRoomChangeHistoryResponse> getRoomChangeHistory(
+            @PathVariable Long id) {
+        return bookingService.getRoomChangeHistory(id);
+    }
     
     /** S3-02 Lát 3: lễ tân huỷ booking kèm lý do. */
     @PutMapping("/{id}/cancel")

@@ -107,6 +107,19 @@ export type BookingAuditLog = {
   createdAt: string
 }
 
+export type BookingRoomChangeHistory = {
+  id: number
+  bookingId: number
+  oldRoomId: number
+  oldRoomNumber: string
+  newRoomId: number
+  newRoomNumber: string
+  actorUserId: number
+  actorName: string
+  changedAt: string
+  reason: string
+}
+
 /** S3-05: lý do huỷ booking, khớp với backend. */
 export type CancelReason =
   | 'KHACH_DOI_KE_HOACH'
