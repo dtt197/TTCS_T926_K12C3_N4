@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Getter;
+import org.hibernate.annotations.ColumnDefault;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import jakarta.persistence.EnumType;
@@ -31,6 +32,11 @@ public class Booking {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_type_id")
     private RoomType roomType;
+
+    /** S3-02: phòng cụ thể booking đang giữ; cơ sở dữ liệu chặn hai booking cùng chiếm một phòng trong một đêm. */
+    @ManyToOne
+    @JoinColumn(name = "room_id")
+    private Room room;
 
     @Column(name = "room_type_name_snapshot", nullable = false, length = 100)
     private String roomTypeNameSnapshot;
@@ -68,7 +74,8 @@ public class Booking {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false, length = 30)
-    private BookingSource source;
+    @ColumnDefault("'TRUC_TUYEN'")
+    private BookingSource source = BookingSource.TRUC_TUYEN;
 
     /** S2-07: thông tin khách tự đặt trên trang công khai (trống với booking nhân viên tạo). */
     @Column(name = "guest_phone", length = 20)

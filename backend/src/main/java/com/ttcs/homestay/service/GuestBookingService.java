@@ -27,6 +27,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -219,10 +220,27 @@ public class GuestBookingService {
         booking.setTotalAmount(price.totalAmount());
         booking.setCreatedAt(createdAt);
         booking.setHoldExpiresAt(createdAt.plus(HOLD_DURATION));
+        // S3-02: giữ một phòng cụ thể; cơ sở dữ liệu từ chối nếu phòng đó đã bị booking khác chiếm cùng đêm.
+        booking.setRoom(roomAvailabilityService.assignRoom(
+                roomType, request.checkInDate(), request.checkOutDate(), null, null));
 
-        return GuestBookingResponse.from(bookingRepository.save(booking));
+        return GuestBookingResponse.from(saveHoldingRoom(booking, roomType));
     }
-    
+
+    /** S3-02: lưu booking đang giữ phòng; cơ sở dữ liệu từ chối do trùng phòng cùng đêm thì báo hết phòng (409). */
+    private Booking saveHoldingRoom(Booking booking, RoomType roomType) {
+        try {
+            Booking saved = bookingRepository.save(booking);
+            bookingRepository.flush();
+            return saved;
+        } catch (DataIntegrityViolationException exception) {
+            if (RoomAvailabilityService.isRoomOverlapViolation(exception)) {
+                throw RoomAvailabilityService.unavailable(roomType);
+            }
+            throw exception;
+        }
+    }
+
     @Transactional
     public GuestBookingResponse createWalkInBooking(
             WalkInBookingRequest request) {
@@ -325,8 +343,11 @@ public class GuestBookingService {
         // Booking tại quầy đã xác nhận nên không giữ chỗ 24 giờ
         booking.setHoldExpiresAt(null);
 
-        return GuestBookingResponse.from(
-                bookingRepository.save(booking));
+        // S3-02 / S3-06 AC3: booking tại quầy cũng giữ một phòng cụ thể và chịu cùng ràng buộc chống trùng phòng.
+        booking.setRoom(roomAvailabilityService.assignRoom(
+                roomType, request.checkInDate(), request.checkOutDate(), null, null));
+
+        return GuestBookingResponse.from(saveHoldingRoom(booking, roomType));
     }
 
     /**

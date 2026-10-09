@@ -22,6 +22,7 @@ import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.DayOfWeek;
 import java.time.OffsetDateTime;
 import java.util.Set;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -170,8 +171,11 @@ public class BookingService {
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
         booking.setTotalAmount(totalAmount);
         booking.setCreatedAt(createdAt);
+        // S3-02: giữ một phòng cụ thể; hết phòng thì báo 409.
+        booking.setRoom(roomAvailabilityService.assignRoom(
+                roomType, request.checkInDate(), request.checkOutDate(), null, null));
 
-        Booking savedBooking = bookingRepository.save(booking);
+        Booking savedBooking = saveHoldingRoom(booking, roomType);
 
         return new BookingResponse(
             savedBooking.getId(),
@@ -325,8 +329,11 @@ public class BookingService {
             booking.setWeekendPriceSnapshot(roomType.getWeekendPrice());
         }
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
+        // S3-02: giữ phòng hiện tại nếu còn trống trong khoảng ngày mới, không thì chuyển sang phòng trống khác.
+        booking.setRoom(roomAvailabilityService.assignRoom(
+                roomType, request.checkInDate(), request.checkOutDate(), booking.getId(), booking.getRoom()));
 
-        Booking savedBooking = bookingRepository.save(booking);
+        Booking savedBooking = saveHoldingRoom(booking, roomType);
 
         // 4. Ghi nhận Booking Audit Log / History trong cùng Database Transaction
         if (bookingAuditLogRepository != null) {
@@ -367,6 +374,20 @@ public class BookingService {
                 .stream()
                 .map(BookingAuditLogResponse::from)
                 .toList();
+    }
+
+    /** S3-02: lưu booking đang giữ phòng; cơ sở dữ liệu từ chối do trùng phòng cùng đêm thì báo hết phòng (409). */
+    private Booking saveHoldingRoom(Booking booking, RoomType roomType) {
+        try {
+            Booking saved = bookingRepository.save(booking);
+            bookingRepository.flush();
+            return saved;
+        } catch (DataIntegrityViolationException exception) {
+            if (RoomAvailabilityService.isRoomOverlapViolation(exception)) {
+                throw RoomAvailabilityService.unavailable(roomType);
+            }
+            throw exception;
+        }
     }
 
     private void validateUpdateRequest(BookingUpdateRequest request) {

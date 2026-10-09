@@ -2,6 +2,7 @@ package com.ttcs.homestay.repository;
 
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.Room;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +42,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             + " and b.status in :statuses")
     List<Booking> findOverlapping(
             @Param("roomTypeId") Long roomTypeId,
+            @Param("checkIn") LocalDate checkIn,
+            @Param("checkOut") LocalDate checkOut,
+            @Param("statuses") Collection<BookingStatus> statuses);
+
+    /** S3-02: booking đang giữ một trong các phòng và có ít nhất một đêm trong [checkIn, checkOut). */
+    @Query("select b from Booking b"
+            + " where b.room in :rooms"
+            + " and b.checkInDate < :checkOut and b.checkOutDate > :checkIn"
+            + " and b.status in :statuses")
+    List<Booking> findOverlappingOnRooms(
+            @Param("rooms") Collection<Room> rooms,
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut,
             @Param("statuses") Collection<BookingStatus> statuses);
