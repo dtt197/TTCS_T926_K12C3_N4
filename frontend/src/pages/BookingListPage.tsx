@@ -523,6 +523,7 @@ export function BookingListPage({ role }: { role: string }) {
                   <th>Mã booking</th>
                   <th>Tên khách</th>
                   <th>Loại phòng</th>
+                  <th>Phòng</th>
                   <th>Ngày nhận</th>
                   <th>Ngày trả</th>
                   <th>Tổng tiền</th>
@@ -547,6 +548,7 @@ export function BookingListPage({ role }: { role: string }) {
                       )}
                     </td>
                     <td>{booking.roomTypeNameSnapshot}</td>
+                    <td>{booking.roomNumber ?? 'Chưa gán'}</td>
                     <td>{formatDate(booking.checkInDate)}</td>
                     <td>{formatDate(booking.checkOutDate)}</td>
                     <td>{formatCurrency(booking.totalAmount)}</td>
@@ -631,6 +633,7 @@ export function BookingListPage({ role }: { role: string }) {
                   <div><dt>Mã booking</dt><dd>{detailBooking.bookingCode}</dd></div>
                   <div><dt>Trạng thái</dt><dd>{STATUS_LABELS[detailData.status] ?? detailData.status}</dd></div>
                   <div><dt>Loại phòng</dt><dd>{detailBooking.roomTypeNameSnapshot}</dd></div>
+                  <div><dt>Phòng</dt><dd>{detailBooking.roomNumber ?? 'Chưa gán'}</dd></div>
                   <div><dt>Tổng tiền</dt><dd>{formatCurrency(detailBooking.totalAmount)}</dd></div>
                   <div><dt>Ngày nhận phòng</dt><dd>{formatDate(detailBooking.checkInDate)}</dd></div>
                   <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>

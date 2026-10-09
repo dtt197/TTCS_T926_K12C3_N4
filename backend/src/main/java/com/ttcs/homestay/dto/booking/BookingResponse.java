@@ -21,7 +21,9 @@ public record BookingResponse(
     BookingStatus status,
     OffsetDateTime createdAt,
     boolean holdExpired,
-    String guestPhone
+    String guestPhone,
+    /** S3-02: số phòng booking đang giữ, null nếu chưa gán được phòng. */
+    String roomNumber
 ) {
     public BookingResponse(
         Long id,
@@ -40,7 +42,7 @@ public record BookingResponse(
         boolean holdExpired
     ) {
         this(id, bookingCode, guestName, roomTypeId, roomTypeNameSnapshot, checkInDate, checkOutDate,
-             weekdayPriceSnapshot, weekendPriceSnapshot, weekendDaysSnapshot, totalAmount, status, createdAt, holdExpired, null);
+             weekdayPriceSnapshot, weekendPriceSnapshot, weekendDaysSnapshot, totalAmount, status, createdAt, holdExpired, null, null);
     }
 
     public static BookingResponse from(Booking booking) {
@@ -68,7 +70,8 @@ public record BookingResponse(
             booking.getStatus(),
             booking.getCreatedAt(),
             expired,
-            booking.getGuestPhone()
+            booking.getGuestPhone(),
+            booking.getRoom() != null ? booking.getRoom().getRoomNumber() : null
         );
     }
 }
