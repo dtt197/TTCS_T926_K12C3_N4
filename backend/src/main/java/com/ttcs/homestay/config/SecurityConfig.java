@@ -177,6 +177,10 @@ public class SecurityConfig {
                         // S2-01 & S3-04: chỉ Lễ tân tạo booking và xem trước thay đổi (ma trận "Vận hành booking": Lễ tân F, Chủ R, Admin R).
                         .requestMatchers(HttpMethod.POST, "/api/bookings", "/api/bookings/*/preview")
                         .hasRole("RECEPTIONIST")
+                        
+                        // S3-05: Lễ tân huỷ booking (theo story; chờ PO xác nhận Chủ homestay và Admin có được huỷ không)
+                        .requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel")
+                        .hasRole("RECEPTIONIST") 
 
                         // S3-01: ghi bút toán điều chỉnh cọc dành cho Lễ tân và Chủ homestay.
                         .requestMatchers(HttpMethod.POST, "/api/bookings/*/deposit-adjustments")

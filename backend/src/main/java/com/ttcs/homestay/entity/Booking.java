@@ -113,4 +113,18 @@ public class Booking {
 
     @Column(name = "surcharge_amount", nullable = false)
     private long surchargeAmount;
+
+        /** S3-05: thông tin huỷ booking; trống với booking chưa huỷ. */
+
+    @Column(name = "cancel_note", length = 500)
+    private String cancelNote;
+
+    @Column(name = "cancel_deposit_amount")
+    private Long cancelDepositAmount;
+
+    @Column(name = "cancel_refund_percent")
+    private Integer cancelRefundPercent;
+
+    @Column(name = "cancel_refund_amount")
+    private Long cancelRefundAmount;
 }

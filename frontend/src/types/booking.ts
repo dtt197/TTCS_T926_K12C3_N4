@@ -105,3 +105,42 @@ export type BookingAuditLog = {
   createdAt: string
 }
 
+/** S3-05: lý do huỷ booking, khớp với backend. */
+export type CancelReason =
+  | 'KHACH_DOI_KE_HOACH'
+  | 'KHACH_KHONG_LIEN_LAC'
+  | 'TRUNG_BOOKING'
+  | 'LY_DO_KHAC'
+
+/** S3-05: kết quả xem trước huỷ. appliedTierHours là null khi không thuộc mốc hoàn cọc nào. */
+export type CancellationPreview = {
+  bookingCode: string
+  guestName: string
+  roomTypeName: string
+  status: BookingStatus
+  checkInDate: string
+  checkInTime: string
+  hoursBeforeCheckIn: number
+  depositAmount: number
+  appliedTierHours: number | null
+  refundPercent: number
+  refundAmount: number
+}
+
+/** S3-05: dữ liệu gửi lên khi xác nhận huỷ. Không có số tiền hoàn: hệ thống tự tính. */
+export type CancelBookingInput = {
+  reason: CancelReason
+  note?: string
+}
+
+/** S3-05: kết quả sau khi huỷ. */
+export type BookingCancellationResult = {
+  bookingCode: string
+  status: BookingStatus
+  cancelReason: CancelReason
+  cancelNote: string | null
+  depositAmount: number
+  refundPercent: number
+  refundAmount: number
+}
+
