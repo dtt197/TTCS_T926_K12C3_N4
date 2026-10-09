@@ -21,6 +21,8 @@ export type BookingListItem = {
   holdExpired: boolean
   /** S3-02: số phòng booking đang giữ, null nếu chưa gán được phòng. */
   roomNumber?: string | null
+  roomConfirmedAt?: string | null
+  roomConfirmedBy?: string | null
 }
 
 /** S2-10: một trang kết quả, trang đầu tiên là 0. */

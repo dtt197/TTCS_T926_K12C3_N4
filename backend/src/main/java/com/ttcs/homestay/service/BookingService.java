@@ -39,6 +39,8 @@ import com.ttcs.homestay.dto.booking.BookingConfirmResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.dto.booking.BookingConfirmRequest;
 import java.util.List;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +50,9 @@ import java.time.LocalDate;
 
 @Service
 public class BookingService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private final BookingRepository bookingRepository;
     private final RoomTypeRepository roomTypeRepository;
@@ -110,6 +115,13 @@ public class BookingService {
         if (roomRepository == null) {
             throw new IllegalStateException("RoomRepository is required for room assignment");
         }
+        Booking bookingSnapshot = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
+        if (bookingSnapshot.getRoomType() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking không có loại phòng hợp lệ");
+        }
+        // Cùng thứ tự khóa với tạo/sửa booking để tuần tự hóa chốt phòng và tự giữ phòng tạm.
+        roomTypeRepository.findByIdForUpdate(bookingSnapshot.getRoomType().getId());
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phòng"));
         Booking booking = bookingRepository.findByIdForUpdate(bookingId)
@@ -117,9 +129,22 @@ public class BookingService {
         if (booking.getStatus() != BookingStatus.DA_XAC_NHAN) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ booking đã xác nhận mới được chọn phòng");
         }
-        if (booking.getRoom() != null && !booking.getRoom().getId().equals(roomId)) {
+        if (booking.getRoomConfirmedAt() != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Booking đã có phòng " + booking.getRoom().getRoomNumber() + "; chưa hỗ trợ đổi phòng có lịch sử");
+                    "Booking đã chốt phòng, không thể đổi trong lát này");
+        }
+        List<Booking> conflicts = bookingRepository.findRoomConflicts(
+                roomId, booking.getId(), booking.getCheckInDate(), booking.getCheckOutDate(),
+                RoomAvailabilityService.OCCUPYING_STATUSES).stream()
+                .filter(conflict -> conflict.getStatus() != BookingStatus.CHO_XAC_NHAN
+                        || conflict.getHoldExpiresAt() == null
+                        || conflict.getHoldExpiresAt().isAfter(java.time.OffsetDateTime.now()))
+                .toList();
+        if (!conflicts.isEmpty()) {
+            String codes = conflicts.stream().map(Booking::getBookingCode).distinct().sorted()
+                    .collect(java.util.stream.Collectors.joining(", "));
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Phòng đã bị booking chiếm trong kỳ lưu trú: " + codes);
         }
         if (!roomAvailabilityService.isRoomAvailable(room, booking.getRoomType(), booking.getCheckInDate(),
                 booking.getCheckOutDate(), booking.getId())) {
@@ -127,14 +152,29 @@ public class BookingService {
                     "Phòng không phù hợp, đang bảo trì hoặc đã được đặt trong khoảng lưu trú");
         }
         booking.setRoom(room);
+        ActorInfo actor = resolveCurrentActor();
+        if (actor.id() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không xác định được tài khoản chốt phòng");
+        }
+        booking.setRoomConfirmedAt(OffsetDateTime.now());
+        booking.setRoomConfirmedByUser(entityManager.getReference(com.ttcs.homestay.entity.User.class, actor.id()));
         try {
             Booking saved = bookingRepository.save(booking);
             bookingRepository.flush();
             return BookingResponse.from(saved);
         } catch (DataIntegrityViolationException exception) {
             if (RoomAvailabilityService.isRoomOverlapViolation(exception)) {
+                String codes = bookingRepository.findRoomConflicts(
+                                roomId, booking.getId(), booking.getCheckInDate(), booking.getCheckOutDate(),
+                                RoomAvailabilityService.OCCUPYING_STATUSES).stream()
+                        .filter(conflict -> conflict.getStatus() != BookingStatus.CHO_XAC_NHAN
+                                || conflict.getHoldExpiresAt() == null
+                                || conflict.getHoldExpiresAt().isAfter(java.time.OffsetDateTime.now()))
+                        .map(Booking::getBookingCode).distinct().sorted()
+                        .collect(java.util.stream.Collectors.joining(", "));
+                String detail = codes.isBlank() ? "booking khác (yêu cầu đồng thời)" : codes;
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Phòng vừa được gán cho booking khác trong khoảng lưu trú");
+                        "Phòng vừa bị chiếm trong kỳ lưu trú bởi booking: " + detail);
             }
             throw exception;
         }
@@ -268,9 +308,7 @@ public class BookingService {
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
         booking.setTotalAmount(totalAmount);
         booking.setCreatedAt(createdAt);
-        // S3-02: giữ một phòng cụ thể; hết phòng thì báo 409.
-        booking.setRoom(roomAvailabilityService.assignRoom(
-                roomType, request.checkInDate(), request.checkOutDate(), null, null));
+        // S3-03: giữ một suất theo loại phòng; lễ tân gán phòng cụ thể sau khi xác nhận.
 
         Booking savedBooking = saveHoldingRoom(booking, roomType);
 
@@ -429,9 +467,18 @@ public class BookingService {
             booking.setWeekendPriceSnapshot(roomType.getWeekendPrice());
         }
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
-        // S3-02: giữ phòng hiện tại nếu còn trống trong khoảng ngày mới, không thì chuyển sang phòng trống khác.
-        booking.setRoom(roomAvailabilityService.assignRoom(
-                roomType, request.checkInDate(), request.checkOutDate(), booking.getId(), booking.getRoom()));
+        // Phòng chưa chốt là phòng giữ tạm: cập nhật ngày/loại phòng thì chọn lại theo yêu cầu mới.
+        if (booking.getRoomConfirmedAt() == null) {
+            booking.setRoom(null);
+        }
+        // Phòng đã chốt phải tiếp tục phù hợp với loại phòng và khoảng lưu trú.
+        if (booking.getRoomConfirmedAt() != null && booking.getRoom() != null
+                && !roomAvailabilityService.isRoomAvailable(
+                        booking.getRoom(), roomType, request.checkInDate(), request.checkOutDate(), booking.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Phòng " + booking.getRoom().getRoomNumber()
+                            + " không còn phù hợp với loại phòng hoặc khoảng lưu trú mới");
+        }
 
         Booking savedBooking = saveHoldingRoom(booking, roomType);
 
@@ -479,6 +526,10 @@ public class BookingService {
     /** S3-02: lưu booking đang giữ phòng; cơ sở dữ liệu từ chối do trùng phòng cùng đêm thì báo hết phòng (409). */
     private Booking saveHoldingRoom(Booking booking, RoomType roomType) {
         try {
+            if (booking.getRoom() == null) {
+                booking.setRoom(roomAvailabilityService.assignRoom(
+                        roomType, booking.getCheckInDate(), booking.getCheckOutDate(), booking.getId(), null));
+            }
             Booking saved = bookingRepository.save(booking);
             bookingRepository.flush();
             return saved;

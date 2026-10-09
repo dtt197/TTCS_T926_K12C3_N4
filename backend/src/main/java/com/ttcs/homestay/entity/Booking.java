@@ -33,12 +33,19 @@ public class Booking {
     @JoinColumn(name = "room_type_id")
     private RoomType roomType;
 
-    /** S3-02: phòng cụ thể booking đang giữ; cơ sở dữ liệu chặn hai booking cùng chiếm một phòng trong một đêm. */
+    /** S3-02: phÃ²ng cá»¥ thá»ƒ booking Ä‘ang giá»¯; cÆ¡ sá»Ÿ dá»¯ liá»‡u cháº·n hai booking cÃ¹ng chiáº¿m má»™t phÃ²ng trong má»™t Ä‘Ãªm. */
     @ManyToOne
     @JoinColumn(name = "room_id")
     private Room room;
+
+    @Column(name = "room_confirmed_at")
+    private OffsetDateTime roomConfirmedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "room_confirmed_by_user_id")
+    private User roomConfirmedByUser;
     
-    /** S3-02 Lát 3: lý do, người huỷ và thời điểm huỷ booking. */
+    /** S3-02 LÃ¡t 3: lÃ½ do, ngÆ°á»i huá»· vÃ  thá»i Ä‘iá»ƒm huá»· booking. */
     @Column(name = "cancel_reason", length = 500)
     private String cancelReason;
 
@@ -87,7 +94,7 @@ public class Booking {
     @ColumnDefault("'TRUC_TUYEN'")
     private BookingSource source = BookingSource.TRUC_TUYEN;
 
-    /** S2-07: thông tin khách tự đặt trên trang công khai (trống với booking nhân viên tạo). */
+    /** S2-07: thÃ´ng tin khÃ¡ch tá»± Ä‘áº·t trÃªn trang cÃ´ng khai (trá»‘ng vá»›i booking nhÃ¢n viÃªn táº¡o). */
     @Column(name = "guest_phone", length = 20)
     private String guestPhone;
 
@@ -100,11 +107,11 @@ public class Booking {
     @Column(name = "note", length = 500)
     private String note;
 
-    /** S2-07: booking chờ xác nhận chỉ giữ chỗ đến thời điểm này (tạo + 24 giờ). */
+    /** S2-07: booking chá» xÃ¡c nháº­n chá»‰ giá»¯ chá»— Ä‘áº¿n thá»i Ä‘iá»ƒm nÃ y (táº¡o + 24 giá»). */
     @Column(name = "hold_expires_at")
     private OffsetDateTime holdExpiresAt;
     
-    /** S2-06: số người vượt sức chứa tiêu chuẩn, mức phụ thu (VND / người / đêm) áp dụng và tiền phụ thu. */
+    /** S2-06: sá»‘ ngÆ°á»i vÆ°á»£t sá»©c chá»©a tiÃªu chuáº©n, má»©c phá»¥ thu (VND / ngÆ°á»i / Ä‘Ãªm) Ã¡p dá»¥ng vÃ  tiá»n phá»¥ thu. */
     @Column(name = "extra_guest_count", nullable = false)
     private int extraGuestCount;
 
@@ -113,8 +120,7 @@ public class Booking {
 
     @Column(name = "surcharge_amount", nullable = false)
     private long surchargeAmount;
-
-        /** S3-05: thông tin huỷ booking; trống với booking chưa huỷ. */
+    /** S3-05: thông tin hủy booking; trống với booking chưa hủy. */
 
     @Column(name = "cancel_note", length = 500)
     private String cancelNote;

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
@@ -57,6 +58,18 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("checkOut") LocalDate checkOut,
             @Param("statuses") Collection<BookingStatus> statuses);
 
+    /** Booking đang chiếm phòng cụ thể trong ít nhất một đêm của khoảng nửa mở. */
+    @Query("select b from Booking b"
+            + " where b.room.id = :roomId and b.id <> :excludeBookingId"
+            + " and b.checkInDate < :checkOut and b.checkOutDate > :checkIn"
+            + " and b.status in :statuses order by b.bookingCode asc")
+    List<Booking> findRoomConflicts(
+            @Param("roomId") Long roomId,
+            @Param("excludeBookingId") Long excludeBookingId,
+            @Param("checkIn") LocalDate checkIn,
+            @Param("checkOut") LocalDate checkOut,
+            @Param("statuses") Collection<BookingStatus> statuses);
+
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     List<Booking> findByStatusAndHoldExpiresAtLessThanEqual(
             BookingStatus status,
@@ -74,6 +87,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("statuses") Collection<BookingStatus> statuses);
+
+    @EntityGraph(attributePaths = {"roomConfirmedByUser", "room", "roomType"})
+    @Override
+    Page<Booking> findAll(org.springframework.data.jpa.domain.Specification<Booking> spec, Pageable pageable);
 
     default Page<Booking> search(
             BookingStatus status,

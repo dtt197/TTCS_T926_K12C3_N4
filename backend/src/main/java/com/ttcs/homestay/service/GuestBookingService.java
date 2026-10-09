@@ -219,9 +219,7 @@ public class GuestBookingService {
         booking.setTotalAmount(price.totalAmount());
         booking.setCreatedAt(createdAt);
         booking.setHoldExpiresAt(createdAt.plus(HOLD_DURATION));
-        // S3-02: giữ một phòng cụ thể; cơ sở dữ liệu từ chối nếu phòng đó đã bị booking khác chiếm cùng đêm.
-        booking.setRoom(roomAvailabilityService.assignRoom(
-                roomType, request.checkInDate(), request.checkOutDate(), null, null));
+        // S3-03: giữ một suất theo loại phòng; lễ tân gán phòng cụ thể sau khi xác nhận.
 
         return GuestBookingResponse.from(saveHoldingRoom(booking, roomType));
     }
@@ -229,6 +227,8 @@ public class GuestBookingService {
     /** S3-02: lưu booking đang giữ phòng; cơ sở dữ liệu từ chối do trùng phòng cùng đêm thì báo hết phòng (409). */
     private Booking saveHoldingRoom(Booking booking, RoomType roomType) {
         try {
+            booking.setRoom(roomAvailabilityService.assignRoom(
+                    roomType, booking.getCheckInDate(), booking.getCheckOutDate(), null, null));
             Booking saved = bookingRepository.save(booking);
             bookingRepository.flush();
             return saved;
@@ -339,9 +339,7 @@ public class GuestBookingService {
         // Booking tại quầy đã xác nhận nên không giữ chỗ 24 giờ
         booking.setHoldExpiresAt(null);
 
-        // S3-02 / S3-06 AC3: booking tại quầy cũng giữ một phòng cụ thể và chịu cùng ràng buộc chống trùng phòng.
-        booking.setRoom(roomAvailabilityService.assignRoom(
-                roomType, request.checkInDate(), request.checkOutDate(), null, null));
+        // S3-03: booking tại quầy cũng giữ một suất theo loại phòng, chưa gán phòng cụ thể.
 
         return GuestBookingResponse.from(saveHoldingRoom(booking, roomType));
     }

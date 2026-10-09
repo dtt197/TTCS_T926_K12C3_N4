@@ -108,9 +108,37 @@ class RoomAvailabilityServiceTest {
         p202.setStatus(RoomStatus.BAO_TRI);
         p202.setMaintenanceStartDate(LocalDate.of(2027, 6, 11));
         p202.setMaintenanceEndDate(LocalDate.of(2027, 6, 11));
-        coBooking(booking(BookingStatus.CHO_XAC_NHAN, CHECK_IN, CHECK_OUT));
+        Booking assignedToSellableRoom = booking(BookingStatus.CHO_XAC_NHAN, CHECK_IN, CHECK_OUT);
+        assignedToSellableRoom.setRoom(p201);
+        coBooking(assignedToSellableRoom);
 
         assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isZero();
+    }
+
+    @Test
+    void bookingGanVaoPhongBaoTriKhongLamGiamSuAtBanDuocDemDo() {
+        p202.setStatus(RoomStatus.BAO_TRI);
+        p202.setMaintenanceStartDate(CHECK_IN.plusDays(1));
+        p202.setMaintenanceEndDate(CHECK_IN.plusDays(1));
+        Booking bookingOnMaintenanceRoom = booking(BookingStatus.DA_XAC_NHAN, CHECK_IN, CHECK_OUT);
+        bookingOnMaintenanceRoom.setRoom(p202);
+        coBooking(bookingOnMaintenanceRoom);
+
+        assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isEqualTo(1);
+    }
+
+    @Test
+    void bookingChuaGanPhongVanTruMotSuatTheoLoaiPhong() {
+        coBooking(booking(BookingStatus.DA_XAC_NHAN, CHECK_IN, CHECK_OUT));
+
+        assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isEqualTo(1);
+    }
+
+    @Test
+    void bookingDaHuyKhongChiemSuat() {
+        coBooking(); // Repository query chỉ trả các status trong OCCUPYING_STATUSES.
+
+        assertThat(roomAvailabilityService.availableRooms(phongDoi, CHECK_IN, CHECK_OUT)).isEqualTo(2);
     }
 
     @Test
