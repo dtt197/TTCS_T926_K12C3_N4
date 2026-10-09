@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getRoomTypes } from '../services/roomTypeService'
 import { createWalkInBooking } from '../services/guestBookingService'
+import { searchAvailableRooms } from '../services/roomService'
 import type { RoomType } from '../types/roomType'
 import './WalkInBookingPage.css'
 
@@ -42,10 +43,16 @@ export function WalkInBookingPage() {
     note: '',
   }))
 
+
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+
+  // Số phòng còn trống theo loại phòng và khoảng ngày đã chọn.
+  const [availableRooms, setAvailableRooms] = useState<number | null>(null)
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [availabilityRefresh, setAvailabilityRefresh] = useState(0)
 
   useEffect(() => {
     getRoomTypes()
@@ -69,6 +76,68 @@ export function WalkInBookingPage() {
   )
 
   const guestCount = Number(form.guestCount)
+
+
+  useEffect(() => {
+    const roomTypeId = Number(form.roomTypeId)
+    const guests = Number(form.guestCount)
+
+    if (
+      !form.roomTypeId ||
+      !Number.isInteger(roomTypeId) ||
+      roomTypeId <= 0 ||
+      !form.checkInDate ||
+      !form.checkOutDate ||
+      form.checkOutDate <= form.checkInDate ||
+      !Number.isInteger(guests) ||
+      guests < 1
+    ) {
+      setAvailableRooms(null)
+      setCheckingAvailability(false)
+      return
+    }
+
+    let cancelled = false
+
+    setCheckingAvailability(true)
+    setAvailableRooms(null)
+
+    searchAvailableRooms(
+      form.checkInDate,
+      form.checkOutDate,
+      guests,
+    )
+      .then((results) => {
+        if (cancelled) return
+
+        const selected = results.find(
+          (room) => room.roomTypeId === roomTypeId,
+        )
+
+        setAvailableRooms(selected?.availableRooms ?? 0)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAvailableRooms(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCheckingAvailability(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    form.roomTypeId,
+    form.checkInDate,
+    form.checkOutDate,
+    form.guestCount,
+    availabilityRefresh,
+  ])
+
 
   function update(
     field: keyof WalkInForm,
@@ -150,6 +219,16 @@ export function WalkInBookingPage() {
       return
     }
 
+    if (availableRooms === null) {
+      setError('Chưa kiểm tra được số phòng trống. Vui lòng thử lại.')
+      return
+    }
+
+    if (availableRooms < 1) {
+      setError('Loại phòng đã hết phòng trong khoảng ngày bạn chọn.')
+      return
+    }
+
     try {
       const result = await createWalkInBooking({
         roomTypeId: Number(form.roomTypeId),
@@ -162,9 +241,13 @@ export function WalkInBookingPage() {
         note: form.note.trim() || undefined,
       })
 
+
       setMessage(
         `Tạo booking thành công. Mã booking: ${result.bookingCode}`,
       )
+      setAvailableRooms(null)
+      setAvailabilityRefresh((current) => current + 1)
+
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -188,7 +271,7 @@ export function WalkInBookingPage() {
     <section className="walk-in-page">
       <div className="walk-in-header">
         <div>
-          
+
           <h2>Booking tại quầy</h2>
 
           <p>
@@ -350,6 +433,28 @@ export function WalkInBookingPage() {
               </small>
             )}
           </label>
+
+          {form.roomTypeId && (
+            <div
+              className={`walk-in-message ${checkingAvailability
+                  ? ''
+                  : availableRooms === null
+                    ? 'error'
+                    : availableRooms > 0
+                      ? 'success'
+                      : 'error'
+                }`}
+              role="status"
+            >
+              {checkingAvailability
+                ? 'Đang kiểm tra số phòng trống...'
+                : availableRooms === null
+                  ? 'Chưa lấy được số phòng trống. Vui lòng kiểm tra lại.'
+                  : availableRooms > 0
+                    ? `Còn ${availableRooms} phòng trống trong khoảng ngày đã chọn.`
+                    : 'Loại phòng này đã hết phòng trong khoảng ngày đã chọn.'}
+            </div>
+          )}
 
           <label>
             <span>Ghi chú</span>

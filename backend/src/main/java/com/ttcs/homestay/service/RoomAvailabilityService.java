@@ -56,24 +56,48 @@ public class RoomAvailabilityService {
      */
     @Transactional(readOnly = true)
     public int availableRooms(RoomType roomType, LocalDate checkIn, LocalDate checkOut, Long excludeBookingId) {
-        List<Room> rooms = roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue(roomType.getName());
-        List<Booking> bookings =
-                bookingRepository.findOverlapping(roomType.getId(), checkIn, checkOut, OCCUPYING_STATUSES);
-        OffsetDateTime now = OffsetDateTime.now();
-
-        long minAvailable = Long.MAX_VALUE;
-        for (LocalDate night = checkIn; night.isBefore(checkOut); night = night.plusDays(1)) {
-            LocalDate currentNight = night;
-            long freeRooms = rooms.stream().filter(room -> isSellable(room, currentNight)).count();
-            long occupied = bookings.stream()
-                    .filter(booking -> excludeBookingId == null || !excludeBookingId.equals(booking.getId()))
-                    .filter(booking -> occupies(booking, currentNight, now))
-                    .filter(booking -> booking.getRoom() == null
-                            || isSellable(booking.getRoom(), currentNight))
-                    .count();
-            minAvailable = Math.min(minAvailable, freeRooms - occupied);
+        if (roomType == null || checkIn == null || checkOut == null
+                || !checkOut.isAfter(checkIn)) {
+            return 0;
         }
-        return (int) Math.max(minAvailable, 0);
+
+        List<Room> rooms = roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue(roomType.getName());
+
+        if (rooms.isEmpty()) {
+            return 0;
+        }
+
+        List<Booking> bookings = bookingRepository.findOverlapping(
+                roomType.getId(), checkIn, checkOut, OCCUPYING_STATUSES);
+
+        OffsetDateTime now = OffsetDateTime.now();
+        long minAvailable = Long.MAX_VALUE;
+
+        for (LocalDate night = checkIn; night.isBefore(checkOut); night = night.plusDays(1)) {
+            final LocalDate currentNight = night;
+            long freeRooms = rooms.stream()
+                    .filter(room -> isSellable(room, currentNight))
+                    .filter(room -> bookings.stream()
+                            .filter(booking -> excludeBookingId == null
+                                    || !excludeBookingId.equals(booking.getId()))
+                            .filter(booking -> occupies(booking, currentNight, now))
+                            .noneMatch(booking -> booking.getRoom() != null
+                                    && isSellable(booking.getRoom(), currentNight)
+                                    && booking.getRoom().getId().equals(room.getId())
+                            ))
+                    .count();
+
+            long unassignedBookings = bookings.stream()
+                    .filter(booking -> excludeBookingId == null
+                            || !excludeBookingId.equals(booking.getId()))
+                    .filter(booking -> booking.getRoom() == null)
+                    .filter(booking -> occupies(booking, currentNight, now))
+                    .count();
+
+            minAvailable = Math.min(minAvailable, Math.max(0, freeRooms - unassignedBookings));
+        }
+
+        return minAvailable == Long.MAX_VALUE ? 0 : (int) minAvailable;
     }
 
     /**
