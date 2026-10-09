@@ -54,6 +54,7 @@ class BookingRoomChangeIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        jdbc.update("DELETE FROM booking_deposits");
         histories.deleteAll();
         bookings.deleteAll();
         rooms.deleteAll();
@@ -110,7 +111,7 @@ class BookingRoomChangeIntegrationTest {
         assertRejected(target, newRoom.getId(), "Repair", 409);
         assertRejected(target, otherTypeRoom.getId(), "Repair", 409);
         assertRejected(target, newRoom.getId(), "  ", 400);
-        assertRejected(target, newRoom.getId(), "Repair", 409, BookingStatus.DA_NHAN_PHONG);
+        assertRejected(target, newRoom.getId(), "Repair", 409, BookingStatus.DA_TRA_PHONG);
         assertThat(bookings.findById(target.getId()).orElseThrow().getRoom().getId()).isEqualTo(oldRoom.getId());
         assertThat(bookings.findById(conflict.getId()).orElseThrow().getRoom().getId()).isEqualTo(newRoom.getId());
         assertThat(histories.count()).isZero();
@@ -132,6 +133,127 @@ class BookingRoomChangeIntegrationTest {
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk());
         assertThat(histories.count()).isEqualTo(1);
+    }
+
+    private Booking checkedInBooking() {
+        oldRoom.setStatus(RoomStatus.DANG_O);
+        rooms.saveAndFlush(oldRoom);
+        return booking("AC4-" + suffix(), LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1),
+                BookingStatus.DA_NHAN_PHONG, oldRoom, true);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions change(Booking booking, String token) throws Exception {
+        return mvc.perform(put("/api/bookings/{id}/room-change", booking.getId())
+                .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"roomId\":" + newRoom.getId() + ",\"reason\":\"  Repair  \"}"));
+    }
+
+    private void assertUnchanged(Booking booking) {
+        assertThat(bookings.findById(booking.getId()).orElseThrow().getRoom().getId()).isEqualTo(oldRoom.getId());
+        assertThat(rooms.findById(oldRoom.getId()).orElseThrow().getStatus()).isEqualTo(RoomStatus.DANG_O);
+        assertThat(histories.count()).isZero();
+    }
+
+    @Test
+    void checkedInChangePersistsRoomsBookingAndHistoryAcrossRequests() throws Exception {
+        Booking booking = checkedInBooking();
+        jdbc.update("INSERT INTO booking_deposits (booking_id, amount, payment_method, created_at) VALUES (?, 50000, 'CASH', CURRENT_TIMESTAMP)", booking.getId());
+        change(booking, receptionistToken).andExpect(status().isOk());
+        Booking saved = bookings.findById(booking.getId()).orElseThrow();
+        assertThat(saved.getStatus()).isEqualTo(BookingStatus.DA_NHAN_PHONG);
+        assertThat(saved.getRoom().getId()).isEqualTo(newRoom.getId());
+        assertThat(saved.getTotalAmount()).isEqualTo(booking.getTotalAmount());
+        assertThat(saved.getWeekdayPriceSnapshot()).isEqualTo(booking.getWeekdayPriceSnapshot());
+        assertThat(saved.getWeekendPriceSnapshot()).isEqualTo(booking.getWeekendPriceSnapshot());
+        assertThat(saved.getCheckInDate()).isEqualTo(booking.getCheckInDate());
+        assertThat(saved.getCheckOutDate()).isEqualTo(booking.getCheckOutDate());
+        assertThat(jdbc.queryForObject("SELECT amount FROM booking_deposits WHERE booking_id = ?", java.math.BigDecimal.class, booking.getId()))
+                .isEqualByComparingTo("50000");
+        assertThat(rooms.findById(oldRoom.getId()).orElseThrow().getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        assertThat(rooms.findById(newRoom.getId()).orElseThrow().getStatus()).isEqualTo(RoomStatus.DANG_O);
+        mvc.perform(get("/api/bookings/{id}/room-change-history", booking.getId())
+                        .header("Authorization", "Bearer " + receptionistToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].reason").value("Repair"))
+                .andExpect(jsonPath("$[0].oldRoomId").value(oldRoom.getId()))
+                .andExpect(jsonPath("$[0].newRoomId").value(newRoom.getId()))
+                .andExpect(jsonPath("$[0].actorUserId").value(receptionist.getId()))
+                .andExpect(jsonPath("$[0].changedAt").isNotEmpty());
+        mvc.perform(get("/api/bookings").param("status", "DA_NHAN_PHONG")
+                        .header("Authorization", "Bearer " + receptionistToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content[0].status").value("DA_NHAN_PHONG"))
+                .andExpect(jsonPath("$.content[0].roomNumber").value("802"));
+    }
+
+    @Test
+    void checkedInRejectsUnavailableRoomsAndInvalidInputs() throws Exception {
+        Booking booking = checkedInBooking();
+        for (RoomStatus roomStatus : java.util.List.of(RoomStatus.TRONG_BAN, RoomStatus.DANG_O, RoomStatus.BAO_TRI)) {
+            newRoom.setStatus(roomStatus);
+            rooms.saveAndFlush(newRoom);
+            change(booking, receptionistToken).andExpect(status().isConflict());
+            assertUnchanged(booking);
+            assertThat(rooms.findById(newRoom.getId()).orElseThrow().getStatus()).isEqualTo(roomStatus);
+        }
+        newRoom.setStatus(RoomStatus.TRONG_SACH);
+        rooms.saveAndFlush(newRoom);
+        assertRejected(booking, otherTypeRoom.getId(), "Repair", 409);
+        assertRejected(booking, oldRoom.getId(), "Repair", 409);
+        assertRejected(booking, newRoom.getId(), "  ", 400);
+        assertRejected(booking, newRoom.getId(), "\u2003\u00a0", 400);
+        assertRejected(booking, newRoom.getId(), "Repair", 409, BookingStatus.DA_TRA_PHONG);
+        oldRoom.setStatus(RoomStatus.TRONG_BAN);
+        rooms.saveAndFlush(oldRoom);
+        change(booking, receptionistToken).andExpect(status().isConflict());
+    }
+
+    @Test
+    void checkedInRejectsEveryNonReceptionistRole() throws Exception {
+        Booking booking = checkedInBooking();
+        for (String role : java.util.List.of("OWNER", "ADMIN", "HOUSEKEEPING")) {
+            change(booking, createUser(role, role)).andExpect(status().isForbidden());
+        }
+        assertUnchanged(booking);
+    }
+
+    @Test
+    void availableRoomsAndConfirmationRespectRemainingStayAndV36IncludingExpiredHolds() throws Exception {
+        Booking booking = checkedInBooking();
+        mvc.perform(get("/api/bookings/{id}/available-rooms", booking.getId())
+                        .header("Authorization", "Bearer " + receptionistToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(newRoom.getId()));
+        Booking conflict = booking("CONFLICT-" + suffix(), booking.getCheckInDate(),
+                BookingStatus.DA_XAC_NHAN, newRoom, true);
+        change(booking, receptionistToken).andExpect(status().isConflict());
+        // Only the past part overlaps: remaining-stay validation passes, V36 must still reject.
+        conflict.setCheckOutDate(LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")));
+        bookings.saveAndFlush(conflict);
+        change(booking, receptionistToken).andExpect(status().isConflict());
+        conflict.setStatus(BookingStatus.CHO_XAC_NHAN);
+        conflict.setHoldExpiresAt(OffsetDateTime.now().minusDays(2));
+        bookings.saveAndFlush(conflict);
+        change(booking, receptionistToken).andExpect(status().isConflict());
+        mvc.perform(get("/api/bookings/{id}/available-rooms", booking.getId())
+                        .header("Authorization", "Bearer " + receptionistToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        assertUnchanged(booking);
+    }
+
+    @Test
+    void historyFailureRollsBackAlreadyFlushedBookingAndBothRooms() throws Exception {
+        Booking booking = checkedInBooking();
+        jdbc.execute("ALTER TABLE booking_room_change_history ADD CONSTRAINT ac4_test_failure CHECK (reason <> 'Repair')");
+        try {
+            try {
+                change(booking, receptionistToken).andExpect(status().is5xxServerError());
+            } catch (jakarta.servlet.ServletException expected) {
+                assertThat(expected).hasRootCauseInstanceOf(java.sql.SQLException.class);
+            }
+            assertUnchanged(booking);
+            assertThat(rooms.findById(newRoom.getId()).orElseThrow().getStatus()).isEqualTo(RoomStatus.TRONG_SACH);
+        } finally {
+            jdbc.execute("ALTER TABLE booking_room_change_history DROP CONSTRAINT ac4_test_failure");
+        }
     }
 
     private void assertRejected(Booking target, long roomId, String reason, int expected) throws Exception {

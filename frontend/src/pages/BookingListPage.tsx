@@ -1,3 +1,4 @@
+import { canChangeBookingRoom, roomChangeOptions } from './bookingRoomChangeActions'
 import './BookingListPage.css'
 import { ApiRequestError } from '../services/apiClient'
 import type {
@@ -143,7 +144,7 @@ export function BookingListPage({ role }: { role: string }) {
     setRoomLoading(true)
     try {
       const [rooms, history] = await Promise.all([getAvailableRooms(booking.id), getBookingRoomChangeHistory(booking.id)])
-      setAssignableRooms(rooms.filter((room) => room.roomNumber !== booking.roomNumber))
+      setAssignableRooms(roomChangeOptions(booking, rooms))
       setRoomChangeHistory(history)
     } catch (err) {
       setRoomError(err instanceof Error ? err.message : 'Không tải được dữ liệu đổi phòng.')
@@ -718,7 +719,7 @@ export function BookingListPage({ role }: { role: string }) {
                           Chốt phòng
                         </button>
                       )}
-                      {canManage && booking.status === 'DA_XAC_NHAN' && booking.roomConfirmedAt && new Date(booking.checkInDate).getTime() > new Date().setHours(0, 0, 0, 0) && (
+                      {canChangeBookingRoom(role, booking, new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' })) && (
                         <button type="button" className="booking-edit-button" onClick={() => void openRoomChange(booking)}>Đổi phòng</button>
                       )}
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
@@ -1000,6 +1001,8 @@ export function BookingListPage({ role }: { role: string }) {
                 </select>
               </label>
             )}
+            {changeRoomBooking.status === 'DA_NHAN_PHONG' && <p>Chỉ chọn phòng trống sạch cùng loại. Hiện hệ thống yêu cầu phòng không trùng lịch trong toàn bộ kỳ lưu trú, kể cả phần ngày đã qua.</p>}
+            {!roomLoading && assignableRooms.length === 0 && <p role="status">Không có phòng đủ điều kiện để đổi.</p>}
             <label className="booking-room-select">Lý do đổi phòng (bắt buộc)
               <textarea maxLength={500} value={changeRoomReason} onChange={(event) => setChangeRoomReason(event.target.value)} />
             </label>
