@@ -67,6 +67,7 @@ function formatCurrency(value: number) {
 export function BookingListPage({ role }: { role: string }) {
   const canAdjustDeposit = hasPermission(role, 'bookings:deposit-adjust')
   const canCancel = hasPermission(role, 'bookings:cancel')
+  const canManage = hasPermission(role, 'bookings:manage')
   const [bookings, setBookings] = useState<BookingListItem[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -601,7 +602,7 @@ export function BookingListPage({ role }: { role: string }) {
                       )}
                     </td>
                     <td>
-                      {booking.status === 'CHO_XAC_NHAN' && !booking.holdExpired && (
+                      {canManage && booking.status === 'CHO_XAC_NHAN' && !booking.holdExpired && (
                         <button type="button" className="booking-confirm-button" onClick={() => startConfirming(booking)}>
                           Xác nhận
                         </button>
@@ -609,14 +610,16 @@ export function BookingListPage({ role }: { role: string }) {
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
                         Chi tiết
                       </button>
-                      <button
-                        type="button"
-                        id={`booking-edit-btn-${booking.id}`}
-                        className="booking-edit-button"
-                        onClick={() => startEditing(booking)}
-                      >
-                        Cập nhật
-                      </button>
+                      {canManage && (
+                        <button
+                          type="button"
+                          id={`booking-edit-btn-${booking.id}`}
+                          className="booking-edit-button"
+                          onClick={() => startEditing(booking)}
+                        >
+                          Cập nhật
+                        </button>
+                      )}
                         {canCancel && (booking.status === 'CHO_XAC_NHAN' || booking.status === 'DA_XAC_NHAN') && (
                         <button type="button" className="booking-cancel-booking-button" onClick={() => startCancelling(booking)}>
                           Huỷ booking
