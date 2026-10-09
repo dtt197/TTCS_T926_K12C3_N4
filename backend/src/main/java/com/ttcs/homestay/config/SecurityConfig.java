@@ -174,9 +174,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/price-overrides/**")
                         .hasRole("OWNER")
 
-                        // S2-01 & S3-04: booking tạo và xem trước thay đổi bởi Admin, Chủ homestay hoặc Lễ tân.
+                        // S2-01 & S3-04: chỉ Lễ tân tạo booking và xem trước thay đổi (ma trận "Vận hành booking": Lễ tân F, Chủ R, Admin R).
                         .requestMatchers(HttpMethod.POST, "/api/bookings", "/api/bookings/*/preview")
-                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .hasRole("RECEPTIONIST")
 
                         // S3-01: ghi bút toán điều chỉnh cọc dành cho Lễ tân và Chủ homestay.
                         .requestMatchers(HttpMethod.POST, "/api/bookings/*/deposit-adjustments")
@@ -184,21 +184,22 @@ public class SecurityConfig {
 
                         // S3-01: Le tan xac nhan booking va ghi nhan tien coc.
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
-                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .hasRole("RECEPTIONIST")
                         
                         // S3-02 Lát 3: chỉ Lễ tân được huỷ booking (ma trận "Vận hành booking": Lễ tân F, Chủ R, Admin R).
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*/cancel")
                         .hasRole("RECEPTIONIST")
+                        // S3-01: tiền cọc theo ma trận "Thanh toán, đặt cọc": Chủ F, Lễ tân W, Admin R.
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*/deposit",
                                 "/api/bookings/*/deposits/**")
-                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .hasAnyRole("OWNER", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.DELETE, "/api/bookings/*/deposit",
                                 "/api/bookings/*/deposits/**", "/api/bookings/*")
-                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .hasAnyRole("OWNER", "RECEPTIONIST")
 
                         // Lễ tân có thể cập nhật ngày lưu trú và loại phòng của booking hiện có.
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*")
-                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .hasRole("RECEPTIONIST")
                         
                         // S2-02 Lát 2: xem giá từng đêm (ma trận "Bảng giá": Chủ F, Admin R, Lễ tân R)
                         .requestMatchers(HttpMethod.GET, "/api/pricing/**")
@@ -223,7 +224,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/public/bookings/walk-in"
-                        ).hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        ).hasRole("RECEPTIONIST")
 
                         // S2-08: khách tra cứu booking bằng mã và email
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings/lookup").permitAll()

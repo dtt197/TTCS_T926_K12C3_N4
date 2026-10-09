@@ -104,7 +104,7 @@ class BookingControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"receptionist-token", "admin-token", "owner-token"})
+        @ValueSource(strings = {"receptionist-token"})
     void authorizedRolesCanUpdateConfirmedBooking(String token) throws Exception {
         BookingResponse mockResponse = new BookingResponse(
                 5L,
@@ -234,7 +234,7 @@ class BookingControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"receptionist-token", "admin-token", "owner-token"})
+        @ValueSource(strings = {"receptionist-token"})
     void authorizedRolesCanPreviewBooking(String token) throws Exception {
         BookingChangePreviewResponse previewResponse = new BookingChangePreviewResponse(
                 5L,

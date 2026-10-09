@@ -64,7 +64,7 @@ const TABS: ReadonlyArray<Tab> = [
     label: 'Booking tại quầy',
     title: 'Booking tại quầy',
     icon: '+',
-    permission: 'bookings:view',
+    permission: 'bookings:manage',
   },
   {
     view: 'roomManagement',
