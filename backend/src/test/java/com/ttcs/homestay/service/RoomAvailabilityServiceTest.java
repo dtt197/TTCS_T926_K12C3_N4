@@ -51,9 +51,10 @@ class RoomAvailabilityServiceTest {
         p202 = room("202");
         when(roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue("Phòng đôi")).thenReturn(List.of(p201, p202));
     }
-
+    
     private static Room room(String number) {
         Room room = new Room();
+        room.setId("201".equals(number) ? 201L : 202L);
         room.setRoomNumber(number);
         room.setStatus(RoomStatus.TRONG_SACH);
         return room;
