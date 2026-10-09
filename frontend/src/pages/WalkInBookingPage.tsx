@@ -43,7 +43,7 @@ export function WalkInBookingPage() {
     note: '',
   }))
 
-  
+
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -77,7 +77,7 @@ export function WalkInBookingPage() {
 
   const guestCount = Number(form.guestCount)
 
-  
+
   useEffect(() => {
     const roomTypeId = Number(form.roomTypeId)
     const guests = Number(form.guestCount)
@@ -218,7 +218,7 @@ export function WalkInBookingPage() {
       )
       return
     }
-    
+
     if (availableRooms === null) {
       setError('Chưa kiểm tra được số phòng trống. Vui lòng thử lại.')
       return
@@ -241,7 +241,7 @@ export function WalkInBookingPage() {
         note: form.note.trim() || undefined,
       })
 
-      
+
       setMessage(
         `Tạo booking thành công. Mã booking: ${result.bookingCode}`,
       )
@@ -271,7 +271,7 @@ export function WalkInBookingPage() {
     <section className="walk-in-page">
       <div className="walk-in-header">
         <div>
-          
+
           <h2>Booking tại quầy</h2>
 
           <p>
@@ -433,7 +433,7 @@ export function WalkInBookingPage() {
               </small>
             )}
           </label>
-          
+
           {form.roomTypeId && (
             <div
               className={`walk-in-message ${checkingAvailability

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,7 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/** S3-02 Lát 1: booking trực tuyến và booking tại quầy (S3-06) đều giữ một phòng cụ thể khi được tạo. */
+/** S3-03: booking trực tuyến và tại quầy giữ tạm một phòng cụ thể. */
 @ExtendWith(MockitoExtension.class)
 class BookingRoomHoldingTest {
 
@@ -64,7 +63,6 @@ class BookingRoomHoldingTest {
     private GuestBookingService guestBookingService;
 
     private RoomType phongDoi;
-    private Room p201;
 
     @BeforeEach
     void setUp() {
@@ -78,9 +76,6 @@ class BookingRoomHoldingTest {
         phongDoi.setWeekdayPrice(500_000L);
         phongDoi.setWeekendPrice(700_000L);
         phongDoi.setExtraGuestFee(200_000L);
-        p201 = new Room();
-        p201.setId(201L);
-        p201.setRoomNumber("201");
         ReflectionTestUtils.setField(guestBookingService, "bookingRateLimiter", new BookingRateLimiter());
     }
 
@@ -96,6 +91,10 @@ class BookingRoomHoldingTest {
                 new NightlyPrice(CHECK_IN, PriceType.WEEKDAY, "Ngày thường", 500_000L),
                 new NightlyPrice(CHECK_IN.plusDays(1), PriceType.WEEKEND, "Cuối tuần", 700_000L)));
         when(bookingCodeGenerator.next()).thenReturn("7KQ2M9XA");
+        Room room = new Room();
+        room.setId(11L);
+        room.setRoomNumber("201");
+        when(roomAvailabilityService.assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null)).thenReturn(room);
     }
 
     private static GuestBookingRequest guestRequest() {
@@ -114,46 +113,33 @@ class BookingRoomHoldingTest {
     }
 
     @Test
-    void khachDatTrucTuyen_bookingGiuPhongDuocGan() {
+    void khachDatTrucTuyen_bookingDuocGiuTamPhong() {
         conPhong();
-        when(roomAvailabilityService.assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null)).thenReturn(p201);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         guestBookingService.createGuestBooking(guestRequest());
 
-        assertThat(savedBooking().getRoom()).isSameAs(p201);
+        assertThat(savedBooking().getRoom().getRoomNumber()).isEqualTo("201");
+        verify(roomAvailabilityService).assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null);
     }
 
     @Test
-    void bookingTaiQuay_xacNhanNgayVaGiuPhongDuocGan() {
+    void bookingTaiQuay_xacNhanNgayVaDuocGiuTamPhong() {
         conPhong();
-        when(roomAvailabilityService.assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null)).thenReturn(p201);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         guestBookingService.createWalkInBooking(walkInRequest());
 
         Booking booking = savedBooking();
-        assertThat(booking.getRoom()).isSameAs(p201);
+        assertThat(booking.getRoom().getRoomNumber()).isEqualTo("201");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_XAC_NHAN);
         assertThat(booking.getSource()).isEqualTo(BookingSource.TAI_QUAY);
-    }
-
-    @Test
-    void bookingTaiQuay_khongConPhongDeGan_baoHetPhongVaKhongLuu() {
-        conPhong();
-        when(roomAvailabilityService.assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null))
-                .thenThrow(RoomAvailabilityService.unavailable(phongDoi));
-
-        assertThatThrownBy(() -> guestBookingService.createWalkInBooking(walkInRequest()))
-                .isInstanceOf(RoomUnavailableException.class)
-                .hasMessageContaining("Phòng đôi đã hết phòng");
-        verify(bookingRepository, never()).save(any());
+        verify(roomAvailabilityService).assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null);
     }
 
     @Test
     void coSoDuLieuTuChoiViTrungPhong_baoHetPhongThayViLoi500() {
         conPhong();
-        when(roomAvailabilityService.assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null)).thenReturn(p201);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doThrow(new DataIntegrityViolationException("could not execute statement", new SQLException(
                 "conflicting key value violates exclusion constraint \"bookings_room_no_overlap\"")))
@@ -167,7 +153,6 @@ class BookingRoomHoldingTest {
     @Test
     void loiCoSoDuLieuKhac_khongBiDoiThanhHetPhong() {
         conPhong();
-        when(roomAvailabilityService.assignRoom(phongDoi, CHECK_IN, CHECK_OUT, null, null)).thenReturn(p201);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doThrow(new DataIntegrityViolationException("could not execute statement", new SQLException(
                 "duplicate key value violates unique constraint \"bookings_booking_code_unique\"")))

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -64,7 +65,9 @@ class RoomAssignmentTest {
         Room room = new Room();
         room.setId(id);
         room.setRoomNumber(number);
+        room.setRoomType("Phòng đôi");
         room.setStatus(RoomStatus.TRONG_SACH);
+        room.setActive(true);
         return room;
     }
 
@@ -186,4 +189,5 @@ class RoomAssignmentTest {
         assertThat(RoomAvailabilityService.isRoomOverlapViolation(trungPhong)).isTrue();
         assertThat(RoomAvailabilityService.isRoomOverlapViolation(loiKhac)).isFalse();
     }
+
 }

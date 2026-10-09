@@ -126,6 +126,7 @@ class BookingUpdateIntegrationTest {
         assertThat(bookingRepository.count()).isEqualTo(1);
         // 4 đêm: T5 (500k), T6 (700k), T7 (700k), CN (500k) => 2.400.000đ
         assertThat(saved.getTotalAmount()).isEqualTo(2_400_000L);
+        assertThat(saved.getRoom()).isNotNull();
     }
 
     @Test
@@ -143,6 +144,7 @@ class BookingUpdateIntegrationTest {
         assertThat(response.roomTypeId()).isEqualTo(newRoomType.getId());
         assertThat(saved.getRoomType().getId()).isEqualTo(newRoomType.getId());
         assertThat(saved.getRoomTypeNameSnapshot()).isEqualTo(newRoomType.getName());
+        assertThat(saved.getRoom()).isNotNull();
         assertThat(bookingRepository.count()).isEqualTo(1);
         // 3 đêm theo giá phòng mới (800k, 1m, 1m) => 2.800.000đ
         assertThat(saved.getTotalAmount()).isEqualTo(2_800_000L);
@@ -165,6 +167,7 @@ class BookingUpdateIntegrationTest {
         assertThat(saved.getCheckOutDate()).isEqualTo(LocalDate.of(2027, 8, 6));
         assertThat(saved.getRoomType().getId()).isEqualTo(newRoomType.getId());
         assertThat(saved.getRoomTypeNameSnapshot()).isEqualTo(newRoomType.getName());
+        assertThat(saved.getRoom()).isNotNull();
         assertThat(bookingRepository.count()).isEqualTo(1);
         // 4 đêm ngày thường: 4 * 800k = 3.200.000đ
         assertThat(saved.getTotalAmount()).isEqualTo(3_200_000L);

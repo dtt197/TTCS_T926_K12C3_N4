@@ -12,7 +12,6 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -62,51 +61,40 @@ public class RoomAvailabilityService {
             return 0;
         }
 
-        List<Room> rooms = roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue(
-                roomType.getName());
+        List<Room> rooms = roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue(roomType.getName());
 
         if (rooms.isEmpty()) {
             return 0;
         }
 
         List<Booking> bookings = bookingRepository.findOverlapping(
-                roomType.getId(),
-                checkIn,
-                checkOut,
-                OCCUPYING_STATUSES);
+                roomType.getId(), checkIn, checkOut, OCCUPYING_STATUSES);
 
         OffsetDateTime now = OffsetDateTime.now();
         long minAvailable = Long.MAX_VALUE;
 
         for (LocalDate night = checkIn; night.isBefore(checkOut); night = night.plusDays(1)) {
-
             final LocalDate currentNight = night;
-
             long freeRooms = rooms.stream()
-                    .filter(room -> !isUnderMaintenance(room, currentNight))
-                    .filter(room -> room.getId() != null)
+                    .filter(room -> isSellable(room, currentNight))
                     .filter(room -> bookings.stream()
                             .filter(booking -> excludeBookingId == null
                                     || !excludeBookingId.equals(booking.getId()))
-                            .filter(booking -> !isHoldExpired(booking, now))
+                            .filter(booking -> occupies(booking, currentNight, now))
                             .noneMatch(booking -> booking.getRoom() != null
+                                    && isSellable(booking.getRoom(), currentNight)
                                     && booking.getRoom().getId().equals(room.getId())
-                                    && !currentNight.isBefore(booking.getCheckInDate())
-                                    && currentNight.isBefore(booking.getCheckOutDate())))
+                            ))
                     .count();
 
             long unassignedBookings = bookings.stream()
-                    .filter(booking -> booking.getRoom() == null)
                     .filter(booking -> excludeBookingId == null
                             || !excludeBookingId.equals(booking.getId()))
-                    .filter(booking -> !isHoldExpired(booking, now))
-                    .filter(booking -> !currentNight.isBefore(booking.getCheckInDate())
-                            && currentNight.isBefore(booking.getCheckOutDate()))
+                    .filter(booking -> booking.getRoom() == null)
+                    .filter(booking -> occupies(booking, currentNight, now))
                     .count();
 
-            minAvailable = Math.min(
-                    minAvailable,
-                    Math.max(0, freeRooms - unassignedBookings));
+            minAvailable = Math.min(minAvailable, Math.max(0, freeRooms - unassignedBookings));
         }
 
         return minAvailable == Long.MAX_VALUE ? 0 : (int) minAvailable;
@@ -151,13 +139,29 @@ public class RoomAvailabilityService {
             throw unavailable(roomType, checkIn, checkOut);
         }
         if (currentRoom != null) {
-            for (Room room : freeRooms) {
-                if (room.getId() != null && room.getId().equals(currentRoom.getId())) {
-                    return room;
-                }
+            freeRooms = freeRooms.stream()
+                    .sorted(Comparator.comparing((Room room) -> !room.getId().equals(currentRoom.getId()))
+                            .thenComparing(Room::getRoomNumber))
+                    .toList();
+        }
+        for (Room candidate : freeRooms) {
+            Room lockedRoom = roomRepository.findByIdForUpdate(candidate.getId()).orElse(candidate);
+            boolean roomFits = lockedRoom.isActive()
+                    && lockedRoom.getRoomType() != null
+                    && lockedRoom.getRoomType().equalsIgnoreCase(roomType.getName())
+                    && !isUnderMaintenanceAnyNight(lockedRoom, checkIn, checkOut);
+            boolean roomHasConflict = bookingRepository
+                    .findOverlappingOnRooms(List.of(lockedRoom), checkIn, checkOut, OCCUPYING_STATUSES).stream()
+                    .anyMatch(other -> OCCUPYING_STATUSES.contains(other.getStatus())
+                            && other.getRoom() != null
+                            && lockedRoom.getId().equals(other.getRoom().getId())
+                            && (excludeBookingId == null || !excludeBookingId.equals(other.getId()))
+                            && !isHoldExpired(other, OffsetDateTime.now()));
+            if (roomFits && !roomHasConflict) {
+                return lockedRoom;
             }
         }
-        return freeRooms.get(0);
+        throw unavailable(roomType, checkIn, checkOut);
     }
 
     /** Trả về các phòng đủ điều kiện trong toàn bộ khoảng lưu trú nửa mở. */
@@ -187,7 +191,7 @@ public class RoomAvailabilityService {
     @Transactional(readOnly = true)
     public boolean isRoomAvailable(
             Room room, RoomType roomType, LocalDate checkIn, LocalDate checkOut, Long excludeBookingId) {
-        if (!room.isActive() || !room.getRoomType().equalsIgnoreCase(roomType.getName())
+        if (!room.isActive() || room.getRoomType() == null || !room.getRoomType().equalsIgnoreCase(roomType.getName())
                 || isUnderMaintenanceAnyNight(room, checkIn, checkOut)) {
             return false;
         }
@@ -232,6 +236,10 @@ public class RoomAvailabilityService {
         }
         return !night.isBefore(room.getMaintenanceStartDate())
                 && (room.getMaintenanceEndDate() == null || !night.isAfter(room.getMaintenanceEndDate()));
+    }
+
+    private static boolean isSellable(Room room, LocalDate night) {
+        return room.isActive() && !isUnderMaintenance(room, night);
     }
 
     private static boolean isUnderMaintenanceAnyNight(Room room, LocalDate checkIn, LocalDate checkOut) {

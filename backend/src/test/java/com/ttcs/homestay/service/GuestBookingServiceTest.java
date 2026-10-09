@@ -135,6 +135,7 @@ class GuestBookingServiceTest {
         ArgumentCaptor<Booking> saved = ArgumentCaptor.forClass(Booking.class);
         verify(bookingRepository).save(saved.capture());
         Booking booking = saved.getValue();
+        assertThat(booking.getRoom()).isNull();
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CHO_XAC_NHAN);
         assertThat(Duration.between(booking.getCreatedAt(), booking.getHoldExpiresAt())).isEqualTo(Duration.ofHours(24));
         assertThat(booking.getGuestName()).isEqualTo("Nguyễn Văn A");

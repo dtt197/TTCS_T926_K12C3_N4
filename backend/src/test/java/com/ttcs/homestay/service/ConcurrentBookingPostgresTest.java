@@ -26,7 +26,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 /**
- * S3-02 Lát 2: nhiều khách cùng đặt phòng cuối cùng, chạy trên PostgreSQL thật.
+ * S3-03 Lượt 1: nhiều khách cùng giữ suất cuối cùng, chạy trên PostgreSQL thật.
  * Chỉ chạy khi có HOMESTAY_PG_TEST_URL, HOMESTAY_PG_TEST_USER, HOMESTAY_PG_TEST_PASSWORD.
  * Dữ liệu nằm trong một schema tạm và được xoá khi chạy xong.
  */
@@ -93,7 +93,7 @@ class ConcurrentBookingPostgresTest {
         assertThat(result.created()).isEqualTo(3);
         assertThat(result.soldOut()).isEqualTo(197);
         assertThat(bookingsFrom(roomTypeId, checkIn)).isEqualTo(3);
-        assertThat(distinctRooms(roomTypeId, checkIn)).isEqualTo(3);
+        assertThat(distinctRooms(roomTypeId, checkIn)).isZero();
         assertThat(overlappingPairs(roomTypeId)).isZero();
     }
 

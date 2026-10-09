@@ -23,7 +23,7 @@ import {
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
 import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
-import { getRoomSelectionOutcome } from './bookingRoomSelection'
+import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -125,10 +125,18 @@ export function BookingListPage({ role }: { role: string }) {
   const [roomSaving, setRoomSaving] = useState(false)
   const [roomError, setRoomError] = useState<string | null>(null)
 
+  async function reloadAssignableRooms() {
+    await runRoomReload(roomBooking, selectedRoomId, {
+      getAvailableRooms, assignBookingRoom, setAssignableRooms, setSelectedRoomId, setRoomError, setRoomLoading,
+      setRoomSaving, setRoomBooking, setEditSuccess, reloadBookings: reloadBookingData,
+    })
+  }
+
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
 
   async function startRoomSelection(booking: BookingListItem) {
+    if (booking.status !== 'DA_XAC_NHAN' || booking.roomConfirmedAt) return
     setRoomBooking(booking)
     setAssignableRooms([])
     setSelectedRoomId(null)
@@ -136,6 +144,12 @@ export function BookingListPage({ role }: { role: string }) {
     setRoomLoading(true)
     try {
       const rooms = await getAvailableRooms(booking.id)
+      const latestBooking = bookings.find((item) => item.id === booking.id)
+      if (!latestBooking || latestBooking.status !== 'DA_XAC_NHAN' || latestBooking.roomConfirmedAt) {
+        setRoomError('Booking không còn ở trạng thái có thể chốt phòng. Hãy tải lại danh sách booking.')
+        setRoomBooking(null)
+        return
+      }
       setAssignableRooms(rooms)
       const currentRoom = rooms.find((room) => room.roomNumber === booking.roomNumber)
       if (currentRoom) setSelectedRoomId(currentRoom.id)
@@ -149,36 +163,25 @@ export function BookingListPage({ role }: { role: string }) {
   }
 
   async function confirmRoomSelection() {
-    if (!roomBooking || selectedRoomId === null) return
-    const outcome = getRoomSelectionOutcome(roomBooking.roomNumber, selectedRoomId, assignableRooms)
-    if (outcome.type === 'invalid-selection') {
-      setRoomError('Phòng đã chọn không còn trong danh sách phòng phù hợp. Hãy tải lại danh sách phòng.')
-      return
-    }
-    if (outcome.type === 'unchanged') {
-      setEditSuccess(`Phòng ${outcome.roomNumber} đã được gán cho booking này, không có thay đổi.`)
-      setRoomBooking(null)
-      return
-    }
-    if (outcome.type === 'unsupported-change') {
-      setEditSuccess('Chức năng đổi phòng chưa được hỗ trợ ở lát này.')
-      setRoomBooking(null)
-      return
-    }
+    await runRoomAssignment(roomBooking, selectedRoomId, assignableRooms, {
+      getAvailableRooms, assignBookingRoom, setAssignableRooms, setSelectedRoomId, setRoomError, setRoomLoading,
+      setRoomSaving, setRoomBooking, setEditSuccess, reloadBookings: reloadBookingData,
+    })
+  }
 
-    setRoomSaving(true)
-    setRoomError(null)
-    try {
-      const updated = await assignBookingRoom(roomBooking.id, outcome.roomId)
-      setBookings((current) => current.map((item) => item.id === updated.id ? { ...item, roomNumber: updated.roomNumber } : item))
-      setEditSuccess(`Đã gán phòng ${updated.roomNumber} cho booking ${roomBooking.bookingCode}.`)
-      setRoomBooking(null)
-      setRefreshVersion((current) => current + 1)
-    } catch (err) {
-      setRoomError(err instanceof Error ? err.message : 'Không thể gán phòng.')
-    } finally {
-      setRoomSaving(false)
-    }
+  async function reloadBookingData() {
+    const result = await searchBookings({
+      keyword: appliedFilters.keyword.trim() || undefined,
+      status: appliedFilters.status || undefined,
+      checkInFrom: appliedFilters.checkInFrom || undefined,
+      checkInTo: appliedFilters.checkInTo || undefined,
+      page,
+      size: 20,
+    })
+    setBookings(result.content || [])
+    setPage(result.page ?? 0)
+    setTotalPages(result.totalPages ?? 0)
+    setTotalElements(result.totalElements ?? 0)
   }
 
   useEffect(() => {
@@ -646,7 +649,11 @@ export function BookingListPage({ role }: { role: string }) {
                       )}
                     </td>
                     <td>{booking.roomTypeNameSnapshot}</td>
-                    <td>{booking.roomNumber ?? 'Chưa gán'}</td>
+                    <td>
+                      <div>{booking.roomNumber ?? 'Chưa gán'}</div>
+                      <small>{booking.roomConfirmedAt ? 'Phòng đã chốt' : booking.roomNumber ? 'Phòng giữ tạm' : 'Chưa giữ phòng'}</small>
+                      {booking.roomConfirmedAt && <small>{booking.roomConfirmedBy ? ` · ${booking.roomConfirmedBy}` : ''}{` · ${new Date(booking.roomConfirmedAt).toLocaleString('vi-VN')}`}</small>}
+                    </td>
                     <td>{formatDate(booking.checkInDate)}</td>
                     <td>{formatDate(booking.checkOutDate)}</td>
                     <td>{formatCurrency(booking.totalAmount)}</td>
@@ -670,9 +677,9 @@ export function BookingListPage({ role }: { role: string }) {
                           Xác nhận
                         </button>
                       )}
-                      {canManage && booking.status === 'DA_XAC_NHAN' && (
+                      {canManage && booking.status === 'DA_XAC_NHAN' && !booking.roomConfirmedAt && (
                         <button type="button" className="booking-edit-button" onClick={() => void startRoomSelection(booking)}>
-                          Chọn phòng
+                          Chốt phòng
                         </button>
                       )}
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
@@ -900,13 +907,13 @@ export function BookingListPage({ role }: { role: string }) {
           <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-room-title">
             <div className="booking-edit-heading">
               <div>
-                <h3 id="booking-room-title">Chọn phòng cho {roomBooking.bookingCode}</h3>
-                <p>Phòng hiện tại: {roomBooking.roomNumber ?? 'Chưa gán'}</p>
+                <h3 id="booking-room-title">Chốt phòng cho {roomBooking.bookingCode}</h3>
+                <p>Phòng đang giữ tạm: {roomBooking.roomNumber ?? 'Chưa có phòng'}</p>
               </div>
-              <button type="button" className="booking-dialog-close" aria-label="Đóng" onClick={() => setRoomBooking(null)}>×</button>
+              <button type="button" className="booking-dialog-close" aria-label="Đóng" disabled={roomSaving} onClick={() => setRoomBooking(null)}>×</button>
             </div>
             {roomLoading ? <p>Đang tải phòng phù hợp...</p> : assignableRooms.length === 0 ? (
-              <p role="status">Không có phòng phù hợp trong toàn bộ thời gian lưu trú. Phòng đang bảo trì, ngừng hoạt động hoặc đã được booking khác giữ.</p>
+              <p role="status">Hiện không có phòng phù hợp trong toàn bộ thời gian lưu trú. Phòng có thể đang bảo trì, ngừng hoạt động hoặc đã được booking khác giữ.</p>
             ) : (
               <label className="booking-room-select">
                 Phòng trống toàn bộ thời gian lưu trú
@@ -918,7 +925,8 @@ export function BookingListPage({ role }: { role: string }) {
             )}
             {roomError && <div className="alert" role="alert">{roomError}</div>}
             <div className="booking-dialog-actions">
-              <button type="button" onClick={() => setRoomBooking(null)}>Đóng</button>
+              <button type="button" disabled={roomLoading || roomSaving} onClick={() => void reloadAssignableRooms()}>Tải lại danh sách phòng</button>
+              <button type="button" disabled={roomSaving} onClick={() => setRoomBooking(null)}>Đóng</button>
               <button type="button" className="booking-save-button" disabled={roomSaving || roomLoading || selectedRoomId === null} onClick={() => void confirmRoomSelection()}>
                 {roomSaving ? 'Đang xác nhận...' : 'Xác nhận chọn phòng'}
               </button>
