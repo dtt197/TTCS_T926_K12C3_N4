@@ -189,8 +189,7 @@ public class GuestBookingService {
                     + roomType.getMaxCapacity() + " khách, bạn đang chọn " + request.guestCount() + " khách");
         }
         if (roomAvailabilityService.availableRooms(roomType, request.checkInDate(), request.checkOutDate()) < 1) {
-            throw new RoomUnavailableException("Loại phòng " + roomType.getName()
-                    + " đã hết phòng trong khoảng ngày bạn chọn. Vui lòng chọn ngày hoặc loại phòng khác.");
+            throw RoomAvailabilityService.unavailable(roomType, request.checkInDate(), request.checkOutDate());
         }
 
         OffsetDateTime createdAt = OffsetDateTime.now();
@@ -235,7 +234,7 @@ public class GuestBookingService {
             return saved;
         } catch (DataIntegrityViolationException exception) {
             if (RoomAvailabilityService.isRoomOverlapViolation(exception)) {
-                throw RoomAvailabilityService.unavailable(roomType);
+                throw RoomAvailabilityService.unavailable(roomType, booking.getCheckInDate(), booking.getCheckOutDate());
             }
             throw exception;
         }
@@ -270,10 +269,7 @@ public class GuestBookingService {
                 request.checkInDate(),
                 request.checkOutDate()) < 1) {
 
-            throw new RoomUnavailableException(
-                    "Loại phòng " + roomType.getName()
-                            + " đã hết phòng trong khoảng ngày bạn chọn. "
-                            + "Vui lòng chọn ngày hoặc loại phòng khác.");
+            throw RoomAvailabilityService.unavailable(roomType, request.checkInDate(), request.checkOutDate());
         }
 
         OffsetDateTime createdAt = OffsetDateTime.now();

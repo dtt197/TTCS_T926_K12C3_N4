@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { GuestQuoteTable } from '../components/GuestQuoteTable'
 import { createGuestBooking, getPublicRoomTypes } from '../services/guestBookingService'
-import { searchAvailableRooms } from '../services/roomService'
+import { searchAvailableRooms, type RoomAvailabilityResponse } from '../services/roomService'
+import { ApiRequestError } from '../services/apiClient'
 import type { GuestBookingResult, PublicRoomTypeOption } from '../types/guestBooking'
 import './AuthPages.css'
 import './GuestBookingPage.css'
@@ -103,6 +104,20 @@ export function GuestBookingPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<GuestBookingResult | null>(null)
+    // S3-02 Lát 2: loại phòng khác còn trống để gợi ý khi loại phòng đang chọn vừa hết.
+  const [alternatives, setAlternatives] = useState<RoomAvailabilityResponse[]>([])
+
+  function suggestAlternatives(availabilities: RoomAvailabilityResponse[]) {
+    setAlternatives(availabilities.filter(
+      (item) => item.availableRooms > 0 && String(item.roomTypeId) !== form.roomTypeId,
+    ))
+  }
+
+  function chooseAlternative(roomTypeId: number) {
+    setForm((current) => ({ ...current, roomTypeId: String(roomTypeId) }))
+    setAlternatives([])
+    setError('')
+  }
 
   useEffect(() => {
     getPublicRoomTypes()
@@ -136,6 +151,7 @@ export function GuestBookingPage() {
     event.preventDefault()
     setError('')
     setFieldErrors({})
+    setAlternatives([])
 
     const errors: Record<string, string> = {}
 
@@ -216,7 +232,9 @@ export function GuestBookingPage() {
       if (!selectedRoomAvailability || selectedRoomAvailability.availableRooms <= 0) {
         setError('Rất tiếc, loại phòng này đã hết phòng trống trong khoảng thời gian bạn chọn.');
         setIsSubmitting(false);
+        suggestAlternatives(availabilities);
         return;
+        
       }
 
       // Nếu còn phòng thì tiến hành gửi yêu cầu đặt phòng
@@ -234,6 +252,12 @@ export function GuestBookingPage() {
       setResult(created)
     } catch (err) {
       setError(errorMessage(err, 'Không gửi được yêu cầu đặt phòng'))
+      // S3-02 Lát 2: khách khác vừa đặt mất phòng cuối cùng (409) → gợi ý loại phòng khác, thông tin đã nhập vẫn giữ nguyên.
+      if (err instanceof ApiRequestError && err.status === 409) {
+        searchAvailableRooms(form.checkInDate, form.checkOutDate, Number(form.guestCount))
+          .then(suggestAlternatives)
+          .catch(() => setAlternatives([]))
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -314,7 +338,18 @@ export function GuestBookingPage() {
             </header>
 
             {error && <p className="error-message" role="alert">{error}</p>}
-
+            {alternatives.length > 0 && (
+              <div className="guest-booking-alternatives">
+                <p>Loại phòng khác còn trống trong khoảng ngày bạn chọn:</p>
+                <div className="guest-booking-alternatives__list">
+                  {alternatives.map((item) => (
+                    <button key={item.roomTypeId} type="button" onClick={() => chooseAlternative(item.roomTypeId)}>
+                      {item.name} · còn {item.availableRooms} phòng
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <section className="guest-booking-section" aria-labelledby="guest-stay-heading">
               <h3 className="guest-booking-section-title" id="guest-stay-heading">Thông tin lưu trú</h3>
               <div className="field">

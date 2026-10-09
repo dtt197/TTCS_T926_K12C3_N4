@@ -14,6 +14,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +35,8 @@ public class RoomAvailabilityService {
 
     /** S3-02: tên ràng buộc loại trừ trong migration V36, cùng danh sách trạng thái với OCCUPYING_STATUSES. */
     static final String ROOM_OVERLAP_CONSTRAINT = "bookings_room_no_overlap";
-
+    
+    private static final Logger log = LoggerFactory.getLogger(RoomAvailabilityService.class);
     private final RoomRepository roomRepository;
     private final BookingRepository bookingRepository;
 
@@ -81,7 +84,7 @@ public class RoomAvailabilityService {
             RoomType roomType, LocalDate checkIn, LocalDate checkOut, Long excludeBookingId, Room currentRoom) {
         List<Room> rooms = roomRepository.findByRoomTypeIgnoreCaseAndActiveTrue(roomType.getName());
         if (rooms.isEmpty()) {
-            throw unavailable(roomType);
+            throw unavailable(roomType, checkIn, checkOut);
         }
         List<Booking> bookings =
                 bookingRepository.findOverlappingOnRooms(rooms, checkIn, checkOut, OCCUPYING_STATUSES);
@@ -107,7 +110,7 @@ public class RoomAvailabilityService {
                 .sorted(Comparator.comparing(Room::getRoomNumber))
                 .toList();
         if (freeRooms.isEmpty()) {
-            throw unavailable(roomType);
+            throw unavailable(roomType, checkIn, checkOut);
         }
         if (currentRoom != null) {
             for (Room room : freeRooms) {
@@ -132,6 +135,13 @@ public class RoomAvailabilityService {
     public static RoomUnavailableException unavailable(RoomType roomType) {
         return new RoomUnavailableException("Loại phòng " + roomType.getName()
                 + " đã hết phòng trong khoảng ngày bạn chọn. Vui lòng chọn ngày hoặc loại phòng khác.");
+    }
+    
+    /** S3-02 Lát 2: báo hết phòng và ghi log loại phòng, khoảng ngày của yêu cầu bị từ chối. */
+    public static RoomUnavailableException unavailable(RoomType roomType, LocalDate checkIn, LocalDate checkOut) {
+        log.info("Từ chối đặt phòng vì hết phòng: loại phòng {} (id {}), từ {} đến {}",
+                roomType.getName(), roomType.getId(), checkIn, checkOut);
+        return unavailable(roomType);
     }
 
     /** Số phòng vật lý đang hoạt động, không phụ thuộc khoảng ngày được chọn. */
