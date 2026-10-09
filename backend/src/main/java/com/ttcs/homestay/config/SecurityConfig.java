@@ -192,6 +192,10 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*/room")
                         .hasRole("RECEPTIONIST")
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/room-change")
+                        .hasRole("RECEPTIONIST")
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/*/room-change-history")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
                         .requestMatchers(HttpMethod.GET, "/api/bookings/*/available-rooms")
                         .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
                         

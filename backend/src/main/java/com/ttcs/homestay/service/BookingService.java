@@ -12,6 +12,7 @@ import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingAuditLog;
+import com.ttcs.homestay.entity.BookingRoomChangeHistory;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
@@ -19,6 +20,7 @@ import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
 import com.ttcs.homestay.exception.RoomUnavailableException;
 import com.ttcs.homestay.repository.BookingAuditLogRepository;
+import com.ttcs.homestay.repository.BookingRoomChangeHistoryRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import com.ttcs.homestay.repository.RoomRepository;
@@ -63,6 +65,7 @@ public class BookingService {
     private final RoomAvailabilityService roomAvailabilityService;
     private final BookingAuditLogRepository bookingAuditLogRepository;
     private final RoomRepository roomRepository;
+    private final BookingRoomChangeHistoryRepository roomChangeHistoryRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public BookingService(
@@ -74,7 +77,8 @@ public class BookingService {
             AuditLogService auditLogService,
             RoomAvailabilityService roomAvailabilityService,
             BookingAuditLogRepository bookingAuditLogRepository,
-            RoomRepository roomRepository) {
+            RoomRepository roomRepository,
+            BookingRoomChangeHistoryRepository roomChangeHistoryRepository) {
         this.bookingRepository = bookingRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.operatingSettingsService = operatingSettingsService;
@@ -84,6 +88,21 @@ public class BookingService {
         this.roomAvailabilityService = roomAvailabilityService;
         this.bookingAuditLogRepository = bookingAuditLogRepository;
         this.roomRepository = roomRepository;
+        this.roomChangeHistoryRepository = roomChangeHistoryRepository;
+    }
+
+    public BookingService(
+            BookingRepository bookingRepository,
+            RoomTypeRepository roomTypeRepository,
+            OperatingSettingsService operatingSettingsService,
+            PricingService pricingService,
+            BookingDepositService bookingDepositService,
+            AuditLogService auditLogService,
+            RoomAvailabilityService roomAvailabilityService,
+            BookingAuditLogRepository bookingAuditLogRepository,
+            RoomRepository roomRepository) {
+        this(bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
+                auditLogService, roomAvailabilityService, bookingAuditLogRepository, roomRepository, null);
     }
 
     public BookingService(
@@ -95,7 +114,91 @@ public class BookingService {
             AuditLogService auditLogService,
             RoomAvailabilityService roomAvailabilityService) {
         this(bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
-                auditLogService, roomAvailabilityService, null, null);
+                auditLogService, roomAvailabilityService, null, null, null);
+    }
+
+    @Transactional
+    public BookingResponse changeConfirmedRoom(Long bookingId, Long roomId, String rawReason) {
+        if (roomChangeHistoryRepository == null) {
+            throw new IllegalStateException("BookingRoomChangeHistoryRepository is required for room changes");
+        }
+        String reason = rawReason == null ? "" : rawReason.trim();
+        if (reason.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập lý do đổi phòng");
+        }
+        if (reason.length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lý do đổi phòng không được vượt quá 500 ký tự");
+        }
+        Booking snapshot = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
+        if (snapshot.getRoomType() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking không có loại phòng hợp lệ");
+        }
+        roomTypeRepository.findByIdForUpdate(snapshot.getRoomType().getId());
+        Room requestedRoom = roomRepository.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phòng"));
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
+        if (booking.getStatus() != BookingStatus.DA_XAC_NHAN || booking.getRoomConfirmedAt() == null
+                || booking.getCheckInDate() == null || booking.getCheckInDate().isBefore(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ đổi phòng cho booking đã xác nhận, đã chốt phòng và chưa đến ngày nhận phòng");
+        }
+        Room oldRoom = booking.getRoom();
+        if (oldRoom == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking chưa có phòng đã chốt");
+        }
+        if (oldRoom.getId().equals(requestedRoom.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phòng mới phải khác phòng hiện tại");
+        }
+        if (!roomAvailabilityService.isRoomAvailable(requestedRoom, booking.getRoomType(),
+                booking.getCheckInDate(), booking.getCheckOutDate(), booking.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Phòng mới sai loại, đang bảo trì hoặc đã bị booking khác chiếm trong thời gian lưu trú");
+        }
+        ActorInfo actor = resolveCurrentActor();
+        if (actor.id() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không xác định được nhân viên đổi phòng");
+        }
+        Room lockedOldRoom;
+        Room lockedNewRoom;
+        if (oldRoom.getId() < requestedRoom.getId()) {
+            lockedOldRoom = roomRepository.findByIdForUpdate(oldRoom.getId()).orElse(oldRoom);
+            lockedNewRoom = roomRepository.findByIdForUpdate(requestedRoom.getId()).orElse(requestedRoom);
+        } else {
+            lockedNewRoom = roomRepository.findByIdForUpdate(requestedRoom.getId()).orElse(requestedRoom);
+            lockedOldRoom = roomRepository.findByIdForUpdate(oldRoom.getId()).orElse(oldRoom);
+        }
+        booking.setRoom(lockedNewRoom);
+        BookingRoomChangeHistory history = new BookingRoomChangeHistory();
+        history.setBooking(booking);
+        history.setOldRoom(lockedOldRoom);
+        history.setNewRoom(lockedNewRoom);
+        history.setActor(entityManager.getReference(com.ttcs.homestay.entity.User.class, actor.id()));
+        history.setChangedAt(OffsetDateTime.now());
+        history.setReason(reason);
+        try {
+            Booking saved = bookingRepository.save(booking);
+            bookingRepository.flush();
+            roomChangeHistoryRepository.save(history);
+            roomChangeHistoryRepository.flush();
+            return BookingResponse.from(saved);
+        } catch (DataIntegrityViolationException exception) {
+            if (RoomAvailabilityService.isRoomOverlapViolation(exception)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Phòng mới vừa bị booking khác chiếm trong thời gian lưu trú");
+            }
+            throw exception;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.ttcs.homestay.dto.booking.BookingRoomChangeHistoryResponse> getRoomChangeHistory(Long bookingId) {
+        if (!bookingRepository.existsById(bookingId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking");
+        }
+        return roomChangeHistoryRepository.findAllByBookingIdOrderByChangedAtDescIdDesc(bookingId)
+                .stream().map(com.ttcs.homestay.dto.booking.BookingRoomChangeHistoryResponse::from).toList();
     }
 
     @Transactional(readOnly = true)

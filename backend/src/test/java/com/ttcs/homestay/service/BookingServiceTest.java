@@ -46,6 +46,7 @@ import org.mockito.ArgumentCaptor;
 import com.ttcs.homestay.dto.booking.BookingAuditLogResponse;
 import com.ttcs.homestay.entity.BookingAuditLog;
 import com.ttcs.homestay.repository.BookingAuditLogRepository;
+import com.ttcs.homestay.repository.BookingRoomChangeHistoryRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,6 +79,9 @@ class BookingServiceTest {
     @Mock
     private RoomRepository roomRepository;
 
+    @Mock
+    private BookingRoomChangeHistoryRepository roomChangeHistoryRepository;
+
     private BookingService bookingService;
 
     @BeforeEach
@@ -87,7 +91,8 @@ class BookingServiceTest {
                 new PricingService(roomTypeRepository, priceOverrideRepository, operatingSettingsService);
         bookingService = new BookingService(
                 bookingRepository, roomTypeRepository, operatingSettingsService, pricingService, bookingDepositService,
-                auditLogService, roomAvailabilityService, bookingAuditLogRepository, roomRepository);
+                auditLogService, roomAvailabilityService, bookingAuditLogRepository, roomRepository,
+                roomChangeHistoryRepository);
     }
 
     @Test

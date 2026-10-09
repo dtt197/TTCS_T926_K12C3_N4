@@ -6,6 +6,7 @@ import type {
   BookingChangePreview,
   BookingAuditLog,
   AssignableRoom,
+  BookingRoomChangeHistory,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -200,4 +201,15 @@ export function assignBookingRoom(id: number, roomId: number): Promise<BookingLi
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ roomId }),
   })
+}
+
+export function changeBookingRoom(id: number, roomId: number, reason: string): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/room-change`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId, reason }),
+  })
+}
+
+export function getBookingRoomChangeHistory(id: number): Promise<BookingRoomChangeHistory[]> {
+  return apiRequest<BookingRoomChangeHistory[]>(`/api/bookings/${id}/room-change-history`)
 }
