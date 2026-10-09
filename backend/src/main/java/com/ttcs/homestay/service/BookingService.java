@@ -131,6 +131,9 @@ public class BookingService {
 
         RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
                 .orElseThrow(RoomTypeNotFoundException::new);
+            // S3-02 Lát 2: khoá loại phòng để các yêu cầu đặt cùng loại phòng xếp hàng lần lượt;
+        // yêu cầu đến sau thấy phòng đã bị giữ và được gán phòng khác hoặc nhận 409.
+        roomTypeRepository.findByIdForUpdate(roomType.getId());
         if (!Boolean.TRUE.equals(roomType.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Loại phòng đã ngừng bán");
         }
@@ -276,6 +279,9 @@ public class BookingService {
     @Transactional
     public BookingResponse updateBooking(Long id, BookingUpdateRequest request, ActorInfo actor) {
         validateUpdateRequest(request);
+        
+        // S3-02 Lát 2: khoá loại phòng trước khi khoá booking (cùng thứ tự với luồng khách đặt) để các yêu cầu cùng loại phòng xếp hàng.
+        roomTypeRepository.findByIdForUpdate(request.roomTypeId());
 
         Booking booking = bookingRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -384,7 +390,7 @@ public class BookingService {
             return saved;
         } catch (DataIntegrityViolationException exception) {
             if (RoomAvailabilityService.isRoomOverlapViolation(exception)) {
-                throw RoomAvailabilityService.unavailable(roomType);
+                throw RoomAvailabilityService.unavailable(roomType, booking.getCheckInDate(), booking.getCheckOutDate());
             }
             throw exception;
         }

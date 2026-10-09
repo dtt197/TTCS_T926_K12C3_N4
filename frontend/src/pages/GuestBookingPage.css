@@ -834,3 +834,34 @@
     gap: 12px 10px;
   }
 }
+
+/* S3-02 Lát 2: gợi ý loại phòng khác khi loại đang chọn vừa hết */
+.guest-booking form.login-form > .guest-booking-alternatives {
+  grid-column: 1 / -1;
+}
+
+.guest-booking-alternatives {
+  margin: -8px 0 20px;
+}
+
+.guest-booking-alternatives p {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.guest-booking-alternatives__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guest-booking-alternatives__list button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
