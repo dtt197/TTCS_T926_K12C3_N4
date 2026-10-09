@@ -5,6 +5,7 @@ import type {
   PageResponse,
   BookingChangePreview,
   BookingAuditLog,
+  AssignableRoom,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -186,5 +187,17 @@ export function previewBookingChange(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
+  })
+}
+
+export function getAvailableRooms(id: number): Promise<AssignableRoom[]> {
+  return apiRequest<AssignableRoom[]>(`/api/bookings/${id}/available-rooms`)
+}
+
+export function assignBookingRoom(id: number, roomId: number): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/room`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId }),
   })
 }

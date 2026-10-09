@@ -76,6 +76,14 @@ export type BookingChangePreview = {
   nightlyPrices: NightlyPrice[]
 }
 
+export type AssignableRoom = {
+  id: number
+  roomNumber: string
+  floor: number
+  roomType: string
+  status: string
+}
+
 /** SCRUM-96 (S3-04): Lịch sử thay đổi booking (Audit Log). */
 export type BookingAuditLog = {
   id: number

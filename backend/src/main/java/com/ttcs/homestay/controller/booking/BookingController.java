@@ -60,6 +60,21 @@ public class BookingController {
             @Valid @RequestBody BookingConfirmRequest request) {
         return bookingService.confirmBooking(id, request);
     }
+
+    @GetMapping("/{id}/available-rooms")
+    public List<com.ttcs.homestay.dto.RoomResponse> getAvailableRooms(@PathVariable Long id) {
+        return bookingService.getAvailableRoomsForBooking(id);
+    }
+
+    @PutMapping("/{id}/room")
+    public BookingResponse assignRoom(@PathVariable Long id, @RequestBody AssignRoomRequest request) {
+        if (request == null || request.roomId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "roomId không được để trống");
+        }
+        return bookingService.assignRoom(id, request.roomId());
+    }
+
+    public record AssignRoomRequest(Long roomId) {}
     
     /** S3-02 Lát 3: lễ tân huỷ booking kèm lý do. */
     @PutMapping("/{id}/cancel")
