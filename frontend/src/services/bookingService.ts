@@ -117,6 +117,15 @@ export function confirmBooking(id: number, request: BookingConfirmRequest): Prom
   })
 }
 
+/** S3-02 Lát 3: lễ tân huỷ booking kèm lý do. */
+export function cancelBooking(id: number, reason: string): Promise<unknown> {
+  return apiRequest<unknown>(`/api/bookings/${id}/cancel`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  })
+}
+
 
 export type BookingDetailResponse = {
   id: number

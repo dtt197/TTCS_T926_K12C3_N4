@@ -27,6 +27,7 @@ export type Permission =
   | 'pricing:manage'
   | 'bookings:view'
   | 'bookings:deposit-adjust'
+  | 'bookings:cancel'
 /** S1-04: ma trận quyền tập trung. S1-06: loại phòng (Chủ homestay, Admin = F; Lễ tân = R). */
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ADMIN: [
@@ -77,6 +78,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'pricing:view',
     'bookings:view',
     'bookings:deposit-adjust',
+    'bookings:cancel',
   ],
   // S1-04 AC1: Buồng phòng chỉ thấy danh sách phòng cần dọn, không có menu Loại phòng.
   HOUSEKEEPING: [

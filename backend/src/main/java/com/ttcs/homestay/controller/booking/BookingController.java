@@ -1,5 +1,5 @@
 package com.ttcs.homestay.controller.booking;
-
+import com.ttcs.homestay.dto.booking.BookingCancelRequest;
 import com.ttcs.homestay.dto.booking.BookingConfirmRequest;
 import com.ttcs.homestay.dto.booking.BookingConfirmResponse;
 import com.ttcs.homestay.dto.booking.BookingDepositAdjustmentRequest;
@@ -59,6 +59,14 @@ public class BookingController {
             @PathVariable Long id,
             @Valid @RequestBody BookingConfirmRequest request) {
         return bookingService.confirmBooking(id, request);
+    }
+    
+    /** S3-02 Lát 3: lễ tân huỷ booking kèm lý do. */
+    @PutMapping("/{id}/cancel")
+    public BookingResponse cancelBooking(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingCancelRequest request) {
+        return bookingService.cancelBooking(id, request);
     }
 
     @PostMapping("/{id}/deposit-adjustments")
