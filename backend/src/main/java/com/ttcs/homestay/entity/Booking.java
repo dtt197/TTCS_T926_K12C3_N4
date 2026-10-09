@@ -37,6 +37,16 @@ public class Booking {
     @ManyToOne
     @JoinColumn(name = "room_id")
     private Room room;
+    
+    /** S3-02 Lát 3: lý do, người huỷ và thời điểm huỷ booking. */
+    @Column(name = "cancel_reason", length = 500)
+    private String cancelReason;
+
+    @Column(name = "cancelled_by", length = 255)
+    private String cancelledBy;
+
+    @Column(name = "cancelled_at")
+    private OffsetDateTime cancelledAt;
 
     @Column(name = "room_type_name_snapshot", nullable = false, length = 100)
     private String roomTypeNameSnapshot;

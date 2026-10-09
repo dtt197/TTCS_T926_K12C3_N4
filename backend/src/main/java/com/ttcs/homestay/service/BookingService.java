@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.ttcs.homestay.dto.booking.BookingAuditLogResponse;
 import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
+import com.ttcs.homestay.dto.booking.BookingCancelRequest;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
@@ -119,6 +120,47 @@ public class BookingService {
                 actorId, actorEmail, null, "Booking " + response.bookingCode(),
                 "BOOKING_CONFIRMED", ipAddress);
         return response;
+    }
+        /** S3-02 Lát 3: chỉ huỷ được booking chưa nhận phòng và còn hiệu lực. */
+    private static final Set<BookingStatus> CANCELLABLE_STATUSES =
+            Set.of(BookingStatus.CHO_XAC_NHAN, BookingStatus.DA_XAC_NHAN);
+
+    /**
+     * S3-02 Lát 3: lễ tân huỷ booking. Booking đã huỷ thôi chiếm phòng (ràng buộc V36 và phép tính phòng trống
+     * chỉ tính booking đang chiếm phòng) nên phòng trở lại kết quả tra phòng trống ngay. Hoàn cọc thuộc S3-05.
+     */
+    @Transactional
+    public BookingResponse cancelBooking(Long id, BookingCancelRequest request) {
+        String reason = request == null || request.reason() == null ? "" : request.reason().trim();
+        if (reason.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập lý do huỷ booking");
+        }
+
+        Booking booking = bookingRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
+        if (booking.getStatus() == BookingStatus.DA_NHAN_PHONG) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Booking đã nhận phòng không huỷ được, vui lòng làm thủ tục trả phòng sớm");
+        }
+        if (!CANCELLABLE_STATUSES.contains(booking.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ huỷ được booking đang chờ xác nhận hoặc đã xác nhận");
+        }
+
+        ActorInfo actor = resolveCurrentActor();
+        booking.setStatus(BookingStatus.DA_HUY);
+        booking.setCancelReason(reason);
+        booking.setCancelledBy(actor.email() != null ? actor.email() : actor.name());
+        booking.setCancelledAt(OffsetDateTime.now());
+        Booking saved = bookingRepository.save(booking);
+
+        String ipAddress = null;
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
+            ipAddress = attrs.getRequest().getRemoteAddr();
+        }
+        auditLogService.recordSensitiveAction(
+                actor.id(), actor.email(), null, "Booking " + saved.getBookingCode(), "BOOKING_CANCELLED", ipAddress);
+        return BookingResponse.from(saved);
     }
 
     @Transactional

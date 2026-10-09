@@ -575,3 +575,36 @@
 .booking-adjustment-projection { display: grid; gap: 5px; padding: 12px; border-radius: 8px; background: #f1f8f3; color: #174d37; }
 .booking-adjustment-projection strong { font-size: 18px; }
 .booking-adjustment-projection small { color: #63746a; }
+
+/* S3-02 Lát 3: huỷ booking */
+.booking-cancel-booking-button {
+  border: 1px solid #e3b4a8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-right: 6px;
+  background: #fff4f1;
+  color: #a33a22;
+  font-weight: 600;
+  cursor: pointer;
+}
+.booking-cancel-booking-button:hover { background: #fde4dc; }
+.booking-cancel-booking-button:focus-visible { outline: 3px solid #f2c2b5; outline-offset: 2px; }
+
+.booking-edit-form textarea {
+  padding: 8px 12px;
+  border: 1px solid #cfc8bd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text, #1c2e26);
+  font: inherit;
+  resize: vertical;
+}
+
+.booking-cancel-note {
+  margin: 0;
+  color: #6b5a52;
+  font-size: 13px;
+}
+
+.booking-save-button.booking-save-button--danger { background: #b4442b; }
+.booking-save-button.booking-save-button--danger:hover { background: #923522; }
