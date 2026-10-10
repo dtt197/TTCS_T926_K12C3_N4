@@ -33,3 +33,6 @@
 .calendar-detail-actions { display: flex; justify-content: flex-end; }
 .calendar-detail-actions button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: #1f5f46; color: #fff; font-weight: 600; cursor: pointer; }
 .calendar-detail-close:focus-visible, .calendar-detail-actions button:focus-visible { outline: 3px solid #111827; outline-offset: 2px; }
+
+/* S3-10 Lát 4: thời gian tải sơ đồ */
+.room-calendar .room-calendar-timing { margin: 8px 0; color: #165b32; font-weight: 600; }
