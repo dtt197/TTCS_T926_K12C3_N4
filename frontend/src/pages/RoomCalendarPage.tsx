@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { ApiRequestError } from '../services/apiClient'
 import { getBookingDetails, getBookingSummary, type BookingDetailResponse } from '../services/bookingService'
 import { getRoomCalendar, type CalendarStatus, type RoomCalendar } from '../services/roomCalendarService'
@@ -32,7 +32,13 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
 }
 
+function formatSeconds(milliseconds: number) {
+  return (milliseconds / 1000).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 type Result = { date: string; data?: RoomCalendar; error?: string }
+type PopoverPosition = { left: number; top: number }
+type CalendarRoom = RoomCalendar['rooms'][number]
 
 /** S3-10 Lát 3: hộp chi tiết booking mở từ một ô của sơ đồ. */
 type Detail = {
@@ -44,16 +50,71 @@ type Detail = {
   error?: string
 }
 
+type CalendarRowProps = {
+  room: CalendarRoom
+  /** Ngày của ô đang mở khung thông tin trong hàng này, null nếu hàng không có ô nào đang mở. */
+  expandedDate: string | null
+  popoverPosition: PopoverPosition | null
+  onEnter: (key: string) => void
+  onLeave: (key: string) => void
+  onFocusCell: (key: string) => void
+  onToggle: (key: string) => void
+  onOpen: (key: string, bookingId: number, roomNumber: string) => void
+  registerTrigger: (key: string, element: HTMLButtonElement | null) => void
+}
+
+/** S3-10 Lát 4: mỗi hàng chỉ dựng lại khi dữ liệu hoặc ô đang mở của chính hàng đó thay đổi. */
+const CalendarRow = memo(function CalendarRow({
+  room, expandedDate, popoverPosition, onEnter, onLeave, onFocusCell, onToggle, onOpen, registerTrigger,
+}: CalendarRowProps) {
+  return (
+    <tr>
+      <th scope="row">{room.roomNumber}<small>{room.roomType}</small></th>
+      {room.cells.map(cell => {
+        const key = `${room.roomId}:${cell.date}`
+        const canShow = cell.status === 'BOOKED'
+        const expanded = expandedDate === cell.date
+        const details = canShow && (cell.guestName || cell.bookingCode)
+        const bookingId = cell.bookingId
+        return <td key={cell.date} className={`calendar-${cell.status}`}>
+          {canShow ? <button type="button" className="calendar-cell-trigger"
+            aria-label={`${labels[cell.status]}, phòng ${room.roomNumber}, ${cell.date}${bookingId != null ? ', bấm để xem chi tiết booking' : ''}`}
+            aria-haspopup={bookingId != null ? 'dialog' : undefined}
+            aria-expanded={Boolean(details && expanded)}
+            onMouseEnter={() => { if (details) onEnter(key) }}
+            onMouseLeave={() => onLeave(key)}
+            onFocus={() => { if (details) onFocusCell(key) }}
+            onClick={() => {
+              if (bookingId != null) onOpen(key, bookingId, room.roomNumber)
+              else if (details) onToggle(key)
+            }}
+            ref={element => registerTrigger(key, element)}>
+            {labels[cell.status]}
+            {details && expanded && <span className="calendar-booking-popover" role="status" style={popoverPosition ? { left: popoverPosition.left, top: popoverPosition.top } : undefined}>
+              {cell.guestName && <span className="calendar-guest-name">{cell.guestName}</span>}
+              {cell.bookingCode && <span className="calendar-booking-code">{cell.bookingCode}</span>}
+              {!cell.guestName && <span>Thiếu tên khách</span>}{!cell.bookingCode && <span>Thiếu mã booking</span>}
+            </span>}
+          </button> : labels[cell.status]}
+        </td>
+      })}
+    </tr>
+  )
+})
+
 export function RoomCalendarPage() {
   const [startDate, setStartDate] = useState(today)
   const [result, setResult] = useState<Result | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [openCell, setOpenCell] = useState<string | null>(null)
-  const [popoverPosition, setPopoverPosition] = useState<{ left: number; top: number } | null>(null)
+  const [popoverPosition, setPopoverPosition] = useState<PopoverPosition | null>(null)
   const [detail, setDetail] = useState<Detail | null>(null)
+  /** S3-10 Lát 4: thời gian từ lúc gửi yêu cầu đến khi lưới hiển thị xong (mili giây). */
+  const [loadMs, setLoadMs] = useState<number | null>(null)
   const triggerRefs = useRef(new Map<string, HTMLButtonElement>())
   const detailRequest = useRef(0)
   const skipFocusPopover = useRef(false)
+  const loadStartedAt = useRef(0)
 
   useEffect(() => {
     if (!openCell) return
@@ -82,6 +143,7 @@ export function RoomCalendarPage() {
     if (!startDate) return
     const controller = new AbortController()
     let current = true
+    loadStartedAt.current = performance.now()
     getRoomCalendar(startDate, controller.signal).then(
       data => { if (current) { setOpenCell(null); setPopoverPosition(null); setResult({ date: startDate, data }) } },
       error => { if (current) { setOpenCell(null); setPopoverPosition(null); setResult({ date: startDate, error: error instanceof Error ? error.message : 'Không tải được sơ đồ phòng' }) } },
@@ -89,8 +151,27 @@ export function RoomCalendarPage() {
     return () => { current = false; controller.abort() }
   }, [startDate, attempt])
 
+  // S3-10 Lát 4: đo đến khi trình duyệt vẽ xong lưới (sau hai khung hình kể từ lúc dữ liệu được dựng).
+  useEffect(() => {
+    if (!result?.data) return
+    let second = 0
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setLoadMs(Math.round(performance.now() - loadStartedAt.current)))
+    })
+    return () => { cancelAnimationFrame(first); cancelAnimationFrame(second) }
+  }, [result])
+
+  const handleEnter = useCallback((key: string) => setOpenCell(key), [])
+  const handleLeave = useCallback((key: string) => setOpenCell(current => current === key ? null : current), [])
+  const handleFocusCell = useCallback((key: string) => { if (!skipFocusPopover.current) setOpenCell(key) }, [])
+  const handleToggle = useCallback((key: string) => setOpenCell(current => current === key ? null : key), [])
+  const registerTrigger = useCallback((key: string, element: HTMLButtonElement | null) => {
+    if (element) triggerRefs.current.set(key, element)
+    else triggerRefs.current.delete(key)
+  }, [])
+
   /** Bấm vào ô có booking: tải dữ liệu hiện có của booking đó và mở hộp chi tiết; khoảng ngày của sơ đồ giữ nguyên. */
-  function openDetail(cellKey: string, bookingId: number, roomNumber: string) {
+  const openDetail = useCallback((cellKey: string, bookingId: number, roomNumber: string) => {
     const requestId = detailRequest.current + 1
     detailRequest.current = requestId
     setOpenCell(null)
@@ -112,7 +193,7 @@ export function RoomCalendarPage() {
         setDetail({ cellKey, bookingId, roomNumber, error: message })
       },
     )
-  }
+  }, [])
 
   function closeDetail() {
     detailRequest.current += 1
@@ -131,9 +212,9 @@ export function RoomCalendarPage() {
   const visible = result?.date === startDate ? result : null
   const loading = Boolean(startDate && !visible)
   return (
-    <section className="room-calendar" aria-label="Sơ đồ phòng theo ngày">
+    <section className="room-calendar" aria-label="Sơ đồ phòng theo ngày" aria-busy={loading}>
       <label>Ngày bắt đầu <input type="date" value={startDate} min="0001-01-01" max="9999-12-17"
-        onChange={event => { setOpenCell(null); setPopoverPosition(null); setResult(null); setStartDate(event.target.value) }} /></label>
+        onChange={event => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setStartDate(event.target.value) }} /></label>
       <p>14 ngày • Chỉ hiển thị phòng đang hoạt động. Mỗi ô tương ứng một đêm lưu trú.</p>
       <div className="room-calendar-legend" aria-label="Chú giải">
         {Object.entries(labels).map(([status, label]) => <span key={status} className={`calendar-${status}`}>{label}</span>)}
@@ -142,42 +223,25 @@ export function RoomCalendarPage() {
       {!startDate && <p role="status">Vui lòng chọn ngày bắt đầu.</p>}
       {loading && <p role="status">Đang tải sơ đồ phòng…</p>}
       {visible?.error && <div role="alert">Không tải được sơ đồ phòng: {visible.error} <button type="button"
-        onClick={() => { setOpenCell(null); setPopoverPosition(null); setResult(null); setAttempt(value => value + 1) }}>Thử lại</button></div>}
+        onClick={() => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setAttempt(value => value + 1) }}>Thử lại</button></div>}
+      {visible?.data && loadMs != null && (
+        <p className="room-calendar-timing">
+          Sơ đồ {visible.data.rooms.length} phòng × {visible.data.dates.length} ngày tải xong trong {formatSeconds(loadMs)} giây.
+        </p>
+      )}
       {visible?.data && (visible.data.rooms.length === 0 ? <p role="status">Không có phòng đang hoạt động.</p> :
         <div className="room-calendar-scroll" tabIndex={0} role="region" aria-label="Lưới phòng, cuộn để xem thêm">
           <table>
             <caption>Sơ đồ từ {visible.data.startDate} — {visible.data.dates.at(-1)}</caption>
             <thead><tr><th scope="col">Phòng</th>{visible.data.dates.map(date => <th scope="col" key={date}><time dateTime={date}>{date.slice(8)}/{date.slice(5, 7)}</time></th>)}</tr></thead>
-            <tbody>{visible.data.rooms.map(room => <tr key={room.roomId}>
-              <th scope="row">{room.roomNumber}<small>{room.roomType}</small></th>
-              {room.cells.map(cell => {
-                const key = `${room.roomId}:${cell.date}`
-                const canShow = cell.status === 'BOOKED'
-                const expanded = openCell === key
-                const details = canShow && (cell.guestName || cell.bookingCode)
-                const bookingId = cell.bookingId
-                return <td key={cell.date} className={`calendar-${cell.status}`}>
-                  {canShow ? <button type="button" className="calendar-cell-trigger"
-                    aria-label={`${labels[cell.status]}, phòng ${room.roomNumber}, ${cell.date}${bookingId != null ? ', bấm để xem chi tiết booking' : ''}`}
-                    aria-haspopup={bookingId != null ? 'dialog' : undefined}
-                    aria-expanded={Boolean(details && expanded)} onMouseEnter={() => details && setOpenCell(key)}
-                    onMouseLeave={() => setOpenCell(current => current === key ? null : current)}
-                    onFocus={() => { if (!skipFocusPopover.current && details) setOpenCell(key) }}
-                    onClick={() => {
-                      if (bookingId != null) openDetail(key, bookingId, room.roomNumber)
-                      else if (details) setOpenCell(current => current === key ? null : key)
-                    }}
-                    ref={element => { if (element) triggerRefs.current.set(key, element); else triggerRefs.current.delete(key) }}>
-                    {labels[cell.status]}
-                    {details && expanded && <span className="calendar-booking-popover" role="status" style={popoverPosition ? { left: popoverPosition.left, top: popoverPosition.top } : undefined}>
-                      {cell.guestName && <span className="calendar-guest-name">{cell.guestName}</span>}
-                      {cell.bookingCode && <span className="calendar-booking-code">{cell.bookingCode}</span>}
-                      {!cell.guestName && <span>Thiếu tên khách</span>}{!cell.bookingCode && <span>Thiếu mã booking</span>}
-                    </span>}
-                  </button> : labels[cell.status]}
-                </td>
-              })}
-            </tr>)}</tbody>
+            <tbody>{visible.data.rooms.map(room => {
+              const prefix = `${room.roomId}:`
+              const expandedDate = openCell?.startsWith(prefix) ? openCell.slice(prefix.length) : null
+              return <CalendarRow key={room.roomId} room={room} expandedDate={expandedDate}
+                popoverPosition={expandedDate ? popoverPosition : null}
+                onEnter={handleEnter} onLeave={handleLeave} onFocusCell={handleFocusCell} onToggle={handleToggle}
+                onOpen={openDetail} registerTrigger={registerTrigger} />
+            })}</tbody>
           </table>
         </div>)}
 
