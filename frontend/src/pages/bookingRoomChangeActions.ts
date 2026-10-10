@@ -52,3 +52,13 @@ export async function loadRoomChangeHistory(
 }
 
 export type { AssignableRoom }
+
+export function canChangeBookingRoom(role: string, booking: BookingListItem, today: string) {
+  return role === 'RECEPTIONIST' && (booking.status === 'DA_NHAN_PHONG'
+    || (booking.status === 'DA_XAC_NHAN' && !!booking.roomConfirmedAt && booking.checkInDate >= today))
+}
+
+export function roomChangeOptions(booking: BookingListItem, rooms: AssignableRoom[]) {
+  return rooms.filter(room => room.roomNumber !== booking.roomNumber
+    && (booking.status !== 'DA_NHAN_PHONG' || room.status === 'TRONG_SACH'))
+}

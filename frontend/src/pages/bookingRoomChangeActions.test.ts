@@ -1,5 +1,5 @@
 import type { BookingListItem, BookingRoomChangeHistory } from '../types/booking'
-import { submitRoomChange } from './bookingRoomChangeActions.ts'
+import { submitRoomChange, canChangeBookingRoom, roomChangeOptions } from './bookingRoomChangeActions.ts'
 
 const booking: BookingListItem = {
   id: 9, bookingCode: 'BK-9', guestName: 'Guest', roomTypeId: 1,
@@ -18,12 +18,30 @@ function equal(name: string, actual: unknown, expected: unknown) {
 }
 
 async function main() {
+  const checkedIn = { ...booking, status: 'DA_NHAN_PHONG' as const }
+  equal('checked-in booking enables receptionist action', canChangeBookingRoom('RECEPTIONIST', checkedIn, '2026-10-10'), true)
+  for (const role of ['OWNER', 'ADMIN', 'HOUSEKEEPING']) {
+    equal(`${role} cannot change rooms`, canChangeBookingRoom(role, checkedIn, '2026-10-10'), false)
+  }
+  equal('AC3 confirmed booking still enabled', canChangeBookingRoom('RECEPTIONIST', {
+    ...booking, roomConfirmedAt: '2026-10-09T00:00:00Z',
+  }, '2026-10-09'), true)
+  equal('checked-out booking cannot change rooms', canChangeBookingRoom('RECEPTIONIST', {
+    ...booking, status: 'DA_TRA_PHONG',
+  }, '2026-10-10'), false)
+  const options = ['TRONG_SACH', 'TRONG_BAN', 'DANG_O', 'BAO_TRI'].map((status, index) => ({
+    id: index + 11, roomNumber: String(index + 102), floor: 1, roomType: 'Standard', status, active: true,
+  }))
+  equal('AC4 only displays clean destination rooms', roomChangeOptions(checkedIn, options).map(room => room.id), [11])
+  equal('AC3 does not add cleanliness restriction', roomChangeOptions(booking, options).length, 4)
+  equal('current room excluded', roomChangeOptions(checkedIn, [{ ...options[0], roomNumber: '101' }]), [])
   let error: string | null = null
   let activeBooking: BookingListItem | null = booking
   let saving = false
   let historyRows: BookingRoomChangeHistory[] = []
   let apiCalls = 0
   let historyCalls = 0
+  let reloadCalls = 0
   let apiError: Error | null = null
   const actions = {
     changeBookingRoom: async (_id: number, _roomId: number, _reason: string) => {
@@ -31,7 +49,7 @@ async function main() {
       if (apiError) throw apiError
       return booking
     },
-    reloadBookingData: async () => undefined,
+    reloadBookingData: async () => { reloadCalls += 1 },
     getBookingRoomChangeHistory: async (_id: number) => { historyCalls += 1; return [history] },
     setRoomChangeHistory: (rows: BookingRoomChangeHistory[]) => { historyRows = rows },
     setRoomError: (value: string | null) => { error = value },
@@ -48,6 +66,8 @@ async function main() {
   apiError = null
   await submitRoomChange(booking, 11, 'Repair', actions)
   equal('success reloads history from server and closes modal', [historyCalls, historyRows, activeBooking, saving], [1, [history], null, false])
+  await submitRoomChange(checkedIn, 11, 'Repair', actions)
+  equal('AC4 reloads persisted booking and history', [reloadCalls, historyCalls], [2, 2])
 }
 
 void main()

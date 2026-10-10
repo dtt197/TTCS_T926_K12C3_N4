@@ -201,6 +201,14 @@ public class RoomAvailabilityService {
                         && !isHoldExpired(booking, OffsetDateTime.now()));
     }
 
+    /** V36 includes every occupying row, even an expired hold not yet marked DA_HET_HAN. */
+    @Transactional(readOnly = true)
+    public boolean satisfiesRoomOverlapConstraint(Room room, Booking booking) {
+        return bookingRepository.findOverlappingOnRooms(List.of(room), booking.getCheckInDate(),
+                        booking.getCheckOutDate(), OCCUPYING_STATUSES).stream()
+                .noneMatch(other -> !booking.getId().equals(other.getId()));
+    }
+
     /** S3-02 Lát 1: lỗi do cơ sở dữ liệu từ chối vì hai booking cùng chiếm một phòng trong một đêm. */
     public static boolean isRoomOverlapViolation(DataIntegrityViolationException exception) {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
