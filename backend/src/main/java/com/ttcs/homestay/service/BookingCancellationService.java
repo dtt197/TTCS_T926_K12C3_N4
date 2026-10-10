@@ -104,6 +104,10 @@ public class BookingCancellationService {
         if (booking.getStatus() == BookingStatus.DA_HUY) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking đã được huỷ trước đó");
         }
+        if (booking.getStatus() == BookingStatus.DA_NHAN_PHONG) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Booking đã nhận phòng không huỷ được, vui lòng làm thủ tục trả phòng sớm");
+        }
         if (!CANCELLABLE.contains(booking.getStatus())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Booking ở trạng thái hiện tại không thể huỷ");

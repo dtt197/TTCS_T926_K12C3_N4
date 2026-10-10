@@ -1,0 +1,17 @@
+.booking-checked-in-notice {
+  margin: 16px 0;
+  padding: 10px 12px;
+  border: 1px solid #f0d9a6;
+  border-radius: 8px;
+  background: var(--orange-soft, #fff3cd);
+  color: var(--orange, #996500);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .booking-checked-in-notice {
+    font-size: 14px;
+  }
+}
