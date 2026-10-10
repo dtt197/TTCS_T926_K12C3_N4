@@ -27,6 +27,7 @@ import {
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
 import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
+import { BookingCancellationInfoSection } from '../components/BookingCancellationInfoSection'
 import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 
@@ -808,6 +809,7 @@ export function BookingListPage({ role }: { role: string }) {
                     </ul>
                   </>
                 )}
+                {detailBooking.status === 'DA_HUY' && <BookingCancellationInfoSection bookingId={detailBooking.id} />}
                 <h4>Thông tin tiền cọc</h4>
                 {detailData.deposit ? (
                   <dl className="booking-detail-grid">
