@@ -65,6 +65,17 @@ function initialGuestCount(booking: CheckInOption | undefined) {
     : 1
 }
 
+function isBeforeStandardCheckIn() {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date()),
+  )
+  return hour < 14
+}
+
 
 
 const DEMO_ROOMS: Room[] = [
@@ -524,6 +535,7 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   const [registeredGuests, setRegisteredGuests] = useState<
     { fullName: string; primary: boolean }[] | null
   >(null)
+  const [earlyCheckInWarningOpen, setEarlyCheckInWarningOpen] = useState(false)
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -1251,6 +1263,20 @@ const counts = useMemo(
       return
     }
 
+    if (isBeforeStandardCheckIn()) {
+      setEarlyCheckInWarningOpen(true)
+      return
+    }
+
+    await submitCheckIn(false)
+  }
+
+  async function submitCheckIn(earlyCheckInConfirmed: boolean) {
+    if (!selectedBooking || !selectedRoom) {
+      showError('Vui lòng chọn booking đã xác nhận và có phòng được gán.')
+      return
+    }
+
     setIsSaving(true)
     setNotice(null)
 
@@ -1275,6 +1301,7 @@ const counts = useMemo(
             primaryGuestName: primaryGuestName.trim(),
             primaryGuestIdentityNumber,
             accompanyingGuestNames: accompanyingGuestNames.map((name) => name.trim()),
+            earlyCheckInConfirmed,
           })
 
       setRooms((current) =>
@@ -1325,6 +1352,7 @@ const counts = useMemo(
           'Booking: Đã nhận phòng; phòng: Đang ở. ' +
           `Thời điểm: ${checkedInAt} (Asia/Ho_Chi_Minh).`,
       })
+      setEarlyCheckInWarningOpen(false)
     } catch (error) {
       showError(
         error instanceof Error
@@ -2584,6 +2612,46 @@ const counts = useMemo(
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {earlyCheckInWarningOpen && (
+          <div
+            className="early-checkin-modal-backdrop"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="early-checkin-modal-title"
+            aria-describedby="early-checkin-modal-description"
+          >
+            <section className="early-checkin-modal-card">
+              <h3 id="early-checkin-modal-title">Cảnh báo nhận phòng sớm</h3>
+              <p id="early-checkin-modal-description">
+                Hiện tại chưa đến 14:00 theo múi giờ Asia/Ho_Chi_Minh. Bạn có muốn
+                tiếp tục nhận phòng không? Theo cấu hình hiện tại, nhận phòng sớm
+                không phát sinh phụ thu.
+              </p>
+              <div className="early-checkin-modal-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setEarlyCheckInWarningOpen(false)}
+                  disabled={isSaving}
+                >
+                  Hủy thao tác
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => {
+                    setEarlyCheckInWarningOpen(false)
+                    void submitCheckIn(true)
+                  }}
+                  disabled={isSaving}
+                >
+                  Tiếp tục
+                </button>
+              </div>
+            </section>
           </div>
         )}
 

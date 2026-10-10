@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -68,6 +69,15 @@ class RoomServiceTest {
     @InjectMocks
     RoomService roomService;
 
+    @Test
+    @DisplayName("Chỉ yêu cầu xác nhận trước 14:00 theo giờ nhận phòng chuẩn")
+    void requiresEarlyCheckInConfirmation_usesFourteenHourBoundary() {
+        assertThat(RoomService.requiresEarlyCheckInConfirmation(LocalTime.of(13, 59), false)).isTrue();
+        assertThat(RoomService.requiresEarlyCheckInConfirmation(LocalTime.of(13, 59), true)).isFalse();
+        assertThat(RoomService.requiresEarlyCheckInConfirmation(LocalTime.of(14, 0), false)).isFalse();
+        assertThat(RoomService.requiresEarlyCheckInConfirmation(LocalTime.of(14, 1), false)).isFalse();
+    }
+
     private Room createOccupiedRoom(Long id, String roomNumber) {
         Room room = new Room();
         room.setId(id);
@@ -94,7 +104,7 @@ class RoomServiceTest {
     }
 
     private CheckInRequest checkInRequest(Long bookingId) {
-        return new CheckInRequest(bookingId, "Khách nhận phòng", "012345678901", List.of());
+        return new CheckInRequest(bookingId, "Khách nhận phòng", "012345678901", List.of(), true);
     }
 
     @Test
@@ -115,7 +125,8 @@ class RoomServiceTest {
 
         CheckInResponse response = roomService.checkIn(
                 roomId,
-                new CheckInRequest(bookingId, "Nguyễn Minh Anh", "012345678901", List.of("Trần Minh Khoa")),
+                new CheckInRequest(
+                        bookingId, "Nguyễn Minh Anh", "012345678901", List.of("Trần Minh Khoa"), true),
                 "Lễ tân");
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_NHAN_PHONG);
@@ -200,7 +211,7 @@ class RoomServiceTest {
     @DisplayName("Từ chối nhận phòng nếu CCCD khách chính không đủ 12 chữ số")
     void checkIn_invalidPrimaryIdentityNumber_rejectsBeforeLoadingBooking() {
         assertThatThrownBy(() -> roomService.checkIn(
-                101L, new CheckInRequest(501L, "Nguyễn Minh Anh", "123", List.of()), "Lễ tân"))
+                101L, new CheckInRequest(501L, "Nguyễn Minh Anh", "123", List.of(), true), "Lễ tân"))
                 .hasMessageContaining("CCCD")
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
 
@@ -211,7 +222,7 @@ class RoomServiceTest {
     @DisplayName("Từ chối nhận phòng nếu thiếu tên khách chính")
     void checkIn_blankPrimaryGuestName_rejectsBeforeLoadingBooking() {
         assertThatThrownBy(() -> roomService.checkIn(
-                101L, new CheckInRequest(501L, "  ", "012345678901", List.of()), "Lễ tân"))
+                101L, new CheckInRequest(501L, "  ", "012345678901", List.of(), true), "Lễ tân"))
                 .hasMessageContaining("khách chính")
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
 
@@ -222,7 +233,8 @@ class RoomServiceTest {
     @DisplayName("Từ chối nhận phòng nếu thiếu tên khách đi kèm")
     void checkIn_blankAccompanyingGuestName_rejectsBeforeLoadingBooking() {
         assertThatThrownBy(() -> roomService.checkIn(
-                101L, new CheckInRequest(501L, "Nguyễn Minh Anh", "012345678901", List.of("  ")), "Lễ tân"))
+                101L, new CheckInRequest(
+                        501L, "Nguyễn Minh Anh", "012345678901", List.of("  "), true), "Lễ tân"))
                 .hasMessageContaining("khách đi kèm")
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
 
@@ -245,7 +257,7 @@ class RoomServiceTest {
                 roomId,
                 new CheckInRequest(
                         bookingId, "Nguyễn Minh Anh", "012345678901",
-                        List.of("Khách 2", "Khách 3", "Khách 4", "Khách 5")),
+                        List.of("Khách 2", "Khách 3", "Khách 4", "Khách 5"), true),
                 "Lễ tân"))
                 .hasMessageContaining("sức chứa tối đa")
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
