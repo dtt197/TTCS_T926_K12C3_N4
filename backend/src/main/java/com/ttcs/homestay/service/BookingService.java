@@ -235,6 +235,13 @@ public class BookingService {
         return roomChangeHistoryRepository.findAllByBookingIdOrderByChangedAtDescIdDesc(bookingId)
                 .stream().map(com.ttcs.homestay.dto.booking.BookingRoomChangeHistoryResponse::from).toList();
     }
+    /** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
+    @Transactional(readOnly = true)
+    public BookingResponse getBookingSummary(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking không còn tồn tại"));
+        return BookingResponse.from(booking);
+    }
 
     @Transactional(readOnly = true)
     public List<com.ttcs.homestay.dto.RoomResponse> getAvailableRoomsForBooking(Long id) {

@@ -58,7 +58,8 @@ public class RoomCalendarService {
                 Booking booking = occupying.get(0);
                 return new Cell(date, CellStatus.BOOKED,
                         hasText(booking.getGuestName()) ? booking.getGuestName() : null,
-                        hasText(booking.getBookingCode()) ? booking.getBookingCode() : null);
+                        hasText(booking.getBookingCode()) ? booking.getBookingCode() : null,
+                        booking.getId());
             }).toList();
             return new Row(room.getId(), room.getRoomNumber(), room.getRoomType(), cells);
         }).toList();

@@ -110,6 +110,22 @@ class RoomCalendarServiceTest {
         room.setMaintenanceStartDate(start.plusDays(1));
         assertThat(statuses()).containsExactly(CellStatus.AVAILABLE, CellStatus.MAINTENANCE, CellStatus.MAINTENANCE);
     }
+    @Test void bookingKeoDaiNhieuDem_moiOCoCungBookingId_oTrongKhongCo() {
+        Room room = room(1);
+        Booking longStay = booking(room, 0, 2, BookingStatus.DA_XAC_NHAN); longStay.setId(11L);
+        given(List.of(room), longStay);
+        var cells = service.buildCalendar(start, 3, now).rooms().get(0).cells();
+        assertThat(cells).extracting(cell -> cell.bookingId()).containsExactly(11L, 11L, null);
+    }
+
+    @Test void haiBookingCungPhong_moiOMoDungBookingCuaNo() {
+        Room room = room(1);
+        Booking first = booking(room, 0, 1, BookingStatus.DA_XAC_NHAN); first.setId(21L);
+        Booking second = booking(room, 1, 3, BookingStatus.DA_NHAN_PHONG); second.setId(22L);
+        given(List.of(room), first, second);
+        var cells = service.buildCalendar(start, 3, now).rooms().get(0).cells();
+        assertThat(cells).extracting(cell -> cell.bookingId()).containsExactly(21L, 22L, 22L);
+    }
 
     @Test void noBookingMeansAvailable() {
         given(List.of(room(1)));

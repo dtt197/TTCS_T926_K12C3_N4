@@ -170,6 +170,11 @@ export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
   return apiRequest<BookingDetailResponse>(`/api/bookings/${id}/details`)
 }
 
+/** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
+export function getBookingSummary(id: number): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/summary`)
+}
+
 export function getBookingHistory(id: number): Promise<BookingAuditLog[]> {
   return apiRequest<BookingAuditLog[]>(`/api/bookings/${id}/history`)
 }

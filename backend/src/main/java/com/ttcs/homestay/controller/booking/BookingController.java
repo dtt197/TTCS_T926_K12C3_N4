@@ -61,6 +61,11 @@ public class BookingController {
             @Valid @RequestBody BookingConfirmRequest request) {
         return bookingService.confirmBooking(id, request);
     }
+        /** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
+    @GetMapping("/{id}/summary")
+    public BookingResponse getBookingSummary(@PathVariable Long id) {
+        return bookingService.getBookingSummary(id);
+    }
 
     @GetMapping("/{id}/available-rooms")
     public List<com.ttcs.homestay.dto.RoomResponse> getAvailableRooms(@PathVariable Long id) {
