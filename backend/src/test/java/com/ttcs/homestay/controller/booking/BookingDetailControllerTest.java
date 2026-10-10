@@ -110,6 +110,24 @@ class BookingDetailControllerTest {
     }
 
     @Test
+    void returnsRegisteredGuestNamesWithoutExposingIdentityNumbers() throws Exception {
+        stubBookingAndDeposit(false);
+        when(jdbcTemplate.query(org.mockito.ArgumentMatchers.contains("FROM booking_guests"),
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L)))
+                .thenReturn(List.of(
+                        Map.of("fullName", "Nguyễn Minh Anh", "primary", true),
+                        Map.of("fullName", "Trần Minh Khoa", "primary", false)));
+        when(adjustmentRepository.findAllByBookingIdOrderByCreatedAtAscIdAsc(1L)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/bookings/1/details"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.registeredGuests.length()").value(2))
+                .andExpect(jsonPath("$.registeredGuests[0].fullName").value("Nguyễn Minh Anh"))
+                .andExpect(jsonPath("$.registeredGuests[0].primary").value(true))
+                .andExpect(jsonPath("$.registeredGuests[0].identityNumber").doesNotExist());
+    }
+
+    @Test
     void missingBookingReturnsNotFound() throws Exception {
         when(jdbcTemplate.query(eq("SELECT id, booking_code, status, hold_expires_at FROM bookings WHERE id = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L))).thenReturn(List.of());

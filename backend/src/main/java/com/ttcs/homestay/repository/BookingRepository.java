@@ -34,7 +34,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     /** S2-08: tìm booking theo mã để khách tra cứu. */
     Optional<Booking> findByBookingCode(String bookingCode);
 
-    @Query("select b from Booking b join fetch b.room r"
+    @Query("select b from Booking b join fetch b.room r join fetch b.roomType rt"
             + " where b.status = :status and b.roomConfirmedAt is not null and r.status = :roomStatus"
             + " order by b.checkInDate asc, b.bookingCode asc")
     List<Booking> findCheckInOptions(
