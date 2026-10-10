@@ -289,4 +289,97 @@ class RoomShortageAlertServiceTest {
         assertThat(alerts.get(0).availableRooms()).isEqualTo(1);
         assertThat(alerts.get(0).bookingCount()).isEqualTo(2);
     }
+
+    // ===== Tests cho getShortageBookings() =====
+
+    @Test
+    @DisplayName("getShortageBookings: số booking trả về đúng bằng số ghi trên cảnh báo")
+    void getShortageBookings_soDongKhopSoCanhBao() {
+        when(roomTypeRepository.findByCodeIgnoreCase("DON")).thenReturn(java.util.Optional.of(don));
+
+        // 2 booking DA_XAC_NHAN cùng chiếm đêm 10/10
+        Booking b1 = createBooking(1L, "BK-A1", don, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking b2 = createBooking(2L, "BK-A2", don, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        b1.setCreatedAt(NOW.minusHours(2));
+        b2.setCreatedAt(NOW.minusHours(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1, b2));
+
+        List<com.ttcs.homestay.dto.booking.ShortageBookingResponse> result =
+                roomShortageAlertService.getShortageBookings(TODAY, "DON", NOW);
+
+        assertThat(result).hasSize(2);
+        // Booking tạo sau lên đầu (createdAt DESC)
+        assertThat(result.get(0).bookingCode()).isEqualTo("BK-A2");
+        assertThat(result.get(1).bookingCode()).isEqualTo("BK-A1");
+    }
+
+    @Test
+    @DisplayName("getShortageBookings: booking đã huỷ không có trong danh sách (repository đã lọc)")
+    void getShortageBookings_bookingDaHuy_khongCoTrongDanhSach() {
+        when(roomTypeRepository.findByCodeIgnoreCase("DON")).thenReturn(java.util.Optional.of(don));
+
+        // Repository chỉ trả về booking còn hiệu lực (đã lọc DA_HUY)
+        Booking b1 = createBooking(1L, "BK-OK", don, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1));
+
+        List<com.ttcs.homestay.dto.booking.ShortageBookingResponse> result =
+                roomShortageAlertService.getShortageBookings(TODAY, "DON", NOW);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).bookingCode()).isEqualTo("BK-OK");
+    }
+
+    @Test
+    @DisplayName("getShortageBookings: booking nhiều đêm xuất hiện khi đêm được chọn trùng, không xuất hiện khi đêm checkout")
+    void getShortageBookings_bookingNhieuDem_chiXuatHienKhiDemTrung() {
+        when(roomTypeRepository.findByCodeIgnoreCase("DON")).thenReturn(java.util.Optional.of(don));
+
+        // Booking từ 10/10 đến 13/10 -> chiếm đêm 10, 11, 12. Không chiếm đêm 13.
+        Booking bLong = createBooking(1L, "BK-LONG", don, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(3));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(bLong));
+
+        // Truy vấn đêm 12/10 (TODAY+2) -> bLong vẫn chiếm (12 >= 10 và 12 < 13)
+        List<com.ttcs.homestay.dto.booking.ShortageBookingResponse> resultDay2 =
+                roomShortageAlertService.getShortageBookings(TODAY.plusDays(2), "DON", NOW);
+        assertThat(resultDay2).hasSize(1);
+
+        // Truy vấn đêm 13/10 (TODAY+3) -> bLong đã checkout, không chiếm (13 không < 13)
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(bLong));
+        List<com.ttcs.homestay.dto.booking.ShortageBookingResponse> resultDay3 =
+                roomShortageAlertService.getShortageBookings(TODAY.plusDays(3), "DON", NOW);
+        assertThat(resultDay3).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getShortageBookings: booking CHO_XAC_NHAN hết hạn giữ chỗ bị loại khỏi danh sách")
+    void getShortageBookings_expiredHold_biLoaiKhoiDanhSach() {
+        when(roomTypeRepository.findByCodeIgnoreCase("DON")).thenReturn(java.util.Optional.of(don));
+
+        // Booking CHO_XAC_NHAN với holdExpiresAt đã hết hạn 1 giờ trước
+        Booking bExpired = createBooking(1L, "BK-EXP", don, BookingStatus.CHO_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        bExpired.setHoldExpiresAt(NOW.minusHours(1));  // đã hết hạn
+
+        // Booking DA_XAC_NHAN bình thường
+        Booking bNormal = createBooking(2L, "BK-OK", don, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(bExpired, bNormal));
+
+        List<com.ttcs.homestay.dto.booking.ShortageBookingResponse> result =
+                roomShortageAlertService.getShortageBookings(TODAY, "DON", NOW);
+
+        // BK-EXP bị loại do hết hạn hold
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).bookingCode()).isEqualTo("BK-OK");
+    }
+
+    @Test
+    @DisplayName("getShortageBookings: mã loại phòng không tồn tại -> ném IllegalArgumentException")
+    void getShortageBookings_roomTypeKhongTonTai_nemException() {
+        when(roomTypeRepository.findByCodeIgnoreCase("INVALID")).thenReturn(java.util.Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> roomShortageAlertService.getShortageBookings(TODAY, "INVALID", NOW)
+        );
+    }
 }

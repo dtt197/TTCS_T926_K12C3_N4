@@ -2,6 +2,7 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.config.RoomShortageRuleConfig;
 import com.ttcs.homestay.dto.booking.RoomShortageAlertResponse;
+import com.ttcs.homestay.dto.booking.ShortageBookingResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Room;
@@ -12,6 +13,7 @@ import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -159,7 +161,80 @@ public class RoomShortageAlertService {
         return alerts;
     }
 
+    /**
+     * S3-08: Lấy danh sách booking còn hiệu lực chiếm loại phòng đó trong ngày được chọn.
+     * Dùng cùng quy tắc "còn hiệu lực" và quy tắc tính đêm của Lát 1.
+     * Booking tạo sau cùng lên đầu để ưu tiên xử lý.
+     */
+    @Transactional(readOnly = true)
+    public List<ShortageBookingResponse> getShortageBookings(LocalDate date, String roomTypeCode) {
+        return getShortageBookings(date, roomTypeCode, OffsetDateTime.now());
+    }
+
+    /**
+     * Phương thức có tham số thời gian mốc để phục vụ kiểm thử tự động.
+     */
+    @Transactional(readOnly = true)
+    public List<ShortageBookingResponse> getShortageBookings(LocalDate date, String roomTypeCode, OffsetDateTime now) {
+        // Tìm loại phòng theo mã
+        RoomType roomType = roomTypeRepository.findByCodeIgnoreCase(roomTypeCode)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy loại phòng: " + roomTypeCode));
+
+        // Truy vấn booking còn hiệu lực có đêm trùng ngày được chọn.
+        // Một booking chiếm đêm date khi checkInDate <= date < checkOutDate.
+        // Truy vấn: checkInDate <= date AND checkOutDate > date AND status IN (valid statuses)
+        // findActiveBookingsInDateRange dùng: checkIn < endDate AND checkOut > startDate
+        // Để lấy đúng các booking chiếm đêm "date" (checkIn <= date < checkOut), cần:
+        //   checkOut > date  => startDate = date
+        //   checkIn <= date  => checkIn < date+1  => endDate = date.plusDays(1)
+        List<Booking> bookings = bookingRepository.findActiveBookingsInDateRange(
+                date,                   // startDate: checkOut > date
+                date.plusDays(1),       // endDate: checkIn < date+1 (tức checkIn <= date)
+                RoomShortageRuleConfig.VALID_BOOKING_STATUSES
+        );
+
+        // Lọc theo loại phòng và áp dụng quy tắc loại trừ expired hold
+        List<ShortageBookingResponse> result = bookings.stream()
+                .filter(booking -> {
+                    // Loại trừ booking chờ xác nhận đã quá hạn giữ chỗ 24h
+                    if (RoomShortageRuleConfig.EXCLUDE_EXPIRED_HOLD
+                            && booking.getStatus() == BookingStatus.CHO_XAC_NHAN
+                            && booking.getHoldExpiresAt() != null
+                            && !booking.getHoldExpiresAt().isAfter(now)) {
+                        return false;
+                    }
+                    return true;
+                })
+                .filter(booking -> {
+                    // Lọc theo loại phòng: so khớp bằng roomType entity hoặc roomTypeNameSnapshot
+                    if (booking.getRoomType() != null) {
+                        return booking.getRoomType().getId().equals(roomType.getId());
+                    }
+                    if (booking.getRoomTypeNameSnapshot() != null) {
+                        return booking.getRoomTypeNameSnapshot().trim().equalsIgnoreCase(roomType.getName().trim());
+                    }
+                    return false;
+                })
+                .filter(booking -> {
+                    // Kiểm tra booking thực sự chiếm đêm ngày được chọn: checkIn <= date < checkOut
+                    LocalDate checkIn = booking.getCheckInDate();
+                    LocalDate checkOut = booking.getCheckOutDate();
+                    if (checkIn == null || checkOut == null || !checkIn.isBefore(checkOut)) {
+                        return false;
+                    }
+                    return !date.isBefore(checkIn) && date.isBefore(checkOut);
+                })
+                .map(ShortageBookingResponse::from)
+                .collect(Collectors.toList());
+
+        // Sắp xếp: booking tạo sau cùng lên đầu (createdAt DESC) để ưu tiên xử lý
+        result.sort(Comparator.comparing(ShortageBookingResponse::createdAt, Comparator.nullsLast(Comparator.reverseOrder())));
+
+        return result;
+    }
+
     private static String makeKey(LocalDate date, Long roomTypeId) {
         return date + "_" + roomTypeId;
     }
 }
+

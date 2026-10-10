@@ -49,6 +49,21 @@ public class BookingController {
         return roomShortageAlertService.getShortageAlerts();
     }
 
+    /**
+     * S3-08: Danh sách booking liên quan đến một cảnh báo cụ thể (ngày + loại phòng).
+     * Booking tạo sau cùng lên đầu để ưu tiên xử lý.
+     */
+    @GetMapping("/shortage-alerts/{date}/{roomTypeCode}")
+    public List<com.ttcs.homestay.dto.booking.ShortageBookingResponse> getShortageBookings(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @PathVariable String roomTypeCode) {
+        try {
+            return roomShortageAlertService.getShortageBookings(date, roomTypeCode);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
     @PostMapping
     public ResponseEntity<BookingResponse> createBooking(
             @Valid @RequestBody BookingCreateRequest request) {
