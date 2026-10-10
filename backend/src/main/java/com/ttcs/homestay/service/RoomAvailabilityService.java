@@ -238,7 +238,7 @@ public class RoomAvailabilityService {
     }
 
     /** Bảo trì từ ngày bắt đầu đến hết ngày kết thúc; trạng thái bảo trì mà không có ngày thì coi như bảo trì mọi đêm. */
-    private static boolean isUnderMaintenance(Room room, LocalDate night) {
+    static boolean isUnderMaintenance(Room room, LocalDate night) {
         if (room.getMaintenanceStartDate() == null) {
             return room.getStatus() == RoomStatus.BAO_TRI;
         }
@@ -259,7 +259,7 @@ public class RoomAvailabilityService {
         return false;
     }
 
-    private static boolean occupies(Booking booking, LocalDate night, OffsetDateTime now) {
+    static boolean occupies(Booking booking, LocalDate night, OffsetDateTime now) {
         boolean coversNight = !night.isBefore(booking.getCheckInDate()) && night.isBefore(booking.getCheckOutDate());
         return coversNight && !isHoldExpired(booking, now);
     }

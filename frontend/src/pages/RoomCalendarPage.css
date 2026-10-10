@@ -1,0 +1,16 @@
+.room-calendar { min-width: 0; padding: 20px; background: #fff; border-radius: 12px; }
+.room-calendar p { color: #526175; font-size: 14px; }
+.room-calendar input { margin-left: 12px; padding: 8px; border: 1px solid #94a3b8; border-radius: 6px; }
+.room-calendar-legend { display: flex; flex-wrap: wrap; gap: 12px; }
+.room-calendar-legend span { padding: 8px 14px; border-radius: 6px; }
+.room-calendar-scroll { overflow: auto; max-height: 65vh; border: 1px solid #cbd5e1; }
+.room-calendar table { border-collapse: separate; border-spacing: 0; width: 100%; }
+.room-calendar caption { text-align: left; padding: 10px; }
+.room-calendar th, .room-calendar td { min-width: 100px; padding: 12px 8px; text-align: center; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; }
+.room-calendar thead th { position: sticky; top: 0; background: #eef2f6; z-index: 2; }
+.room-calendar tr > th:first-child { position: sticky; left: 0; min-width: 140px; background: #eef2f6; z-index: 1; }
+.room-calendar thead tr > th:first-child { z-index: 3; }
+.room-calendar small { display: block; margin-top: 4px; font-weight: normal; }
+.calendar-AVAILABLE { background: #e5f5eb; color: #165b32; }
+.calendar-BOOKED { background: #dbeafe; color: #193e89; }
+.calendar-MAINTENANCE { background: #ffedd5; color: #853500; }
