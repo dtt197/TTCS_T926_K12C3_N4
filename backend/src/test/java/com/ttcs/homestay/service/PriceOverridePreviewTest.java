@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
-import com.ttcs.homestay.dto.pricing.PreviewNight;
 import com.ttcs.homestay.dto.pricing.PriceOverridePreviewRequest;
 import com.ttcs.homestay.dto.pricing.PriceOverridePreviewResponse;
 import com.ttcs.homestay.dto.pricing.PriceType;
@@ -93,9 +92,9 @@ class PriceOverridePreviewTest {
         PriceOverridePreviewResponse preview = xemTruoc(1L, null, null);
 
         assertThat(preview.nights()).isEqualTo(6);
-        assertThat(preview.nightlyPrices()).extracting(PreviewNight::date)
+        assertThat(preview.nightlyPrices()).extracting(night -> night.date())
                 .startsWith(START).endsWith(END);
-        assertThat(preview.nightlyPrices()).extracting(PreviewNight::currentType).containsExactly(
+        assertThat(preview.nightlyPrices()).extracting(night -> night.currentType()).containsExactly(
                 PriceType.WEEKEND, PriceType.WEEKEND, // 30/04 thứ Sáu, 01/05 thứ Bảy
                 PriceType.WEEKDAY, PriceType.WEEKDAY, PriceType.WEEKDAY, PriceType.WEEKDAY);
         assertThat(preview.currentTotal()).isEqualTo(3_400_000L);
@@ -119,7 +118,7 @@ class PriceOverridePreviewTest {
 
         PriceOverridePreviewResponse preview = xemTruoc(1L, 100_000L, null);
 
-        assertThat(preview.nightlyPrices()).extracting(PreviewNight::newPrice).containsOnly(100_000L);
+        assertThat(preview.nightlyPrices()).extracting(night -> night.newPrice()).containsOnly(100_000L);
         assertThat(preview.newTotal()).isEqualTo(600_000L);
     }
 
@@ -130,7 +129,7 @@ class PriceOverridePreviewTest {
 
         PriceOverridePreviewResponse preview = xemTruoc(1L, 900_000L, 10L);
 
-        assertThat(preview.nightlyPrices()).extracting(PreviewNight::currentType)
+        assertThat(preview.nightlyPrices()).extracting(night -> night.currentType())
                 .doesNotContain(PriceType.OVERRIDE);
         assertThat(preview.currentTotal()).isEqualTo(3_400_000L);
         assertThat(preview.conflict()).isNull();

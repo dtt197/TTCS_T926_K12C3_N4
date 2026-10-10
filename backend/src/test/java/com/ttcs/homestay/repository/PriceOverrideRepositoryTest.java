@@ -49,7 +49,7 @@ class PriceOverrideRepositoryTest {
     @Test
     void trungMotDem_timThayDotXungDot() {
         assertThat(priceOverrideRepository.findOverlapping(doi.getId(), LocalDate.of(2027, 5, 1), LocalDate.of(2027, 5, 3)))
-                .extracting(PriceOverride::getName)
+                .extracting(priceOverride -> priceOverride.getName())
                 .containsExactly("Lễ 30/4");
     }
 

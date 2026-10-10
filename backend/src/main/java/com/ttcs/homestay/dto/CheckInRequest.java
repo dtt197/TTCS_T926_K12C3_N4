@@ -1,6 +1,7 @@
 package com.ttcs.homestay.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
-public record CheckInRequest(@NotBlank(message = "Tên khách không được để trống") String guestName) {
+public record CheckInRequest(
+        @NotNull(message = "Vui lòng chọn booking cần nhận phòng") Long bookingId) {
 }

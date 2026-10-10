@@ -67,11 +67,11 @@ class BookingDepositAdjustmentRepositoryTest {
 
         var saved = adjustmentRepository.findAllByBookingIdOrderByCreatedAtAscIdAsc(booking.getId());
 
-        assertThat(saved).extracting(BookingDepositAdjustment::getAdjustmentType)
+        assertThat(saved).extracting(adjustment -> adjustment.getAdjustmentType())
                 .containsExactly(DepositAdjustmentType.TANG, DepositAdjustmentType.GIAM);
-        assertThat(saved).extracting(BookingDepositAdjustment::getAmount)
+        assertThat(saved).extracting(adjustment -> adjustment.getAmount())
                 .containsExactly(new BigDecimal("0.0001"), new BigDecimal("0.1001"));
-        assertThat(saved).extracting(BookingDepositAdjustment::getCreatedBy)
+        assertThat(saved).extracting(adjustment -> adjustment.getCreatedBy())
                 .containsExactly("Actor", "Actor");
     }
 

@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,10 +22,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.ttcs.homestay.dto.IncidentReportRequest;
+import com.ttcs.homestay.dto.CheckInRequest;
+import com.ttcs.homestay.dto.CheckInResponse;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.CheckIn;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomStatusHistory;
@@ -67,6 +72,107 @@ class RoomServiceTest {
         room.setStatus(RoomStatus.DANG_O);
         room.setActive(true);
         return room;
+    }
+
+    private Booking createAssignedBooking(Long id, BookingStatus status, Room room) {
+        Booking booking = new Booking();
+        booking.setId(id);
+        booking.setBookingCode("BK-" + id);
+        booking.setGuestName("Khách nhận phòng");
+        booking.setStatus(status);
+        booking.setRoom(room);
+        booking.setRoomConfirmedAt(OffsetDateTime.parse("2026-10-10T08:00:00+07:00"));
+        return booking;
+    }
+
+    @Test
+    @DisplayName("Nhận phòng booking đã xác nhận, đổi cả trạng thái phòng và booking")
+    void checkIn_confirmedBookingAndCleanAssignedRoom_updatesStatusesAndVietnameseTimestamp() {
+        Long roomId = 101L;
+        Long bookingId = 501L;
+        Room room = createOccupiedRoom(roomId, "101");
+        room.setStatus(RoomStatus.TRONG_SACH);
+        Booking booking = createAssignedBooking(bookingId, BookingStatus.DA_XAC_NHAN, room);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByIdForUpdate(bookingId)).thenReturn(Optional.of(booking));
+        when(roomRepository.save(room)).thenReturn(room);
+        when(checkInRepository.save(any(CheckIn.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CheckInResponse response = roomService.checkIn(roomId, new CheckInRequest(bookingId), "Lễ tân");
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_NHAN_PHONG);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.DANG_O);
+        assertThat(response.bookingStatus()).isEqualTo(BookingStatus.DA_NHAN_PHONG);
+        assertThat(response.roomStatus()).isEqualTo(RoomStatus.DANG_O);
+        assertThat(response.bookingCode()).isEqualTo("BK-" + bookingId);
+        assertThat(response.guestName()).isEqualTo("Khách nhận phòng");
+        assertThat(response.checkedInAt().getOffset()).isEqualTo(ZoneOffset.ofHours(7));
+        verify(bookingRepository).save(booking);
+        verify(roomRepository).save(room);
+        verify(roomStatusHistoryRepository).save(any(RoomStatusHistory.class));
+    }
+
+    @Test
+    @DisplayName("Từ chối nhận phòng khi booking chưa xác nhận")
+    void checkIn_unconfirmedBooking_rejectsWithoutChangingState() {
+        Long roomId = 102L;
+        Long bookingId = 502L;
+        Room room = createOccupiedRoom(roomId, "102");
+        room.setStatus(RoomStatus.TRONG_SACH);
+        Booking booking = createAssignedBooking(bookingId, BookingStatus.CHO_XAC_NHAN, room);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByIdForUpdate(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> roomService.checkIn(roomId, new CheckInRequest(bookingId), "Lễ tân"))
+                .isInstanceOf(RoomStatusConflictException.class)
+                .hasMessageContaining("Chỉ booking đã xác nhận");
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CHO_XAC_NHAN);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_SACH);
+        verify(bookingRepository, never()).save(any(Booking.class));
+        verify(roomRepository, never()).save(any(Room.class));
+    }
+
+    @Test
+    @DisplayName("Từ chối nhận phòng nếu booking chưa được gán phòng")
+    void checkIn_bookingWithoutAssignedRoom_rejects() {
+        Long bookingId = 503L;
+        Booking booking = createAssignedBooking(bookingId, BookingStatus.DA_XAC_NHAN, null);
+        booking.setRoomConfirmedAt(null);
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> roomService.checkIn(101L, new CheckInRequest(bookingId), "Lễ tân"))
+                .isInstanceOf(RoomStatusConflictException.class)
+                .hasMessageContaining("chưa được gán");
+
+        verify(roomRepository, never()).findByIdForUpdate(any());
+    }
+
+    @Test
+    @DisplayName("Từ chối nhận phòng nếu phòng được gán chưa sạch")
+    void checkIn_assignedRoomIsDirty_rejectsWithoutChangingBooking() {
+        Long roomId = 104L;
+        Long bookingId = 504L;
+        Room room = createOccupiedRoom(roomId, "104");
+        room.setStatus(RoomStatus.TRONG_BAN);
+        Booking booking = createAssignedBooking(bookingId, BookingStatus.DA_XAC_NHAN, room);
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByIdForUpdate(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> roomService.checkIn(roomId, new CheckInRequest(bookingId), "Lễ tân"))
+                .isInstanceOf(RoomStatusConflictException.class)
+                .hasMessageContaining("Chỉ phòng Trống sạch");
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_XAC_NHAN);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        verify(bookingRepository, never()).save(any(Booking.class));
+        verify(roomRepository, never()).save(any(Room.class));
     }
 
     @Test
@@ -333,5 +439,4 @@ class RoomServiceTest {
         verify(roomRepository, never()).save(any(Room.class));
     }
 }
-
 

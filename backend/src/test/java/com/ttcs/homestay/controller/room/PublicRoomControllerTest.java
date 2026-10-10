@@ -12,6 +12,7 @@ import com.ttcs.homestay.service.PublicBookingDatePolicy;
 import com.ttcs.homestay.service.RoomAvailabilityService;
 import java.time.LocalDate;
 import java.util.List;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -51,8 +52,7 @@ class PublicRoomControllerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody())
-                .isInstanceOf(List.class)
-                .asList()
+                .asInstanceOf(InstanceOfAssertFactories.list(PublicRoomController.RoomAvailabilityResponse.class))
                 .containsExactly(new PublicRoomController.RoomAvailabilityResponse(
                         2L, "Phòng đôi", 3, 500000, 1
                 ));

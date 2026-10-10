@@ -19,7 +19,6 @@ import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.CheckIn;
-import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomStatusHistory;
@@ -76,7 +75,7 @@ public class RoomService {
         LocalTime defaultCheckIn = LocalTime.of(14, 0);
         if (operatingSettingsRepository != null) {
             defaultCheckIn = operatingSettingsRepository.findFirstByOrderByCreatedAtDescIdDesc()
-                    .map(OperatingSettings::getCheckInTime)
+                    .map(settings -> settings.getCheckInTime())
                     .orElse(LocalTime.of(14, 0));
         }
 
@@ -98,7 +97,7 @@ public class RoomService {
 
                     boolean hasGuestToday = matchingBooking != null;
                     String expectedCheckInTimeStr = null;
-                    if (hasGuestToday) {
+                    if (matchingBooking != null) {
                         LocalTime roomCheckInTime = (matchingBooking.getRoomType() != null && matchingBooking.getRoomType().getCheckInTime() != null)
                                 ? matchingBooking.getRoomType().getCheckInTime()
                                 : effectiveDefaultCheckIn;
@@ -239,8 +238,27 @@ public List<RoomStatusHistoryResponse> getHistory(
 
     @Transactional
     public CheckInResponse checkIn(Long roomId, CheckInRequest request, String operatorName) {
+        if (bookingRepository == null) {
+            throw new IllegalStateException("BookingRepository is required for booking check-in");
+        }
+        Booking bookingSnapshot = bookingRepository.findById(request.bookingId())
+                .orElseThrow(() -> new RoomStatusConflictException("Không tìm thấy booking cần nhận phòng"));
+        if (bookingSnapshot.getRoom() == null || !bookingSnapshot.getRoom().getId().equals(roomId)) {
+            throw new RoomStatusConflictException("Booking chưa được gán vào phòng đã chọn");
+        }
+
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
+        Booking booking = bookingRepository.findByIdForUpdate(request.bookingId())
+                .orElseThrow(() -> new RoomStatusConflictException("Không tìm thấy booking cần nhận phòng"));
+
+        if (booking.getStatus() != BookingStatus.DA_XAC_NHAN) {
+            throw new RoomStatusConflictException("Chỉ booking đã xác nhận mới được nhận phòng");
+        }
+        if (booking.getRoom() == null || !booking.getRoom().getId().equals(roomId)
+                || booking.getRoomConfirmedAt() == null) {
+            throw new RoomStatusConflictException("Booking chưa được chốt phòng đã chọn");
+        }
 
         if (!RoomStatusPolicy.canCheckIn(room.getStatus())) {
             throw new RoomStatusConflictException(
@@ -249,6 +267,10 @@ public List<RoomStatusHistoryResponse> getHistory(
                             + ". Chỉ phòng Trống sạch mới được gán khi nhận phòng.");
         }
 
+        OffsetDateTime checkedInAt = OffsetDateTime.now(BUSINESS_ZONE);
+        booking.setStatus(BookingStatus.DA_NHAN_PHONG);
+        bookingRepository.save(booking);
+
         RoomStatus previousStatus = room.getStatus();
 
         room.setStatus(RoomStatus.DANG_O);
@@ -256,9 +278,9 @@ public List<RoomStatusHistoryResponse> getHistory(
 
         CheckIn checkIn = new CheckIn();
         checkIn.setRoom(savedRoom);
-        checkIn.setGuestName(request.guestName().trim());
-        checkIn.setCheckedInAt(OffsetDateTime.now(BUSINESS_ZONE));
-        CheckInResponse response = CheckInResponse.from(checkInRepository.save(checkIn));
+        checkIn.setGuestName(booking.getGuestName());
+        checkIn.setCheckedInAt(checkedInAt);
+        CheckInResponse response = CheckInResponse.from(checkInRepository.save(checkIn), booking);
 
         saveHistory(
                 savedRoom,

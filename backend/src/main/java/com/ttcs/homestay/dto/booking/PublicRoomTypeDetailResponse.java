@@ -6,7 +6,6 @@ import com.ttcs.homestay.entity.CancellationTier;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.entity.RoomTypeCancellationTier;
-import com.ttcs.homestay.entity.RoomTypeImage;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -70,15 +69,17 @@ public record PublicRoomTypeDetailResponse(
     public static PublicRoomTypeDetailResponse from(
             RoomType roomType, int availableRooms, long activeRoomCount, OperatingSettings settings) {
         List<AmenitySummary> activeAmenities = roomType.getAmenities() != null ? roomType.getAmenities().stream()
-                .filter(Amenity::isActive)
-                .sorted(Comparator.comparing(Amenity::getName))
-                .map(AmenitySummary::from)
+                .filter(amenity -> amenity != null && amenity.isActive())
+                .sorted(Comparator.comparing(
+                        (Amenity amenity) -> amenity.getName(),
+                        Comparator.nullsLast((left, right) -> left.compareToIgnoreCase(right))))
+                .map(amenity -> AmenitySummary.from(amenity))
                 .toList() : List.of();
 
         List<String> images = roomType.getImages() == null
                 ? List.of()
                 : roomType.getImages().stream()
-                        .map(RoomTypeImage::getImageUrl)
+                        .map(image -> image == null ? null : image.getImageUrl())
                         .filter(imageUrl -> imageUrl != null && !imageUrl.isBlank())
                         .toList();
         if (images.isEmpty() && roomType.getImageUrl() != null && !roomType.getImageUrl().isBlank()) {

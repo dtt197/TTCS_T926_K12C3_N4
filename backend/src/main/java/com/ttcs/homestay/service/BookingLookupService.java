@@ -2,7 +2,6 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.booking.BookingLookupResponse;
 import com.ttcs.homestay.entity.Booking;
-import com.ttcs.homestay.entity.BookingDeposit;
 import com.ttcs.homestay.repository.BookingDepositRepository;
 import java.math.BigDecimal;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -71,12 +70,16 @@ public class BookingLookupService {
 
         Booking booking = match.get();
         Optional<OperatingSettings> settings = settingsFor(booking);
-        return BookingLookupResponse.from(
-                booking,
-                depositRepository.findByBooking(booking)
-                        .map(BookingDeposit::getAmount).orElse(BigDecimal.ZERO),
-                settings.map(OperatingSettings::getCheckInTime).orElse(DEFAULT_CHECK_IN_TIME),
-                settings.map(OperatingSettings::getCheckOutTime).orElse(DEFAULT_CHECK_OUT_TIME));
+        BigDecimal depositAmount = depositRepository.findByBooking(booking)
+                .map(deposit -> deposit == null ? BigDecimal.ZERO : deposit.getAmount())
+                .orElse(BigDecimal.ZERO);
+        LocalTime checkInTime = settings
+                .map(setting -> setting == null ? DEFAULT_CHECK_IN_TIME : setting.getCheckInTime())
+                .orElse(DEFAULT_CHECK_IN_TIME);
+        LocalTime checkOutTime = settings
+                .map(setting -> setting == null ? DEFAULT_CHECK_OUT_TIME : setting.getCheckOutTime())
+                .orElse(DEFAULT_CHECK_OUT_TIME);
+        return BookingLookupResponse.from(booking, depositAmount, checkInTime, checkOutTime);
     }
 
     /** Tham số có hiệu lực lúc tạo booking; booking cũ hơn mọi phiên bản thì dùng phiên bản hiện tại. */

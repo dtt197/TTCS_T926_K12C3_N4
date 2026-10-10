@@ -12,8 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class PublicRoomTypeService {
 
     private static final Comparator<PublicRoomTypeCard> DISPLAY_ORDER =
-            Comparator.comparing(PublicRoomTypeCard::fromPrice, Comparator.nullsLast(Comparator.<Long>naturalOrder()))
-                    .thenComparing(PublicRoomTypeCard::name, String.CASE_INSENSITIVE_ORDER);
+            Comparator.comparing((PublicRoomTypeCard card) -> card.fromPrice(),
+                            Comparator.nullsLast(Comparator.<Long>naturalOrder()))
+                    .thenComparing(card -> card.name(), String.CASE_INSENSITIVE_ORDER);
 
     private final RoomTypeRepository roomTypeRepository;
     private final RoomAvailabilityService roomAvailabilityService;

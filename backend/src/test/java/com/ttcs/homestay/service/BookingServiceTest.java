@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
-import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.entity.Booking;
@@ -170,7 +169,7 @@ class BookingServiceTest {
         var result = bookingService.getLatestBookings();
 
         assertThat(result)
-                .extracting(BookingListItemResponse::bookingCode)
+                .extracting(item -> item.bookingCode())
                 .containsExactly("BK-NEW", "BK-OLD");
     }
 

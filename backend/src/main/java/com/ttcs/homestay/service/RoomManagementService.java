@@ -177,7 +177,7 @@ public class RoomManagementService {
     @Transactional(readOnly = true)
     public String getNote(Long roomId) {
         return roomNoteRepository.findByRoomId(roomId)
-                .map(RoomNote::getNote)
+                .map(note -> note.getNote())
                 .orElse("");
     }
 

@@ -51,7 +51,7 @@ public record OperatingSettingsResponse(
                         : Arrays.stream(
                                         settings.getWeekendDays().split(",")
                                 )
-                                .map(String::trim)
+                                .map(value -> value.trim())
                                 .filter(value -> !value.isBlank())
                                 .toList();
 

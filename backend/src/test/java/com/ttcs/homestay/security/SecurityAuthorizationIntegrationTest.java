@@ -382,7 +382,7 @@ void setUp() {
                 .andExpect(jsonPath("$.affectedFutureBookings").value(0))
                 .andExpect(jsonPath("$.room.roomType").value(originalRoomType))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(objectMapper.readTree(warningResponse).path("warningMessage").asText())
+        assertThat(objectMapper.readTree(warningResponse).path("warningMessage").asString())
                 .contains("Chưa có module Booking")
                 .contains("Hãy xác nhận tiếp tục");
         assertThat(jdbcTemplate.queryForObject(

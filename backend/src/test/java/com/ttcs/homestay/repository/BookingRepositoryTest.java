@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.Room;
+import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomType;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,9 @@ class BookingRepositoryTest {
 
     @Autowired
     private RoomTypeRepository roomTypeRepository;
+
+    @Autowired
+    private RoomRepository roomRepository;
 
     private RoomType doi;
 
@@ -73,7 +79,7 @@ class BookingRepositoryTest {
     void trungMotDem_chiBookingDangChiemPhongDuocTraVe() {
         assertThat(bookingRepository.findOverlapping(doi.getId(),
                 LocalDate.of(2027, 6, 12), LocalDate.of(2027, 6, 15), OCCUPYING))
-                .extracting(Booking::getBookingCode)
+                .extracting(savedBooking -> savedBooking.getBookingCode())
                 .containsExactly("TESTBK01");
     }
 
@@ -90,6 +96,46 @@ class BookingRepositoryTest {
         assertThat(bookingRepository.existsByBookingCode("TESTBK01")).isTrue();
         assertThat(bookingRepository.existsByBookingCode("CHUACOMA")).isFalse();
     }
+
+    @Test
+    void findCheckInOptions_onlyReturnsConfirmedRoomAssignedBookingsWithCleanRooms() {
+        Room cleanRoom = room("CHECKIN-CLEAN", RoomStatus.TRONG_SACH);
+        Room anotherCleanRoom = room("CHECKIN-OTHER", RoomStatus.TRONG_SACH);
+        Room dirtyRoom = room("CHECKIN-DIRTY", RoomStatus.TRONG_BAN);
+        roomRepository.saveAll(List.of(cleanRoom, anotherCleanRoom, dirtyRoom));
+
+        Booking eligible = booking("CHECKIN-ELIGIBLE", BookingStatus.DA_XAC_NHAN);
+        eligible.setRoom(cleanRoom);
+        eligible.setRoomConfirmedAt(OffsetDateTime.now());
+        bookingRepository.save(eligible);
+
+        Booking pending = booking("CHECKIN-PENDING", BookingStatus.CHO_XAC_NHAN);
+        pending.setRoom(anotherCleanRoom);
+        pending.setRoomConfirmedAt(OffsetDateTime.now());
+        bookingRepository.save(pending);
+
+        Booking dirty = booking("CHECKIN-DIRTY-ROOM", BookingStatus.DA_XAC_NHAN);
+        dirty.setRoom(dirtyRoom);
+        dirty.setRoomConfirmedAt(OffsetDateTime.now());
+        bookingRepository.save(dirty);
+
+        assertThat(bookingRepository.findCheckInOptions(
+                BookingStatus.DA_XAC_NHAN, RoomStatus.TRONG_SACH))
+                .extracting(found -> found.getBookingCode())
+                .contains("CHECKIN-ELIGIBLE")
+                .doesNotContain("CHECKIN-PENDING", "CHECKIN-DIRTY-ROOM");
+    }
+
+    private Room room(String roomNumber, RoomStatus status) {
+        Room room = new Room();
+        room.setRoomNumber(roomNumber);
+        room.setFloor(1);
+        room.setRoomType(doi.getName());
+        room.setStatus(status);
+        room.setActive(true);
+        return room;
+    }
+
     @Test
 void searchTheoTrangThaiVaTuKhoaSoDienThoai() {
     Booking booking = booking("FILTER-01", BookingStatus.CHO_XAC_NHAN);
@@ -117,7 +163,7 @@ void searchTheoTrangThaiVaTuKhoaSoDienThoai() {
     );
 
     assertThat(result.getContent())
-            .extracting(Booking::getBookingCode)
+            .extracting(foundBooking -> foundBooking.getBookingCode())
             .contains("FILTER-01");
 }
 }

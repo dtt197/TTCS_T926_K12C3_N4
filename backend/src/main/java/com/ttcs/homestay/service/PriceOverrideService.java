@@ -102,7 +102,7 @@ public class PriceOverrideService {
                 .toList();
 
         boolean allPriced = nights.stream().allMatch(night -> night.currentPrice() != null);
-        Long currentTotal = allPriced ? nights.stream().mapToLong(PreviewNight::currentPrice).sum() : null;
+        Long currentTotal = allPriced ? nights.stream().mapToLong(night -> night.currentPrice()).sum() : null;
         Long newTotal = newPrice == null ? null : newPrice * nights.size();
         String conflict = findConflict(request.roomTypeId(), request.startDate(), request.endDate(), request.excludeId())
                 .orElse(null);

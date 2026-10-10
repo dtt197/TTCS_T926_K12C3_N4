@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.roomtype.RoomTypeRequest;
 import com.ttcs.homestay.dto.roomtype.RoomTypeResponse;
-import com.ttcs.homestay.dto.amenity.AmenitySummary;
 import com.ttcs.homestay.entity.Amenity;
 import com.ttcs.homestay.repository.AmenityRepository;
 import com.ttcs.homestay.entity.RoomType;
@@ -158,7 +157,7 @@ class RoomTypeServiceTest {
 
         RoomTypeResponse response = roomTypeService.addAmenity(1L, 10L);
 
-        assertThat(response.amenities()).extracting(AmenitySummary::code).containsExactly("WIFI");
+        assertThat(response.amenities())        .extracting(amenity -> amenity.code()).containsExactly("WIFI");
     }
 
     @Test
@@ -196,7 +195,7 @@ class RoomTypeServiceTest {
 
         RoomTypeResponse response = RoomTypeResponse.from(roomType, 0);
 
-        assertThat(response.amenities()).extracting(AmenitySummary::code).containsExactly("WIFI");
+        assertThat(response.amenities())        .extracting(amenity -> amenity.code()).containsExactly("WIFI");
     }
     @Test
     void taoLoaiPhong_kemTienNghiDaTick_ganLuon() {
@@ -209,7 +208,7 @@ class RoomTypeServiceTest {
         RoomTypeResponse response = roomTypeService.createRoomType(
                 requestWithAmenities("SUITE", "Phòng suite", List.of(10L, 11L)));
 
-        assertThat(response.amenities()).extracting(AmenitySummary::code).containsExactlyInAnyOrder("WIFI", "TIVI");
+        assertThat(response.amenities())        .extracting(amenity -> amenity.code()).containsExactlyInAnyOrder("WIFI", "TIVI");
     }
 
     @Test
@@ -223,7 +222,7 @@ class RoomTypeServiceTest {
         roomTypeService.updateRoomType(1L, requestWithAmenities("DOI", "Phòng đôi", List.of(10L)));
 
         // Bỏ tick Tivi thì Tivi bị gỡ; Quạt cây đã ngừng dùng (không hiện trên giao diện) vẫn giữ.
-        assertThat(roomType.getAmenities()).extracting(Amenity::getCode).containsExactlyInAnyOrder("WIFI", "QUAT");
+        assertThat(roomType.getAmenities())        .extracting(amenity -> amenity.getCode()).containsExactlyInAnyOrder("WIFI", "QUAT");
     }
 
     @Test

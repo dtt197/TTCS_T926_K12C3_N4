@@ -8,6 +8,7 @@ import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
 import com.ttcs.homestay.dto.booking.BookingCancelRequest;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.CheckInOptionResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
@@ -219,6 +220,14 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public List<CheckInOptionResponse> getCheckInOptions() {
+        return bookingRepository.findCheckInOptions(BookingStatus.DA_XAC_NHAN, RoomStatus.TRONG_SACH)
+                .stream()
+                .map(CheckInOptionResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<com.ttcs.homestay.dto.booking.BookingRoomChangeHistoryResponse> getRoomChangeHistory(Long bookingId) {
         if (!bookingRepository.existsById(bookingId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking");
@@ -294,7 +303,7 @@ public class BookingService {
                         || conflict.getHoldExpiresAt().isAfter(java.time.OffsetDateTime.now()))
                 .toList();
         if (!conflicts.isEmpty()) {
-            String codes = conflicts.stream().map(Booking::getBookingCode).distinct().sorted()
+            String codes = conflicts.stream().map(conflict -> conflict.getBookingCode()).distinct().sorted()
                     .collect(java.util.stream.Collectors.joining(", "));
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Phòng đã bị booking chiếm trong kỳ lưu trú: " + codes);
@@ -323,7 +332,7 @@ public class BookingService {
                         .filter(conflict -> conflict.getStatus() != BookingStatus.CHO_XAC_NHAN
                                 || conflict.getHoldExpiresAt() == null
                                 || conflict.getHoldExpiresAt().isAfter(java.time.OffsetDateTime.now()))
-                        .map(Booking::getBookingCode).distinct().sorted()
+                        .map(conflict -> conflict.getBookingCode()).distinct().sorted()
                         .collect(java.util.stream.Collectors.joining(", "));
                 String detail = codes.isBlank() ? "booking khác (yêu cầu đồng thời)" : codes;
                 throw new ResponseStatusException(HttpStatus.CONFLICT,

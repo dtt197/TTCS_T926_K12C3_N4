@@ -222,7 +222,7 @@ class RoomShortageAlertServiceTest {
         assertThat(alerts).hasSize(2);
         // Cùng ngày 10/10 nhưng thành 2 dòng riêng biệt
         assertThat(alerts).allMatch(a -> a.date().equals(TODAY));
-        List<String> roomCodes = alerts.stream().map(RoomShortageAlertResponse::roomTypeCode).toList();
+        List<String> roomCodes = alerts.stream().map(alert -> alert.roomTypeCode()).toList();
         assertThat(roomCodes).containsExactlyInAnyOrder("DON", "DOI");
     }
 
@@ -290,4 +290,3 @@ class RoomShortageAlertServiceTest {
         assertThat(alerts.get(0).bookingCount()).isEqualTo(2);
     }
 }
-

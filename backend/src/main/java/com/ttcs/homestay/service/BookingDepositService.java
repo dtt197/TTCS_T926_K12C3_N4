@@ -9,7 +9,6 @@ import com.ttcs.homestay.exception.InvalidDepositException;
 import com.ttcs.homestay.repository.BookingDepositRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

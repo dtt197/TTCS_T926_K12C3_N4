@@ -7,6 +7,7 @@ import type {
   BookingAuditLog,
   AssignableRoom,
   BookingRoomChangeHistory,
+  CheckInOption,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -58,6 +59,10 @@ export async function searchBookings(filters: {
   return apiRequest<PageResponse<BookingListItem>>(
     `/api/bookings?${params.toString()}`,
   )
+}
+
+export function getCheckInOptions(): Promise<CheckInOption[]> {
+  return apiRequest<CheckInOption[]>('/api/bookings/check-in-options')
 }
 
 /** S2-10: booking mới nhất trước, 20 dòng mỗi trang (trang đầu tiên là 0). */
