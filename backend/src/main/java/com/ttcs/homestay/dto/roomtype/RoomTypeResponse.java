@@ -50,8 +50,8 @@ public record RoomTypeResponse(
 
         List<AmenitySummary> activeAmenities =
                 roomType.getAmenities() != null ? roomType.getAmenities().stream()
-                        .filter(Amenity::isActive)
-                        .sorted(Comparator.comparing(Amenity::getName))
+                        .filter(amenity -> amenity != null && amenity.isActive())
+                        .sorted(Comparator.comparing((Amenity amenity) -> amenity.getName()))
                         .map(AmenitySummary::from)
                         .toList() : List.of();
 

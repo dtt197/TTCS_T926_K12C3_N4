@@ -40,6 +40,22 @@ export type GuestBookingResult = {
   holdExpiresAt: string
 }
 
+/** S3-06 Lát 4: thông tin booking tại quầy để lễ tân đọc hoặc in cho khách. */
+export type WalkInBookingResult = {
+  bookingCode: string
+  status: string
+  statusLabel: string
+  source: string
+  sourceLabel: string
+  guestName: string
+  roomTypeName: string
+  roomNumber: string | null
+  checkInDate: string
+  checkOutDate: string
+  nights: number
+  guestCount: number
+  createdAt: string
+}
 /** S2-06: một đêm trong bảng tạm tính. label là "Ngày thường", "Cuối tuần" hoặc tên đợt lễ. */
 export type QuoteNight = {
   date: string

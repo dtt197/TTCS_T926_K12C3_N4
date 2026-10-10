@@ -133,7 +133,7 @@ public class RoomAvailabilityService {
         List<Room> freeRooms = rooms.stream()
                 .filter(room -> !heldRoomIds.contains(room.getId()))
                 .filter(room -> !isUnderMaintenanceAnyNight(room, checkIn, checkOut))
-                .sorted(Comparator.comparing(Room::getRoomNumber))
+                .sorted(Comparator.comparing((Room room) -> room.getRoomNumber()))
                 .toList();
         if (freeRooms.isEmpty()) {
             throw unavailable(roomType, checkIn, checkOut);
@@ -141,7 +141,7 @@ public class RoomAvailabilityService {
         if (currentRoom != null) {
             freeRooms = freeRooms.stream()
                     .sorted(Comparator.comparing((Room room) -> !room.getId().equals(currentRoom.getId()))
-                            .thenComparing(Room::getRoomNumber))
+                            .thenComparing(room -> room.getRoomNumber()))
                     .toList();
         }
         for (Room candidate : freeRooms) {
@@ -183,7 +183,7 @@ public class RoomAvailabilityService {
         return rooms.stream()
                 .filter(room -> !occupiedRoomIds.contains(room.getId()))
                 .filter(room -> !isUnderMaintenanceAnyNight(room, checkIn, checkOut))
-                .sorted(Comparator.comparing(Room::getRoomNumber))
+                .sorted(Comparator.comparing((Room room) -> room.getRoomNumber()))
                 .toList();
     }
 
@@ -199,6 +199,14 @@ public class RoomAvailabilityService {
                 .stream()
                 .noneMatch(booking -> (excludeBookingId == null || !excludeBookingId.equals(booking.getId()))
                         && !isHoldExpired(booking, OffsetDateTime.now()));
+    }
+
+    /** V36 includes every occupying row, even an expired hold not yet marked DA_HET_HAN. */
+    @Transactional(readOnly = true)
+    public boolean satisfiesRoomOverlapConstraint(Room room, Booking booking) {
+        return bookingRepository.findOverlappingOnRooms(List.of(room), booking.getCheckInDate(),
+                        booking.getCheckOutDate(), OCCUPYING_STATUSES).stream()
+                .noneMatch(other -> !booking.getId().equals(other.getId()));
     }
 
     /** S3-02 Lát 1: lỗi do cơ sở dữ liệu từ chối vì hai booking cùng chiếm một phòng trong một đêm. */
@@ -230,7 +238,7 @@ public class RoomAvailabilityService {
     }
 
     /** Bảo trì từ ngày bắt đầu đến hết ngày kết thúc; trạng thái bảo trì mà không có ngày thì coi như bảo trì mọi đêm. */
-    private static boolean isUnderMaintenance(Room room, LocalDate night) {
+    static boolean isUnderMaintenance(Room room, LocalDate night) {
         if (room.getMaintenanceStartDate() == null) {
             return room.getStatus() == RoomStatus.BAO_TRI;
         }
@@ -251,7 +259,7 @@ public class RoomAvailabilityService {
         return false;
     }
 
-    private static boolean occupies(Booking booking, LocalDate night, OffsetDateTime now) {
+    static boolean occupies(Booking booking, LocalDate night, OffsetDateTime now) {
         boolean coversNight = !night.isBefore(booking.getCheckInDate()) && night.isBefore(booking.getCheckOutDate());
         return coversNight && !isHoldExpired(booking, now);
     }

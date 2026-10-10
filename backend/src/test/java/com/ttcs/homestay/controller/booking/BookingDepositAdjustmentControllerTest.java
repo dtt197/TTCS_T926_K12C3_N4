@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import static org.mockito.Mockito.mock;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -148,7 +150,7 @@ class BookingDepositAdjustmentControllerTest {
     @Test
     void bookingDetailsRemainReadableToAdminOwnerAndReceptionist() throws Exception {
         when(jdbcTemplate.query(eq("SELECT id, booking_code, status, hold_expires_at FROM bookings WHERE id = ?"),
-                any(org.springframework.jdbc.core.RowMapper.class), eq(5L)))
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(5L)))
                 .thenReturn(List.of(java.util.Map.of("id", 5L, "bookingCode", "BK-5",
                         "status", "DA_XAC_NHAN")));
         for (String token : List.of("admin-token", "owner-token", "receptionist-token")) {

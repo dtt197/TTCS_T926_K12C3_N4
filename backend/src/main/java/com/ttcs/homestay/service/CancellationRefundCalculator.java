@@ -34,7 +34,7 @@ public final class CancellationRefundCalculator {
     public static Result calculate(
             List<CancellationTier> tiers, long hoursBeforeCheckIn, long depositAmount) {
         CancellationTier applied = tiers.stream()
-                .sorted(Comparator.comparingInt(CancellationTier::getHoursBeforeCheckIn).reversed())
+                .sorted(Comparator.comparingInt((CancellationTier tier) -> tier.getHoursBeforeCheckIn()).reversed())
                 .filter(tier -> hoursBeforeCheckIn >= tier.getHoursBeforeCheckIn())
                 .findFirst()
                 .orElse(null);

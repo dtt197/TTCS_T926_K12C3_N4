@@ -67,6 +67,7 @@ class BookingRoomChangeServiceTest {
         org.mockito.Mockito.lenient().when(bookings.findById(4L)).thenReturn(Optional.of(booking));
         org.mockito.Mockito.lenient().when(bookings.findByIdForUpdate(4L)).thenReturn(Optional.of(booking));
         org.mockito.Mockito.lenient().when(roomTypes.findByIdForUpdate(1L)).thenReturn(Optional.of(booking.getRoomType()));
+        org.mockito.Mockito.lenient().when(rooms.findById(11L)).thenReturn(Optional.of(newRoom));
         org.mockito.Mockito.lenient().when(rooms.findByIdForUpdate(11L)).thenReturn(Optional.of(newRoom));
         org.mockito.Mockito.lenient().when(rooms.findByIdForUpdate(10L)).thenReturn(Optional.of(oldRoom));
         org.mockito.Mockito.lenient().when(availability.isRoomAvailable(newRoom, booking.getRoomType(), booking.getCheckInDate(), booking.getCheckOutDate(), 4L)).thenReturn(true);
@@ -143,7 +144,7 @@ class BookingRoomChangeServiceTest {
     @Test void sameRoomAndInvalidBookingStateAreRejected() {
         assertThatThrownBy(() -> service.changeConfirmedRoom(4L, 10L, "Repair"))
                 .isInstanceOf(ResponseStatusException.class);
-        booking.setStatus(BookingStatus.DA_NHAN_PHONG);
+        booking.setStatus(BookingStatus.DA_TRA_PHONG);
         assertThatThrownBy(() -> service.changeConfirmedRoom(4L, 11L, "Repair"))
                 .isInstanceOf(ResponseStatusException.class);
         verify(bookings, never()).save(any());

@@ -1,3 +1,4 @@
+import { canChangeBookingRoom, roomChangeOptions } from './bookingRoomChangeActions'
 import './BookingListPage.css'
 import { ApiRequestError } from '../services/apiClient'
 import type {
@@ -26,6 +27,8 @@ import {
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
 import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
+import { BookingCancellationInfoSection } from '../components/BookingCancellationInfoSection'
+import { BookingCheckedInCancelNotice } from '../components/BookingCheckedInCancelNotice'
 import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 
@@ -143,7 +146,7 @@ export function BookingListPage({ role }: { role: string }) {
     setRoomLoading(true)
     try {
       const [rooms, history] = await Promise.all([getAvailableRooms(booking.id), getBookingRoomChangeHistory(booking.id)])
-      setAssignableRooms(rooms.filter((room) => room.roomNumber !== booking.roomNumber))
+      setAssignableRooms(roomChangeOptions(booking, rooms))
       setRoomChangeHistory(history)
     } catch (err) {
       setRoomError(err instanceof Error ? err.message : 'Không tải được dữ liệu đổi phòng.')
@@ -718,7 +721,7 @@ export function BookingListPage({ role }: { role: string }) {
                           Chốt phòng
                         </button>
                       )}
-                      {canManage && booking.status === 'DA_XAC_NHAN' && booking.roomConfirmedAt && new Date(booking.checkInDate).getTime() > new Date().setHours(0, 0, 0, 0) && (
+                      {canChangeBookingRoom(role, booking, new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' })) && (
                         <button type="button" className="booking-edit-button" onClick={() => void openRoomChange(booking)}>Đổi phòng</button>
                       )}
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
@@ -795,6 +798,20 @@ export function BookingListPage({ role }: { role: string }) {
                   <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>
                   <div><dt>Hạn giữ chỗ</dt><dd>{detailData.holdExpiresAt ? new Date(detailData.holdExpiresAt).toLocaleString('vi-VN') : 'Đã gỡ / không có'}</dd></div>
                 </dl>
+                {detailData.registeredGuests && detailData.registeredGuests.length > 0 && (
+                  <>
+                    <h4>Khách đã đăng ký lưu trú</h4>
+                    <ul>
+                      {detailData.registeredGuests.map((guest, index) => (
+                        <li key={`${guest.primary ? 'primary' : 'guest'}-${index}`}>
+                          {guest.fullName}{guest.primary ? ' (khách chính)' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {detailBooking.status === 'DA_HUY' && <BookingCancellationInfoSection bookingId={detailBooking.id} />}
+                {detailBooking.status === 'DA_NHAN_PHONG' && <BookingCheckedInCancelNotice />}
                 <h4>Thông tin tiền cọc</h4>
                 {detailData.deposit ? (
                   <dl className="booking-detail-grid">
@@ -1000,6 +1017,8 @@ export function BookingListPage({ role }: { role: string }) {
                 </select>
               </label>
             )}
+            {changeRoomBooking.status === 'DA_NHAN_PHONG' && <p>Chỉ chọn phòng trống sạch cùng loại. Hiện hệ thống yêu cầu phòng không trùng lịch trong toàn bộ kỳ lưu trú, kể cả phần ngày đã qua.</p>}
+            {!roomLoading && assignableRooms.length === 0 && <p role="status">Không có phòng đủ điều kiện để đổi.</p>}
             <label className="booking-room-select">Lý do đổi phòng (bắt buộc)
               <textarea maxLength={500} value={changeRoomReason} onChange={(event) => setChangeRoomReason(event.target.value)} />
             </label>

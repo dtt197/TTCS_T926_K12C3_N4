@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
-import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.dto.pricing.PriceQuoteResponse;
 import com.ttcs.homestay.dto.pricing.PriceType;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -87,9 +86,9 @@ class PricingServiceTest {
 
         PriceQuoteResponse quote = pricingService.quote(1L, LocalDate.of(2027, 4, 29), LocalDate.of(2027, 5, 2));
 
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::priceType)
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.priceType())
                 .containsOnly(PriceType.OVERRIDE);
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::label).containsOnly("Lễ 30/4");
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.label()).containsOnly("Lễ 30/4");
         assertThat(quote.totalAmount()).isEqualTo(2_700_000L);
     }
 
@@ -100,7 +99,7 @@ class PricingServiceTest {
         // Đêm 07/05/2027 (thứ Sáu) và 08/05/2027 (thứ Bảy).
         PriceQuoteResponse quote = pricingService.quote(1L, LocalDate.of(2027, 5, 7), LocalDate.of(2027, 5, 9));
 
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::priceType)
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.priceType())
                 .containsExactly(PriceType.WEEKEND, PriceType.WEEKEND);
         assertThat(quote.totalAmount()).isEqualTo(1_400_000L);
     }
@@ -112,7 +111,7 @@ class PricingServiceTest {
         // Đêm thứ Hai 03/05/2027 đến hết đêm thứ Tư 05/05/2027.
         PriceQuoteResponse quote = pricingService.quote(1L, LocalDate.of(2027, 5, 3), LocalDate.of(2027, 5, 6));
 
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::priceType)
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.priceType())
                 .containsOnly(PriceType.WEEKDAY);
         assertThat(quote.totalAmount()).isEqualTo(1_500_000L);
     }
@@ -125,7 +124,7 @@ class PricingServiceTest {
         PriceQuoteResponse quote = pricingService.quote(1L, LocalDate.of(2027, 4, 28), LocalDate.of(2027, 5, 3));
 
         assertThat(quote.nights()).isEqualTo(5);
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::priceType).containsExactly(
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.priceType()).containsExactly(
                 PriceType.WEEKDAY,   // 28/04 thứ Tư
                 PriceType.OVERRIDE,  // 29/04 thứ Năm
                 PriceType.OVERRIDE,  // 30/04 thứ Sáu: giá đè thắng giá cuối tuần
@@ -153,7 +152,7 @@ class PricingServiceTest {
 
         PriceQuoteResponse quote = pricingService.quote(1L, LocalDate.of(2027, 5, 7), LocalDate.of(2027, 5, 10));
 
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::priceType)
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.priceType())
                 .containsExactly(PriceType.WEEKDAY, PriceType.WEEKEND, PriceType.WEEKEND);
     }
 

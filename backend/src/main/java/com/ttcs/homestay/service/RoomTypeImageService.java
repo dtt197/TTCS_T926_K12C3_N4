@@ -102,7 +102,7 @@ public class RoomTypeImageService {
         }
 
         Map<Long, RoomTypeImage> imageMap = existingImages.stream()
-                .collect(Collectors.toMap(RoomTypeImage::getId, img -> img));
+                .collect(Collectors.toMap(image -> image.getId(), img -> img));
 
         if (!imageMap.keySet().containsAll(imageIds)) {
             throw new InvalidImageException("Danh sách chứa ảnh không thuộc về loại phòng này.");
@@ -119,7 +119,7 @@ public class RoomTypeImageService {
 
         List<RoomTypeImage> updated = roomTypeImageRepository.saveAll(existingImages);
         return updated.stream()
-                .sorted(Comparator.comparing(RoomTypeImage::getDisplayOrder))
+                .sorted(Comparator.comparing((RoomTypeImage image) -> image.getDisplayOrder()))
                 .map(RoomTypeImageResponse::from)
                 .toList();
     }
@@ -169,7 +169,7 @@ public class RoomTypeImageService {
 
         List<RoomTypeImage> saved = roomTypeImageRepository.saveAll(remainingImages);
         return saved.stream()
-                .sorted(Comparator.comparing(RoomTypeImage::getDisplayOrder))
+                .sorted(Comparator.comparing((RoomTypeImage image) -> image.getDisplayOrder()))
                 .map(RoomTypeImageResponse::from)
                 .toList();
     }

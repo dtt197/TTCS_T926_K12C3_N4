@@ -7,6 +7,7 @@ import com.ttcs.homestay.dto.booking.BookingDepositAdjustmentResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
+import com.ttcs.homestay.dto.booking.CheckInOptionResponse;
 import com.ttcs.homestay.dto.booking.PageResponse;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.dto.booking.RoomShortageAlertResponse;
@@ -59,6 +60,11 @@ public class BookingController {
             @PathVariable Long id,
             @Valid @RequestBody BookingConfirmRequest request) {
         return bookingService.confirmBooking(id, request);
+    }
+        /** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
+    @GetMapping("/{id}/summary")
+    public BookingResponse getBookingSummary(@PathVariable Long id) {
+        return bookingService.getBookingSummary(id);
     }
 
     @GetMapping("/{id}/available-rooms")
@@ -137,6 +143,11 @@ public class BookingController {
     @GetMapping("/latest")
     public List<BookingListItemResponse> getBookings() {
         return bookingService.getLatestBookings();
+    }
+
+    @GetMapping("/check-in-options")
+    public List<CheckInOptionResponse> getCheckInOptions() {
+        return bookingService.getCheckInOptions();
     }
 
     @GetMapping

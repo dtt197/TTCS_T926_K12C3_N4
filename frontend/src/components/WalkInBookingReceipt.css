@@ -1,0 +1,125 @@
+.walk-in-confirmation {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.walk-in-receipt {
+  padding: 26px 28px;
+  border: 1px solid #e4e0d8;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.walk-in-receipt-header {
+  text-align: center;
+}
+
+.walk-in-receipt-eyebrow {
+  margin: 0 0 4px;
+  color: #2b7458;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.walk-in-receipt-header h3 {
+  margin: 0 0 10px;
+  color: #18382d;
+  font-size: 24px;
+}
+
+.walk-in-receipt-status {
+  display: inline-block;
+  padding: 4px 14px;
+  border: 1px solid #b8ddc7;
+  border-radius: 999px;
+  background: #effaf2;
+  color: #24633d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.walk-in-receipt-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 20px 0;
+  padding: 14px;
+  border: 1px dashed #b9c4be;
+  border-radius: 10px;
+}
+
+.walk-in-receipt-code span {
+  color: #68766f;
+  font-size: 13px;
+}
+
+.walk-in-receipt-code strong {
+  color: #18382d;
+  font-size: 30px;
+  letter-spacing: 0.18em;
+}
+
+.walk-in-receipt-list {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.walk-in-receipt-list dt {
+  color: #68766f;
+  font-size: 14px;
+}
+
+.walk-in-receipt-list dd {
+  margin: 0;
+  color: #18382d;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.walk-in-confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.walk-in-secondary {
+  min-height: 44px;
+  padding: 0 22px;
+  border: 1px solid #1b4931;
+  border-radius: 9px;
+  background: white;
+  color: #1b4931;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.walk-in-secondary:hover {
+  background: #f2f7f4;
+}
+
+/* In: chỉ phiếu xác nhận hiện trên giấy, ẩn sidebar, header và các nút. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .walk-in-receipt,
+  .walk-in-receipt * {
+    visibility: visible;
+  }
+
+  .walk-in-receipt {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+  }
+}

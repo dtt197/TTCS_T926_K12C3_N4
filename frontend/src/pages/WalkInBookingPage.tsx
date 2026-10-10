@@ -3,6 +3,8 @@ import { getRoomTypes } from '../services/roomTypeService'
 import { createWalkInBooking } from '../services/guestBookingService'
 import { searchAvailableRooms } from '../services/roomService'
 import type { RoomType } from '../types/roomType'
+import type { WalkInBookingResult } from '../types/guestBooking'
+import { WalkInBookingReceipt } from '../components/WalkInBookingReceipt'
 import './WalkInBookingPage.css'
 
 type WalkInForm = {
@@ -29,10 +31,8 @@ function addDays(isoDate: string, days: number) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-export function WalkInBookingPage() {
-  const [today] = useState(todayIso)
-
-  const [form, setForm] = useState<WalkInForm>(() => ({
+function emptyForm(): WalkInForm {
+  return {
     roomTypeId: '',
     checkInDate: todayIso(),
     checkOutDate: addDays(todayIso(), 1),
@@ -41,14 +41,20 @@ export function WalkInBookingPage() {
     phone: '',
     email: '',
     note: '',
-  }))
+  }
+}
 
+export function WalkInBookingPage() {
+  const [today] = useState(todayIso)
+
+  const [form, setForm] = useState<WalkInForm>(emptyForm)
 
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-
+  // S3-06 Lát 4: booking vừa tạo, hiện ra để lễ tân đọc hoặc in cho khách.
+  const [created, setCreated] = useState<WalkInBookingResult | null>(null)
   // Số phòng còn trống theo loại phòng và khoảng ngày đã chọn.
   const [availableRooms, setAvailableRooms] = useState<number | null>(null)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
@@ -241,13 +247,9 @@ export function WalkInBookingPage() {
         note: form.note.trim() || undefined,
       })
 
-
-      setMessage(
-        `Tạo booking thành công. Mã booking: ${result.bookingCode}`,
-      )
+      setCreated(result)
       setAvailableRooms(null)
       setAvailabilityRefresh((current) => current + 1)
-
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -255,6 +257,13 @@ export function WalkInBookingPage() {
           : 'Không thể tạo booking tại quầy.',
       )
     }
+  }
+
+  function handleCreateAnother() {
+    setCreated(null)
+    setForm(emptyForm())
+    setError('')
+    setMessage('')
   }
 
   if (loading) {
@@ -281,11 +290,17 @@ export function WalkInBookingPage() {
         </div>
       </div>
 
-      <form
-        className="walk-in-card"
-        onSubmit={handleSubmit}
-        noValidate
-      >
+      {created ? (
+        <WalkInBookingReceipt
+          booking={created}
+          onCreateAnother={handleCreateAnother}
+        />
+      ) : (
+        <form
+          className="walk-in-card"
+          onSubmit={handleSubmit}
+          noValidate
+        >
         {error && (
           <div
             className="walk-in-message error"
@@ -333,19 +348,23 @@ export function WalkInBookingPage() {
             />
           </label>
 
-          <label>
-            <span>Email</span>
+              <label>
+                <span>Email</span>
 
-            <input
-              type="email"
-              value={form.email}
-              maxLength={150}
-              placeholder="Không bắt buộc"
-              onChange={(event) =>
-                update('email', event.target.value)
-              }
-            />
-          </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  maxLength={150}
+                  placeholder="Không bắt buộc"
+                  onChange={(event) =>
+                    update('email', event.target.value)
+                  }
+                />
+
+                <small>
+                  Booking tại quầy không gửi email cho khách.
+                </small>
+              </label>
           <label>
             <span>Loại phòng</span>
 
@@ -479,7 +498,8 @@ export function WalkInBookingPage() {
             Tạo booking
           </button>
         </div>
-      </form>
+        </form>
+      )}
     </section>
   )
 }

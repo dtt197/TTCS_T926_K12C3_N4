@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -28,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -53,11 +53,11 @@ class BookingDetailControllerTest {
     @Test
     void returnsAdjustmentHistoryInRepositoryOrderAndCurrentTotal() throws Exception {
         when(jdbcTemplate.query(eq("SELECT id, booking_code, status, hold_expires_at FROM bookings WHERE id = ?"),
-                any(org.springframework.jdbc.core.RowMapper.class), eq(1L)))
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L)))
                 .thenReturn(List.of(Map.of("id", 1L, "bookingCode", "BK-1", "status", "DA_XAC_NHAN",
                         "holdExpiresAt", OffsetDateTime.parse("2026-10-08T10:00:00Z"))));
         when(jdbcTemplate.query(org.mockito.ArgumentMatchers.contains("FROM booking_deposits"),
-                any(org.springframework.jdbc.core.RowMapper.class), eq(1L)))
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L)))
                 .thenReturn(List.of(Map.of("id", 10L, "amount", new BigDecimal("400.0000"))));
         BookingDepositAdjustment earlier = adjustment(2L, DepositAdjustmentType.TANG,
                 "10.2500", "add", "A", "2026-01-01T00:00:00Z");
@@ -110,9 +110,27 @@ class BookingDetailControllerTest {
     }
 
     @Test
+    void returnsRegisteredGuestNamesWithoutExposingIdentityNumbers() throws Exception {
+        stubBookingAndDeposit(false);
+        when(jdbcTemplate.query(org.mockito.ArgumentMatchers.contains("FROM booking_guests"),
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L)))
+                .thenReturn(List.of(
+                        Map.of("fullName", "Nguyễn Minh Anh", "primary", true),
+                        Map.of("fullName", "Trần Minh Khoa", "primary", false)));
+        when(adjustmentRepository.findAllByBookingIdOrderByCreatedAtAscIdAsc(1L)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/bookings/1/details"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.registeredGuests.length()").value(2))
+                .andExpect(jsonPath("$.registeredGuests[0].fullName").value("Nguyễn Minh Anh"))
+                .andExpect(jsonPath("$.registeredGuests[0].primary").value(true))
+                .andExpect(jsonPath("$.registeredGuests[0].identityNumber").doesNotExist());
+    }
+
+    @Test
     void missingBookingReturnsNotFound() throws Exception {
         when(jdbcTemplate.query(eq("SELECT id, booking_code, status, hold_expires_at FROM bookings WHERE id = ?"),
-                any(org.springframework.jdbc.core.RowMapper.class), eq(1L))).thenReturn(List.of());
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L))).thenReturn(List.of());
         mockMvc.perform(get("/api/bookings/1/details")).andExpect(status().isNotFound());
         verifyNoInteractions(adjustmentRepository, adjustmentService);
     }
@@ -137,11 +155,11 @@ class BookingDetailControllerTest {
 
     private void stubBookingAndDeposit(boolean hasDeposit) {
         when(jdbcTemplate.query(eq("SELECT id, booking_code, status, hold_expires_at FROM bookings WHERE id = ?"),
-                any(org.springframework.jdbc.core.RowMapper.class), eq(1L)))
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L)))
                 .thenReturn(List.of(Map.of("id", 1L, "bookingCode", "BK-1", "status", "DA_XAC_NHAN",
                         "holdExpiresAt", OffsetDateTime.parse("2026-10-08T10:00:00Z"))));
         when(jdbcTemplate.query(org.mockito.ArgumentMatchers.contains("FROM booking_deposits"),
-                any(org.springframework.jdbc.core.RowMapper.class), eq(1L)))
+                org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L)))
                 .thenReturn(hasDeposit ? List.of(Map.of("id", 10L, "amount", new BigDecimal("400.0000"))) : List.of());
     }
 

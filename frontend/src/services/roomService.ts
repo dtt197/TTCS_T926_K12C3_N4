@@ -1,5 +1,6 @@
 import { getAccessToken } from './tokenStore'
 import type { Room, RoomStatus, MaintenanceDraft, RoomStatusHistory } from '../types/room'
+import type { BookingStatus } from '../types/booking'
 
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/api`
 
@@ -53,13 +54,35 @@ export function updateRoomStatus(roomId: number, status: RoomStatus) {
   })
 }
 
-export function checkIn(roomId: number, guestName: string) {
-  return request<{ id: number; roomId: number; roomNumber: string; guestName: string }>(
+export type CheckInRequest = {
+  primaryGuestName: string
+  primaryGuestIdentityNumber: string
+  accompanyingGuestNames: string[]
+  earlyCheckInConfirmed: boolean
+}
+
+export type RegisteredGuest = {
+  fullName: string
+  primary: boolean
+}
+
+export function checkIn(roomId: number, bookingId: number, guestDetails: CheckInRequest) {
+  return request<{
+    id: number
+    bookingId: number
+    bookingCode: string
+    bookingStatus: BookingStatus
+    roomId: number
+    roomNumber: string
+    roomStatus: RoomStatus
+    guestName: string
+    checkedInAt: string
+    registeredGuests: RegisteredGuest[]
+  }>(
     `/rooms/${roomId}/check-in`,
     {
       method: 'POST',
-     
-      body: JSON.stringify({ guestName }),
+      body: JSON.stringify({ bookingId, ...guestDetails }),
     },
   )
 }

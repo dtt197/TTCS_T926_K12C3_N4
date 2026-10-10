@@ -52,8 +52,10 @@ public record PublicRoomTypeCard(
     static Long lowestPrice(Long weekdayPrice, Long weekendPrice) {
         boolean hasWeekday = weekdayPrice != null && weekdayPrice > 0;
         boolean hasWeekend = weekendPrice != null && weekendPrice > 0;
-        if (hasWeekday && hasWeekend) {
-            return Math.min(weekdayPrice, weekendPrice);
+        if (weekdayPrice != null && weekendPrice != null && weekdayPrice > 0 && weekendPrice > 0) {
+            long weekday = weekdayPrice;
+            long weekend = weekendPrice;
+            return Math.min(weekday, weekend);
         }
         if (hasWeekday) {
             return weekdayPrice;

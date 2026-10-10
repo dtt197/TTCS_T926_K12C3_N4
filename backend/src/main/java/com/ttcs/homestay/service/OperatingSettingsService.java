@@ -236,8 +236,7 @@ public class OperatingSettingsService {
                 tiers.stream()
                         .sorted(
                                 Comparator.comparing(
-                                        CancellationTierRequest
-                                                ::hoursBeforeCheckIn
+                                        (CancellationTierRequest tier) -> tier.hoursBeforeCheckIn()
                                 ).reversed()
                         )
                         .toList();

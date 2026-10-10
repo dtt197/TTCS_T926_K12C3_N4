@@ -4,6 +4,8 @@ import '../App.css'
 
 import { hasPermission } from '../permissions/rolePermissions'
 import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
+import { getCheckInOptions } from '../services/bookingService'
+import type { CheckInOption } from '../types/booking'
 
 
 
@@ -56,6 +58,23 @@ const STATUS_OPTIONS: RoomStatus[] = [
   'BAO_TRI',
 
 ]
+
+function initialGuestCount(booking: CheckInOption | undefined) {
+  return booking
+    ? Math.min(Math.max(booking.requestedGuestCount ?? 1, 1), booking.maxGuests)
+    : 1
+}
+
+function isBeforeStandardCheckIn() {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date()),
+  )
+  return hour < 14
+}
 
 
 
@@ -226,6 +245,20 @@ const DEMO_HISTORY: Record<number, RoomStatusHistory[]> = {
   ],
 
 }
+
+const DEMO_CHECK_IN_OPTIONS: CheckInOption[] = [
+  {
+    bookingId: 101,
+    bookingCode: 'BK-DEMO-101',
+    guestName: 'Nguyễn Minh Anh',
+    roomId: 1,
+    roomNumber: '101',
+    checkInDate: '2026-10-10',
+    checkOutDate: '2026-10-12',
+    requestedGuestCount: 2,
+    maxGuests: 4,
+  },
+]
 
 
 
@@ -492,9 +525,17 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
 
   >({})
 
-  const [selectedRoomId, setSelectedRoomId] = useState<number | ''>('')
+  const [checkInOptions, setCheckInOptions] = useState<CheckInOption[]>(DEMO_CHECK_IN_OPTIONS)
 
-  const [guestName, setGuestName] = useState('')
+  const [selectedBookingId, setSelectedBookingId] = useState<number | ''>('')
+  const [primaryGuestName, setPrimaryGuestName] = useState('')
+  const [primaryGuestIdentityNumber, setPrimaryGuestIdentityNumber] = useState('')
+  const [guestCount, setGuestCount] = useState(1)
+  const [accompanyingGuestNames, setAccompanyingGuestNames] = useState<string[]>([])
+  const [registeredGuests, setRegisteredGuests] = useState<
+    { fullName: string; primary: boolean }[] | null
+  >(null)
+  const [earlyCheckInWarningOpen, setEarlyCheckInWarningOpen] = useState(false)
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -532,11 +573,10 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
 
   useEffect(() => {
 
-    getRooms()
-
-      .then((data) => {
-
+    Promise.all([getRooms(), getCheckInOptions()])
+      .then(([data, options]) => {
         setRooms(data)
+        setCheckInOptions(options)
 
 
 
@@ -566,25 +606,20 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
 
 
 
-        if (data.length > 0) {
-
-          const firstCleanRoom = data.find(
-
-            (room) => room.status === 'TRONG_SACH',
-
-          )
-
-
-
-          setSelectedRoomId(firstCleanRoom?.id ?? data[0].id)
-
-        }
+        const firstOption = options[0]
+        setSelectedBookingId(firstOption?.bookingId ?? '')
+        setPrimaryGuestName(firstOption?.guestName ?? '')
+        setPrimaryGuestIdentityNumber('')
+        const firstGuestCount = initialGuestCount(firstOption)
+        setGuestCount(firstGuestCount)
+        setAccompanyingGuestNames(Array.from({ length: firstGuestCount - 1 }, () => ''))
 
       })
 
       .catch(() => {
 
         setRooms(DEMO_ROOMS)
+        setCheckInOptions(DEMO_CHECK_IN_OPTIONS)
 
         setHistoryByRoom(DEMO_HISTORY)
 
@@ -616,7 +651,12 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
 
 
 
-        setSelectedRoomId(1)
+        setSelectedBookingId(DEMO_CHECK_IN_OPTIONS[0].bookingId)
+        setPrimaryGuestName(DEMO_CHECK_IN_OPTIONS[0].guestName)
+        setPrimaryGuestIdentityNumber('')
+        const firstGuestCount = initialGuestCount(DEMO_CHECK_IN_OPTIONS[0])
+        setGuestCount(firstGuestCount)
+        setAccompanyingGuestNames(Array.from({ length: firstGuestCount - 1 }, () => ''))
 
         setIsDemoMode(true)
 
@@ -684,19 +724,17 @@ const counts = useMemo(
 
 
 
-  const selectedRoom = rooms.find(
-
-    (room) => room.id === selectedRoomId,
-
+  const selectedBooking = checkInOptions.find(
+    (booking) => booking.bookingId === selectedBookingId,
   )
 
-
+  const selectedRoom = selectedBooking
+    ? rooms.find((room) => room.id === selectedBooking.roomId)
+    : undefined
 
   const canCheckIn =
-
     selectedRoom?.status === 'TRONG_SACH' &&
-
-    guestName.trim().length > 0
+    selectedBooking !== undefined
 
 
 
@@ -1189,177 +1227,141 @@ const counts = useMemo(
 
 
 
-  async function handleCheckIn(
-
-
-    event: FormEvent<HTMLFormElement>,
-
-  ) {
-
+  async function handleCheckIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-
-
-    if (!selectedRoom) {
-
-      showError('Vui lòng chọn phòng cần nhận khách.')
-
+    if (!selectedBooking || !selectedRoom) {
+      showError('Vui lòng chọn booking đã xác nhận và có phòng được gán.')
       return
-
     }
-
-
 
     if (selectedRoom.status !== 'TRONG_SACH') {
-
       showError(
-
-        `Không thể nhận phòng ${selectedRoom.roomNumber}. ` +
-
-        'Chỉ phòng Trống sạch mới được gán khi nhận phòng.',
-
+        `Không thể nhận phòng ${selectedRoom.roomNumber}. Chỉ phòng Trống sạch mới được nhận khách.`,
       )
-
-
-
       return
-
     }
 
-
-
-    if (!guestName.trim()) {
-
-      showError('Vui lòng nhập tên khách.')
-
+    if (!primaryGuestName.trim()) {
+      showError('Vui lòng nhập họ tên khách chính.')
       return
-
+    }
+    if (!/^[0-9]{12}$/.test(primaryGuestIdentityNumber)) {
+      showError('Số CCCD khách chính phải gồm đúng 12 chữ số.')
+      return
+    }
+    if (accompanyingGuestNames.some((name) => !name.trim())) {
+      showError('Vui lòng nhập họ tên cho từng khách đi kèm.')
+      return
+    }
+    if (guestCount !== accompanyingGuestNames.length + 1) {
+      showError('Số lượng khách không khớp với danh sách khách đi kèm.')
+      return
+    }
+    if (guestCount > selectedBooking.maxGuests) {
+      showError(`Tổng số khách không được vượt quá ${selectedBooking.maxGuests} người.`)
+      return
     }
 
+    if (isBeforeStandardCheckIn()) {
+      setEarlyCheckInWarningOpen(true)
+      return
+    }
 
+    await submitCheckIn(false)
+  }
+
+  async function submitCheckIn(earlyCheckInConfirmed: boolean) {
+    if (!selectedBooking || !selectedRoom) {
+      showError('Vui lòng chọn booking đã xác nhận và có phòng được gán.')
+      return
+    }
 
     setIsSaving(true)
-
     setNotice(null)
 
-
-
     try {
-
-      if (!isDemoMode) {
-
-        await checkIn(
-
-          selectedRoom.id,
-
-          guestName.trim(),
-
-        )
-
-      }
-
-
+      const result = isDemoMode
+        ? {
+            bookingId: selectedBooking.bookingId,
+            bookingCode: selectedBooking.bookingCode,
+            bookingStatus: 'DA_NHAN_PHONG' as const,
+            roomStatus: 'DANG_O' as const,
+            guestName: primaryGuestName.trim(),
+            checkedInAt: new Date().toISOString(),
+            registeredGuests: [
+              { fullName: primaryGuestName.trim(), primary: true },
+              ...accompanyingGuestNames.map((fullName) => ({
+                fullName: fullName.trim(),
+                primary: false,
+              })),
+            ],
+          }
+        : await checkIn(selectedRoom.id, selectedBooking.bookingId, {
+            primaryGuestName: primaryGuestName.trim(),
+            primaryGuestIdentityNumber,
+            accompanyingGuestNames: accompanyingGuestNames.map((name) => name.trim()),
+            earlyCheckInConfirmed,
+          })
 
       setRooms((current) =>
-
         current.map((room) =>
-
           room.id === selectedRoom.id
-
-            ? {
-
-                ...room,
-
-                status: 'DANG_O',
-
-              }
-
+            ? { ...room, status: result.roomStatus }
             : room,
-
         ),
-
       )
-
-
+      setCheckInOptions((current) =>
+        current.filter((booking) => booking.bookingId !== selectedBooking.bookingId),
+      )
+      setSelectedBookingId('')
+      setRegisteredGuests(result.registeredGuests)
 
       if (isDemoMode) {
-
         const historyRecord: RoomStatusHistory = {
-
-          id: Date.now(),
-
+          id: Math.max(
+            0,
+            ...(historyByRoom[selectedRoom.id] ?? []).map((item) => item.id),
+          ) + 1,
           roomId: selectedRoom.id,
-
           roomNumber: selectedRoom.roomNumber,
-
           previousStatus: selectedRoom.status,
-
-          newStatus: 'DANG_O',
-
+          newStatus: result.roomStatus,
           changedBy: 'Lễ tân',
-
-          changedAt: new Date().toISOString(),
-
+          changedAt: result.checkedInAt,
           maintenanceReason: null,
-
           maintenanceStartDate: null,
-
           maintenanceEndDate: null,
-
         }
-
         setHistoryByRoom((current) => ({
-
           ...current,
-
           [selectedRoom.id]: [
-
             ...(current[selectedRoom.id] ?? DEMO_HISTORY[selectedRoom.id] ?? []),
-
             historyRecord,
-
           ],
-
         }))
-
       }
 
-
-
-      setGuestName('')
-
-
-
-      setNotice({
-
-        type: 'success',
-
-        text:
-
-          `Đã nhận phòng ${selectedRoom.roomNumber} ` +
-
-          `cho khách ${guestName.trim()}.`,
-
+      const checkedInAt = new Date(result.checkedInAt).toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
       })
-
+      setNotice({
+        type: 'success',
+        text:
+          `Đã nhận phòng booking ${result.bookingCode} cho ${result.guestName} tại phòng ${selectedRoom.roomNumber}. ` +
+          'Booking: Đã nhận phòng; phòng: Đang ở. ' +
+          `Thời điểm: ${checkedInAt} (Asia/Ho_Chi_Minh).`,
+      })
+      setEarlyCheckInWarningOpen(false)
     } catch (error) {
-
       showError(
-
         error instanceof Error
-
           ? error.message
-
           : 'Không thể thực hiện nhận phòng.',
-
       )
-
     } finally {
-
       setIsSaving(false)
-
     }
-
   }
 
 
@@ -1628,11 +1630,7 @@ const counts = useMemo(
 
 
 
-                <p>
-
-                  Chỉ phòng Trống sạch mới có thể nhận khách.
-
-                </p>
+                <p>Chọn booking đã xác nhận, đã gán phòng Trống sạch.</p>
 
               </div>
 
@@ -1645,12 +1643,13 @@ const counts = useMemo(
               className="quick-checkin-form"
 
               onSubmit={handleCheckIn}
+              noValidate
 
             >
 
               <label className="form-label">
 
-                Phòng
+                Booking
 
 
 
@@ -1658,45 +1657,43 @@ const counts = useMemo(
 
                   className="form-control"
 
-                  value={selectedRoomId}
-
-                  onChange={(event) =>
-
-                    setSelectedRoomId(
-
-                      event.target.value
-
-                        ? Number(event.target.value)
-
-                        : '',
-
+                  value={selectedBookingId}
+                  onChange={(event) => {
+                    const nextBookingId = event.target.value ? Number(event.target.value) : ''
+                    const nextBooking = checkInOptions.find(
+                      (booking) => booking.bookingId === nextBookingId,
                     )
-
-                  }
+                    setSelectedBookingId(nextBookingId)
+                    setPrimaryGuestName(nextBooking?.guestName ?? '')
+                    setPrimaryGuestIdentityNumber('')
+                    const nextGuestCount = initialGuestCount(nextBooking)
+                    setGuestCount(nextGuestCount)
+                    setAccompanyingGuestNames(
+                      Array.from({ length: nextGuestCount - 1 }, () => ''),
+                    )
+                    setRegisteredGuests(null)
+                  }}
 
                 >
 
                   <option value="">
 
-                    Chọn phòng
+                    Chọn booking
 
                   </option>
 
 
 
-                  {rooms.map((room) => (
+                  {checkInOptions.map((booking) => (
 
                     <option
 
-                      value={room.id}
-
-                      key={room.id}
+                      value={booking.bookingId}
+                      key={booking.bookingId}
 
                     >
 
-                      Phòng {room.roomNumber} ·{' '}
-
-                      {ROOM_STATUS_LABELS[room.status]}
+                      {booking.bookingCode} · {booking.guestName} · Phòng {booking.roomNumber}
 
                     </option>
 
@@ -1710,29 +1707,82 @@ const counts = useMemo(
 
               <label className="form-label">
 
-                Tên khách
+                Khách và phòng
 
-
-
-                <input
-
-                  className="form-control"
-
-                  value={guestName}
-
-                  placeholder="Ví dụ: Nguyễn Minh Anh"
-
-                  onChange={(event) =>
-
-                    setGuestName(event.target.value)
-
-                  }
-
-                />
+                <span className="form-control" aria-live="polite">
+                  {selectedBooking
+                    ? `${selectedBooking.guestName} · Phòng ${selectedBooking.roomNumber}`
+                    : 'Không có booking đủ điều kiện nhận phòng'}
+                </span>
 
               </label>
 
+              <label className="form-label">
+                Họ tên khách chính
+                <input
+                  className="form-control"
+                  value={primaryGuestName}
+                  onChange={(event) => setPrimaryGuestName(event.target.value)}
+                  maxLength={120}
+                  required
+                />
+              </label>
 
+              <label className="form-label">
+                Số CCCD khách chính
+                <input
+                  className="form-control"
+                  value={primaryGuestIdentityNumber}
+                  onChange={(event) => setPrimaryGuestIdentityNumber(event.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]{12}"
+                  maxLength={12}
+                  required
+                />
+              </label>
+
+              <label className="form-label">
+                Tổng số khách (tối đa {selectedBooking?.maxGuests ?? 0})
+                <select
+                  className="form-control"
+                  value={guestCount}
+                  onChange={(event) => {
+                    const nextCount = Number(event.target.value)
+                    setGuestCount(nextCount)
+                    setAccompanyingGuestNames((current) =>
+                      Array.from(
+                        { length: nextCount - 1 },
+                        (_, index) => current[index] ?? '',
+                      ),
+                    )
+                  }}
+                  disabled={!selectedBooking}
+                >
+                  {Array.from({ length: selectedBooking?.maxGuests ?? 1 }, (_, index) => index + 1)
+                    .map((count) => (
+                      <option value={count} key={count}>{count}</option>
+                    ))}
+                </select>
+              </label>
+
+              {accompanyingGuestNames.map((name, index) => (
+                <label className="form-label" key={index}>
+                  Họ tên khách đi kèm {index + 1}
+                  <input
+                    className="form-control"
+                    value={name}
+                    onChange={(event) =>
+                      setAccompanyingGuestNames((current) =>
+                        current.map((guestName, guestIndex) =>
+                          guestIndex === index ? event.target.value : guestName,
+                        ),
+                      )
+                    }
+                    maxLength={120}
+                    required
+                  />
+                </label>
+              ))}
 
               <button
 
@@ -1754,32 +1804,24 @@ const counts = useMemo(
 
             </form>
 
+            {registeredGuests && (
+              <div className="checkin-note" aria-live="polite">
+                <strong>Khách đã đăng ký lưu trú:</strong>
+                <ul>
+                  {registeredGuests.map((guest, index) => (
+                    <li key={`${guest.primary ? 'primary' : 'guest'}-${index}`}>
+                      {guest.fullName}{guest.primary ? ' (khách chính)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
 
-            {selectedRoom &&
-
-              selectedRoom.status !== 'TRONG_SACH' && (
+            {checkInOptions.length === 0 && (
 
                 <p className="checkin-note">
-
-                  Phòng đang là{' '}
-
-                  <strong>
-
-                    {
-
-                      ROOM_STATUS_LABELS[
-
-                        selectedRoom.status
-
-                      ]
-
-                    }
-
-                  </strong>
-
-                  , không thể nhận khách. Hãy chọn phòng Trống sạch.
-
+                  Hiện không có booking đủ điều kiện để nhận phòng.
                 </p>
 
               )}
@@ -2570,6 +2612,46 @@ const counts = useMemo(
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {earlyCheckInWarningOpen && (
+          <div
+            className="early-checkin-modal-backdrop"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="early-checkin-modal-title"
+            aria-describedby="early-checkin-modal-description"
+          >
+            <section className="early-checkin-modal-card">
+              <h3 id="early-checkin-modal-title">Cảnh báo nhận phòng sớm</h3>
+              <p id="early-checkin-modal-description">
+                Hiện tại chưa đến 14:00 theo múi giờ Asia/Ho_Chi_Minh. Bạn có muốn
+                tiếp tục nhận phòng không? Theo cấu hình hiện tại, nhận phòng sớm
+                không phát sinh phụ thu.
+              </p>
+              <div className="early-checkin-modal-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setEarlyCheckInWarningOpen(false)}
+                  disabled={isSaving}
+                >
+                  Hủy thao tác
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => {
+                    setEarlyCheckInWarningOpen(false)
+                    void submitCheckIn(true)
+                  }}
+                  disabled={isSaving}
+                >
+                  Tiếp tục
+                </button>
+              </div>
+            </section>
           </div>
         )}
 

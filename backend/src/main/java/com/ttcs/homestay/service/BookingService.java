@@ -8,11 +8,13 @@ import com.ttcs.homestay.dto.booking.BookingChangePreviewResponse;
 import com.ttcs.homestay.dto.booking.BookingCancelRequest;
 import com.ttcs.homestay.dto.booking.BookingCreateRequest;
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.CheckInOptionResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingAuditLog;
 import com.ttcs.homestay.entity.BookingRoomChangeHistory;
+import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
@@ -122,8 +124,8 @@ public class BookingService {
         if (roomChangeHistoryRepository == null) {
             throw new IllegalStateException("BookingRoomChangeHistoryRepository is required for room changes");
         }
-        String reason = rawReason == null ? "" : rawReason.trim();
-        if (reason.isEmpty()) {
+        String reason = rawReason == null ? "" : rawReason.strip();
+        if (reason.codePoints().allMatch(value -> Character.isWhitespace(value) || Character.isSpaceChar(value))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập lý do đổi phòng");
         }
         if (reason.length() > 500) {
@@ -135,14 +137,17 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking không có loại phòng hợp lệ");
         }
         roomTypeRepository.findByIdForUpdate(snapshot.getRoomType().getId());
-        Room requestedRoom = roomRepository.findByIdForUpdate(roomId)
+        Room requestedRoom = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phòng"));
         Booking booking = bookingRepository.findByIdForUpdate(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
-        if (booking.getStatus() != BookingStatus.DA_XAC_NHAN || booking.getRoomConfirmedAt() == null
-                || booking.getCheckInDate() == null || booking.getCheckInDate().isBefore(LocalDate.now())) {
+        entityManager.refresh(booking);
+        boolean checkedIn = booking.getStatus() == BookingStatus.DA_NHAN_PHONG;
+        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+        if (!checkedIn && (booking.getStatus() != BookingStatus.DA_XAC_NHAN || booking.getRoomConfirmedAt() == null
+                || booking.getCheckInDate() == null || booking.getCheckInDate().isBefore(LocalDate.now()))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Chỉ đổi phòng cho booking đã xác nhận, đã chốt phòng và chưa đến ngày nhận phòng");
+                    "Chỉ đổi phòng cho booking đang ở hoặc đã xác nhận, đã chốt phòng và chưa qua ngày nhận phòng");
         }
         Room oldRoom = booking.getRoom();
         if (oldRoom == null) {
@@ -151,11 +156,6 @@ public class BookingService {
         if (oldRoom.getId().equals(requestedRoom.getId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phòng mới phải khác phòng hiện tại");
         }
-        if (!roomAvailabilityService.isRoomAvailable(requestedRoom, booking.getRoomType(),
-                booking.getCheckInDate(), booking.getCheckOutDate(), booking.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Phòng mới sai loại, đang bảo trì hoặc đã bị booking khác chiếm trong thời gian lưu trú");
-        }
         ActorInfo actor = resolveCurrentActor();
         if (actor.id() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không xác định được nhân viên đổi phòng");
@@ -163,11 +163,38 @@ public class BookingService {
         Room lockedOldRoom;
         Room lockedNewRoom;
         if (oldRoom.getId() < requestedRoom.getId()) {
-            lockedOldRoom = roomRepository.findByIdForUpdate(oldRoom.getId()).orElse(oldRoom);
-            lockedNewRoom = roomRepository.findByIdForUpdate(requestedRoom.getId()).orElse(requestedRoom);
+            lockedOldRoom = lockRoomForChange(oldRoom.getId());
+            lockedNewRoom = lockRoomForChange(requestedRoom.getId());
         } else {
-            lockedNewRoom = roomRepository.findByIdForUpdate(requestedRoom.getId()).orElse(requestedRoom);
-            lockedOldRoom = roomRepository.findByIdForUpdate(oldRoom.getId()).orElse(oldRoom);
+            lockedNewRoom = lockRoomForChange(requestedRoom.getId());
+            lockedOldRoom = lockRoomForChange(oldRoom.getId());
+        }
+        entityManager.refresh(lockedOldRoom);
+        entityManager.refresh(lockedNewRoom);
+        if (!checkedIn && !roomAvailabilityService.isRoomAvailable(lockedNewRoom, booking.getRoomType(),
+                booking.getCheckInDate(), booking.getCheckOutDate(), booking.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Phòng mới sai loại, đang bảo trì hoặc đã bị booking khác chiếm trong thời gian lưu trú");
+        }
+        if (checkedIn) {
+            if (lockedOldRoom.getStatus() != RoomStatus.DANG_O) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phòng hiện tại phải ở trạng thái Đang ở");
+            }
+            if (lockedNewRoom.getStatus() != RoomStatus.TRONG_SACH) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Phòng mới phải ở trạng thái Trống sạch");
+            }
+            LocalDate remainingStart = remainingStayStart(booking, today);
+            if (!roomAvailabilityService.isRoomAvailable(lockedNewRoom, booking.getRoomType(),
+                    remainingStart, booking.getCheckOutDate(), booking.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Phòng mới sai loại, ngừng hoạt động, bảo trì hoặc trùng lịch trong thời gian ở còn lại");
+            }
+            if (!roomAvailabilityService.satisfiesRoomOverlapConstraint(lockedNewRoom, booking)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Phòng mới vướng lịch trong toàn bộ kỳ lưu trú. Giới hạn hiện tại yêu cầu không trùng lịch cả phần ngày đã qua");
+            }
+            lockedOldRoom.setStatus(RoomStatus.TRONG_BAN);
+            lockedNewRoom.setStatus(RoomStatus.DANG_O);
         }
         booking.setRoom(lockedNewRoom);
         BookingRoomChangeHistory history = new BookingRoomChangeHistory();
@@ -193,6 +220,14 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public List<CheckInOptionResponse> getCheckInOptions() {
+        return bookingRepository.findCheckInOptions(BookingStatus.DA_XAC_NHAN, RoomStatus.TRONG_SACH)
+                .stream()
+                .map(CheckInOptionResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<com.ttcs.homestay.dto.booking.BookingRoomChangeHistoryResponse> getRoomChangeHistory(Long bookingId) {
         if (!bookingRepository.existsById(bookingId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking");
@@ -200,17 +235,48 @@ public class BookingService {
         return roomChangeHistoryRepository.findAllByBookingIdOrderByChangedAtDescIdDesc(bookingId)
                 .stream().map(com.ttcs.homestay.dto.booking.BookingRoomChangeHistoryResponse::from).toList();
     }
+    /** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
+    @Transactional(readOnly = true)
+    public BookingResponse getBookingSummary(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking không còn tồn tại"));
+        return BookingResponse.from(booking);
+    }
 
     @Transactional(readOnly = true)
     public List<com.ttcs.homestay.dto.RoomResponse> getAvailableRoomsForBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy booking"));
+        if (booking.getStatus() == BookingStatus.DA_NHAN_PHONG) {
+            LocalDate start = remainingStayStart(booking, LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")));
+            return roomAvailabilityService.listAvailableRooms(booking.getRoomType(), start,
+                            booking.getCheckOutDate(), booking.getId()).stream()
+                    .filter(room -> room.getStatus() == RoomStatus.TRONG_SACH)
+                    .filter(room -> booking.getRoom() == null || !room.getId().equals(booking.getRoom().getId()))
+                    .filter(room -> roomAvailabilityService.satisfiesRoomOverlapConstraint(room, booking))
+                    .map(com.ttcs.homestay.dto.RoomResponse::from).toList();
+        }
         if (booking.getStatus() != BookingStatus.DA_XAC_NHAN) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ booking đã xác nhận mới được chọn phòng");
         }
         return roomAvailabilityService.listAvailableRooms(
                         booking.getRoomType(), booking.getCheckInDate(), booking.getCheckOutDate(), booking.getId())
                 .stream().map(com.ttcs.homestay.dto.RoomResponse::from).toList();
+    }
+
+    private LocalDate remainingStayStart(Booking booking, LocalDate today) {
+        if (booking.getCheckInDate() == null || booking.getCheckOutDate() == null
+                || booking.getCheckInDate().isAfter(today) || !booking.getCheckOutDate().isAfter(today)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Booking không có thời gian lưu trú còn lại hợp lệ để đổi phòng");
+        }
+        return today;
+    }
+
+    private Room lockRoomForChange(Long roomId) {
+        return roomRepository.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Phòng không còn tồn tại. Vui lòng tải lại danh sách phòng"));
     }
 
     @Transactional
@@ -244,7 +310,7 @@ public class BookingService {
                         || conflict.getHoldExpiresAt().isAfter(java.time.OffsetDateTime.now()))
                 .toList();
         if (!conflicts.isEmpty()) {
-            String codes = conflicts.stream().map(Booking::getBookingCode).distinct().sorted()
+            String codes = conflicts.stream().map(conflict -> conflict.getBookingCode()).distinct().sorted()
                     .collect(java.util.stream.Collectors.joining(", "));
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Phòng đã bị booking chiếm trong kỳ lưu trú: " + codes);
@@ -273,7 +339,7 @@ public class BookingService {
                         .filter(conflict -> conflict.getStatus() != BookingStatus.CHO_XAC_NHAN
                                 || conflict.getHoldExpiresAt() == null
                                 || conflict.getHoldExpiresAt().isAfter(java.time.OffsetDateTime.now()))
-                        .map(Booking::getBookingCode).distinct().sorted()
+                        .map(conflict -> conflict.getBookingCode()).distinct().sorted()
                         .collect(java.util.stream.Collectors.joining(", "));
                 String detail = codes.isBlank() ? "booking khác (yêu cầu đồng thời)" : codes;
                 throw new ResponseStatusException(HttpStatus.CONFLICT,

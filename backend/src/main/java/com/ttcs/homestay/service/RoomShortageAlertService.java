@@ -74,7 +74,7 @@ public class RoomShortageAlertService {
 
             long availableCount = allRooms.stream()
                     .filter(r -> r.getRoomType() != null && r.getRoomType().equalsIgnoreCase(rt.getName()))
-                    .filter(Room::isActive) // Loại trừ phòng đang khoá / ngừng bán
+                    .filter(room -> room.isActive()) // Loại trừ phòng đang khoá / ngừng bán
                     .filter(r -> !RoomShortageRuleConfig.UNAVAILABLE_ROOM_STATUSES.contains(r.getStatus())) // Loại trừ phòng bảo trì
                     .count();
 
@@ -153,8 +153,8 @@ public class RoomShortageAlertService {
         }
 
         // 5. Sắp xếp: ngày gần nhất trước (date ASC), cùng ngày sắp xếp theo tên loại phòng
-        alerts.sort(Comparator.comparing(RoomShortageAlertResponse::date)
-                .thenComparing(RoomShortageAlertResponse::roomTypeName));
+        alerts.sort(Comparator.comparing((RoomShortageAlertResponse alert) -> alert.date())
+                .thenComparing(alert -> alert.roomTypeName()));
 
         return alerts;
     }
@@ -163,4 +163,3 @@ public class RoomShortageAlertService {
         return date + "_" + roomTypeId;
     }
 }
-

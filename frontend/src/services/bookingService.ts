@@ -7,6 +7,7 @@ import type {
   BookingAuditLog,
   AssignableRoom,
   BookingRoomChangeHistory,
+  CheckInOption,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -58,6 +59,10 @@ export async function searchBookings(filters: {
   return apiRequest<PageResponse<BookingListItem>>(
     `/api/bookings?${params.toString()}`,
   )
+}
+
+export function getCheckInOptions(): Promise<CheckInOption[]> {
+  return apiRequest<CheckInOption[]>('/api/bookings/check-in-options')
 }
 
 /** S2-10: booking mới nhất trước, 20 dòng mỗi trang (trang đầu tiên là 0). */
@@ -134,6 +139,7 @@ export type BookingDetailResponse = {
   bookingCode: string
   status: string
   holdExpiresAt: string | null
+  registeredGuests?: { fullName: string; primary: boolean }[]
   deposit: BookingDepositResponse | null
   history?: BookingAuditLog[]
   depositAdjustments: BookingDepositAdjustment[]
@@ -162,6 +168,11 @@ export type BookingDepositAdjustmentResult = BookingDepositAdjustment & {
 
 export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
   return apiRequest<BookingDetailResponse>(`/api/bookings/${id}/details`)
+}
+
+/** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
+export function getBookingSummary(id: number): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/summary`)
 }
 
 export function getBookingHistory(id: number): Promise<BookingAuditLog[]> {
@@ -212,4 +223,16 @@ export function changeBookingRoom(id: number, roomId: number, reason: string): P
 
 export function getBookingRoomChangeHistory(id: number): Promise<BookingRoomChangeHistory[]> {
   return apiRequest<BookingRoomChangeHistory[]>(`/api/bookings/${id}/room-change-history`)
+}
+
+/** S3-05 Lát 2: thông tin huỷ của một booking (chỉ có giá trị khi booking đã huỷ). */
+export type BookingCancellationInfo = {
+  status: string
+  cancelReason: string | null
+  cancelledBy: string | null
+  cancelledAt: string | null
+}
+
+export function getBookingCancellationInfo(id: number): Promise<BookingCancellationInfo> {
+  return apiRequest<BookingCancellationInfo>(`/api/bookings/${id}/cancellation-info`)
 }

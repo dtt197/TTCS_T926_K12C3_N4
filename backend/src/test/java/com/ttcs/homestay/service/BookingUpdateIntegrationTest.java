@@ -259,7 +259,7 @@ class BookingUpdateIntegrationTest {
     void verifiesAllBookingStatePreservedExceptUpdatedFields() {
         Long bookingId = existingBooking.getId();
 
-        BookingResponse response = bookingService.updateBooking(
+        bookingService.updateBooking(
                 bookingId,
                 new BookingUpdateRequest(
                         newRoomType.getId(),
