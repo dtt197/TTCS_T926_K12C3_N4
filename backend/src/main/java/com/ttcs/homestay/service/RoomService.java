@@ -39,6 +39,7 @@ import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 public class RoomService {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final LocalTime STANDARD_CHECK_IN_TIME = LocalTime.of(14, 0);
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     private final RoomRepository roomRepository;
@@ -247,6 +248,13 @@ public List<RoomStatusHistoryResponse> getHistory(
     @Transactional
     public CheckInResponse checkIn(Long roomId, CheckInRequest request, String operatorName) {
         validateCheckInRequest(request);
+        if (requiresEarlyCheckInConfirmation(
+                LocalTime.now(BUSINESS_ZONE),
+                Boolean.TRUE.equals(request.earlyCheckInConfirmed()))) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cần xác nhận nhận phòng trước 14:00 (Asia/Ho_Chi_Minh)");
+        }
         if (bookingRepository == null) {
             throw new IllegalStateException("BookingRepository is required for booking check-in");
         }
@@ -333,6 +341,10 @@ public List<RoomStatusHistoryResponse> getHistory(
         return response;
     }
 
+    static boolean requiresEarlyCheckInConfirmation(LocalTime currentTime, boolean confirmed) {
+        return currentTime.isBefore(STANDARD_CHECK_IN_TIME) && !confirmed;
+    }
+
     private static void validateCheckInRequest(CheckInRequest request) {
         if (request == null || request.bookingId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn booking cần nhận phòng");
@@ -349,6 +361,9 @@ public List<RoomStatusHistoryResponse> getHistory(
         }
         if (request.accompanyingGuestNames() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách khách đi kèm không được để trống");
+        }
+        if (request.earlyCheckInConfirmed() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu xác nhận nhận phòng sớm");
         }
         if (request.accompanyingGuestNames().stream()
                 .anyMatch(name -> name == null || name.isBlank() || name.strip().length() > 120)) {

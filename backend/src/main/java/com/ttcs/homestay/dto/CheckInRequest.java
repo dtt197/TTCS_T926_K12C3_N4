@@ -17,5 +17,6 @@ public record CheckInRequest(
         @NotNull(message = "Danh sách khách đi kèm không được để trống")
         List<@NotBlank(message = "Vui lòng nhập họ tên từng khách đi kèm")
                 @Size(max = 120, message = "Họ tên khách đi kèm không được vượt quá 120 ký tự")
-                String> accompanyingGuestNames) {
+                String> accompanyingGuestNames,
+        @NotNull(message = "Thiếu xác nhận nhận phòng sớm") Boolean earlyCheckInConfirmed) {
 }

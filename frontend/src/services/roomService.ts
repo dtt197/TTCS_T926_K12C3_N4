@@ -58,6 +58,7 @@ export type CheckInRequest = {
   primaryGuestName: string
   primaryGuestIdentityNumber: string
   accompanyingGuestNames: string[]
+  earlyCheckInConfirmed: boolean
 }
 
 export type RegisteredGuest = {
