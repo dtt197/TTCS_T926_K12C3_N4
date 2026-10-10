@@ -8,6 +8,7 @@ import { AmenityPage } from './AmenityPage'
 import { PriceOverridePage } from './PriceOverridePage'
 import { SettingsPage } from './SettingsPage'
 import { RoomStatusPage } from './RoomStatusPage'
+import { RoomCalendarPage } from './RoomCalendarPage'
 import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
 import { BookingListPage } from './BookingListPage'
@@ -20,6 +21,7 @@ type InternalHomePageProps = {
 }
 
 type View =
+  | 'roomCalendar'
   | 'rooms'
   | 'roomManagement'
   | 'roomTypes'
@@ -41,6 +43,14 @@ type Tab = {
 }
 
 const TABS: ReadonlyArray<Tab> = [
+  {
+    view: 'roomCalendar',
+    path: '/room-calendar',
+    label: 'Sơ đồ phòng theo ngày',
+    title: 'Sơ đồ phòng theo ngày',
+    icon: '▦',
+    permission: 'rooms:calendar',
+  },
     {
     // S1-04 / S1-10: trạng thái phòng, nhận - trả phòng, dọn phòng, bảo trì (Lễ tân, Buồng phòng...).
     view: 'rooms',
@@ -324,7 +334,9 @@ export function InternalHomePage({
         </header>
 
         <div className="internal-page-content">
-          {activeView === 'bookings' ? (
+          {activeView === 'roomCalendar' ? (
+            <RoomCalendarPage />
+          ) : activeView === 'bookings' ? (
             <BookingListPage role={user.role} />
           ) : activeView === 'walkInBooking' ? (
             <WalkInBookingPage />

@@ -71,6 +71,9 @@ public class SecurityConfig {
                         // Tài khoản cá nhân
                         .requestMatchers("/api/account/**").authenticated()
 
+                        // Calendar contains booking occupancy; keep before the general room matcher.
+                        .requestMatchers(HttpMethod.GET, "/api/rooms/calendar").hasRole("RECEPTIONIST")
+
                         // S1-04: Xem danh sách và thông tin phòng
                         .requestMatchers(
                                 HttpMethod.GET,

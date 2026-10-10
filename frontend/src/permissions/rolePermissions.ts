@@ -5,6 +5,7 @@ export type Role =
   | 'HOUSEKEEPING'
 
 export type Permission =
+  | 'rooms:calendar'
   | 'accounts:view'
   | 'accounts:manage'
   | 'rooms:view'
@@ -68,6 +69,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'bookings:deposit-adjust',
   ],
   RECEPTIONIST: [
+    'rooms:calendar',
     'rooms:view',
     'rooms:status:update',
     'rooms:maintenance',
