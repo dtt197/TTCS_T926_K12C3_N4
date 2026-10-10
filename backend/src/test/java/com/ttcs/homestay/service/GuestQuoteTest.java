@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.booking.GuestQuoteAlternative;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
-import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.dto.pricing.PriceType;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.PriceOverride;
@@ -100,7 +99,7 @@ class GuestQuoteTest {
 
         GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY, MONDAY.plusDays(3), 2);
 
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::label).containsOnly("Ngày thường");
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.label()).containsOnly("Ngày thường");
         assertThat(quote.nights()).isEqualTo(3);
         assertThat(quote.totalAmount()).isEqualTo(1_500_000L);
     }
@@ -112,7 +111,7 @@ class GuestQuoteTest {
         // Thứ Năm 09/05 đến hết đêm Chủ nhật 12/05.
         GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY.plusDays(3), MONDAY.plusDays(7), 2);
 
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::label)
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.label())
                 .containsExactly("Ngày thường", "Cuối tuần", "Cuối tuần", "Ngày thường");
         assertThat(quote.totalAmount()).isEqualTo(2_400_000L);
     }
@@ -129,7 +128,7 @@ class GuestQuoteTest {
 
         GuestQuoteResponse quote = guestBookingService.quote(1L, MONDAY.plusDays(3), MONDAY.plusDays(7), 2);
 
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::priceType).containsExactly(
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.priceType()).containsExactly(
                 PriceType.WEEKDAY, PriceType.OVERRIDE, PriceType.OVERRIDE, PriceType.WEEKDAY);
         assertThat(quote.nightlyPrices().get(1).label()).isEqualTo("Lễ 10/5");
         assertThat(quote.totalAmount()).isEqualTo(2_800_000L);
@@ -142,7 +141,7 @@ class GuestQuoteTest {
         GuestQuoteResponse quote = guestBookingService.quote(2L, MONDAY.plusDays(3), MONDAY.plusDays(5), 2);
 
         assertThat(quote.roomTypeName()).isEqualTo("Phòng gia đình");
-        assertThat(quote.nightlyPrices()).extracting(NightlyPrice::price).containsExactly(800_000L, 1_000_000L);
+        assertThat(quote.nightlyPrices()).extracting(nightlyPrice -> nightlyPrice.price()).containsExactly(800_000L, 1_000_000L);
         assertThat(quote.totalAmount()).isEqualTo(1_800_000L);
     }
 

@@ -7,6 +7,7 @@ import com.ttcs.homestay.dto.booking.BookingDepositAdjustmentResponse;
 import com.ttcs.homestay.dto.booking.BookingListItemResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
+import com.ttcs.homestay.dto.booking.CheckInOptionResponse;
 import com.ttcs.homestay.dto.booking.PageResponse;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.dto.booking.RoomShortageAlertResponse;
@@ -137,6 +138,11 @@ public class BookingController {
     @GetMapping("/latest")
     public List<BookingListItemResponse> getBookings() {
         return bookingService.getLatestBookings();
+    }
+
+    @GetMapping("/check-in-options")
+    public List<CheckInOptionResponse> getCheckInOptions() {
+        return bookingService.getCheckInOptions();
     }
 
     @GetMapping

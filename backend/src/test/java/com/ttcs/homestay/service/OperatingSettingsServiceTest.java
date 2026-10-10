@@ -51,7 +51,7 @@ class OperatingSettingsServiceTest {
         assertThat(response.checkInTime()).isEqualTo(LocalTime.of(14, 0));
         // Mốc huỷ được sắp theo số giờ giảm dần
         assertThat(response.cancellationTiers())
-                .extracting(OperatingSettingsResponse.Tier::hoursBeforeCheckIn)
+                .extracting(tier -> tier.hoursBeforeCheckIn())
                 .containsExactly(72, 24, 0);
     }
 

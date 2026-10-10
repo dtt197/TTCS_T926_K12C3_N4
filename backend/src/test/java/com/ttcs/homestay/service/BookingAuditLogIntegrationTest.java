@@ -13,7 +13,6 @@ import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomType;
-import com.ttcs.homestay.exception.RoomUnavailableException;
 import com.ttcs.homestay.repository.BookingAuditLogRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.OperatingSettingsRepository;

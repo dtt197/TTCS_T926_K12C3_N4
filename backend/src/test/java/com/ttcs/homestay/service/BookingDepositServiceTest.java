@@ -18,7 +18,6 @@ import com.ttcs.homestay.repository.BookingDepositRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

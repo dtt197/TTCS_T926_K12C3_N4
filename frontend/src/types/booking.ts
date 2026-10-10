@@ -25,6 +25,16 @@ export type BookingListItem = {
   roomConfirmedBy?: string | null
 }
 
+export type CheckInOption = {
+  bookingId: number
+  bookingCode: string
+  guestName: string
+  roomId: number
+  roomNumber: string
+  checkInDate: string
+  checkOutDate: string
+}
+
 /** S2-10: một trang kết quả, trang đầu tiên là 0. */
 export type PageResponse<T> = {
   content: T[]
@@ -158,4 +168,3 @@ export type BookingCancellationResult = {
   refundPercent: number
   refundAmount: number
 }
-

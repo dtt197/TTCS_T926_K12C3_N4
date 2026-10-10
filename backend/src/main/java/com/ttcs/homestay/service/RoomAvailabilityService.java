@@ -133,7 +133,7 @@ public class RoomAvailabilityService {
         List<Room> freeRooms = rooms.stream()
                 .filter(room -> !heldRoomIds.contains(room.getId()))
                 .filter(room -> !isUnderMaintenanceAnyNight(room, checkIn, checkOut))
-                .sorted(Comparator.comparing(Room::getRoomNumber))
+                .sorted(Comparator.comparing((Room room) -> room.getRoomNumber()))
                 .toList();
         if (freeRooms.isEmpty()) {
             throw unavailable(roomType, checkIn, checkOut);
@@ -141,7 +141,7 @@ public class RoomAvailabilityService {
         if (currentRoom != null) {
             freeRooms = freeRooms.stream()
                     .sorted(Comparator.comparing((Room room) -> !room.getId().equals(currentRoom.getId()))
-                            .thenComparing(Room::getRoomNumber))
+                            .thenComparing(room -> room.getRoomNumber()))
                     .toList();
         }
         for (Room candidate : freeRooms) {
@@ -183,7 +183,7 @@ public class RoomAvailabilityService {
         return rooms.stream()
                 .filter(room -> !occupiedRoomIds.contains(room.getId()))
                 .filter(room -> !isUnderMaintenanceAnyNight(room, checkIn, checkOut))
-                .sorted(Comparator.comparing(Room::getRoomNumber))
+                .sorted(Comparator.comparing((Room room) -> room.getRoomNumber()))
                 .toList();
     }
 

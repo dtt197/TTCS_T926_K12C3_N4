@@ -216,7 +216,7 @@ class RoomAvailabilityServiceTest {
     void availableRooms_traPhongTrongCaKy() {
         when(bookingRepository.findOverlappingOnRooms(any(), any(), any(), any())).thenReturn(List.of());
         assertThat(roomAvailabilityService.listAvailableRooms(phongDoi, CHECK_IN, CHECK_OUT, 77L))
-                .extracting(Room::getRoomNumber).containsExactly("201", "202");
+                .extracting(room -> room.getRoomNumber()).containsExactly("201", "202");
     }
 
     @Test
@@ -230,7 +230,7 @@ class RoomAvailabilityServiceTest {
                 .thenReturn(List.of(currentBooking));
 
         assertThat(roomAvailabilityService.listAvailableRooms(phongDoi, CHECK_IN, CHECK_OUT, 77L))
-                .extracting(Room::getRoomNumber).containsExactly("201", "202");
+                .extracting(room -> room.getRoomNumber()).containsExactly("201", "202");
     }
 
     @Test

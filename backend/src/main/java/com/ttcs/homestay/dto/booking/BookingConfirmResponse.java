@@ -1,9 +1,6 @@
 package com.ttcs.homestay.dto.booking;
 
 import com.ttcs.homestay.entity.Booking;
-import com.ttcs.homestay.entity.BookingStatus;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
 
 public record BookingConfirmResponse(
         Long id,

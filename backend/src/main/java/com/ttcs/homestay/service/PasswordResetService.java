@@ -65,7 +65,7 @@ public class PasswordResetService {
 			}
 
 			// SCRUM-27: huỷ mọi token cũ chưa dùng trước khi phát token mới
-			tokenRepository.findAllByUserAndUsedAtIsNull(user).forEach(PasswordResetToken::markUsed);
+			tokenRepository.findAllByUserAndUsedAtIsNull(user).forEach(resetToken -> resetToken.markUsed());
 
 			String rawToken = generateRawToken();
 			PasswordResetToken token = PasswordResetToken.issue(user, hash(rawToken), now.plus(tokenTtl));
@@ -90,7 +90,7 @@ public class PasswordResetService {
 
 		token.markUsed();
 		// SCRUM-27: các token đặt-lại-mật-khẩu khác đang chờ cũng huỷ theo, tránh dùng lại sau khi đã đổi
-		tokenRepository.findAllByUserAndUsedAtIsNull(user).forEach(PasswordResetToken::markUsed);
+		tokenRepository.findAllByUserAndUsedAtIsNull(user).forEach(resetToken -> resetToken.markUsed());
 	}
 
 	private String generateRawToken() {

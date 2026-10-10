@@ -143,7 +143,7 @@ public class PricingService {
     /** Chuỗi trong tham số hệ thống, ví dụ "FRIDAY,SATURDAY", thành tập ngày trong tuần. */
     public static Set<DayOfWeek> parseWeekendDays(String weekendDays) {
         return Arrays.stream(weekendDays.split(","))
-                .map(String::trim)
+                .map(value -> value.trim())
                 .filter(value -> !value.isEmpty())
                 .map(value -> DayOfWeek.valueOf(value.toUpperCase(Locale.ROOT)))
                 .collect(Collectors.toSet());

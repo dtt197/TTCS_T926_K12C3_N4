@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
-import com.ttcs.homestay.entity.RoomTypeCancellationTier;
 import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
 import java.time.LocalTime;

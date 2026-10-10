@@ -3,6 +3,7 @@ package com.ttcs.homestay.repository;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Room;
+import com.ttcs.homestay.entity.RoomStatus;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     
     /** S2-08: tìm booking theo mã để khách tra cứu. */
     Optional<Booking> findByBookingCode(String bookingCode);
+
+    @Query("select b from Booking b join fetch b.room r"
+            + " where b.status = :status and b.roomConfirmedAt is not null and r.status = :roomStatus"
+            + " order by b.checkInDate asc, b.bookingCode asc")
+    List<Booking> findCheckInOptions(
+            @Param("status") BookingStatus status,
+            @Param("roomStatus") RoomStatus roomStatus);
 
     /**
      * S2-07: booking của một loại phòng có ít nhất một đêm trong [checkIn, checkOut).

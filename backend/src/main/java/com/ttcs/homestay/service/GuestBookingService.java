@@ -15,7 +15,6 @@ import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.InvalidGuestBookingException;
 import com.ttcs.homestay.exception.RoomTypeNotFoundException;
-import com.ttcs.homestay.exception.RoomUnavailableException;
 import com.ttcs.homestay.exception.RoomTypeUnavailableException;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomTypeRepository;
