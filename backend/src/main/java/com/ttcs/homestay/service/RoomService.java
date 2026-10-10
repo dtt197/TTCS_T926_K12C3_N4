@@ -9,15 +9,19 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.ttcs.homestay.dto.CheckInRequest;
 import com.ttcs.homestay.dto.CheckInResponse;
+import com.ttcs.homestay.dto.booking.RegisteredGuestResponse;
 import com.ttcs.homestay.dto.IncidentReportRequest;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
 import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.BookingGuest;
 import com.ttcs.homestay.entity.CheckIn;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
@@ -25,6 +29,7 @@ import com.ttcs.homestay.entity.RoomStatusHistory;
 import com.ttcs.homestay.exception.RoomNotFoundException;
 import com.ttcs.homestay.exception.RoomStatusConflictException;
 import com.ttcs.homestay.repository.BookingRepository;
+import com.ttcs.homestay.repository.BookingGuestRepository;
 import com.ttcs.homestay.repository.CheckInRepository;
 import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
@@ -40,13 +45,14 @@ public class RoomService {
     private final CheckInRepository checkInRepository;
     private final RoomStatusHistoryRepository roomStatusHistoryRepository;
     private final BookingRepository bookingRepository;
+    private final BookingGuestRepository bookingGuestRepository;
     private final OperatingSettingsRepository operatingSettingsRepository;
 
     public RoomService(
             RoomRepository roomRepository,
             CheckInRepository checkInRepository,
             RoomStatusHistoryRepository roomStatusHistoryRepository) {
-        this(roomRepository, checkInRepository, roomStatusHistoryRepository, null, null);
+        this(roomRepository, checkInRepository, roomStatusHistoryRepository, null, null, null);
     }
 
     @Autowired
@@ -55,12 +61,14 @@ public class RoomService {
             CheckInRepository checkInRepository,
             RoomStatusHistoryRepository roomStatusHistoryRepository,
             BookingRepository bookingRepository,
-            OperatingSettingsRepository operatingSettingsRepository) {
+            OperatingSettingsRepository operatingSettingsRepository,
+            BookingGuestRepository bookingGuestRepository) {
         this.roomRepository = roomRepository;
         this.checkInRepository = checkInRepository;
         this.roomStatusHistoryRepository = roomStatusHistoryRepository;
         this.bookingRepository = bookingRepository;
         this.operatingSettingsRepository = operatingSettingsRepository;
+        this.bookingGuestRepository = bookingGuestRepository;
     }
 
     @Transactional(readOnly = true)
@@ -238,6 +246,7 @@ public List<RoomStatusHistoryResponse> getHistory(
 
     @Transactional
     public CheckInResponse checkIn(Long roomId, CheckInRequest request, String operatorName) {
+        validateCheckInRequest(request);
         if (bookingRepository == null) {
             throw new IllegalStateException("BookingRepository is required for booking check-in");
         }
@@ -259,6 +268,15 @@ public List<RoomStatusHistoryResponse> getHistory(
                 || booking.getRoomConfirmedAt() == null) {
             throw new RoomStatusConflictException("Booking chưa được chốt phòng đã chọn");
         }
+        Integer maxGuests = booking.getRoomType() == null ? null : booking.getRoomType().getMaxCapacity();
+        if (maxGuests == null || maxGuests < 1) {
+            throw new IllegalStateException("Booking room type must define a positive maximum capacity");
+        }
+        if (request.accompanyingGuestNames().size() + 1 > maxGuests) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Tổng số khách vượt quá sức chứa tối đa " + maxGuests + " người của loại phòng");
+        }
 
         if (!RoomStatusPolicy.canCheckIn(room.getStatus())) {
             throw new RoomStatusConflictException(
@@ -268,8 +286,28 @@ public List<RoomStatusHistoryResponse> getHistory(
         }
 
         OffsetDateTime checkedInAt = OffsetDateTime.now(BUSINESS_ZONE);
+        String primaryGuestName = request.primaryGuestName().strip();
+        booking.setGuestName(primaryGuestName);
         booking.setStatus(BookingStatus.DA_NHAN_PHONG);
         bookingRepository.save(booking);
+        List<BookingGuest> bookingGuests = new java.util.ArrayList<>();
+        BookingGuest primaryGuest = new BookingGuest();
+        primaryGuest.setBooking(booking);
+        primaryGuest.setGuestOrder(0);
+        primaryGuest.setFullName(primaryGuestName);
+        primaryGuest.setIdentityNumber(request.primaryGuestIdentityNumber());
+        bookingGuests.add(primaryGuest);
+        for (int index = 0; index < request.accompanyingGuestNames().size(); index++) {
+            BookingGuest accompanyingGuest = new BookingGuest();
+            accompanyingGuest.setBooking(booking);
+            accompanyingGuest.setGuestOrder(index + 1);
+            accompanyingGuest.setFullName(request.accompanyingGuestNames().get(index).strip());
+            bookingGuests.add(accompanyingGuest);
+        }
+        List<RegisteredGuestResponse> registeredGuests = bookingGuestRepository.saveAll(bookingGuests)
+                .stream()
+                .map(RegisteredGuestResponse::from)
+                .toList();
 
         RoomStatus previousStatus = room.getStatus();
 
@@ -278,9 +316,10 @@ public List<RoomStatusHistoryResponse> getHistory(
 
         CheckIn checkIn = new CheckIn();
         checkIn.setRoom(savedRoom);
-        checkIn.setGuestName(booking.getGuestName());
+        checkIn.setGuestName(primaryGuestName);
         checkIn.setCheckedInAt(checkedInAt);
-        CheckInResponse response = CheckInResponse.from(checkInRepository.save(checkIn), booking);
+        CheckInResponse response = CheckInResponse.from(
+                checkInRepository.save(checkIn), booking, registeredGuests);
 
         saveHistory(
                 savedRoom,
@@ -292,6 +331,30 @@ public List<RoomStatusHistoryResponse> getHistory(
                 null);
 
         return response;
+    }
+
+    private static void validateCheckInRequest(CheckInRequest request) {
+        if (request == null || request.bookingId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn booking cần nhận phòng");
+        }
+        if (request.primaryGuestName() == null || request.primaryGuestName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập họ tên khách chính");
+        }
+        if (request.primaryGuestName().strip().length() > 120) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Họ tên khách chính không được vượt quá 120 ký tự");
+        }
+        if (request.primaryGuestIdentityNumber() == null
+                || !request.primaryGuestIdentityNumber().matches("[0-9]{12}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số CCCD phải gồm đúng 12 chữ số");
+        }
+        if (request.accompanyingGuestNames() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách khách đi kèm không được để trống");
+        }
+        if (request.accompanyingGuestNames().stream()
+                .anyMatch(name -> name == null || name.isBlank() || name.strip().length() > 120)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Vui lòng nhập họ tên hợp lệ cho từng khách đi kèm");
+        }
     }
 
     @Transactional

@@ -33,6 +33,8 @@ export type CheckInOption = {
   roomNumber: string
   checkInDate: string
   checkOutDate: string
+  requestedGuestCount: number | null
+  maxGuests: number
 }
 
 /** S2-10: một trang kết quả, trang đầu tiên là 0. */

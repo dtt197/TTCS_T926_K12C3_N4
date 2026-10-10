@@ -42,6 +42,17 @@ public class BookingDetailController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found");
         }
         Map<String, Object> result = new LinkedHashMap<>(bookings.get(0));
+        List<Map<String, Object>> registeredGuests = jdbcTemplate.query(
+                "SELECT full_name, guest_order FROM booking_guests " +
+                        "WHERE booking_id = ? ORDER BY guest_order",
+                (rs, rowNum) -> {
+                    Map<String, Object> guest = new LinkedHashMap<>();
+                    guest.put("fullName", rs.getString("full_name"));
+                    guest.put("primary", rs.getInt("guest_order") == 0);
+                    return guest;
+                }, id);
+        result.put("registeredGuests", registeredGuests);
+
         List<Map<String, Object>> deposits = jdbcTemplate.query(
                 "SELECT id, amount, payment_method, received_date, payment_reference, created_by, created_at " +
                         "FROM booking_deposits WHERE booking_id = ? ORDER BY id DESC LIMIT 1",

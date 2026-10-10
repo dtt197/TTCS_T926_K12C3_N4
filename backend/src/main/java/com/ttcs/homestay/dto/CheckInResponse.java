@@ -4,7 +4,9 @@ import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.CheckIn;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.RoomStatus;
+import com.ttcs.homestay.dto.booking.RegisteredGuestResponse;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public record CheckInResponse(
         Long id,
@@ -15,9 +17,13 @@ public record CheckInResponse(
         String roomNumber,
         RoomStatus roomStatus,
         String guestName,
-        OffsetDateTime checkedInAt
+        OffsetDateTime checkedInAt,
+        List<RegisteredGuestResponse> registeredGuests
 ) {
-    public static CheckInResponse from(CheckIn checkIn, Booking booking) {
+    public static CheckInResponse from(
+            CheckIn checkIn,
+            Booking booking,
+            List<RegisteredGuestResponse> registeredGuests) {
         return new CheckInResponse(
                 checkIn.getId(),
                 booking.getId(),
@@ -27,7 +33,8 @@ public record CheckInResponse(
                 checkIn.getRoom().getRoomNumber(),
                 checkIn.getRoom().getStatus(),
                 checkIn.getGuestName(),
-                checkIn.getCheckedInAt()
+                checkIn.getCheckedInAt(),
+                registeredGuests
         );
     }
 }

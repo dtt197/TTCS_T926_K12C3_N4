@@ -54,7 +54,18 @@ export function updateRoomStatus(roomId: number, status: RoomStatus) {
   })
 }
 
-export function checkIn(roomId: number, bookingId: number) {
+export type CheckInRequest = {
+  primaryGuestName: string
+  primaryGuestIdentityNumber: string
+  accompanyingGuestNames: string[]
+}
+
+export type RegisteredGuest = {
+  fullName: string
+  primary: boolean
+}
+
+export function checkIn(roomId: number, bookingId: number, guestDetails: CheckInRequest) {
   return request<{
     id: number
     bookingId: number
@@ -65,11 +76,12 @@ export function checkIn(roomId: number, bookingId: number) {
     roomStatus: RoomStatus
     guestName: string
     checkedInAt: string
+    registeredGuests: RegisteredGuest[]
   }>(
     `/rooms/${roomId}/check-in`,
     {
       method: 'POST',
-      body: JSON.stringify({ bookingId }),
+      body: JSON.stringify({ bookingId, ...guestDetails }),
     },
   )
 }

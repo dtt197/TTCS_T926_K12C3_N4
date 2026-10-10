@@ -10,7 +10,9 @@ public record CheckInOptionResponse(
         Long roomId,
         String roomNumber,
         LocalDate checkInDate,
-        LocalDate checkOutDate
+        LocalDate checkOutDate,
+        Integer requestedGuestCount,
+        Integer maxGuests
 ) {
     public static CheckInOptionResponse from(Booking booking) {
         return new CheckInOptionResponse(
@@ -20,6 +22,8 @@ public record CheckInOptionResponse(
                 booking.getRoom().getId(),
                 booking.getRoom().getRoomNumber(),
                 booking.getCheckInDate(),
-                booking.getCheckOutDate());
+                booking.getCheckOutDate(),
+                booking.getGuestCount(),
+                booking.getRoomType().getMaxCapacity());
     }
 }

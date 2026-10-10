@@ -796,6 +796,18 @@ export function BookingListPage({ role }: { role: string }) {
                   <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>
                   <div><dt>Hạn giữ chỗ</dt><dd>{detailData.holdExpiresAt ? new Date(detailData.holdExpiresAt).toLocaleString('vi-VN') : 'Đã gỡ / không có'}</dd></div>
                 </dl>
+                {detailData.registeredGuests && detailData.registeredGuests.length > 0 && (
+                  <>
+                    <h4>Khách đã đăng ký lưu trú</h4>
+                    <ul>
+                      {detailData.registeredGuests.map((guest, index) => (
+                        <li key={`${guest.primary ? 'primary' : 'guest'}-${index}`}>
+                          {guest.fullName}{guest.primary ? ' (khách chính)' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
                 <h4>Thông tin tiền cọc</h4>
                 {detailData.deposit ? (
                   <dl className="booking-detail-grid">

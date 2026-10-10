@@ -139,6 +139,7 @@ export type BookingDetailResponse = {
   bookingCode: string
   status: string
   holdExpiresAt: string | null
+  registeredGuests?: { fullName: string; primary: boolean }[]
   deposit: BookingDepositResponse | null
   history?: BookingAuditLog[]
   depositAdjustments: BookingDepositAdjustment[]

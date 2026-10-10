@@ -5,6 +5,7 @@ import '../App.css'
 import { hasPermission } from '../permissions/rolePermissions'
 import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
 import { getCheckInOptions } from '../services/bookingService'
+import type { CheckInOption } from '../types/booking'
 
 
 
@@ -57,6 +58,12 @@ const STATUS_OPTIONS: RoomStatus[] = [
   'BAO_TRI',
 
 ]
+
+function initialGuestCount(booking: CheckInOption | undefined) {
+  return booking
+    ? Math.min(Math.max(booking.requestedGuestCount ?? 1, 1), booking.maxGuests)
+    : 1
+}
 
 
 
@@ -228,7 +235,7 @@ const DEMO_HISTORY: Record<number, RoomStatusHistory[]> = {
 
 }
 
-const DEMO_CHECK_IN_OPTIONS = [
+const DEMO_CHECK_IN_OPTIONS: CheckInOption[] = [
   {
     bookingId: 101,
     bookingCode: 'BK-DEMO-101',
@@ -237,6 +244,8 @@ const DEMO_CHECK_IN_OPTIONS = [
     roomNumber: '101',
     checkInDate: '2026-10-10',
     checkOutDate: '2026-10-12',
+    requestedGuestCount: 2,
+    maxGuests: 4,
   },
 ]
 
@@ -505,9 +514,16 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
 
   >({})
 
-  const [checkInOptions, setCheckInOptions] = useState(DEMO_CHECK_IN_OPTIONS)
+  const [checkInOptions, setCheckInOptions] = useState<CheckInOption[]>(DEMO_CHECK_IN_OPTIONS)
 
   const [selectedBookingId, setSelectedBookingId] = useState<number | ''>('')
+  const [primaryGuestName, setPrimaryGuestName] = useState('')
+  const [primaryGuestIdentityNumber, setPrimaryGuestIdentityNumber] = useState('')
+  const [guestCount, setGuestCount] = useState(1)
+  const [accompanyingGuestNames, setAccompanyingGuestNames] = useState<string[]>([])
+  const [registeredGuests, setRegisteredGuests] = useState<
+    { fullName: string; primary: boolean }[] | null
+  >(null)
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -578,7 +594,13 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
 
 
 
-        setSelectedBookingId(options[0]?.bookingId ?? '')
+        const firstOption = options[0]
+        setSelectedBookingId(firstOption?.bookingId ?? '')
+        setPrimaryGuestName(firstOption?.guestName ?? '')
+        setPrimaryGuestIdentityNumber('')
+        const firstGuestCount = initialGuestCount(firstOption)
+        setGuestCount(firstGuestCount)
+        setAccompanyingGuestNames(Array.from({ length: firstGuestCount - 1 }, () => ''))
 
       })
 
@@ -618,6 +640,11 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
 
 
         setSelectedBookingId(DEMO_CHECK_IN_OPTIONS[0].bookingId)
+        setPrimaryGuestName(DEMO_CHECK_IN_OPTIONS[0].guestName)
+        setPrimaryGuestIdentityNumber('')
+        const firstGuestCount = initialGuestCount(DEMO_CHECK_IN_OPTIONS[0])
+        setGuestCount(firstGuestCount)
+        setAccompanyingGuestNames(Array.from({ length: firstGuestCount - 1 }, () => ''))
 
         setIsDemoMode(true)
 
@@ -1203,6 +1230,27 @@ const counts = useMemo(
       return
     }
 
+    if (!primaryGuestName.trim()) {
+      showError('Vui lòng nhập họ tên khách chính.')
+      return
+    }
+    if (!/^[0-9]{12}$/.test(primaryGuestIdentityNumber)) {
+      showError('Số CCCD khách chính phải gồm đúng 12 chữ số.')
+      return
+    }
+    if (accompanyingGuestNames.some((name) => !name.trim())) {
+      showError('Vui lòng nhập họ tên cho từng khách đi kèm.')
+      return
+    }
+    if (guestCount !== accompanyingGuestNames.length + 1) {
+      showError('Số lượng khách không khớp với danh sách khách đi kèm.')
+      return
+    }
+    if (guestCount > selectedBooking.maxGuests) {
+      showError(`Tổng số khách không được vượt quá ${selectedBooking.maxGuests} người.`)
+      return
+    }
+
     setIsSaving(true)
     setNotice(null)
 
@@ -1213,10 +1261,21 @@ const counts = useMemo(
             bookingCode: selectedBooking.bookingCode,
             bookingStatus: 'DA_NHAN_PHONG' as const,
             roomStatus: 'DANG_O' as const,
-            guestName: selectedBooking.guestName,
+            guestName: primaryGuestName.trim(),
             checkedInAt: new Date().toISOString(),
+            registeredGuests: [
+              { fullName: primaryGuestName.trim(), primary: true },
+              ...accompanyingGuestNames.map((fullName) => ({
+                fullName: fullName.trim(),
+                primary: false,
+              })),
+            ],
           }
-        : await checkIn(selectedRoom.id, selectedBooking.bookingId)
+        : await checkIn(selectedRoom.id, selectedBooking.bookingId, {
+            primaryGuestName: primaryGuestName.trim(),
+            primaryGuestIdentityNumber,
+            accompanyingGuestNames: accompanyingGuestNames.map((name) => name.trim()),
+          })
 
       setRooms((current) =>
         current.map((room) =>
@@ -1229,10 +1288,14 @@ const counts = useMemo(
         current.filter((booking) => booking.bookingId !== selectedBooking.bookingId),
       )
       setSelectedBookingId('')
+      setRegisteredGuests(result.registeredGuests)
 
       if (isDemoMode) {
         const historyRecord: RoomStatusHistory = {
-          id: Date.now(),
+          id: Math.max(
+            0,
+            ...(historyByRoom[selectedRoom.id] ?? []).map((item) => item.id),
+          ) + 1,
           roomId: selectedRoom.id,
           roomNumber: selectedRoom.roomNumber,
           previousStatus: selectedRoom.status,
@@ -1552,6 +1615,7 @@ const counts = useMemo(
               className="quick-checkin-form"
 
               onSubmit={handleCheckIn}
+              noValidate
 
             >
 
@@ -1566,20 +1630,21 @@ const counts = useMemo(
                   className="form-control"
 
                   value={selectedBookingId}
-
-                  onChange={(event) =>
-
-                    setSelectedBookingId(
-
-                      event.target.value
-
-                        ? Number(event.target.value)
-
-                        : '',
-
+                  onChange={(event) => {
+                    const nextBookingId = event.target.value ? Number(event.target.value) : ''
+                    const nextBooking = checkInOptions.find(
+                      (booking) => booking.bookingId === nextBookingId,
                     )
-
-                  }
+                    setSelectedBookingId(nextBookingId)
+                    setPrimaryGuestName(nextBooking?.guestName ?? '')
+                    setPrimaryGuestIdentityNumber('')
+                    const nextGuestCount = initialGuestCount(nextBooking)
+                    setGuestCount(nextGuestCount)
+                    setAccompanyingGuestNames(
+                      Array.from({ length: nextGuestCount - 1 }, () => ''),
+                    )
+                    setRegisteredGuests(null)
+                  }}
 
                 >
 
@@ -1624,7 +1689,72 @@ const counts = useMemo(
 
               </label>
 
+              <label className="form-label">
+                Họ tên khách chính
+                <input
+                  className="form-control"
+                  value={primaryGuestName}
+                  onChange={(event) => setPrimaryGuestName(event.target.value)}
+                  maxLength={120}
+                  required
+                />
+              </label>
 
+              <label className="form-label">
+                Số CCCD khách chính
+                <input
+                  className="form-control"
+                  value={primaryGuestIdentityNumber}
+                  onChange={(event) => setPrimaryGuestIdentityNumber(event.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]{12}"
+                  maxLength={12}
+                  required
+                />
+              </label>
+
+              <label className="form-label">
+                Tổng số khách (tối đa {selectedBooking?.maxGuests ?? 0})
+                <select
+                  className="form-control"
+                  value={guestCount}
+                  onChange={(event) => {
+                    const nextCount = Number(event.target.value)
+                    setGuestCount(nextCount)
+                    setAccompanyingGuestNames((current) =>
+                      Array.from(
+                        { length: nextCount - 1 },
+                        (_, index) => current[index] ?? '',
+                      ),
+                    )
+                  }}
+                  disabled={!selectedBooking}
+                >
+                  {Array.from({ length: selectedBooking?.maxGuests ?? 1 }, (_, index) => index + 1)
+                    .map((count) => (
+                      <option value={count} key={count}>{count}</option>
+                    ))}
+                </select>
+              </label>
+
+              {accompanyingGuestNames.map((name, index) => (
+                <label className="form-label" key={index}>
+                  Họ tên khách đi kèm {index + 1}
+                  <input
+                    className="form-control"
+                    value={name}
+                    onChange={(event) =>
+                      setAccompanyingGuestNames((current) =>
+                        current.map((guestName, guestIndex) =>
+                          guestIndex === index ? event.target.value : guestName,
+                        ),
+                      )
+                    }
+                    maxLength={120}
+                    required
+                  />
+                </label>
+              ))}
 
               <button
 
@@ -1646,6 +1776,18 @@ const counts = useMemo(
 
             </form>
 
+            {registeredGuests && (
+              <div className="checkin-note" aria-live="polite">
+                <strong>Khách đã đăng ký lưu trú:</strong>
+                <ul>
+                  {registeredGuests.map((guest, index) => (
+                    <li key={`${guest.primary ? 'primary' : 'guest'}-${index}`}>
+                      {guest.fullName}{guest.primary ? ' (khách chính)' : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
 
             {checkInOptions.length === 0 && (

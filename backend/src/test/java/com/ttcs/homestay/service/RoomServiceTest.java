@@ -32,8 +32,10 @@ import com.ttcs.homestay.entity.CheckIn;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomStatusHistory;
+import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.exception.RoomStatusConflictException;
 import com.ttcs.homestay.repository.BookingRepository;
+import com.ttcs.homestay.repository.BookingGuestRepository;
 import com.ttcs.homestay.repository.CheckInRepository;
 import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
@@ -56,6 +58,9 @@ class RoomServiceTest {
 
     @Mock
     BookingRepository bookingRepository;
+
+    @Mock
+    BookingGuestRepository bookingGuestRepository;
 
     @Mock
     OperatingSettingsRepository operatingSettingsRepository;
@@ -81,8 +86,15 @@ class RoomServiceTest {
         booking.setGuestName("Khách nhận phòng");
         booking.setStatus(status);
         booking.setRoom(room);
+        RoomType roomType = new RoomType();
+        roomType.setMaxCapacity(4);
+        booking.setRoomType(roomType);
         booking.setRoomConfirmedAt(OffsetDateTime.parse("2026-10-10T08:00:00+07:00"));
         return booking;
+    }
+
+    private CheckInRequest checkInRequest(Long bookingId) {
+        return new CheckInRequest(bookingId, "Khách nhận phòng", "012345678901", List.of());
     }
 
     @Test
@@ -98,18 +110,27 @@ class RoomServiceTest {
         when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
         when(bookingRepository.findByIdForUpdate(bookingId)).thenReturn(Optional.of(booking));
         when(roomRepository.save(room)).thenReturn(room);
+        when(bookingGuestRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(checkInRepository.save(any(CheckIn.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CheckInResponse response = roomService.checkIn(roomId, new CheckInRequest(bookingId), "Lễ tân");
+        CheckInResponse response = roomService.checkIn(
+                roomId,
+                new CheckInRequest(bookingId, "Nguyễn Minh Anh", "012345678901", List.of("Trần Minh Khoa")),
+                "Lễ tân");
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_NHAN_PHONG);
         assertThat(room.getStatus()).isEqualTo(RoomStatus.DANG_O);
         assertThat(response.bookingStatus()).isEqualTo(BookingStatus.DA_NHAN_PHONG);
         assertThat(response.roomStatus()).isEqualTo(RoomStatus.DANG_O);
         assertThat(response.bookingCode()).isEqualTo("BK-" + bookingId);
-        assertThat(response.guestName()).isEqualTo("Khách nhận phòng");
+        assertThat(response.guestName()).isEqualTo("Nguyễn Minh Anh");
+        assertThat(response.registeredGuests())
+                .extracting(guest -> guest.fullName())
+                .containsExactly("Nguyễn Minh Anh", "Trần Minh Khoa");
+        assertThat(response.registeredGuests().get(0).primary()).isTrue();
         assertThat(response.checkedInAt().getOffset()).isEqualTo(ZoneOffset.ofHours(7));
         verify(bookingRepository).save(booking);
+        verify(bookingGuestRepository).saveAll(any());
         verify(roomRepository).save(room);
         verify(roomStatusHistoryRepository).save(any(RoomStatusHistory.class));
     }
@@ -127,7 +148,7 @@ class RoomServiceTest {
         when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
         when(bookingRepository.findByIdForUpdate(bookingId)).thenReturn(Optional.of(booking));
 
-        assertThatThrownBy(() -> roomService.checkIn(roomId, new CheckInRequest(bookingId), "Lễ tân"))
+        assertThatThrownBy(() -> roomService.checkIn(roomId, checkInRequest(bookingId), "Lễ tân"))
                 .isInstanceOf(RoomStatusConflictException.class)
                 .hasMessageContaining("Chỉ booking đã xác nhận");
 
@@ -145,7 +166,7 @@ class RoomServiceTest {
         booking.setRoomConfirmedAt(null);
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
 
-        assertThatThrownBy(() -> roomService.checkIn(101L, new CheckInRequest(bookingId), "Lễ tân"))
+        assertThatThrownBy(() -> roomService.checkIn(101L, checkInRequest(bookingId), "Lễ tân"))
                 .isInstanceOf(RoomStatusConflictException.class)
                 .hasMessageContaining("chưa được gán");
 
@@ -165,13 +186,71 @@ class RoomServiceTest {
         when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
         when(bookingRepository.findByIdForUpdate(bookingId)).thenReturn(Optional.of(booking));
 
-        assertThatThrownBy(() -> roomService.checkIn(roomId, new CheckInRequest(bookingId), "Lễ tân"))
+        assertThatThrownBy(() -> roomService.checkIn(roomId, checkInRequest(bookingId), "Lễ tân"))
                 .isInstanceOf(RoomStatusConflictException.class)
                 .hasMessageContaining("Chỉ phòng Trống sạch");
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_XAC_NHAN);
         assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
         verify(bookingRepository, never()).save(any(Booking.class));
+        verify(roomRepository, never()).save(any(Room.class));
+    }
+
+    @Test
+    @DisplayName("Từ chối nhận phòng nếu CCCD khách chính không đủ 12 chữ số")
+    void checkIn_invalidPrimaryIdentityNumber_rejectsBeforeLoadingBooking() {
+        assertThatThrownBy(() -> roomService.checkIn(
+                101L, new CheckInRequest(501L, "Nguyễn Minh Anh", "123", List.of()), "Lễ tân"))
+                .hasMessageContaining("CCCD")
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+
+        verify(bookingRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Từ chối nhận phòng nếu thiếu tên khách chính")
+    void checkIn_blankPrimaryGuestName_rejectsBeforeLoadingBooking() {
+        assertThatThrownBy(() -> roomService.checkIn(
+                101L, new CheckInRequest(501L, "  ", "012345678901", List.of()), "Lễ tân"))
+                .hasMessageContaining("khách chính")
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+
+        verify(bookingRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Từ chối nhận phòng nếu thiếu tên khách đi kèm")
+    void checkIn_blankAccompanyingGuestName_rejectsBeforeLoadingBooking() {
+        assertThatThrownBy(() -> roomService.checkIn(
+                101L, new CheckInRequest(501L, "Nguyễn Minh Anh", "012345678901", List.of("  ")), "Lễ tân"))
+                .hasMessageContaining("khách đi kèm")
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+
+        verify(bookingRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Từ chối nhận phòng nếu số khách vượt sức chứa loại phòng")
+    void checkIn_guestCountExceedsRoomCapacity_rejectsWithoutSaving() {
+        Long roomId = 105L;
+        Long bookingId = 505L;
+        Room room = createOccupiedRoom(roomId, "105");
+        room.setStatus(RoomStatus.TRONG_SACH);
+        Booking booking = createAssignedBooking(bookingId, BookingStatus.DA_XAC_NHAN, room);
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(bookingRepository.findByIdForUpdate(bookingId)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> roomService.checkIn(
+                roomId,
+                new CheckInRequest(
+                        bookingId, "Nguyễn Minh Anh", "012345678901",
+                        List.of("Khách 2", "Khách 3", "Khách 4", "Khách 5")),
+                "Lễ tân"))
+                .hasMessageContaining("sức chứa tối đa")
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+
+        verify(bookingGuestRepository, never()).saveAll(any());
         verify(roomRepository, never()).save(any(Room.class));
     }
 
@@ -439,4 +518,3 @@ class RoomServiceTest {
         verify(roomRepository, never()).save(any(Room.class));
     }
 }
-
