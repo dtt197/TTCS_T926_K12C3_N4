@@ -5,6 +5,7 @@ import type {
   GuestQuote,
   PublicRoomTypeDetails,
   PublicRoomTypeOption,
+  WalkInBookingResult,
 } from '../types/guestBooking'
 import type { PublicRoomTypeDetail } from '../types/roomDetail'
 
@@ -47,7 +48,7 @@ export type WalkInBookingPayload = {
 }
 
 export function createWalkInBooking(payload: WalkInBookingPayload) {
-  return apiRequest<GuestBookingResult>('/api/public/bookings/walk-in', {
+    return apiRequest<WalkInBookingResult>('/api/public/bookings/walk-in', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

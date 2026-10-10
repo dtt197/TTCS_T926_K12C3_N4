@@ -7,6 +7,7 @@ import com.ttcs.homestay.dto.booking.GuestQuoteAlternative;
 import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeDetailResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
+import com.ttcs.homestay.dto.booking.WalkInBookingResponse;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingSource;
@@ -240,7 +241,7 @@ public class GuestBookingService {
     }
 
     @Transactional
-    public GuestBookingResponse createWalkInBooking(
+    public WalkInBookingResponse createWalkInBooking(
             WalkInBookingRequest request) {
 
         validateDates(request.checkInDate(), request.checkOutDate());
@@ -288,8 +289,6 @@ public class GuestBookingService {
 
         // Booking tại quầy xác nhận ngay
         booking.setStatus(BookingStatus.DA_XAC_NHAN);
-
-        booking.setSource(BookingSource.TRUC_TUYEN);
 
         // Nguồn booking: tại quầy
         booking.setSource(BookingSource.TAI_QUAY);
@@ -340,7 +339,7 @@ public class GuestBookingService {
 
         // S3-03: booking tại quầy cũng giữ một suất theo loại phòng, chưa gán phòng cụ thể.
 
-        return GuestBookingResponse.from(saveHoldingRoom(booking, roomType));
+                return WalkInBookingResponse.from(saveHoldingRoom(booking, roomType));
     }
 
     /**

@@ -6,6 +6,7 @@ import com.ttcs.homestay.dto.booking.GuestQuoteResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeDetailResponse;
 import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
 import com.ttcs.homestay.dto.booking.WalkInBookingRequest;
+import com.ttcs.homestay.dto.booking.WalkInBookingResponse;
 import com.ttcs.homestay.service.GuestBookingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -79,7 +80,7 @@ public class PublicBookingController {
     }
 
     @PostMapping("/bookings/walk-in")
-    public ResponseEntity<GuestBookingResponse> createWalkInBooking(
+    public ResponseEntity<WalkInBookingResponse> createWalkInBooking(
             @Valid @RequestBody WalkInBookingRequest request) {
 
         return ResponseEntity
