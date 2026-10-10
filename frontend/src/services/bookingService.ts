@@ -219,3 +219,15 @@ export function changeBookingRoom(id: number, roomId: number, reason: string): P
 export function getBookingRoomChangeHistory(id: number): Promise<BookingRoomChangeHistory[]> {
   return apiRequest<BookingRoomChangeHistory[]>(`/api/bookings/${id}/room-change-history`)
 }
+
+/** S3-05 Lát 2: thông tin huỷ của một booking (chỉ có giá trị khi booking đã huỷ). */
+export type BookingCancellationInfo = {
+  status: string
+  cancelReason: string | null
+  cancelledBy: string | null
+  cancelledAt: string | null
+}
+
+export function getBookingCancellationInfo(id: number): Promise<BookingCancellationInfo> {
+  return apiRequest<BookingCancellationInfo>(`/api/bookings/${id}/cancellation-info`)
+}
