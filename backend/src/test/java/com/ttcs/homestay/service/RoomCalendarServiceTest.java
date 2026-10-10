@@ -31,6 +31,7 @@ class RoomCalendarServiceTest {
         Booking booking = new Booking();
         booking.setRoom(room); booking.setStatus(status);
         booking.setCheckInDate(start.plusDays(from)); booking.setCheckOutDate(start.plusDays(to));
+        booking.setGuestName("Guest " + from); booking.setBookingCode("BOOK-" + from);
         return booking;
     }
 
@@ -113,6 +114,45 @@ class RoomCalendarServiceTest {
     @Test void noBookingMeansAvailable() {
         given(List.of(room(1)));
         assertThat(statuses()).containsOnly(CellStatus.AVAILABLE);
+    }
+
+    @Test void bookingDetailsFollowTheAssignedBookingForEveryOccupiedNightOnly() {
+        Room room = room(1);
+        given(List.of(room), booking(room, 0, 2, BookingStatus.DA_XAC_NHAN),
+                booking(room, 2, 3, BookingStatus.DA_NHAN_PHONG));
+        var cells = service.buildCalendar(start, 3, now).rooms().get(0).cells();
+        assertThat(cells).extracting(cell -> cell.guestName()).containsExactly("Guest 0", "Guest 0", "Guest 2");
+        assertThat(cells).extracting(cell -> cell.bookingCode()).containsExactly("BOOK-0", "BOOK-0", "BOOK-2");
+    }
+
+    @Test void checkoutNightHasNoBookingDetails() {
+        Room room = room(1);
+        given(List.of(room), booking(room, 0, 1, BookingStatus.DA_XAC_NHAN));
+        var cells = service.buildCalendar(start, 3, now).rooms().get(0).cells();
+        assertThat(cells.get(1).status()).isEqualTo(CellStatus.AVAILABLE);
+        assertThat(cells.get(1).guestName()).isNull();
+        assertThat(cells.get(1).bookingCode()).isNull();
+    }
+
+    @Test void maintenanceHidesBookingDetailsAndMissingFieldsRemainMissing() {
+        Room room = room(1); room.setMaintenanceStartDate(start);
+        Booking booking = booking(room, 0, 1, BookingStatus.DA_XAC_NHAN); booking.setGuestName(" "); booking.setBookingCode(null);
+        given(List.of(room), booking);
+        var cell = service.buildCalendar(start, 3, now).rooms().get(0).cells().get(0);
+        assertThat(cell.status()).isEqualTo(CellStatus.MAINTENANCE);
+        assertThat(cell.guestName()).isNull(); assertThat(cell.bookingCode()).isNull();
+        room.setMaintenanceStartDate(null);
+        var bookedCell = service.buildCalendar(start, 3, now).rooms().get(0).cells().get(0);
+        assertThat(bookedCell.status()).isEqualTo(CellStatus.BOOKED);
+        assertThat(bookedCell.guestName()).isNull(); assertThat(bookedCell.bookingCode()).isNull();
+    }
+
+    @Test void overlappingBookingsOnOneNightAreReportedAsInvalidData() {
+        Room room = room(1);
+        given(List.of(room), booking(room, 0, 2, BookingStatus.DA_XAC_NHAN),
+                booking(room, 1, 3, BookingStatus.DA_NHAN_PHONG));
+        assertThatThrownBy(() -> service.buildCalendar(start, 3, now))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("multiple bookings");
     }
 
     @ParameterizedTest @ValueSource(ints = {1, 14})

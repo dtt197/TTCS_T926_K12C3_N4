@@ -14,3 +14,8 @@
 .calendar-AVAILABLE { background: #e5f5eb; color: #165b32; }
 .calendar-BOOKED { background: #dbeafe; color: #193e89; }
 .calendar-MAINTENANCE { background: #ffedd5; color: #853500; }
+.calendar-cell-trigger { position: relative; width: 100%; border: 0; padding: 0; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.calendar-cell-trigger:focus-visible { outline: 3px solid #111827; outline-offset: 3px; border-radius: 3px; }
+.calendar-booking-popover { position: fixed; z-index: 20; display: grid; gap: 5px; width: max-content; max-width: min(260px, calc(100vw - 24px)); padding: 10px 12px; white-space: normal; overflow-wrap: anywhere; text-align: left; color: #172033; background: white; border: 1px solid #94a3b8; border-radius: 7px; box-shadow: 0 5px 16px #0f172a33; transform: translate(-50%, -100%); }
+.calendar-guest-name { overflow-wrap: anywhere; }
+.calendar-booking-code { font-family: monospace; overflow-wrap: anywhere; }
