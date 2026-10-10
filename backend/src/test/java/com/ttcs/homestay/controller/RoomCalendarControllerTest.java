@@ -102,6 +102,7 @@ class RoomCalendarControllerTest {
         Room room = new Room(); room.setId(1L); room.setRoomNumber("101"); room.setRoomType("Double");
         room.setStatus(RoomStatus.TRONG_SACH);
         Booking booking = new Booking(); booking.setRoom(room); booking.setStatus(BookingStatus.CHO_XAC_NHAN);
+        booking.setGuestName("Calendar Guest"); booking.setBookingCode("CAL-123");
         booking.setCheckInDate(LocalDate.of(2027, 6, 10)); booking.setCheckOutDate(LocalDate.of(2027, 6, 11));
         OffsetDateTime expiry = OffsetDateTime.now().minusDays(1); booking.setHoldExpiresAt(expiry);
         when(rooms.findAllByActiveTrueOrderByRoomNumberAsc()).thenReturn(List.of(room));
@@ -112,7 +113,11 @@ class RoomCalendarControllerTest {
                 .andExpect(jsonPath("$.rooms[0].roomNumber").value("101"))
                 .andExpect(jsonPath("$.rooms[0].cells.length()").value(14))
                 .andExpect(jsonPath("$.rooms[0].cells[0].date").value("2027-06-10"))
-                .andExpect(jsonPath("$.rooms[0].cells[0].status").value("AVAILABLE"));
+                .andExpect(jsonPath("$.rooms[0].cells[0].status").value("AVAILABLE"))
+                .andExpect(jsonPath("$.rooms[0].cells[0].guestName").doesNotExist())
+                .andExpect(jsonPath("$.rooms[0].cells[0].bookingCode").doesNotExist())
+                .andExpect(jsonPath("$..guestPhone").doesNotExist())
+                .andExpect(jsonPath("$..guestEmail").doesNotExist());
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CHO_XAC_NHAN);
         assertThat(booking.getHoldExpiresAt()).isEqualTo(expiry);
         assertThat(booking.getRoom()).isSameAs(room);

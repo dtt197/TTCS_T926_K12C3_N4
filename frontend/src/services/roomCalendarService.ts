@@ -9,7 +9,7 @@ export type RoomCalendar = {
     roomId: number
     roomNumber: string
     roomType: string
-    cells: { date: string; status: CalendarStatus }[]
+    cells: { date: string; status: CalendarStatus; guestName: string | null; bookingCode: string | null }[]
   }[]
 }
 
