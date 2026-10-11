@@ -124,6 +124,8 @@ class RoomShortageSeedDataIntegrationTest {
         r.setRoomType(roomTypeName);
         r.setStatus(status);
         r.setActive(active);
+        r.setMaintenanceStartDate(null);
+        r.setMaintenanceEndDate(null);
         roomRepository.save(r);
     }
 
@@ -192,5 +194,60 @@ class RoomShortageSeedDataIntegrationTest {
         // Sau khi xoá: Phòng đơn chỉ còn 1 booking cho 1 phòng khả dụng -> Vừa đủ
         List<RoomShortageAlertResponse> alertsAfter = roomShortageAlertService.getShortageAlerts();
         assertThat(alertsAfter).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC4: Demo - Với loại phòng không có cảnh báo, chuyển sang bảo trì hiện thêm cảnh báo; ra khỏi bảo trì thì biến mất; loại còn dư bảo trì không sinh cảnh báo")
+    void testAC4_demoKichBanChuyenPhongBaoTri_vaRaKhoiBaoTri() {
+        // Xoá booking dư của phòng đơn để đưa hệ thống về trạng thái sạch (hoặc chỉ xét Phòng đôi và Phòng gia đình)
+        Booking bookingDuDon = bookingRepository.findByBookingCode("BK-S308-DON-02").orElseThrow();
+        bookingRepository.delete(bookingDuDon);
+
+        // 1. Ban đầu: Phòng đôi có 2 phòng khả dụng (102, 201), có đúng 2 booking -> KHÔNG có cảnh báo cho Phòng đôi
+        List<RoomShortageAlertResponse> alertsInit = roomShortageAlertService.getShortageAlerts();
+        assertThat(alertsInit).noneMatch(a -> a.roomTypeCode().equals("DOI"));
+
+        // 2. Chuyển phòng đôi 102 sang BAO_TRI trong khoảng ngày bao gồm booking (today đến today + 5)
+        Room r102 = roomRepository.findAll().stream()
+                .filter(r -> "102".equals(r.getRoomNumber()))
+                .findFirst()
+                .orElseThrow();
+        r102.setStatus(RoomStatus.BAO_TRI);
+        r102.setMaintenanceStartDate(today);
+        r102.setMaintenanceEndDate(today.plusDays(5));
+        roomRepository.save(r102);
+
+        // -> Màn hình vận hành hiện THÊM cảnh báo với số phòng khả dụng giảm đúng 1 (từ 2 xuống 1)
+        List<RoomShortageAlertResponse> alertsAfterMaint = roomShortageAlertService.getShortageAlerts();
+        List<RoomShortageAlertResponse> doiAlerts = alertsAfterMaint.stream()
+                .filter(a -> a.roomTypeCode().equals("DOI"))
+                .toList();
+        assertThat(doiAlerts).isNotEmpty();
+        assertThat(doiAlerts.get(0).availableRooms()).isEqualTo(1); // Giảm đúng 1
+        assertThat(doiAlerts.get(0).bookingCount()).isEqualTo(2);
+
+        // 3. Chuyển phòng 102 ra khỏi bảo trì (về TRONG_SACH)
+        r102.setStatus(RoomStatus.TRONG_SACH);
+        r102.setMaintenanceStartDate(null);
+        r102.setMaintenanceEndDate(null);
+        roomRepository.save(r102);
+
+        // -> Cảnh báo của Phòng đôi BIẾN MẤT hoàn toàn
+        List<RoomShortageAlertResponse> alertsAfterExitMaint = roomShortageAlertService.getShortageAlerts();
+        assertThat(alertsAfterExitMaint).noneMatch(a -> a.roomTypeCode().equals("DOI"));
+
+        // 4. Chuyển một phòng sang bảo trì ở loại CÒN DƯ (Phòng gia đình 301, 0 booking)
+        Room r301 = roomRepository.findAll().stream()
+                .filter(r -> "301".equals(r.getRoomNumber()))
+                .findFirst()
+                .orElseThrow();
+        r301.setStatus(RoomStatus.BAO_TRI);
+        r301.setMaintenanceStartDate(today);
+        r301.setMaintenanceEndDate(today.plusDays(5));
+        roomRepository.save(r301);
+
+        // -> KHÔNG sinh cảnh báo cho Phòng gia đình (vì 0 booking <= 0 khả dụng)
+        List<RoomShortageAlertResponse> alertsAfterGdMaint = roomShortageAlertService.getShortageAlerts();
+        assertThat(alertsAfterGdMaint).noneMatch(a -> a.roomTypeCode().equals("GIA_DINH"));
     }
 }
