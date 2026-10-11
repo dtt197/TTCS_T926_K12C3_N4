@@ -1,4 +1,5 @@
 import { canChangeBookingRoom, roomChangeOptions } from './bookingRoomChangeActions'
+import { bookingActionsFor } from './bookingActionVisibility'
 import './BookingListPage.css'
 import { ApiRequestError } from '../services/apiClient'
 import type {
@@ -8,7 +9,8 @@ import type {
   AssignableRoom,
   BookingRoomChangeHistory,
 } from '../types/booking'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { BookingDetailResponse } from '../services/bookingService'
 import { createBookingDepositAdjustment } from '../services/bookingService'
 import { hasPermission } from '../permissions/rolePermissions'
@@ -112,6 +114,12 @@ export function BookingListPage({ role }: { role: string }) {
   const [editError, setEditError] = useState<string | null>(null)
   const [editSuccess, setEditSuccess] = useState<string | null>(null)
   const [refreshVersion, setRefreshVersion] = useState(0)
+  const [openActionMenu, setOpenActionMenu] = useState<number | null>(null)
+  const [actionMenuPosition, setActionMenuPosition] = useState<{ top: number; left: number; maxHeight: number } | null>(null)
+  const actionMenuRef = useRef<HTMLDivElement | null>(null)
+  const actionTriggerRefs = useRef(new Map<number, HTMLButtonElement>())
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
     // S3-02 Lát 3: huỷ booking
   const [cancellingBooking, setCancellingBooking] = useState<BookingListItem | null>(null)
   const [cancelReason, setCancelReason] = useState('')
@@ -135,6 +143,87 @@ export function BookingListPage({ role }: { role: string }) {
   const [changeRoomReason, setChangeRoomReason] = useState('')
   const [changeRoomSaving, setChangeRoomSaving] = useState(false)
   const [roomChangeHistory, setRoomChangeHistory] = useState<BookingRoomChangeHistory[]>([])
+
+  useEffect(() => {
+    if (openActionMenu === null) return
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (actionMenuRef.current?.contains(event.target as Node)) return
+      if (actionTriggerRefs.current.get(openActionMenu)?.contains(event.target as Node)) return
+      setOpenActionMenu(null)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      actionTriggerRefs.current.get(openActionMenu)?.focus()
+      setOpenActionMenu(null)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [openActionMenu])
+
+  useLayoutEffect(() => {
+    if (openActionMenu === null) return
+    const reposition = () => {
+      const trigger = actionTriggerRefs.current.get(openActionMenu)
+      const menu = actionMenuRef.current
+      if (!trigger || !menu) return
+      const rect = trigger.getBoundingClientRect()
+      if (rect.bottom < 0 || rect.top > window.innerHeight || rect.right < 0 || rect.left > window.innerWidth) {
+        setOpenActionMenu(null)
+        return
+      }
+      const menuHeight = menu.getBoundingClientRect().height
+      const menuWidth = menu.getBoundingClientRect().width
+      const edge = 8
+      const gap = 6
+      const below = window.innerHeight - rect.bottom - gap - edge
+      const above = rect.top - gap - edge
+      const placeBelow = menuHeight <= below || (menuHeight > above && below >= above)
+      const availableHeight = Math.max(0, placeBelow ? below : above)
+      const top = placeBelow
+        ? Math.min(rect.bottom + gap, window.innerHeight - menuHeight - edge)
+        : Math.max(edge, rect.top - gap - Math.min(menuHeight, availableHeight))
+      const left = Math.max(edge, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - edge))
+      setActionMenuPosition({ top, left, maxHeight: Math.max(0, Math.min(menuHeight, availableHeight)) })
+    }
+    reposition()
+    window.addEventListener('resize', reposition)
+    window.addEventListener('scroll', reposition, true)
+    return () => {
+      window.removeEventListener('resize', reposition)
+      window.removeEventListener('scroll', reposition, true)
+    }
+  }, [openActionMenu])
+
+  function toggleActionMenu(bookingId: number) {
+    if (openActionMenu === bookingId) {
+      setOpenActionMenu(null)
+      return
+    }
+    setActionMenuPosition(null)
+    setOpenActionMenu(bookingId)
+  }
+
+  function closeActionMenuAndRun(action: () => void) {
+    setOpenActionMenu(null)
+    action()
+  }
+
+  function handleActionMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+    if (items.length === 0) return
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+        : (currentIndex + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+      items[nextIndex].focus()
+    }
+  }
 
   async function openRoomChange(booking: BookingListItem) {
     setChangeRoomBooking(booking)
@@ -167,9 +256,6 @@ export function BookingListPage({ role }: { role: string }) {
       setRoomSaving, setRoomBooking, setEditSuccess, reloadBookings: reloadBookingData,
     })
   }
-
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
-  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
 
   async function startRoomSelection(booking: BookingListItem) {
     if (booking.status !== 'DA_XAC_NHAN' || booking.roomConfirmedAt) return
@@ -206,6 +292,7 @@ export function BookingListPage({ role }: { role: string }) {
   }
 
   async function reloadBookingData() {
+    setOpenActionMenu(null)
     const result = await searchBookings({
       keyword: appliedFilters.keyword.trim() || undefined,
       status: appliedFilters.status || undefined,
@@ -334,6 +421,7 @@ export function BookingListPage({ role }: { role: string }) {
 
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setOpenActionMenu(null)
 
     if (
       filters.checkInFrom &&
@@ -350,6 +438,7 @@ export function BookingListPage({ role }: { role: string }) {
   }
 
   function handleResetFilters() {
+    setOpenActionMenu(null)
     setFilters(EMPTY_FILTERS)
     setAppliedFilters(EMPTY_FILTERS)
     setPage(0)
@@ -710,38 +799,65 @@ export function BookingListPage({ role }: { role: string }) {
                         </span>
                       )}
                     </td>
-                    <td>
-                      {canManage && booking.status === 'CHO_XAC_NHAN' && !booking.holdExpired && (
-                        <button type="button" className="booking-confirm-button" onClick={() => startConfirming(booking)}>
-                          Xác nhận
-                        </button>
-                      )}
-                      {canManage && booking.status === 'DA_XAC_NHAN' && !booking.roomConfirmedAt && (
-                        <button type="button" className="booking-edit-button" onClick={() => void startRoomSelection(booking)}>
-                          Chốt phòng
-                        </button>
-                      )}
-                      {canChangeBookingRoom(role, booking, new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' })) && (
-                        <button type="button" className="booking-edit-button" onClick={() => void openRoomChange(booking)}>Đổi phòng</button>
-                      )}
+                    <td className="booking-actions-cell">
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
+                        <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M2 10s2.8-5 8-5 8 5 8 5-2.8 5-8 5-8-5-8-5Z" /><circle cx="10" cy="10" r="2.2" /></svg>
                         Chi tiết
                       </button>
-                      {canManage && (
-                        <button
-                          type="button"
-                          id={`booking-edit-btn-${booking.id}`}
-                          className="booking-edit-button"
-                          onClick={() => startEditing(booking)}
-                        >
-                          Cập nhật
-                        </button>
-                      )}
-                        {canCancel && (booking.status === 'CHO_XAC_NHAN' || booking.status === 'DA_XAC_NHAN') && (
-                        <button type="button" className="booking-cancel-booking-button" onClick={() => startCancelling(booking)}>
-                          Huỷ booking
-                        </button>
-                      )}
+                      {(() => {
+                        const actions = bookingActionsFor(
+                          booking,
+                          { manage: canManage, cancel: canCancel },
+                          canChangeBookingRoom(role, booking, new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' })),
+                        )
+                        const hasActions = actions.length > 0
+                        if (!hasActions) return null
+                        const isOpen = openActionMenu === booking.id
+                        return <>
+                          <button
+                            type="button"
+                            className="booking-actions-trigger"
+                            aria-haspopup="menu"
+                            aria-expanded={isOpen}
+                            aria-controls={isOpen ? `booking-actions-menu-${booking.id}` : undefined}
+                            aria-label={`Thao tác booking ${booking.bookingCode}`}
+                            ref={(element) => {
+                              if (element) actionTriggerRefs.current.set(booking.id, element)
+                              else actionTriggerRefs.current.delete(booking.id)
+                            }}
+                            onClick={() => toggleActionMenu(booking.id)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'ArrowDown' && !isOpen) {
+                                event.preventDefault()
+                                setOpenActionMenu(booking.id)
+                                window.setTimeout(() => actionMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus(), 0)
+                              }
+                            }}
+                          ><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4 5h12M4 10h12M4 15h12" /></svg>Thao tác <span className="booking-actions-chevron" aria-hidden="true">▾</span></button>
+                          {isOpen && createPortal(
+                            <div
+                              className="booking-actions-menu"
+                              id={`booking-actions-menu-${booking.id}`}
+                              role="menu"
+                              aria-label={`Thao tác booking ${booking.bookingCode}`}
+                              ref={actionMenuRef}
+                              style={{
+                                top: actionMenuPosition?.top ?? 0,
+                                left: actionMenuPosition?.left ?? 0,
+                                maxHeight: actionMenuPosition?.maxHeight,
+                                visibility: actionMenuPosition ? 'visible' : 'hidden',
+                              }}
+                              onKeyDown={handleActionMenuKeyDown}
+                            >
+                              {actions.includes('confirm') && <button type="button" role="menuitem" onClick={() => closeActionMenuAndRun(() => startConfirming(booking))}><span aria-hidden="true">✓</span>Xác nhận</button>}
+                              {actions.includes('assign-room') && <button type="button" role="menuitem" onClick={() => closeActionMenuAndRun(() => void startRoomSelection(booking))}><span aria-hidden="true">⌂</span>Chốt phòng</button>}
+                              {actions.includes('change-room') && <button type="button" role="menuitem" onClick={() => closeActionMenuAndRun(() => void openRoomChange(booking))}><span aria-hidden="true">⇄</span>Đổi phòng</button>}
+                              {actions.includes('edit') && <button type="button" role="menuitem" id={`booking-edit-btn-${booking.id}`} onClick={() => closeActionMenuAndRun(() => startEditing(booking))}><span aria-hidden="true">✎</span>Cập nhật</button>}
+                              {actions.includes('cancel') && <button type="button" role="menuitem" className="booking-actions-menu-danger" onClick={() => closeActionMenuAndRun(() => startCancelling(booking))}><span aria-hidden="true">×</span>Huỷ booking</button>}
+                            </div>, document.body,
+                          )}
+                        </>
+                      })()}
                     </td>
                   </tr>
                 ))}
@@ -753,7 +869,7 @@ export function BookingListPage({ role }: { role: string }) {
             <button
               type="button"
               disabled={page === 0}
-              onClick={() => setPage(page - 1)}
+              onClick={() => { setOpenActionMenu(null); setPage(page - 1) }}
             >
               Trang trước
             </button>
@@ -765,7 +881,7 @@ export function BookingListPage({ role }: { role: string }) {
             <button
               type="button"
               disabled={page + 1 >= totalPages}
-              onClick={() => setPage(page + 1)}
+              onClick={() => { setOpenActionMenu(null); setPage(page + 1) }}
             >
               Trang sau
             </button>
@@ -774,57 +890,76 @@ export function BookingListPage({ role }: { role: string }) {
       )}
 
       {detailBooking && (
-        <div className="booking-dialog-backdrop">
+        <div className="booking-dialog-backdrop booking-detail-backdrop">
           <section className="booking-edit-dialog booking-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-detail-title">
-            <div className="booking-edit-heading">
-              <div>
-                <h3 id="booking-detail-title">Chi tiết đặt phòng</h3>
-                <p>{detailBooking.bookingCode} · {detailBooking.guestName}</p>
+            <header className="booking-detail-header">
+              <div className="booking-detail-heading-copy">
+                <span className="booking-detail-eyebrow">Chi tiết đặt phòng</span>
+                <h3 id="booking-detail-title">{detailBooking.bookingCode}</h3>
+                <p>{detailBooking.guestName}<span> · </span>Phòng {detailBooking.roomNumber ?? 'Chưa gán'}</p>
               </div>
+              {detailData && <span className={`booking-status ${STATUS_CLASS_NAMES[detailData.status] ?? ''}`}>{STATUS_LABELS[detailData.status] ?? detailData.status}</span>}
               <button type="button" className="booking-dialog-close" aria-label="Đóng" onClick={() => setDetailBooking(null)}>×</button>
-            </div>
+            </header>
             {detailLoading && <p>Đang tải thông tin từ máy chủ...</p>}
             {detailError && <div className="alert" role="alert">{detailError}</div>}
             {detailData && (
               <div className="booking-detail-content">
-                <h4>Thông tin đặt phòng</h4>
-                <dl className="booking-detail-grid">
-                  <div><dt>Mã booking</dt><dd>{detailBooking.bookingCode}</dd></div>
-                  <div><dt>Trạng thái</dt><dd>{STATUS_LABELS[detailData.status] ?? detailData.status}</dd></div>
-                  <div><dt>Loại phòng</dt><dd>{detailBooking.roomTypeNameSnapshot}</dd></div>
-                  <div><dt>Phòng</dt><dd>{detailBooking.roomNumber ?? 'Chưa gán'}</dd></div>
-                  <div><dt>Tổng tiền</dt><dd>{formatCurrency(detailBooking.totalAmount)}</dd></div>
-                  <div><dt>Ngày nhận phòng</dt><dd>{formatDate(detailBooking.checkInDate)}</dd></div>
-                  <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>
-                  <div><dt>Hạn giữ chỗ</dt><dd>{detailData.holdExpiresAt ? new Date(detailData.holdExpiresAt).toLocaleString('vi-VN') : 'Đã gỡ / không có'}</dd></div>
-                </dl>
+                <div className="booking-detail-columns">
+                  <section className="booking-detail-section" aria-labelledby="booking-stay-title">
+                    <h4 id="booking-stay-title">Thông tin lưu trú</h4>
+                    <dl className="booking-detail-grid">
+                      <div><dt>Loại phòng</dt><dd>{detailBooking.roomTypeNameSnapshot}</dd></div>
+                      <div><dt>Phòng</dt><dd>{detailBooking.roomNumber ?? 'Chưa gán'}</dd></div>
+                      <div><dt>Ngày nhận phòng</dt><dd>{formatDate(detailBooking.checkInDate)}</dd></div>
+                      <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>
+                      <div><dt>Hạn giữ chỗ</dt><dd>{detailData.holdExpiresAt ? new Date(detailData.holdExpiresAt).toLocaleString('vi-VN') : 'Đã gỡ / không có'}</dd></div>
+                    </dl>
+                  </section>
+                  <section className="booking-detail-section" aria-labelledby="booking-payment-title">
+                    <h4 id="booking-payment-title">Thanh toán và tiền cọc</h4>
+                    <dl className="booking-detail-grid">
+                      <div><dt>Tổng tiền booking</dt><dd>{formatCurrency(detailBooking.totalAmount)}</dd></div>
+                      {detailData.deposit ? <>
+                        <div><dt>Số tiền cọc</dt><dd>{formatCurrency(detailData.deposit.amount)}</dd></div>
+                        <div><dt>Phương thức</dt><dd>{detailData.deposit.paymentMethod === 'CASH' ? 'Tiền mặt' : detailData.deposit.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : detailData.deposit.paymentMethod}</dd></div>
+                        <div><dt>Ngày nhận tiền</dt><dd>{formatDate(detailData.deposit.receivedDate)}</dd></div>
+                        <div><dt>Mã giao dịch</dt><dd>{detailData.deposit.paymentReference || 'Không có'}</dd></div>
+                        <div><dt>Người ghi nhận</dt><dd>{detailData.deposit.createdBy || 'Không có'}</dd></div>
+                        <div><dt>Thời điểm ghi nhận</dt><dd>{detailData.deposit.createdAt ? new Date(detailData.deposit.createdAt).toLocaleString('vi-VN') : 'Không có'}</dd></div>
+                      </> : <div className="booking-detail-wide"><dt>Tiền cọc</dt><dd>Booking chưa có tiền cọc được ghi nhận.</dd></div>}
+                    </dl>
+                    {detailData.deposit && <>
+                      <div className="booking-deposit-total"><span>Tổng tiền cọc hiện tại</span><strong>{formatCurrency(Number(detailData.currentDepositTotal ?? detailData.deposit.amount))}</strong></div>
+                      {(detailData.depositAdjustments ?? []).length > 0 && <div className="booking-adjustment-list">
+                        {detailData.depositAdjustments.map((item) => <article className="booking-adjustment-item" key={item.id}>
+                          <strong className={item.adjustmentType === 'TANG' ? 'deposit-increase' : 'deposit-decrease'}>{item.adjustmentType === 'TANG' ? 'Tăng' : 'Giảm'} {formatCurrency(item.amount)}</strong>
+                          <span>{item.reason}</span><small>{item.createdBy || 'Không có'} · {new Date(item.createdAt).toLocaleString('vi-VN')}</small>
+                        </article>)}
+                      </div>}
+                    </>}
+                  </section>
+                </div>
                 {detailData.registeredGuests && detailData.registeredGuests.length > 0 && (
-                  <>
-                    <h4>Khách đã đăng ký lưu trú</h4>
-                    <ul>
+                  <section className="booking-detail-section booking-detail-full" aria-labelledby="booking-guests-title">
+                    <h4 id="booking-guests-title">Khách lưu trú</h4>
+                    <ul className="booking-guest-list">
                       {detailData.registeredGuests.map((guest, index) => (
                         <li key={`${guest.primary ? 'primary' : 'guest'}-${index}`}>
                           {guest.fullName}{guest.primary ? ' (khách chính)' : ''}
                         </li>
                       ))}
                     </ul>
-                  </>
+                  </section>
                 )}
-                {detailBooking.status === 'DA_HUY' && <BookingCancellationInfoSection bookingId={detailBooking.id} />}
-                {detailBooking.status === 'DA_NHAN_PHONG' && <BookingCheckedInCancelNotice />}
-                <h4>Thông tin tiền cọc</h4>
-                {detailData.deposit ? (
-                  <dl className="booking-detail-grid">
-                    <div><dt>Số tiền cọc</dt><dd>{formatCurrency(detailData.deposit.amount)}</dd></div>
-                    <div><dt>Phương thức</dt><dd>{detailData.deposit.paymentMethod === 'CASH' ? 'Tiền mặt' : detailData.deposit.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : detailData.deposit.paymentMethod}</dd></div>
-                    <div><dt>Ngày nhận tiền</dt><dd>{formatDate(detailData.deposit.receivedDate)}</dd></div>
-                    <div><dt>Mã giao dịch</dt><dd>{detailData.deposit.paymentReference || 'Không có'}</dd></div>
-                    <div><dt>Người ghi nhận</dt><dd>{detailData.deposit.createdBy || 'Không có'}</dd></div>
-                    <div><dt>Thời điểm ghi nhận</dt><dd>{detailData.deposit.createdAt ? new Date(detailData.deposit.createdAt).toLocaleString('vi-VN') : 'Không có'}</dd></div>
-                  </dl>
-                ) : <p>Booking chưa có tiền cọc được ghi nhận.</p>}
+                {(detailBooking.status === 'DA_HUY' || detailBooking.status === 'DA_NHAN_PHONG') && <section className="booking-detail-section booking-detail-full booking-detail-alerts" aria-labelledby="booking-alerts-title">
+                  <h4 id="booking-alerts-title">Cảnh báo nghiệp vụ</h4>
+                  {detailBooking.status === 'DA_HUY' && <BookingCancellationInfoSection bookingId={detailBooking.id} />}
+                  {detailBooking.status === 'DA_NHAN_PHONG' && <BookingCheckedInCancelNotice />}
+                </section>}
 
-                <h4 id="booking-history-section-title">Lịch sử thay đổi (Audit Log)</h4>
+                <section className="booking-detail-section booking-detail-full" aria-labelledby="booking-history-section-title">
+                <h4 id="booking-history-section-title">Nhật ký chỉnh sửa Booking</h4>
                 {detailData.history && detailData.history.length > 0 ? (
                   <div className="booking-history-list" id="booking-history-list">
                     {detailData.history.map((log) => (
@@ -868,9 +1003,11 @@ export function BookingListPage({ role }: { role: string }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="booking-history-empty" id="booking-history-empty">Chưa có lịch sử thay đổi nào cho booking này.</p>
+                  <p className="booking-history-empty" id="booking-history-empty">Chưa có bản ghi chỉnh sửa thông tin booking.</p>
                 )}
-                <h4>Lịch sử đổi phòng</h4>
+                </section>
+                <section className="booking-detail-section booking-detail-full" aria-labelledby="booking-room-history-title">
+                <h4 id="booking-room-history-title">Lịch sử đổi phòng</h4>
                 {roomChangeHistory.length ? roomChangeHistory.map((item) => (
                   <div key={item.id} className="booking-history-card">
                     <div className="booking-history-header">
@@ -880,12 +1017,13 @@ export function BookingListPage({ role }: { role: string }) {
                     <div>Phòng {item.oldRoomNumber} → Phòng {item.newRoomNumber}</div>
                     <div>Lý do: {item.reason}</div>
                   </div>
-                )) : <p>Chưa có lịch sử đổi phòng.</p>}
+                )) : <p className="booking-history-empty">Chưa có lịch sử đổi phòng.</p>}
+                </section>
               </div>
             )}
-            <div className="booking-edit-actions">
+            <footer className="booking-detail-footer">
               <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
-            </div>
+            </footer>
           </section>
         </div>
       )}
@@ -991,12 +1129,17 @@ export function BookingListPage({ role }: { role: string }) {
               </label>
             )}
             {roomError && <div className="alert" role="alert">{roomError}</div>}
-            <div className="booking-dialog-actions">
-              <button type="button" disabled={roomLoading || roomSaving} onClick={() => void reloadAssignableRooms()}>Tải lại danh sách phòng</button>
-              <button type="button" disabled={roomSaving} onClick={() => setRoomBooking(null)}>Đóng</button>
-              <button type="button" className="booking-save-button" disabled={roomSaving || roomLoading || selectedRoomId === null} onClick={() => void confirmRoomSelection()}>
-                {roomSaving ? 'Đang xác nhận...' : 'Xác nhận chọn phòng'}
+            <div className="booking-dialog-actions booking-room-actions">
+              <button type="button" className="booking-room-reload" disabled={roomLoading || roomSaving} onClick={() => void reloadAssignableRooms()}>
+                <svg aria-hidden="true" viewBox="0 0 20 20" focusable="false"><path d="M16.5 8A6.75 6.75 0 0 0 4.7 5.4L3 7.2M3 7.2V3.8M3 7.2h3.4M3.5 12A6.75 6.75 0 0 0 15.3 14.6l1.7-1.8m0 0v3.4m0-3.4h-3.4" /></svg>
+                {roomLoading ? 'Đang tải...' : 'Tải lại'}
               </button>
+              <div className="booking-room-actions-end">
+                <button type="button" className="booking-room-close" disabled={roomSaving} onClick={() => setRoomBooking(null)}>Đóng</button>
+                <button type="button" className="booking-save-button booking-room-confirm" disabled={roomSaving || roomLoading || selectedRoomId === null} onClick={() => void confirmRoomSelection()}>
+                  {roomSaving ? <><span className="booking-room-spinner" aria-hidden="true" />Đang chốt...</> : <><svg aria-hidden="true" viewBox="0 0 20 20" focusable="false"><path d="m4 10.5 4 4 8-9" /></svg>Chốt phòng</>}
+                </button>
+              </div>
             </div>
           </section>
         </div>
@@ -1034,17 +1177,21 @@ export function BookingListPage({ role }: { role: string }) {
       )}
 
       {editingBooking && (
-        <div className="booking-dialog-backdrop">
+        <div className="booking-dialog-backdrop booking-update-backdrop">
           <section
-            className="booking-edit-dialog"
+            className="booking-edit-dialog booking-update-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="booking-edit-title"
           >
-            <div className="booking-edit-heading">
-              <div>
+            <div className="booking-edit-heading booking-update-header">
+              <div className="booking-update-heading-copy">
                 <h3 id="booking-edit-title">Cập nhật booking</h3>
                 <p>{editingBooking.bookingCode} · {editingBooking.guestName}</p>
+                <div className="booking-update-meta">
+                  <span className={`booking-status ${STATUS_CLASS_NAMES[editingBooking.status] ?? ''}`}>{STATUS_LABELS[editingBooking.status] ?? editingBooking.status}</span>
+                  {editingBooking.roomNumber && <span className="booking-update-room">Phòng {editingBooking.roomNumber}</span>}
+                </div>
               </div>
               <button
                 type="button"
@@ -1058,7 +1205,20 @@ export function BookingListPage({ role }: { role: string }) {
               </button>
             </div>
 
-            <div className="booking-current-details" id="booking-current-details">
+            <form className="booking-update-layout" id="booking-edit-form" onSubmit={handleUpdateBooking}>
+              <div className="booking-update-content">
+              <section className="booking-update-section booking-update-stay" aria-labelledby="booking-stay-title">
+                <div className="booking-update-section-heading"><h4 id="booking-stay-title">Chỉnh sửa lưu trú</h4></div>
+                <div className="booking-edit-form booking-update-form">
+                  <label htmlFor="booking-edit-checkin">Ngày nhận phòng<input id="booking-edit-checkin" type="date" required value={editForm.checkInDate} onChange={(event) => setEditForm((current) => ({ ...current, checkInDate: event.target.value }))} /></label>
+                  <label htmlFor="booking-edit-checkout">Ngày trả phòng<input id="booking-edit-checkout" type="date" required min={editForm.checkInDate || undefined} value={editForm.checkOutDate} onChange={(event) => setEditForm((current) => ({ ...current, checkOutDate: event.target.value }))} /></label>
+                  <label className="booking-update-roomtype" htmlFor="booking-edit-roomtype">Loại phòng mới<select id="booking-edit-roomtype" required value={editForm.roomTypeId} disabled={roomTypesLoading} onChange={(event) => setEditForm((current) => ({ ...current, roomTypeId: event.target.value }))}>
+                    <option value="">{roomTypesLoading ? 'Đang tải loại phòng...' : 'Chọn loại phòng'}</option>
+                    {roomTypes.filter((roomType) => roomType.active || String(roomType.id) === editForm.roomTypeId).map((roomType) => <option key={roomType.id} value={roomType.id}>{roomType.name}{roomType.active ? '' : ' (Ngừng bán)'}</option>)}
+                  </select></label>
+                </div>
+              </section>
+              <div className="booking-current-details booking-update-current" id="booking-current-details">
               <strong>Thông tin hiện tại</strong>
               <span>Ngày nhận: {formatDate(editingBooking.checkInDate)}</span>
               <span>Ngày trả: {formatDate(editingBooking.checkOutDate)}</span>
@@ -1066,12 +1226,12 @@ export function BookingListPage({ role }: { role: string }) {
               <span>Tổng tiền: {formatCurrency(editingBooking.totalAmount)}</span>
             </div>
 
-            <section className="booking-deposit-panel" aria-labelledby="booking-deposit-title">
+            <section className="booking-deposit-panel booking-update-section" aria-labelledby="booking-deposit-title">
               <h4 id="booking-deposit-title">Thông tin tiền cọc</h4>
               {editDetailLoading && <p>Đang tải thông tin tiền cọc...</p>}
               {editDetailError && <div className="alert" role="alert">{editDetailError}</div>}
               {editDetailData && (editDetailData.deposit ? <>
-                <dl className="booking-detail-grid">
+                <dl className="booking-detail-grid booking-update-deposit-stats">
                   <div><dt>Tổng tiền booking</dt><dd>{formatCurrency(editingBooking.totalAmount)}</dd></div>
                   <div><dt>Tiền cọc gốc</dt><dd>{formatCurrency(editDetailData.deposit.amount)}</dd></div>
                   <div><dt>Tổng tiền cọc hiện tại</dt><dd>{formatCurrency(Number(editDetailData.currentDepositTotal ?? editDetailData.deposit.amount))}</dd></div>
@@ -1087,69 +1247,6 @@ export function BookingListPage({ role }: { role: string }) {
                 {canAdjustDeposit && editDetailData.status === 'DA_XAC_NHAN' && <button type="button" className="booking-save-button" disabled={editDetailLoading} onClick={() => { setAdjustmentError(null); setAdjustmentOpen(true) }}>Điều chỉnh tiền cọc</button>}
               </> : <p>Booking chưa có tiền cọc gốc được ghi nhận.</p>)}
             </section>
-
-            <form className="booking-edit-form" id="booking-edit-form" onSubmit={handleUpdateBooking}>
-              <label htmlFor="booking-edit-checkin">
-                Ngày nhận phòng
-                <input
-                  id="booking-edit-checkin"
-                  type="date"
-                  required
-                  value={editForm.checkInDate}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      checkInDate: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label htmlFor="booking-edit-checkout">
-                Ngày trả phòng
-                <input
-                  id="booking-edit-checkout"
-                  type="date"
-                  required
-                  min={editForm.checkInDate || undefined}
-                  value={editForm.checkOutDate}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      checkOutDate: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label htmlFor="booking-edit-roomtype">
-                Loại phòng mới
-                <select
-                  id="booking-edit-roomtype"
-                  required
-                  value={editForm.roomTypeId}
-                  disabled={roomTypesLoading}
-                  onChange={(event) =>
-                    setEditForm((current) => ({
-                      ...current,
-                      roomTypeId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">
-                    {roomTypesLoading ? 'Đang tải loại phòng...' : 'Chọn loại phòng'}
-                  </option>
-                  {roomTypes
-                    .filter(
-                      (roomType) =>
-                        roomType.active ||
-                        String(roomType.id) === editForm.roomTypeId,
-                    )
-                    .map((roomType) => (
-                      <option key={roomType.id} value={roomType.id}>
-                        {roomType.name}{roomType.active ? '' : ' (Ngừng bán)'}
-                      </option>
-                    ))}
-                </select>
-              </label>
 
               {previewLoading && (
                 <div className="booking-preview-card" id="booking-preview-card">
@@ -1214,8 +1311,9 @@ export function BookingListPage({ role }: { role: string }) {
                 </div>
               )}
 
+              </div>
               {editError && <div className="alert" id="booking-edit-error" role="alert">{editError}</div>}
-              <div className="booking-edit-actions">
+              <div className="booking-edit-actions booking-update-footer">
                 <button
                   type="button"
                   id="booking-edit-cancel-btn"
@@ -1228,7 +1326,7 @@ export function BookingListPage({ role }: { role: string }) {
                 <button
                   type="submit"
                   id="booking-edit-submit-btn"
-                  className="booking-save-button"
+                  className="booking-save-button booking-update-submit"
                   disabled={
                     editSaving ||
                     roomTypesLoading ||
