@@ -202,8 +202,11 @@ public class H2DevDataLoader implements ApplicationRunner {
                  300000, 400000, 'FRIDAY,SATURDAY', 1000000, 'CHO_XAC_NHAN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + 1, 0, 0, 0),
                 ('BK-DEMO03', 'Lê Hoàng Minh', '0933333333', 'minh.le@example.com', 2,
                  ?, 'Phòng đôi', CURRENT_DATE, CURRENT_DATE + 2,
+                 500000, 650000, 'FRIDAY,SATURDAY', 1000000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0),
+                ('BK-DEMO04', 'Trần Văn Đôi', '0944444444', 'doi.tran@example.com', 2,
+                 ?, 'Phòng đôi', CURRENT_DATE + 2, CURRENT_DATE + 4,
                  500000, 650000, 'FRIDAY,SATURDAY', 1000000, 'DA_XAC_NHAN', CURRENT_TIMESTAMP, NULL, 0, 0, 0)
-            """, doiId, donId, doiId);
+            """, doiId, donId, doiId, doiId);
         }
     }
 }

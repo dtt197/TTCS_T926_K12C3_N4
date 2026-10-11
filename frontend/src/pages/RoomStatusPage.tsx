@@ -615,6 +615,7 @@ async function handleViewHistory(room: Room) {
           item.id === room.id ? savedRoom : item,
         ),
       )
+      window.dispatchEvent(new CustomEvent('room-status-changed'))
       if (isDemoMode) {
         const historyRecord: RoomStatusHistory = {
           id: Date.now(),
@@ -677,6 +678,7 @@ async function handleViewHistory(room: Room) {
       setRooms((current) =>
         current.map((item) => (item.id === room.id ? savedRoom : item)),
       )
+      window.dispatchEvent(new CustomEvent('room-status-changed'))
       const operator =
         currentUser?.fullName ||
         (isHousekeeping ? 'Nhân viên buồng phòng' : 'Lễ tân')
@@ -737,6 +739,7 @@ async function handleViewHistory(room: Room) {
       setRooms((current) =>
         current.map((item) => (item.id === roomId ? savedRoom : item)),
       )
+      window.dispatchEvent(new CustomEvent('room-status-changed'))
       const operator =
         currentUser?.fullName ||
         (isHousekeeping ? 'Nhân viên buồng phòng' : 'Lễ tân')
@@ -923,6 +926,7 @@ async function handleViewHistory(room: Room) {
       setRooms((current) =>
         current.map((item) => (item.id === room.id ? savedRoom : item)),
       )
+      window.dispatchEvent(new CustomEvent('room-status-changed'))
       setDraftStatuses((current) => ({
         ...current,
         [room.id]: 'TRONG_BAN',
@@ -965,7 +969,12 @@ async function handleViewHistory(room: Room) {
     return (
     <div className="app-shell room-status-modern">
       <main className="main-content">
-        {!isHousekeeping && <RoomShortageAlertSection />}
+        {!isHousekeeping && (
+          <RoomShortageAlertSection
+            rooms={rooms}
+            isDemoMode={isDemoMode}
+          />
+        )}
         {/* =========================
             TỔNG QUAN TRẠNG THÁI
            ========================= */}

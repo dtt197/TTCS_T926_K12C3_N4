@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { RoomShortageAlert, ShortageBooking } from '../types/roomShortage'
+import type { Room } from '../types/room'
 import { getRoomShortageAlerts, getShortageBookings } from '../services/roomShortageService'
 import './RoomShortageAlertSection.css'
 
@@ -46,6 +47,72 @@ function formatDateTime(isoStr: string): string {
   }
 }
 
+function getDemoDateOffset(offsetDays: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
+
+function calculateDemoAlerts(rooms: Room[]): RoomShortageAlert[] {
+  const targetDate = getDemoDateOffset(2)
+  const totalDoiRooms = rooms.filter(
+    (r) => r.roomType === 'Phòng đôi' && r.active,
+  ).length
+  const doiAvailable = rooms.filter(
+    (r) =>
+      r.roomType === 'Phòng đôi' &&
+      r.active &&
+      r.status !== 'BAO_TRI',
+  ).length
+  // Kịch bản demo: ban đầu số booking vừa bằng tổng số phòng (vừa đủ, không cảnh báo).
+  // Khi 1 phòng chuyển sang BAO_TRI -> khả dụng giảm 1 -> phát sinh cảnh báo thiếu 1 phòng.
+  const doiBookingCount = totalDoiRooms
+
+  const alerts: RoomShortageAlert[] = []
+  if (doiBookingCount > doiAvailable) {
+    alerts.push({
+      date: targetDate,
+      roomTypeCode: 'DOI',
+      roomTypeName: 'Phòng đôi',
+      bookingCount: doiBookingCount,
+      availableRooms: doiAvailable,
+    })
+  }
+  return alerts
+}
+
+function getDemoShortageBookings(roomTypeCode: string): ShortageBooking[] {
+  if (roomTypeCode === 'DOI') {
+    return [
+      {
+        id: 102,
+        bookingCode: 'BK-DEMO04',
+        guestName: 'Trần Văn Đôi',
+        guestPhone: '0944444444',
+        checkInDate: getDemoDateOffset(2),
+        checkOutDate: getDemoDateOffset(4),
+        status: 'DA_XAC_NHAN',
+        source: 'TRUC_TUYEN',
+        createdAt: new Date().toISOString(),
+        holdExpired: false,
+      },
+      {
+        id: 101,
+        bookingCode: 'BK-DEMO01',
+        guestName: 'Nguyễn Văn An',
+        guestPhone: '0912345678',
+        checkInDate: getDemoDateOffset(2),
+        checkOutDate: getDemoDateOffset(5),
+        status: 'DA_XAC_NHAN',
+        source: 'TRUC_TUYEN',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+        holdExpired: false,
+      },
+    ]
+  }
+  return []
+}
+
 type SelectedAlert = {
   date: string
   roomTypeCode: string
@@ -54,7 +121,15 @@ type SelectedAlert = {
   availableRooms: number
 }
 
-export function RoomShortageAlertSection() {
+export interface RoomShortageAlertSectionProps {
+  rooms?: Room[]
+  isDemoMode?: boolean
+}
+
+export function RoomShortageAlertSection({
+  rooms,
+  isDemoMode = false,
+}: RoomShortageAlertSectionProps = {}) {
   const [alerts, setAlerts] = useState<RoomShortageAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -69,14 +144,45 @@ export function RoomShortageAlertSection() {
     setLoading(true)
     setError(null)
     try {
-      const data = await getRoomShortageAlerts()
-      // Sắp xếp ngày gần nhất trước (date ASC), cùng ngày theo tên loại phòng
-      const sorted = [...(data || [])].sort((a, b) => {
-        const dateCompare = a.date.localeCompare(b.date)
-        if (dateCompare !== 0) return dateCompare
-        return a.roomTypeName.localeCompare(b.roomTypeName, 'vi')
-      })
+      let sorted: RoomShortageAlert[] = []
+      if (isDemoMode && rooms && rooms.length > 0) {
+        sorted = calculateDemoAlerts(rooms)
+      } else {
+        try {
+          const data = await getRoomShortageAlerts()
+          sorted = [...(data || [])].sort((a, b) => {
+            const dateCompare = a.date.localeCompare(b.date)
+            if (dateCompare !== 0) return dateCompare
+            return a.roomTypeName.localeCompare(b.roomTypeName, 'vi')
+          })
+        } catch (apiErr) {
+          if (rooms && rooms.length > 0) {
+            sorted = calculateDemoAlerts(rooms)
+          } else {
+            throw apiErr
+          }
+        }
+      }
+
       setAlerts(sorted)
+
+      // S3-08: Nếu danh sách booking đang mở, cập nhật thông tin dòng cảnh báo hoặc gỡ nếu hết thiếu phòng
+      setSelectedAlert((prev) => {
+        if (!prev) return null
+        const matching = sorted.find(
+          (a) => a.date === prev.date && a.roomTypeCode === prev.roomTypeCode,
+        )
+        if (matching) {
+          return {
+            ...prev,
+            availableRooms: matching.availableRooms,
+            bookingCount: matching.bookingCount,
+          }
+        } else {
+          // Gỡ dòng cảnh báo khỏi màn hình khi phòng ra khỏi bảo trì và không còn thiếu phòng
+          return null
+        }
+      })
     } catch (err) {
       setError(
         err instanceof Error
@@ -86,10 +192,39 @@ export function RoomShortageAlertSection() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isDemoMode, rooms])
 
+  // Tải danh sách cảnh báo ban đầu và khi props thay đổi
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchAlerts()
+  }, [fetchAlerts])
+
+  // S3-08: Tự động làm mới khi đổi trạng thái phòng sang bảo trì hoặc ra khỏi bảo trì
+  useEffect(() => {
+    const handleRoomStatusChange = () => {
+      void fetchAlerts()
+    }
+    window.addEventListener('room-status-changed', handleRoomStatusChange)
+
+    // S3-08: Cơ chế tự động làm mới định kỳ mỗi 30 giây theo chốt với PO
+    const intervalId = window.setInterval(() => {
+      void fetchAlerts()
+    }, 30000)
+
+    // Tự động làm mới khi người dùng quay lại tab trình duyệt
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchAlerts()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('room-status-changed', handleRoomStatusChange)
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [fetchAlerts])
 
   // S3-08: Mở danh sách booking liên quan khi bấm vào cảnh báo
@@ -105,18 +240,26 @@ export function RoomShortageAlertSection() {
     setBookingsError(null)
     setBookings([])
     try {
-      const data = await getShortageBookings(alert.date, alert.roomTypeCode)
-      setBookings(data || [])
+      if (isDemoMode) {
+        setBookings(getDemoShortageBookings(alert.roomTypeCode))
+      } else {
+        const data = await getShortageBookings(alert.date, alert.roomTypeCode)
+        setBookings(data || [])
+      }
     } catch (err) {
-      setBookingsError(
-        err instanceof Error
-          ? err.message
-          : 'Không thể tải danh sách booking liên quan.',
-      )
+      if (isDemoMode || (rooms && rooms.length > 0)) {
+        setBookings(getDemoShortageBookings(alert.roomTypeCode))
+      } else {
+        setBookingsError(
+          err instanceof Error
+            ? err.message
+            : 'Không thể tải danh sách booking liên quan.',
+        )
+      }
     } finally {
       setBookingsLoading(false)
     }
-  }, [])
+  }, [isDemoMode, rooms])
 
   // S3-08: Tải lại danh sách booking
   const retryBookings = useCallback(async () => {
@@ -124,18 +267,26 @@ export function RoomShortageAlertSection() {
     setBookingsLoading(true)
     setBookingsError(null)
     try {
-      const data = await getShortageBookings(selectedAlert.date, selectedAlert.roomTypeCode)
-      setBookings(data || [])
+      if (isDemoMode) {
+        setBookings(getDemoShortageBookings(selectedAlert.roomTypeCode))
+      } else {
+        const data = await getShortageBookings(selectedAlert.date, selectedAlert.roomTypeCode)
+        setBookings(data || [])
+      }
     } catch (err) {
-      setBookingsError(
-        err instanceof Error
-          ? err.message
-          : 'Không thể tải danh sách booking liên quan.',
-      )
+      if (isDemoMode || (rooms && rooms.length > 0)) {
+        setBookings(getDemoShortageBookings(selectedAlert.roomTypeCode))
+      } else {
+        setBookingsError(
+          err instanceof Error
+            ? err.message
+            : 'Không thể tải danh sách booking liên quan.',
+        )
+      }
     } finally {
       setBookingsLoading(false)
     }
-  }, [selectedAlert])
+  }, [selectedAlert, isDemoMode, rooms])
 
   // S3-08: Đóng danh sách booking quay lại khu vực cảnh báo
   const closeBookingList = useCallback(() => {

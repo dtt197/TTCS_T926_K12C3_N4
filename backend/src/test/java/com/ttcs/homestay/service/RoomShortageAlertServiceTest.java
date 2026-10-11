@@ -382,4 +382,234 @@ class RoomShortageAlertServiceTest {
                 () -> roomShortageAlertService.getShortageBookings(TODAY, "INVALID", NOW)
         );
     }
+
+    // ===== Tests Story S3-08: Phòng chuyển sang bảo trì và ảnh hưởng cảnh báo =====
+
+    @Test
+    @DisplayName("S3-08: Phòng chuyển sang bảo trì làm số phòng khả dụng giảm đúng 1 và sinh cảnh báo mới khi booking vượt")
+    void test_phongChuyenSangBaoTri_giamDungMot_sinhCanhBaoMoiKhiBookingVuot() {
+        // Ban đầu có 2 phòng đôi: 201 và 202 đều TRONG_SACH
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r202 = createRoom("202", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        when(roomTypeRepository.findAll()).thenReturn(List.of(doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r201, r202));
+
+        // Có đúng 2 booking trong ngày TODAY
+        Booking b1 = createBooking(1L, "BK-01", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking b2 = createBooking(2L, "BK-02", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1, b2));
+
+        // Trước khi bảo trì: khả dụng = 2, booking = 2 -> Không có cảnh báo
+        assertThat(roomShortageAlertService.getShortageAlerts(TODAY, NOW)).isEmpty();
+
+        // Chuyển phòng 202 sang BAO_TRI
+        r202.setStatus(RoomStatus.BAO_TRI);
+
+        // Sau khi bảo trì: số phòng khả dụng giảm đúng 1 (còn 1), sinh cảnh báo mới
+        List<RoomShortageAlertResponse> alerts = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+        assertThat(alerts).hasSize(1);
+        RoomShortageAlertResponse alert = alerts.get(0);
+        assertThat(alert.roomTypeCode()).isEqualTo("DOI");
+        assertThat(alert.availableRooms()).isEqualTo(1); // Giảm đúng 1 từ 2 xuống 1
+        assertThat(alert.bookingCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("S3-08: Phòng chuyển sang bảo trì nhưng vẫn còn dư thì không sinh cảnh báo")
+    void test_phongChuyenSangBaoTri_nhungVanConDu_khongSinhCanhBao() {
+        // 3 phòng đôi: 201, 202, 203
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r202 = createRoom("202", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r203 = createRoom("203", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        when(roomTypeRepository.findAll()).thenReturn(List.of(doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r201, r202, r203));
+
+        // Chỉ có 1 booking
+        Booking b1 = createBooking(1L, "BK-01", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1));
+
+        // Chuyển 1 phòng sang BAO_TRI -> khả dụng giảm từ 3 xuống 2
+        r201.setStatus(RoomStatus.BAO_TRI);
+
+        // Vẫn còn dư phòng (booking 1 <= khả dụng 2) -> Không sinh cảnh báo
+        assertThat(roomShortageAlertService.getShortageAlerts(TODAY, NOW)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("S3-08: Cảnh báo đã có thì số phòng khả dụng trên dòng giảm theo khi thêm phòng bảo trì")
+    void test_canhBaoDaCo_soPhongKhaDungTrenDongGiamTheo() {
+        // 3 phòng đôi: 201, 202, 203. Đã có 1 phòng 201 đang BAO_TRI.
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.BAO_TRI, true);
+        Room r202 = createRoom("202", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r203 = createRoom("203", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        when(roomTypeRepository.findAll()).thenReturn(List.of(doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r201, r202, r203));
+
+        // 3 booking trong ngày -> vượt 2 phòng khả dụng -> Đã có cảnh báo (available = 2)
+        Booking b1 = createBooking(1L, "BK-01", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking b2 = createBooking(2L, "BK-02", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking b3 = createBooking(3L, "BK-03", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1, b2, b3));
+
+        List<RoomShortageAlertResponse> alertsBefore = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+        assertThat(alertsBefore).hasSize(1);
+        assertThat(alertsBefore.get(0).availableRooms()).isEqualTo(2);
+
+        // Chuyển tiếp phòng 202 sang BAO_TRI
+        r202.setStatus(RoomStatus.BAO_TRI);
+
+        // Số phòng khả dụng trên dòng cảnh báo giảm theo từ 2 xuống 1
+        List<RoomShortageAlertResponse> alertsAfter = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+        assertThat(alertsAfter).hasSize(1);
+        assertThat(alertsAfter.get(0).availableRooms()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("S3-08: Phòng ra khỏi bảo trì thì cảnh báo biến mất hoặc số phòng khả dụng tăng lại")
+    void test_phongRaKhoiBaoTri_canhBaoBienMatHoacSoPhongKhaDungTangLai() {
+        // 2 phòng đôi: 201 TRONG_SACH, 202 BAO_TRI
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r202 = createRoom("202", "Phòng đôi", RoomStatus.BAO_TRI, true);
+        when(roomTypeRepository.findAll()).thenReturn(List.of(doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r201, r202));
+
+        // 2 booking trong ngày -> Đang thiếu phòng (available = 1, booking = 2)
+        Booking b1 = createBooking(1L, "BK-01", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking b2 = createBooking(2L, "BK-02", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1, b2));
+
+        assertThat(roomShortageAlertService.getShortageAlerts(TODAY, NOW)).hasSize(1);
+
+        // Phòng 202 ra khỏi bảo trì -> TRONG_SACH
+        r202.setStatus(RoomStatus.TRONG_SACH);
+        r202.setMaintenanceStartDate(null);
+        r202.setMaintenanceEndDate(null);
+
+        // Cảnh báo biến mất hoàn toàn!
+        assertThat(roomShortageAlertService.getShortageAlerts(TODAY, NOW)).isEmpty();
+
+        // Trường hợp còn 3 booking (vẫn thiếu sau khi ra khỏi bảo trì): số phòng khả dụng tăng lại từ 1 lên 2
+        Booking b3 = createBooking(3L, "BK-03", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1, b2, b3));
+
+        List<RoomShortageAlertResponse> alertsWith3 = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+        assertThat(alertsWith3).hasSize(1);
+        assertThat(alertsWith3.get(0).availableRooms()).isEqualTo(2); // Tăng lại thành 2
+    }
+
+    @Test
+    @DisplayName("S3-08: Bảo trì chỉ ảnh hưởng đúng các ngày trong khoảng thời gian đã chốt")
+    void test_baoTriChiAnhHuongDungCacNgayTrongKhoangThoiGianDaChot() {
+        // Phòng đôi 201: TRONG_SACH. Phòng đôi 202: BAO_TRI từ TODAY + 2 đến TODAY + 4
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r202 = createRoom("202", "Phòng đôi", RoomStatus.BAO_TRI, true);
+        r202.setMaintenanceStartDate(TODAY.plusDays(2));
+        r202.setMaintenanceEndDate(TODAY.plusDays(4));
+
+        when(roomTypeRepository.findAll()).thenReturn(List.of(doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r201, r202));
+
+        // Mỗi ngày có 2 booking:
+        // Ngày TODAY (trước bảo trì): 2 booking
+        Booking bToday1 = createBooking(1L, "BK-T1", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking bToday2 = createBooking(2L, "BK-T2", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        // Ngày TODAY + 2 (trong bảo trì): 2 booking
+        Booking bMaint1 = createBooking(3L, "BK-M1", doi, BookingStatus.DA_XAC_NHAN, TODAY.plusDays(2), TODAY.plusDays(3));
+        Booking bMaint2 = createBooking(4L, "BK-M2", doi, BookingStatus.DA_XAC_NHAN, TODAY.plusDays(2), TODAY.plusDays(3));
+        // Ngày TODAY + 5 (sau bảo trì): 2 booking
+        Booking bAfter1 = createBooking(5L, "BK-A1", doi, BookingStatus.DA_XAC_NHAN, TODAY.plusDays(5), TODAY.plusDays(6));
+        Booking bAfter2 = createBooking(6L, "BK-A2", doi, BookingStatus.DA_XAC_NHAN, TODAY.plusDays(5), TODAY.plusDays(6));
+
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any()))
+                .thenReturn(List.of(bToday1, bToday2, bMaint1, bMaint2, bAfter1, bAfter2));
+
+        List<RoomShortageAlertResponse> alerts = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+
+        // Chỉ duy nhất ngày TODAY + 2 bị cảnh báo thiếu phòng (do phòng 202 bị bảo trì, khả dụng = 1 < 2 booking)
+        assertThat(alerts).hasSize(1);
+        RoomShortageAlertResponse alert = alerts.get(0);
+        assertThat(alert.date()).isEqualTo(TODAY.plusDays(2));
+        assertThat(alert.availableRooms()).isEqualTo(1);
+
+        // Ngày TODAY và TODAY + 5 không bị ảnh hưởng (cả 2 phòng đều khả dụng, 2 booking = 2 phòng)
+        assertThat(alerts).noneMatch(a -> a.date().equals(TODAY));
+        assertThat(alerts).noneMatch(a -> a.date().equals(TODAY.plusDays(5)));
+    }
+
+    @Test
+    @DisplayName("S3-08: Phòng bảo trì thuộc loại phòng khác không ảnh hưởng cảnh báo của loại phòng đang xét")
+    void test_phongBaoTriThuocLoaiKhac_khongAnhHuongCanhBaoLoaiDangXet() {
+        // Phòng đơn 101: TRONG_SACH (khả dụng = 1). Có 1 booking phòng đơn -> Đủ phòng
+        Room r101 = createRoom("101", "Phòng đơn", RoomStatus.TRONG_SACH, true);
+        // Phòng đôi 201: BAO_TRI
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.BAO_TRI, true);
+
+        when(roomTypeRepository.findAll()).thenReturn(List.of(don, doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r101, r201));
+
+        Booking bDon = createBooking(1L, "BK-DON", don, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(bDon));
+
+        List<RoomShortageAlertResponse> alerts = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+
+        // Không có cảnh báo cho Phòng đơn
+        assertThat(alerts).noneMatch(a -> a.roomTypeCode().equals("DON"));
+    }
+
+    @Test
+    @DisplayName("S3-08: Nhiều phòng cùng loại chuyển bảo trì liên tiếp thì số liệu luôn chính xác")
+    void test_nhieuPhongCungLoaiChuyenBaoTriLienTiep_soLieuDung() {
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r202 = createRoom("202", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r203 = createRoom("203", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+
+        when(roomTypeRepository.findAll()).thenReturn(List.of(doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r201, r202, r203));
+
+        Booking b1 = createBooking(1L, "BK-01", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking b2 = createBooking(2L, "BK-02", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1, b2));
+
+        // 3 phòng khả dụng, 2 booking -> 0 cảnh báo
+        assertThat(roomShortageAlertService.getShortageAlerts(TODAY, NOW)).isEmpty();
+
+        // Chuyển phòng thứ 1 sang bảo trì: khả dụng = 2, 2 booking -> 0 cảnh báo
+        r201.setStatus(RoomStatus.BAO_TRI);
+        assertThat(roomShortageAlertService.getShortageAlerts(TODAY, NOW)).isEmpty();
+
+        // Chuyển phòng thứ 2 sang bảo trì: khả dụng = 1, 2 booking -> Cảnh báo thiếu 1 phòng
+        r202.setStatus(RoomStatus.BAO_TRI);
+        List<RoomShortageAlertResponse> alerts1 = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+        assertThat(alerts1).hasSize(1);
+        assertThat(alerts1.get(0).availableRooms()).isEqualTo(1);
+
+        // Chuyển phòng thứ 3 sang bảo trì: khả dụng = 0, 2 booking -> Cảnh báo thiếu 2 phòng
+        r203.setStatus(RoomStatus.BAO_TRI);
+        List<RoomShortageAlertResponse> alerts2 = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+        assertThat(alerts2).hasSize(1);
+        assertThat(alerts2.get(0).availableRooms()).isEqualTo(0);
+        assertThat(alerts2.get(0).bookingCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("S3-08: Kết quả sau khi làm mới khớp với kết quả khi tải lại hoàn toàn màn hình")
+    void test_ketQuaSauKhiLamMoi_khopVoiKetQuaKhiTaiLaiHoanToan() {
+        Room r201 = createRoom("201", "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        Room r202 = createRoom("202", "Phòng đôi", RoomStatus.BAO_TRI, true);
+
+        when(roomTypeRepository.findAll()).thenReturn(List.of(doi));
+        when(roomRepository.findAll()).thenReturn(List.of(r201, r202));
+
+        Booking b1 = createBooking(1L, "BK-01", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        Booking b2 = createBooking(2L, "BK-02", doi, BookingStatus.DA_XAC_NHAN, TODAY, TODAY.plusDays(1));
+        when(bookingRepository.findActiveBookingsInDateRange(any(), any(), any())).thenReturn(List.of(b1, b2));
+
+        // Lần 1 (Tải ban đầu)
+        List<RoomShortageAlertResponse> initialLoad = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+
+        // Lần 2 (Làm mới sau khoảng thời gian)
+        List<RoomShortageAlertResponse> refreshed = roomShortageAlertService.getShortageAlerts(TODAY, NOW);
+
+        assertThat(refreshed).isEqualTo(initialLoad);
+    }
 }

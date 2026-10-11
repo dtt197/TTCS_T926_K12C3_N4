@@ -6,6 +6,7 @@ import com.ttcs.homestay.dto.booking.ShortageBookingResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Room;
+import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomType;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.RoomRepository;
@@ -60,27 +61,10 @@ public class RoomShortageAlertService {
 
         List<Room> allRooms = roomRepository.findAll();
 
-        // 1. Tính số phòng khả dụng theo từng loại phòng tại thời điểm tải màn hình:
-        // Số phòng khả dụng = tổng số phòng thực có - (bảo trì + đang khoá + ngừng bán).
-        Map<Long, Long> availableRoomsByRoomTypeId = new HashMap<>();
+        // 1. Map tên loại phòng -> RoomType entity
         Map<String, RoomType> roomTypeByNameLower = new HashMap<>();
-
         for (RoomType rt : roomTypes) {
             roomTypeByNameLower.put(rt.getName().trim().toLowerCase(), rt);
-
-            if (Boolean.FALSE.equals(rt.getStatus())) {
-                // Nếu loại phòng ngừng bán hoàn toàn
-                availableRoomsByRoomTypeId.put(rt.getId(), 0L);
-                continue;
-            }
-
-            long availableCount = allRooms.stream()
-                    .filter(r -> r.getRoomType() != null && r.getRoomType().equalsIgnoreCase(rt.getName()))
-                    .filter(room -> room.isActive()) // Loại trừ phòng đang khoá / ngừng bán
-                    .filter(r -> !RoomShortageRuleConfig.UNAVAILABLE_ROOM_STATUSES.contains(r.getStatus())) // Loại trừ phòng bảo trì
-                    .count();
-
-            availableRoomsByRoomTypeId.put(rt.getId(), availableCount);
         }
 
         // 2. Truy vấn danh sách booking còn hiệu lực trong khoảng quét
@@ -134,12 +118,25 @@ public class RoomShortageAlertService {
             }
         }
 
-        // 4. So sánh số booking và số phòng khả dụng, chỉ giữ lại các cặp có booking > khả dụng
+        // 4. So sánh số booking và số phòng khả dụng theo từng đêm (ngày).
+        // S3-08: Số phòng khả dụng được tính theo từng đêm:
+        // tổng số phòng thực có - (phòng bảo trì trong khoảng thời gian PO chốt + đang khoá + ngừng bán).
         List<RoomShortageAlertResponse> alerts = new ArrayList<>();
 
         for (LocalDate night = startDate; !night.isAfter(endDate); night = night.plusDays(1)) {
             for (RoomType rt : roomTypes) {
-                long available = availableRoomsByRoomTypeId.getOrDefault(rt.getId(), 0L);
+                long available;
+                if (Boolean.FALSE.equals(rt.getStatus())) {
+                    available = 0L;
+                } else {
+                    final LocalDate currentNight = night;
+                    available = allRooms.stream()
+                            .filter(r -> r.getRoomType() != null && r.getRoomType().equalsIgnoreCase(rt.getName()))
+                            .filter(Room::isActive)
+                            .filter(r -> !isRoomUnderMaintenance(r, currentNight))
+                            .count();
+                }
+
                 long bookingCount = bookingCounts.getOrDefault(makeKey(night, rt.getId()), 0L);
 
                 if (bookingCount > available) {
@@ -159,6 +156,34 @@ public class RoomShortageAlertService {
                 .thenComparing(alert -> alert.roomTypeName()));
 
         return alerts;
+    }
+
+    /**
+     * S3-08: Kiểm tra phòng có đang bị bảo trì vào đêm `night` hay không theo quy tắc PO:
+     * - Nếu phòng có trạng thái BAO_TRI:
+     *   + Nếu không có ngày bắt đầu/kết thúc: coi như bảo trì mọi đêm.
+     *   + Nếu có ngày: chỉ bảo trì trong khoảng [maintenanceStartDate, maintenanceEndDate].
+     *     (Nếu maintenanceEndDate == null: bảo trì từ maintenanceStartDate trở đi).
+     * - Nếu phòng chưa đổi trạng thái BAO_TRI nhưng có lịch bảo trì (maintenanceStartDate != null):
+     *   + Bảo trì nếu night nằm trong khoảng [maintenanceStartDate, maintenanceEndDate].
+     * - Còn lại: không bị bảo trì.
+     */
+    public static boolean isRoomUnderMaintenance(Room room, LocalDate night) {
+        if (room == null || night == null) {
+            return false;
+        }
+        if (room.getStatus() == RoomStatus.BAO_TRI) {
+            if (room.getMaintenanceStartDate() == null) {
+                return true;
+            }
+            return !night.isBefore(room.getMaintenanceStartDate())
+                    && (room.getMaintenanceEndDate() == null || !night.isAfter(room.getMaintenanceEndDate()));
+        }
+        if (room.getMaintenanceStartDate() != null) {
+            return !night.isBefore(room.getMaintenanceStartDate())
+                    && (room.getMaintenanceEndDate() == null || !night.isAfter(room.getMaintenanceEndDate()));
+        }
+        return false;
     }
 
     /**
