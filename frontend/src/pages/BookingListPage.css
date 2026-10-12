@@ -639,12 +639,14 @@
 .booking-detail-footer .booking-cancel-button { min-width: 100px; }
 @media (max-width: 700px) {
   .booking-detail-backdrop { padding: 8px; }
-  .booking-detail-dialog { max-height: 96vh; border-radius: 13px; }
-  .booking-detail-header { min-height: 100px; gap: 8px; padding: 18px 54px 18px 18px; flex-wrap: wrap; }
+  .booking-detail-dialog { height: min(96dvh, 900px); max-height: calc(100dvh - 16px); min-height: 0; border-radius: 13px; }
+  .booking-detail-header { flex: 0 0 auto; min-height: auto; height: auto; gap: 8px; padding: 18px 54px 18px 18px; flex-wrap: wrap; align-items: flex-start; overflow: visible; }
+  .booking-detail-heading-copy { flex: 1 1 100%; width: 100%; overflow-wrap: anywhere; }
   .booking-detail-header h3 { font-size: 19px; }
-  .booking-detail-header .booking-status { margin-right: 4px; }
+  .booking-detail-header .booking-status { flex: 0 1 auto; max-width: 100%; margin-right: 4px; overflow-wrap: anywhere; }
   .booking-detail-header .booking-dialog-close { top: 14px; right: 12px; }
-  .booking-detail-content { padding: 14px; }
+  .booking-detail-dialog > p, .booking-detail-dialog > .alert { flex: 0 0 auto; margin-inline: 14px; }
+  .booking-detail-content { flex: 1 1 auto; min-height: 0; min-width: 0; overflow-x: hidden; overflow-y: auto; padding: 14px; }
   .booking-detail-columns, .booking-detail-grid, .booking-guest-list { grid-template-columns: minmax(0, 1fr); }
   .booking-detail-full { margin-top: 12px; }
   .booking-detail-section { padding: 13px; }
