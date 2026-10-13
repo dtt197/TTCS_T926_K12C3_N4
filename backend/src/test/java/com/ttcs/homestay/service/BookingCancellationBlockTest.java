@@ -44,7 +44,11 @@ class BookingCancellationBlockTest {
             mock(AuditLogService.class),
             mock(RoomAvailabilityService.class));
     private final BookingCancellationService cancellationService =
-            new BookingCancellationService(bookingRepository, mock(OperatingSettingsService.class));
+            new BookingCancellationService(
+                    bookingRepository,
+                    mock(OperatingSettingsService.class),
+                    mock(com.ttcs.homestay.repository.BookingDepositRepository.class),
+                    mock(com.ttcs.homestay.repository.BookingDepositAdjustmentRepository.class));
 
     @BeforeEach
     void setUp() {
@@ -85,7 +89,7 @@ class BookingCancellationBlockTest {
         assertThat(booking.getCancelledBy()).isNull();
         assertThat(booking.getCancelledAt()).isNull();
         verify(bookingRepository, never()).save(any(Booking.class));
-    }
+    }  
 
     @Test
     void huyBangPutBookingDaNhanPhongBiTuChoiVaKhongDoiGi() {
@@ -150,4 +154,5 @@ class BookingCancellationBlockTest {
         assertThat(booking.getCancelledBy()).isEqualTo("letan.demo@homestay.local");
         assertThat(booking.getCancelledAt()).isNotNull();
     }
+       
 }

@@ -28,11 +28,14 @@ class BookingCancellationServiceTest {
 
     private static final String CODE = "BK-TEST0001";
 
-    private final BookingRepository bookingRepository = mock(BookingRepository.class);
+        private final BookingRepository bookingRepository = mock(BookingRepository.class);
     private final OperatingSettingsService settingsService = mock(OperatingSettingsService.class);
-    private final BookingCancellationService service =
-            new BookingCancellationService(bookingRepository, settingsService);
-
+    private final com.ttcs.homestay.repository.BookingDepositRepository depositRepository =
+            mock(com.ttcs.homestay.repository.BookingDepositRepository.class);
+    private final com.ttcs.homestay.repository.BookingDepositAdjustmentRepository adjustmentRepository =
+            mock(com.ttcs.homestay.repository.BookingDepositAdjustmentRepository.class);
+    private final BookingCancellationService service = new BookingCancellationService(
+            bookingRepository, settingsService, depositRepository, adjustmentRepository);
     @BeforeEach
     void setUp() {
         OperatingSettings settings = new OperatingSettings();
@@ -155,5 +158,17 @@ class BookingCancellationServiceTest {
         Throwable error = catchThrowable(() -> service.preview("bk-khongco"));
 
         assertHttpStatus(error, 404);
+    }
+     void hoanCocTinhTuTienCocDaGhiNhan() {
+        Booking booking = booking(BookingStatus.DA_XAC_NHAN, 10);
+        com.ttcs.homestay.entity.BookingDeposit deposit = new com.ttcs.homestay.entity.BookingDeposit();
+        deposit.setAmount(new java.math.BigDecimal("1000000"));
+        when(depositRepository.findByBooking(booking)).thenReturn(Optional.of(deposit));
+
+        CancellationPreviewResponse preview = service.preview(CODE);
+
+        assertThat(preview.depositAmount()).isEqualTo(1_000_000L);
+        assertThat(preview.refundPercent()).isEqualTo(100);
+        assertThat(preview.refundAmount()).isEqualTo(1_000_000L);
     }
 }
