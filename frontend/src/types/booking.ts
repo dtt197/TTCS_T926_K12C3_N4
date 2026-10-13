@@ -88,6 +88,12 @@ export type BookingChangePreview = {
   availableRooms: number
   available: boolean
   nightlyPrices: NightlyPrice[]
+  /** S3-04 AC2: tổng tiền cũ và chênh lệch (tổng mới − tổng cũ). */
+  oldTotalAmount: number
+  totalDifference: number
+  /** S3-04 AC3: tiền cọc đã ghi nhận và số còn phải thu (tổng mới − tiền cọc). */
+  depositAmount: number
+  remainingAmount: number
 }
 
 export type AssignableRoom = {

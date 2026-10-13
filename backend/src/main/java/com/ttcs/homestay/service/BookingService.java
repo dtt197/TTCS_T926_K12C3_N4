@@ -530,6 +530,11 @@ public class BookingService {
         long totalAmount = PricingService.total(nightlyPrices);
         int numberOfNights = nightlyPrices.size();
 
+        // S3-04 AC2/AC3: chênh lệch so với tổng cũ; tiền cọc đã ghi nhận giữ nguyên và trừ vào tổng tiền mới.
+        long depositAmount = bookingDepositService.hasDeposit(booking)
+                ? bookingDepositService.currentDepositTotal(booking)
+                : 0L;
+
         return new BookingChangePreviewResponse(
                 booking.getId(),
                 roomType.getId(),
@@ -540,7 +545,11 @@ public class BookingService {
                 totalAmount,
                 availableRooms,
                 availableRooms > 0,
-                nightlyPrices
+                nightlyPrices,
+                booking.getTotalAmount(),
+                totalAmount - booking.getTotalAmount(),
+                depositAmount,
+                totalAmount - depositAmount
         );
     }
 
@@ -588,10 +597,6 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Không tìm thấy booking"));
-        if (bookingDepositService.hasDeposit(booking)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Booking có tiền cọc đã ghi nhận, không thể cập nhật trực tiếp");
-        }
 
         RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
                 .orElseThrow(RoomTypeNotFoundException::new);
@@ -615,6 +620,15 @@ public class BookingService {
         List<NightlyPrice> nightlyPrices = pricingService.priceNights(
                 roomType, request.checkInDate(), request.checkOutDate(), weekendDays);
         long newTotalAmount = PricingService.total(nightlyPrices);
+        
+        // S3-04 AC3: tiền cọc đã ghi nhận được giữ nguyên (không sửa bản ghi cọc) và trừ vào tổng tiền mới.
+        long depositAmount = bookingDepositService.hasDeposit(booking)
+                ? bookingDepositService.currentDepositTotal(booking)
+                : 0L;
+        if (depositAmount > newTotalAmount) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Tiền cọc đã ghi nhận lớn hơn tổng tiền mới. Vui lòng ghi bút toán điều chỉnh giảm cọc trước khi đổi");
+        }
 
         // Capture previous state for audit log / change history
         LocalDate oldCheckInDate = booking.getCheckInDate();
@@ -729,6 +743,13 @@ public class BookingService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Ngày trả phòng phải sau ngày nhận phòng");
+        }
+        
+        // S3-04 AC4: không đổi được sang khoảng ngày đã bắt đầu trong quá khứ (theo giờ Việt Nam).
+        if (request.checkInDate().isBefore(PublicBookingDatePolicy.today())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Không thể đổi sang khoảng ngày đã bắt đầu trong quá khứ. Vui lòng chọn ngày nhận phòng từ hôm nay trở đi");
         }
     }
 

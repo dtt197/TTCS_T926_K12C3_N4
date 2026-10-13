@@ -51,6 +51,11 @@ class RoomShortageSeedDataIntegrationTest {
         // Xoá sạch booking hiện có để nạp chính xác bộ dữ liệu mẫu 3 loại phòng của AC1
         bookingRepository.deleteAll();
 
+        // Lớp test khác (không rollback) có thể để lại phòng đang hoạt động trùng tên loại phòng mẫu, ví dụ "Phòng đôi".
+        // Tắt hết phòng sẵn có để số phòng khả dụng đúng như kịch bản; thay đổi này được rollback sau mỗi test.
+        List<Room> existingRooms = roomRepository.findAll();
+        existingRooms.forEach(room -> room.setActive(false));
+        roomRepository.saveAll(existingRooms);
         rtDon = roomTypeRepository.findByCodeIgnoreCase("DON")
                 .orElseGet(() -> {
                     RoomType rt = new RoomType();
