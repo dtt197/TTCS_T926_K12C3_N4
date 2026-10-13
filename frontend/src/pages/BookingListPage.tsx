@@ -16,7 +16,6 @@ import { createBookingDepositAdjustment } from '../services/bookingService'
 import { hasPermission } from '../permissions/rolePermissions'
 import {
   confirmBooking,
-  cancelBooking,
   getBookingDetails,
   searchBookings,
   updateBooking,
@@ -33,6 +32,7 @@ import { BookingCancellationInfoSection } from '../components/BookingCancellatio
 import { BookingCheckedInCancelNotice } from '../components/BookingCheckedInCancelNotice'
 import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
+import CancelBookingDialog from '../components/CancelBookingDialog'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -122,9 +122,7 @@ export function BookingListPage({ role }: { role: string }) {
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
     // S3-02 Lát 3: huỷ booking
   const [cancellingBooking, setCancellingBooking] = useState<BookingListItem | null>(null)
-  const [cancelReason, setCancelReason] = useState('')
-  const [cancelSaving, setCancelSaving] = useState(false)
-  const [cancelError, setCancelError] = useState<string | null>(null)
+
   const [editForm, setEditForm] = useState({
     checkInDate: '',
     checkOutDate: '',
@@ -456,32 +454,15 @@ export function BookingListPage({ role }: { role: string }) {
       paymentReference: '',
     })
   }
-    function startCancelling(booking: BookingListItem) {
+     function startCancelling(booking: BookingListItem) {
     setCancellingBooking(booking)
-    setCancelReason('')
-    setCancelError(null)
   }
-
-  async function handleCancelBooking(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!cancellingBooking || cancelSaving) return
-    const reason = cancelReason.trim()
-    if (!reason) {
-      setCancelError('Vui lòng nhập lý do huỷ booking.')
-      return
-    }
-    setCancelSaving(true)
-    setCancelError(null)
-    try {
-      await cancelBooking(cancellingBooking.id, reason)
-      setEditSuccess(`Đã huỷ booking ${cancellingBooking.bookingCode}. Phòng đã được trả lại để bán.`)
-      setCancellingBooking(null)
-      setRefreshVersion((version) => version + 1)
-    } catch (err) {
-      setCancelError(err instanceof Error ? err.message : 'Không thể huỷ booking.')
-    } finally {
-      setCancelSaving(false)
-    }
+function handleCancelled(result: { bookingCode: string; refundAmount: number }) {
+    setEditSuccess(
+      `Đã huỷ booking ${result.bookingCode}. Hoàn cọc: ${result.refundAmount.toLocaleString('vi-VN')} đ. Phòng đã được trả lại để bán.`,
+    )
+    setCancellingBooking(null)
+    setRefreshVersion((version) => version + 1)
   }
 
   async function handleConfirmBooking(event: FormEvent<HTMLFormElement>) {
@@ -1075,36 +1056,12 @@ export function BookingListPage({ role }: { role: string }) {
           </section>
         </div>
       )}
-            {cancellingBooking && (
-        <div className="booking-dialog-backdrop">
-          <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-cancel-title">
-            <div className="booking-edit-heading">
-              <div>
-                <h3 id="booking-cancel-title">Huỷ booking</h3>
-                <p>{cancellingBooking.bookingCode} · {cancellingBooking.guestName}</p>
-              </div>
-              <button type="button" className="booking-dialog-close" aria-label="Đóng" disabled={cancelSaving} onClick={() => setCancellingBooking(null)}>×</button>
-            </div>
-            <div className="booking-current-details">
-              <strong>Thông tin đặt phòng</strong>
-              <span>Loại phòng: {cancellingBooking.roomTypeNameSnapshot}</span>
-              <span>Phòng: {cancellingBooking.roomNumber ?? 'Chưa gán'}</span>
-              <span>Ngày nhận: {formatDate(cancellingBooking.checkInDate)}</span>
-              <span>Ngày trả: {formatDate(cancellingBooking.checkOutDate)}</span>
-            </div>
-            <form className="booking-edit-form" onSubmit={handleCancelBooking}>
-              <label>Lý do huỷ (bắt buộc)
-                <textarea required maxLength={500} rows={3} value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ví dụ: khách báo đổi kế hoạch" />
-              </label>
-              <p className="booking-cancel-note">Sau khi huỷ, phòng được trả lại để bán ngay. Hoàn cọc (nếu có) xử lý theo chính sách huỷ.</p>
-              {cancelError && <div className="alert" role="alert">{cancelError}</div>}
-              <div className="booking-edit-actions">
-                <button type="button" className="booking-cancel-button" disabled={cancelSaving} onClick={() => setCancellingBooking(null)}>Đóng</button>
-                <button type="submit" className="booking-save-button booking-save-button--danger" disabled={cancelSaving || !cancelReason.trim()}>{cancelSaving ? 'Đang huỷ...' : 'Xác nhận huỷ booking'}</button>
-              </div>
-            </form>
-          </section>
-        </div>
+              {cancellingBooking && (
+        <CancelBookingDialog
+          bookingCode={cancellingBooking.bookingCode}
+          onClose={() => setCancellingBooking(null)}
+          onCancelled={handleCancelled}
+        />
       )}
 
       {roomBooking && (
