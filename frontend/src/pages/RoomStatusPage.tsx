@@ -412,7 +412,12 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   }
 
   useEffect(() => {
-    Promise.all([getRooms(), getCheckInOptions()])
+       // Buồng phòng không có quyền xem booking (403), nên không gọi check-in-options,
+    // nếu không cả trang sẽ rơi vào chế độ demo.
+    const checkInOptionsRequest: Promise<CheckInOption[]> = isHousekeeping
+      ? Promise.resolve([])
+      : getCheckInOptions()
+    Promise.all([getRooms(), checkInOptionsRequest])
       .then(([data, options]) => {
         setRooms(data)
         setCheckInOptions(options)
@@ -458,12 +463,12 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
         const firstGuestCount = initialGuestCount(DEMO_CHECK_IN_OPTIONS[0])
         setGuestCount(firstGuestCount)
         setAccompanyingGuestNames(Array.from({ length: firstGuestCount - 1 }, () => ''))
-        setIsDemoMode(true)
+        setIsDemoMode(true) 
       })
       .finally(() => {
         setIsLoading(false)
       })
-  }, [])
+   }, [isHousekeeping])
   const visibleRooms = useMemo(() => {
     const list = isHousekeeping
       ? rooms.filter((room) => room.status === 'TRONG_BAN')
