@@ -37,10 +37,10 @@
 
 .customer-header__inner {
   display: grid;
-  width: min(100% - 48px, 1320px);
+  width: min(1180px, calc(100% - 48px));
   min-width: 0;
   height: 100%;
-  grid-template-columns: minmax(190px, 1fr) auto max-content;
+  grid-template-columns: minmax(190px, 1fr) auto minmax(150px, 1fr);
   align-items: center;
   gap: 24px;
   margin: 0 auto;
@@ -94,9 +94,9 @@
 .customer-nav {
   display: flex;
   height: 100%;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  gap: clamp(16px, 2vw, 30px);
+  gap: clamp(14px, 1.8vw, 26px);
 }
 
 .customer-nav__link {
