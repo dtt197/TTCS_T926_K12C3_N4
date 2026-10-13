@@ -91,7 +91,6 @@ public class SecurityConfig {
                                 HttpMethod.PATCH,
                                 "/api/rooms/*/status"
                         ).hasAnyRole(
-                                "ADMIN",
                                 "RECEPTIONIST",
                                 "HOUSEKEEPING"
                         )
@@ -101,7 +100,6 @@ public class SecurityConfig {
                                 HttpMethod.PATCH,
                                 "/api/rooms/*/maintenance"
                         ).hasAnyRole(
-                                "ADMIN",
                                 "RECEPTIONIST"
                         )
 
@@ -110,7 +108,6 @@ public class SecurityConfig {
                                 HttpMethod.PATCH,
                                 "/api/rooms/*/incident"
                         ).hasAnyRole(
-                                "ADMIN",
                                 "HOUSEKEEPING"
                         )
 
@@ -120,7 +117,6 @@ public class SecurityConfig {
                                 "/api/rooms/*/check-in",
                                 "/api/rooms/*/check-out"
                         ).hasAnyRole(
-                                "ADMIN",
                                 "RECEPTIONIST"
                         )
 

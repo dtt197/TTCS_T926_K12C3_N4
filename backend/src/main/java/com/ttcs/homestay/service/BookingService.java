@@ -511,6 +511,7 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Không tìm thấy booking"));
+        requireEditableStatus(booking);
 
         RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
                 .orElseThrow(RoomTypeNotFoundException::new);
@@ -597,6 +598,7 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Không tìm thấy booking"));
+        requireEditableStatus(booking);
 
         RoomType roomType = roomTypeRepository.findById(request.roomTypeId())
                 .orElseThrow(RoomTypeNotFoundException::new);
@@ -721,6 +723,14 @@ public class BookingService {
                 throw RoomAvailabilityService.unavailable(roomType, booking.getCheckInDate(), booking.getCheckOutDate());
             }
             throw exception;
+        }
+    }
+    /** S3-04: chỉ đổi ngày / loại phòng cho booking còn hiệu lực và chưa nhận phòng. */
+    private static void requireEditableStatus(Booking booking) {
+        BookingStatus status = booking.getStatus();
+        if (status != null && status != BookingStatus.CHO_XAC_NHAN && status != BookingStatus.DA_XAC_NHAN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ cập nhật được booking đang chờ xác nhận hoặc đã xác nhận");
         }
     }
 

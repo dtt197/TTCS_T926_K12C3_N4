@@ -194,6 +194,23 @@ class BookingUpdateDepositAndPastDateTest {
         assertThat(unchanged.getCheckInDate()).isEqualTo(OLD_CHECK_IN);
         assertThat(unchanged.getCheckOutDate()).isEqualTo(OLD_CHECK_OUT);
     }
+    @Test
+    void bookingDaHuy_khongXemTruocVaKhongCapNhatDuoc() {
+        booking.setStatus(BookingStatus.DA_HUY);
+        bookingRepository.saveAndFlush(booking);
+        BookingUpdateRequest request = change(LocalDate.of(2027, 7, 1), LocalDate.of(2027, 7, 3));
+
+        assertThatThrownBy(() -> bookingService.previewBookingChange(booking.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(statusOf(error)).isEqualTo(HttpStatus.CONFLICT));
+        assertThatThrownBy(() -> bookingService.updateBooking(booking.getId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(statusOf(error)).isEqualTo(HttpStatus.CONFLICT))
+                .hasMessageContaining("chờ xác nhận hoặc đã xác nhận");
+
+        Booking unchanged = bookingRepository.findById(booking.getId()).orElseThrow();
+        assertThat(unchanged.getCheckInDate()).isEqualTo(OLD_CHECK_IN);
+    }
 
     @Test
     void doiSangHomNay_duocPhep() {

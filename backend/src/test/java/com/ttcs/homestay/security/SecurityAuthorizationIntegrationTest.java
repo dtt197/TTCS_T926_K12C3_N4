@@ -768,6 +768,21 @@ void adminDuocXemDanhSachLoaiPhong() throws Exception {
                     .header("Authorization", "Bearer admin-test-token")
     ).andExpect(status().isOk());
 }
+@Test
+void adminChiDuocXem_khongThaoTacNhanTraPhongVaTrangThaiPhong() throws Exception {
+    for (var request : List.of(
+            post("/api/rooms/4/check-in"),
+            post("/api/rooms/4/check-out"),
+            patch("/api/rooms/4/status"),
+            patch("/api/rooms/4/maintenance"),
+            patch("/api/rooms/4/incident"))) {
+        mockMvc.perform(request
+                        .header("Authorization", "Bearer admin-test-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+}
 
 @Test
 void ownerCapNhatTrangThaiPhong_biChan403() throws Exception {

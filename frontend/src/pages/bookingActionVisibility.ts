@@ -11,7 +11,7 @@ export function bookingActionsFor(
   if (permissions.manage && booking.status === 'CHO_XAC_NHAN' && !booking.holdExpired) actions.push('confirm')
   if (permissions.manage && booking.status === 'DA_XAC_NHAN' && !booking.roomConfirmedAt) actions.push('assign-room')
   if (canChangeRoom) actions.push('change-room')
-  if (permissions.manage) actions.push('edit')
+  if (permissions.manage && (booking.status === 'CHO_XAC_NHAN' || booking.status === 'DA_XAC_NHAN')) actions.push('edit')
   if (permissions.cancel && (booking.status === 'CHO_XAC_NHAN' || booking.status === 'DA_XAC_NHAN')) actions.push('cancel')
   return actions
 }
