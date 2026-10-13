@@ -340,6 +340,29 @@
   display: block;
 }
 
+.room-type-list-heading {
+  align-items: center;
+}
+
+.room-type-list-heading-main {
+  min-width: 0;
+}
+
+.room-type-list-heading-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.room-type-list-heading-title h2 {
+  margin: 0;
+}
+
+.room-type-list-heading-main > p {
+  margin: 6px 0 0;
+}
+
 .room-type-section-heading h2 {
   font-size: 20px;
 }
@@ -826,6 +849,42 @@
 }
 
 @media (max-width: 760px) {
+  .room-type-create-modal-backdrop {
+    padding: 10px;
+  }
+
+  .room-type-create-modal {
+    max-height: calc(100dvh - 20px);
+    border-radius: 16px;
+  }
+
+  .room-type-create-modal-header,
+  .room-type-create-modal-body {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .room-type-create-modal .checkin-form,
+  .room-type-create-modal .room-type-form-row {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .room-type-create-modal .room-type-form-row {
+    grid-column: 1;
+  }
+
+  .room-type-create-modal .room-type-form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    bottom: -16px;
+  }
+
+  .room-type-create-modal .room-type-form-actions button,
+  .room-type-add-button {
+    min-height: 44px;
+  }
+
   .room-type-heading {
     flex-direction: column;
     align-items: flex-start;
@@ -1248,4 +1307,163 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .room-type-section-heading:not(.compact) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .room-type-list-heading .room-type-add-button {
+    width: 100%;
+  }
+
+  .room-type-create-modal .checkin-form {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.room-type-list-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.room-type-add-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #238161, #176f53);
+  color: #fff;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(23, 111, 83, .2);
+}
+
+.room-type-create-modal-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 24px;
+  background: rgba(12, 29, 23, .54);
+  backdrop-filter: blur(4px);
+}
+
+.room-type-create-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(900px, 100%);
+  max-height: min(900px, calc(100dvh - 48px));
+  overflow: hidden;
+  border: 1px solid rgba(37, 92, 71, .14);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 26px 80px rgba(9, 30, 22, .28);
+}
+
+.room-type-create-modal-header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 26px 18px;
+  border-bottom: 1px solid var(--rt-line);
+}
+
+.room-type-create-modal-header h2 {
+  margin: 0;
+  color: var(--rt-text);
+  font-size: 23px;
+}
+
+.room-type-create-modal-header p {
+  margin: 6px 0 0;
+  color: var(--rt-muted);
+  font-size: 13px;
+}
+
+.room-type-create-modal-close {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--rt-line);
+  border-radius: 10px;
+  background: #f7faf8;
+  color: var(--rt-text);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.room-type-create-modal-body {
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 22px 26px 26px;
+}
+
+.room-type-create-modal .checkin-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.room-type-create-modal .room-type-form-row {
+  grid-column: 1 / -1;
+}
+
+.room-type-create-modal .room-type-form-actions {
+  position: sticky;
+  bottom: -26px;
+  grid-column: 1 / -1;
+  padding: 14px 0 2px;
+  background: #fff;
+}
+
+.room-type-create-modal .room-type-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.room-type-create-modal .room-type-form-actions .secondary-button {
+  order: 0;
+}
+
+.room-type-create-modal .room-type-form-actions .primary-button {
+  order: 1;
+}
+
+.room-type-create-modal,
+.room-type-create-modal-body,
+.room-type-create-modal .checkin-form,
+.room-type-create-modal .room-type-form-row {
+  min-width: 0;
+}
+
+.room-type-create-modal .room-type-form-row > *,
+.room-type-create-modal .form-control {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 400px) {
+  .room-type-create-modal-backdrop {
+    padding: 8px;
+  }
+
+  .room-type-create-modal-header,
+  .room-type-create-modal-body {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .room-type-create-modal .checkin-form,
+  .room-type-create-modal .room-type-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

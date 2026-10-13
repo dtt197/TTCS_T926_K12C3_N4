@@ -20,10 +20,31 @@
 .walk-in-header h2 {
   margin: 0;
   color: #18382d;
+  font-family: 'Noto Serif', Georgia, 'Times New Roman', serif;
   font-size: 30px;
+  font-weight: 600;
+  font-synthesis: none;
   text-align: left;
   letter-spacing: normal;
   word-spacing: normal;
+  text-transform: none;
+}
+
+/* The large title belongs to InternalHomePage's shared dashboard banner. */
+.internal-layout--walk-in-booking .dashboard-header h1 {
+  font-family: 'Noto Serif', Georgia, 'Times New Roman', serif !important;
+  font-size: clamp(42px, 3.8vw, 54px) !important;
+  font-weight: 700 !important;
+  font-synthesis: none;
+  letter-spacing: 0 !important;
+  word-spacing: normal !important;
+  text-transform: none !important;
+}
+
+@media (max-width: 760px) {
+  .internal-layout--walk-in-booking .dashboard-header h1 {
+    font-size: clamp(36px, 9vw, 44px) !important;
+  }
 }
 
 .walk-in-header p:last-child {

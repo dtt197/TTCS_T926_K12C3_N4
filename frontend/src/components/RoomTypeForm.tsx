@@ -16,6 +16,8 @@ type RoomTypeFormProps = {
   amenities: Amenity[]
   onSubmit: (payload: RoomTypePayload, files?: File[]) => Promise<void>
   onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
+  onSavingChange?: (saving: boolean) => void
 }
 
 type FormState = {
@@ -63,6 +65,8 @@ export function RoomTypeForm({
   amenities,
   onSubmit,
   onCancel,
+  onDirtyChange,
+  onSavingChange,
 }: RoomTypeFormProps) {
   const [form, setForm] = useState<FormState>(() => toFormState(initial))
 
@@ -74,6 +78,24 @@ export function RoomTypeForm({
   const [isSaving, setIsSaving] = useState(false)
   const [pendingImages, setPendingImages] = useState<PendingRoomTypeImage[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const onDirtyChangeRef = useRef(onDirtyChange)
+  const onSavingChangeRef = useRef(onSavingChange)
+  onDirtyChangeRef.current = onDirtyChange
+  onSavingChangeRef.current = onSavingChange
+
+  useEffect(() => {
+    const initialForm = toFormState(initial)
+    const initialAmenities = initial?.amenities.map((amenity) => amenity.id) ?? []
+    const dirty = JSON.stringify(form) !== JSON.stringify(initialForm) ||
+      JSON.stringify([...amenityIds].sort()) !== JSON.stringify([...initialAmenities].sort()) ||
+      pendingImages.length > 0
+    onDirtyChangeRef.current?.(dirty)
+  }, [form, amenityIds, pendingImages, initial])
+
+  useEffect(() => {
+    onSavingChangeRef.current?.(isSaving)
+  }, [isSaving])
 
   useEffect(() => {
     return () => {
