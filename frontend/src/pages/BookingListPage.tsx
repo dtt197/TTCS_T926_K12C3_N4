@@ -1167,7 +1167,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
               <section className="booking-update-section booking-update-stay" aria-labelledby="booking-stay-title">
                 <div className="booking-update-section-heading"><h4 id="booking-stay-title">Chỉnh sửa lưu trú</h4></div>
                 <div className="booking-edit-form booking-update-form">
-                  <label htmlFor="booking-edit-checkin">Ngày nhận phòng<input id="booking-edit-checkin" type="date" required value={editForm.checkInDate} onChange={(event) => setEditForm((current) => ({ ...current, checkInDate: event.target.value }))} /></label>
+                  <label htmlFor="booking-edit-checkin">Ngày nhận phòng<input id="booking-edit-checkin" type="date" required min={new Date().toLocaleDateString('en-CA')} value={editForm.checkInDate} onChange={(event) => setEditForm((current) => ({ ...current, checkInDate: event.target.value }))} /></label>
                   <label htmlFor="booking-edit-checkout">Ngày trả phòng<input id="booking-edit-checkout" type="date" required min={editForm.checkInDate || undefined} value={editForm.checkOutDate} onChange={(event) => setEditForm((current) => ({ ...current, checkOutDate: event.target.value }))} /></label>
                   <label className="booking-update-roomtype" htmlFor="booking-edit-roomtype">Loại phòng mới<select id="booking-edit-roomtype" required value={editForm.roomTypeId} disabled={roomTypesLoading} onChange={(event) => setEditForm((current) => ({ ...current, roomTypeId: event.target.value }))}>
                     <option value="">{roomTypesLoading ? 'Đang tải loại phòng...' : 'Chọn loại phòng'}</option>
@@ -1259,6 +1259,32 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                       )}
                     </div>
                   </div>
+                  {preview.totalDifference !== 0 && (
+                    <div className="preview-row">
+                      <span>Chênh lệch so với tổng cũ:</span>
+                      <span id="preview-total-difference">
+                        {preview.totalDifference > 0 ? '+' : '−'}{formatCurrency(Math.abs(preview.totalDifference))}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="preview-row">
+                    <span>Tiền cọc đã ghi nhận:</span>
+                    <span id="preview-deposit-amount">
+                      {preview.depositAmount > 0 ? formatCurrency(preview.depositAmount) : 'Chưa ghi nhận'}
+                    </span>
+                  </div>
+
+                  <div className="preview-row">
+                    <span>Còn phải thu:</span>
+                    <strong id="preview-remaining-amount">{formatCurrency(Math.max(preview.remainingAmount, 0))}</strong>
+                  </div>
+
+                  {preview.remainingAmount < 0 && (
+                    <p className="preview-warning" id="preview-deposit-over-msg">
+                      ⚠️ Tiền cọc đã ghi nhận lớn hơn tổng tiền mới. Vui lòng ghi bút toán điều chỉnh giảm cọc trước khi đổi.
+                    </p>
+                  )}
 
                   {!preview.available && (
                     <p className="preview-warning" id="preview-sold-out-msg">
@@ -1288,7 +1314,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                     editSaving ||
                     roomTypesLoading ||
                     previewLoading ||
-                    (preview !== null && !preview.available)
+                    (preview !== null && (!preview.available || preview.remainingAmount < 0))
                   }
                 >
                   {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}

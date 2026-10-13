@@ -6,6 +6,7 @@ import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingDeposit;
 import com.ttcs.homestay.exception.DuplicatePaymentException;
 import com.ttcs.homestay.exception.InvalidDepositException;
+import com.ttcs.homestay.repository.BookingDepositAdjustmentRepository;
 import com.ttcs.homestay.repository.BookingDepositRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import java.math.BigDecimal;
@@ -20,17 +21,47 @@ public class BookingDepositService {
 
     private final BookingDepositRepository bookingDepositRepository;
     private final BookingRepository bookingRepository;
+    private final BookingDepositAdjustmentRepository adjustmentRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BookingDepositService(
+            BookingDepositRepository bookingDepositRepository,
+            BookingRepository bookingRepository,
+            BookingDepositAdjustmentRepository adjustmentRepository) {
+        this.bookingDepositRepository = bookingDepositRepository;
+        this.bookingRepository = bookingRepository;
+        this.adjustmentRepository = adjustmentRepository;
+    }
 
     public BookingDepositService(
             BookingDepositRepository bookingDepositRepository,
             BookingRepository bookingRepository) {
-        this.bookingDepositRepository = bookingDepositRepository;
-        this.bookingRepository = bookingRepository;
+        this(bookingDepositRepository, bookingRepository, null);
     }
 
     @Transactional(readOnly = true)
     public boolean hasDeposit(Booking booking) {
         return bookingDepositRepository.existsByBooking(booking);
+    }
+    
+    /**
+     * S3-04 AC3: tổng tiền cọc đã ghi nhận hiện tại = cọc gốc cộng/trừ các bút toán điều chỉnh; 0 nếu chưa có cọc.
+     * Chỉ đọc, không thay đổi bản ghi cọc.
+     */
+    @Transactional(readOnly = true)
+    public long currentDepositTotal(Booking booking) {
+        BookingDeposit deposit = bookingDepositRepository.findByBooking(booking).orElse(null);
+        if (deposit == null) {
+            return 0L;
+        }
+        BigDecimal total = deposit.getAmount();
+        if (adjustmentRepository != null && booking.getId() != null) {
+            BigDecimal adjustments = adjustmentRepository.sumSignedAmountsByBookingId(booking.getId());
+            if (adjustments != null) {
+                total = total.add(adjustments);
+            }
+        }
+        return total.setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
     }
 
     @Transactional
