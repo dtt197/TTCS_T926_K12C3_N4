@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { RoomTypeForm } from '../components/RoomTypeForm'
 import { RoomTypeImageModal } from '../components/RoomTypeImageModal'
@@ -46,10 +46,85 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
   const [editing, setEditing] = useState<RoomType | null>(null)
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+  const [isSavingForm, setIsSavingForm] = useState(false)
+  const [isFormDirty, setIsFormDirty] = useState(false)
+  const [formInstance, setFormInstance] = useState(0)
+  const createModalRef = useRef<HTMLDivElement>(null)
+  const addRoomTypeButtonRef = useRef<HTMLButtonElement>(null)
 
   const [amenityDetailRoomType, setAmenityDetailRoomType] =
     useState<RoomType | null>(null)
   const [imageRoomType, setImageRoomType] = useState<RoomType | null>(null)
+
+  function openCreateModal() {
+    setEditing(null)
+    setIsFormDirty(false)
+    setFormInstance((instance) => instance + 1)
+    setIsFormModalOpen(true)
+  }
+
+  function openEditModal(roomType: RoomType) {
+    setEditing(roomType)
+    setIsFormDirty(false)
+    setFormInstance((instance) => instance + 1)
+    setIsFormModalOpen(true)
+  }
+
+  function requestCloseFormModal() {
+    if (isSavingForm) return
+    if (isFormDirty) {
+      const target = editing ? `sửa ${editing.name}` : 'thêm loại phòng'
+      if (!window.confirm(`Hủy ${target}? Thông tin đã nhập sẽ bị mất.`)) return
+    }
+    setIsFormModalOpen(false)
+    setEditing(null)
+    setIsFormDirty(false)
+    window.setTimeout(() => addRoomTypeButtonRef.current?.focus(), 0)
+  }
+
+  useEffect(() => {
+    if (!isFormModalOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    document.body.style.overflow = 'hidden'
+    createModalRef.current?.querySelector<HTMLElement>('input')?.focus()
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        requestCloseFormModal()
+        return
+      }
+
+      if (event.key !== 'Tab' || !createModalRef.current) return
+      const focusable = Array.from(
+        createModalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      )
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+      previousFocus?.focus()
+    }
+  }, [isFormModalOpen, isSavingForm, isFormDirty, editing])
 
   const load = useCallback(
     () =>
@@ -96,6 +171,8 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
   )
 
   async function handleCreate(payload: RoomTypePayload, files?: File[]) {
+    setIsSavingForm(true)
+    try {
     const created = await createRoomType(payload)
 
     if (files && files.length > 0) {
@@ -125,6 +202,13 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
     }
 
     await load()
+    setIsFormModalOpen(false)
+    setEditing(null)
+    setIsFormDirty(false)
+    window.setTimeout(() => addRoomTypeButtonRef.current?.focus(), 0)
+    } finally {
+      setIsSavingForm(false)
+    }
   }
 
   async function handleUpdate(payload: RoomTypePayload) {
@@ -132,7 +216,9 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
 
     const updated = await updateRoomType(editing.id, payload)
 
+    setIsFormModalOpen(false)
     setEditing(null)
+    setIsFormDirty(false)
 
     setNotice({
       type: 'success',
@@ -258,13 +344,18 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
         }
       >
         <section className="room-type-list-section">
-          <div className="room-type-section-heading">
-            <div>
+          <div className="room-type-section-heading room-type-list-heading">
+            <div className="room-type-list-heading-main">
               <span className="room-type-kicker">
                 DANH SÁCH
               </span>
 
-              <h2>Danh sách loại phòng</h2>
+              <div className="room-type-list-heading-title">
+                <h2>Danh sách loại phòng</h2>
+                <span className="room-type-list-count">
+                  {roomTypes.length} loại
+                </span>
+              </div>
 
               <p>
                 Theo dõi sức chứa, số phòng, giá,
@@ -272,9 +363,16 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
               </p>
             </div>
 
-            <span className="room-type-list-count">
-              {roomTypes.length} loại
-            </span>
+            {canManage && (
+              <button
+                ref={addRoomTypeButtonRef}
+                className="room-type-add-button"
+                type="button"
+                onClick={openCreateModal}
+              >
+                + Thêm loại phòng
+              </button>
+            )}
           </div>
 
           {isLoading ? (
@@ -483,7 +581,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
                           className="secondary-button"
                           type="button"
                           onClick={() =>
-                            setEditing(roomType)
+                            openEditModal(roomType)
                           }
                         >
                           Sửa
@@ -524,47 +622,33 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
           )}
         </section>
 
-        {canManage && (
-          <section className="room-type-create-section">
-            <div className="room-type-section-heading compact">
-              <div>
-                <span className="room-type-kicker">
-                  {editing
-                    ? 'CHỈNH SỬA'
-                    : 'THÊM MỚI'}
-                </span>
-
-                <h2>
-                  {editing
-                    ? `Sửa loại phòng ${editing.code}`
-                    : 'Thêm loại phòng'}
-                </h2>
-
-                <p>
-                  Sức chứa tối đa không được nhỏ hơn
-                  sức chứa tiêu chuẩn.
-                </p>
-              </div>
-            </div>
-
-            <RoomTypeForm
-              key={editing?.id ?? 'create'}
-              initial={editing ?? undefined}
-              amenities={amenities}
-              onSubmit={
-                editing
-                  ? handleUpdate
-                  : handleCreate
-              }
-              onCancel={
-                editing
-                  ? () => setEditing(null)
-                  : undefined
-              }
-            />
-          </section>
-        )}
       </section>
+
+      {canManage && isFormModalOpen && (
+        <div className="room-type-create-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) requestCloseFormModal() }}>
+          <div ref={createModalRef} className="room-type-create-modal" role="dialog" aria-modal="true" aria-labelledby="room-type-create-title" aria-describedby="room-type-create-description" tabIndex={-1}>
+            <header className="room-type-create-modal-header">
+              <div>
+                <span className="room-type-kicker">{editing ? 'CHỈNH SỬA' : 'THÊM MỚI'}</span>
+                <h2 id="room-type-create-title">{editing ? `Sửa loại phòng — ${editing.name}` : 'Thêm loại phòng'}</h2>
+                <p id="room-type-create-description">Khai báo thông tin, giá và tiện nghi.</p>
+              </div>
+              <button className="room-type-create-modal-close" type="button" aria-label="Đóng modal loại phòng" disabled={isSavingForm} onClick={requestCloseFormModal}>×</button>
+            </header>
+            <div className="room-type-create-modal-body">
+              <RoomTypeForm
+                key={`${editing?.id ?? 'create'}-${formInstance}`}
+                initial={editing ?? undefined}
+                amenities={amenities}
+                onSubmit={editing ? handleUpdate : handleCreate}
+                onCancel={requestCloseFormModal}
+                onDirtyChange={setIsFormDirty}
+                onSavingChange={setIsSavingForm}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {amenityDetailRoomType && (
         <div

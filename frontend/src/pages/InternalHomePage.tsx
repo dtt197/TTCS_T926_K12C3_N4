@@ -237,7 +237,7 @@ export function InternalHomePage({
   }
 
   return (
-    <main className="internal-layout">
+    <main className={`internal-layout${activeView === 'walkInBooking' ? ' internal-layout--walk-in-booking' : ''}`}>
       <aside className="app-sidebar">
         <div className="sidebar-brand">
           <div className="sidebar-logo">
