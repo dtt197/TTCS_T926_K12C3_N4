@@ -56,6 +56,9 @@ public class SecurityConfig {
                         // Thông tin phiên đăng nhập
                         .requestMatchers("/api/internal/**").authenticated()
 
+                        // S4-06: báo cáo công suất chỉ dành cho chủ homestay.
+                        .requestMatchers(HttpMethod.GET, "/api/reports/occupancy").hasRole("OWNER")
+
                         // S1-05: nhật ký chỉ ADMIN được xem
                         .requestMatchers("/api/admin/audit-logs/**").hasRole("ADMIN")
 
