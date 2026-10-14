@@ -27,7 +27,6 @@ import {
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
-import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
 import { BookingCancellationInfoSection } from '../components/BookingCancellationInfoSection'
 import { BookingCheckedInCancelNotice } from '../components/BookingCheckedInCancelNotice'
 import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
@@ -638,8 +637,6 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
           <p>Danh sách được sắp xếp theo thời điểm tạo mới nhất.</p>
         </div>
       </div>
-
-      <RoomShortageAlertSection />
 
       <form className="booking-filters" onSubmit={handleFilterSubmit}>
         <label>

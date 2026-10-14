@@ -25,6 +25,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.ttcs.homestay.repository.UserRepository;
 import com.ttcs.homestay.security.AccountStatusFilter;
+import com.ttcs.homestay.controller.notification.NotificationController;
 
 @Configuration
 public class SecurityConfig {
@@ -55,6 +56,28 @@ public class SecurityConfig {
 
                         // Thông tin phiên đăng nhập
                         .requestMatchers("/api/internal/**").authenticated()
+
+                        .requestMatchers(HttpMethod.GET, "/api/maintenance-requests/cleaning-room-ids")
+                        .hasRole("HOUSEKEEPING")
+                        .requestMatchers(HttpMethod.GET, "/api/maintenance-requests", "/api/maintenance-requests/*")
+                        .hasAnyRole("OWNER", "RECEPTIONIST", "HOUSEKEEPING")
+                        .requestMatchers(HttpMethod.POST, "/api/maintenance-requests/*/accept", "/api/maintenance-requests/*/start",
+                                "/api/maintenance-requests/*/repair-completed", "/api/maintenance-requests/*/verify")
+                        .hasRole("OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/maintenance-requests/*/cleaning-completed")
+                        .hasRole("HOUSEKEEPING")
+                        .requestMatchers(HttpMethod.PUT, "/api/maintenance-requests/*/vendor")
+                        .hasRole("OWNER")
+
+                        // Inbox notifications are scoped to the authenticated OWNER or RECEPTIONIST.
+                        .requestMatchers(HttpMethod.GET, "/api/notifications")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/stream")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/unread-count")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
+                        .requestMatchers(HttpMethod.PATCH, "/api/notifications/*/read")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
 
                         // S1-05: nhật ký chỉ ADMIN được xem
                         .requestMatchers("/api/admin/audit-logs/**").hasRole("ADMIN")
@@ -353,7 +376,8 @@ public class SecurityConfig {
 
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
-                "Content-Type"
+                "Content-Type",
+                "Idempotency-Key"
         ));
 
         configuration.setAllowCredentials(true);

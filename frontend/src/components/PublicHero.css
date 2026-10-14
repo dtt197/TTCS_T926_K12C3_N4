@@ -42,7 +42,7 @@
 .customer-hero__title {
   margin: 0;
   color: var(--green-900);
-  font-family: 'Noto Serif', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-sans);
   font-size: clamp(2.75rem, 4.2vw, 4.05rem);
   font-weight: 500;
   letter-spacing: 0;
