@@ -229,10 +229,19 @@ export function getBookingRoomChangeHistory(id: number): Promise<BookingRoomChan
 export type BookingCancellationInfo = {
   status: string
   cancelReason: string | null
+  cancelNote: string | null
+  cancelDepositAmount: number | null
+  cancelRefundPercent: number | null
+  cancelRefundAmount: number | null
   cancelledBy: string | null
   cancelledAt: string | null
 }
 
-export function getBookingCancellationInfo(id: number): Promise<BookingCancellationInfo> {
-  return apiRequest<BookingCancellationInfo>(`/api/bookings/${id}/cancellation-info`)
+export function getBookingCancellationInfo(
+  id: number,
+): Promise<BookingCancellationInfo> {
+  return apiRequest<BookingCancellationInfo>(
+    `/api/bookings/${id}/cancellation-info`,
+  )
 }
+  

@@ -4,7 +4,12 @@ import {
   type BookingCancellationInfo,
 } from '../services/bookingService'
 
-/** Lý do chọn từ danh sách; nếu là chữ tự do (S3-02) thì hiển thị nguyên văn. */
+const money = new Intl.NumberFormat('vi-VN', {
+  style: 'currency',
+  currency: 'VND',
+})
+
+/** Lý do chọn từ danh sách; nếu là chữ tự do thì hiển thị nguyên văn. */
 const CANCEL_REASON_LABELS: Record<string, string> = {
   KHACH_DOI_KE_HOACH: 'Khách đổi kế hoạch',
   KHACH_KHONG_LIEN_LAC: 'Khách không liên lạc được',
@@ -20,7 +25,7 @@ export function BookingCancellationInfoSection({ bookingId }: { bookingId: numbe
   useEffect(() => {
     let active = true
     getBookingCancellationInfo(bookingId)
-      .then((data) => {
+      .then((data: BookingCancellationInfo) => {
         if (active) setInfo(data)
       })
       .catch(() => {
@@ -63,6 +68,34 @@ export function BookingCancellationInfoSection({ bookingId }: { bookingId: numbe
           <dd>
             {info.cancelledAt
               ? new Date(info.cancelledAt).toLocaleString('vi-VN')
+              : 'Không có'}
+          </dd>
+        </div>
+                <div>
+          <dt>Ghi chú huỷ</dt>
+          <dd>{info.cancelNote || 'Không có'}</dd>
+        </div>
+        <div>
+          <dt>Tiền cọc đã ghi nhận</dt>
+          <dd>
+            {info.cancelDepositAmount !== null && info.cancelDepositAmount !== undefined
+              ? money.format(info.cancelDepositAmount)
+              : 'Không có'}
+          </dd>
+        </div>
+        <div>
+          <dt>Tỷ lệ hoàn cọc</dt>
+          <dd>
+            {info.cancelRefundPercent !== null && info.cancelRefundPercent !== undefined
+              ? `${info.cancelRefundPercent}%`
+              : 'Không có'}
+          </dd>
+        </div>
+        <div>
+          <dt>Số tiền hoàn</dt>
+          <dd>
+            {info.cancelRefundAmount !== null && info.cancelRefundAmount !== undefined
+              ? money.format(info.cancelRefundAmount)
               : 'Không có'}
           </dd>
         </div>
