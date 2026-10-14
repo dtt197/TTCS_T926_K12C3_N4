@@ -25,14 +25,28 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.ttcs.homestay.repository.UserRepository;
 import com.ttcs.homestay.security.AccountStatusFilter;
+import com.ttcs.homestay.security.ApiAccessDeniedHandler;
+import com.ttcs.homestay.security.ApiAuthenticationEntryPoint;
 
 @Configuration
 public class SecurityConfig {
 
     @Bean
+    ApiAuthenticationEntryPoint apiAuthenticationEntryPoint() {
+        return new ApiAuthenticationEntryPoint();
+    }
+
+    @Bean
+    ApiAccessDeniedHandler apiAccessDeniedHandler() {
+        return new ApiAccessDeniedHandler();
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ApiAuthenticationEntryPoint authenticationEntryPoint,
+            ApiAccessDeniedHandler accessDeniedHandler
     ) throws Exception {
 
         http
@@ -227,7 +241,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/public/room-types",
-                                "/api/public/room-types/**",
+                                "/api/public/room-types/*",
                                 "/api/public/room-types-catalog"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
@@ -240,22 +254,26 @@ public class SecurityConfig {
 
                         // S2-08: khách tra cứu booking bằng mã và email
                         .requestMatchers(HttpMethod.POST, "/api/public/bookings/lookup").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/rooms/search").permitAll()
 
                         // S2-09: Tệp ảnh tĩnh loại phòng công khai
                         .requestMatchers("/uploads/**").permitAll()
 
                         // API chưa khai báo quyền sẽ bị từ chối
-                        .requestMatchers("/api/**").denyAll()
+                        .requestMatchers("/api", "/api/**").denyAll()
 
+                        // Static frontend routes are public; API authorization is enforced above.
                         .anyRequest().permitAll()
                 )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(jwt ->
                                 jwt.jwtAuthenticationConverter(
                                         jwtAuthenticationConverter()
                                 )
-                        )
+                        ).authenticationEntryPoint(authenticationEntryPoint)
                 )
                 .addFilterAfter(
                         new AccountStatusFilter(userRepository),

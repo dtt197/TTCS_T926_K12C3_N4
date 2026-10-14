@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -32,6 +33,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
@@ -126,7 +128,8 @@ void setUp() {
                                 "Authorization",
                                 "Bearer receptionist-test-token"
                         )
-        ).andExpect(status().isForbidden());
+        ).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("forbidden"));
     }
 
     @Test
@@ -150,7 +153,8 @@ void setUp() {
                         )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}")
-        ).andExpect(status().isForbidden());
+        ).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("forbidden"));
     }
 
     @Test
@@ -698,7 +702,92 @@ void setUp() {
     void chuaDangNhapTruyCapApiAdmin_biChan401() throws Exception {
         mockMvc.perform(
                 get("/api/admin/authorization-test")
-        ).andExpect(status().isUnauthorized());
+        ).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthorized"));
+    }
+
+    @Test
+    void protectedApiFamilies_withoutToken_allReturn401() throws Exception {
+        List<MockHttpServletRequestBuilder> requests = List.of(
+                get("/api/internal/me"),
+                get("/api/admin/audit-logs"),
+                get("/api/admin/users"),
+                post("/api/admin/reminders/run"),
+                get("/api/account/profile"),
+                get("/api/rooms"),
+                get("/api/rooms/calendar"),
+                patch("/api/rooms/1/status"),
+                patch("/api/rooms/1/maintenance"),
+                patch("/api/rooms/1/incident"),
+                post("/api/rooms/1/check-in"),
+                post("/api/rooms/1/check-out"),
+                get("/api/room-management/rooms"),
+                get("/api/room-types"),
+                post("/api/room-types"),
+                get("/api/amenities"),
+                post("/api/amenities"),
+                get("/api/settings"),
+                get("/api/settings/history"),
+                put("/api/settings"),
+                get("/api/price-overrides"),
+                post("/api/price-overrides"),
+                post("/api/price-overrides/preview"),
+                get("/api/pricing/quote"),
+                get("/api/bookings"),
+                post("/api/bookings"),
+                get("/api/bookings/check-in-options"),
+                put("/api/bookings/1/confirm"),
+                put("/api/bookings/1/room"),
+                put("/api/bookings/1/room-change"),
+                put("/api/bookings/1/cancel"),
+                post("/api/bookings/1/deposit-adjustments"),
+                get("/api/bookings/1/details"),
+                get("/api/bookings/1/cancellation-info"),
+                post("/api/bookings/BK-TEST/cancel"),
+                get("/api"),
+                get("/api/not-yet-authorized"));
+
+        for (MockHttpServletRequestBuilder request : requests) {
+            mockMvc.perform(request)
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.error").value("unauthorized"));
+        }
+    }
+
+    @Test
+    void invalidBearerTokenIsRejectedEvenOnPublicApi() throws Exception {
+        org.mockito.Mockito.doThrow(new BadJwtException("invalid test token"))
+                .when(jwtDecoder).decode("invalid-test-token");
+
+        mockMvc.perform(get("/api/public/room-types")
+                        .header("Authorization", "Bearer invalid-test-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthorized"));
+    }
+
+    @Test
+    void publicApiRoutesRemainAvailableWithoutToken() throws Exception {
+        java.time.LocalDate checkIn = java.time.LocalDate.now().plusDays(10);
+        List<MockHttpServletRequestBuilder> requests = List.of(
+                get("/api/public/room-types"),
+                get("/api/public/room-types/999999"),
+                get("/api/public/room-type-cards"),
+                get("/api/public/quote"),
+                get("/api/public/rooms/search")
+                        .param("checkIn", checkIn.toString())
+                        .param("checkOut", checkIn.plusDays(2).toString())
+                        .param("guestCount", "1"),
+                post("/api/public/bookings").contentType(MediaType.APPLICATION_JSON).content("{}"),
+                post("/api/public/bookings/lookup")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"));
+
+        for (MockHttpServletRequestBuilder request : requests) {
+            int responseStatus = mockMvc.perform(request).andReturn().getResponse().getStatus();
+            assertThat(responseStatus)
+                    .as("Public route should be reachable without a token: %s", request)
+                    .isBetween(200, 499)
+                    .isNotIn(401, 403);
+        }
     }
     @Test
 void housekeepingTruyCapApiCheckIn_biChan403() throws Exception {

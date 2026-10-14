@@ -131,9 +131,11 @@ public class RoomShortageAlertService {
                 } else {
                     final LocalDate currentNight = night;
                     available = allRooms.stream()
-                            .filter(r -> r.getRoomType() != null && r.getRoomType().equalsIgnoreCase(rt.getName()))
-                            .filter(Room::isActive)
-                            .filter(r -> !isRoomUnderMaintenance(r, currentNight))
+                            .filter(r -> r != null
+                                    && r.getRoomType() != null
+                                    && r.getRoomType().equalsIgnoreCase(rt.getName()))
+                            .filter(r -> r != null && r.isActive())
+                            .filter(r -> r != null && !isRoomUnderMaintenance(r, currentNight))
                             .count();
                 }
 
@@ -253,7 +255,10 @@ public class RoomShortageAlertService {
                 .collect(Collectors.toList());
 
         // Sắp xếp: booking tạo sau cùng lên đầu (createdAt DESC) để ưu tiên xử lý
-        result.sort(Comparator.comparing(ShortageBookingResponse::createdAt, Comparator.nullsLast(Comparator.reverseOrder())));
+        result.sort(Comparator.comparing(
+                (ShortageBookingResponse booking) -> booking.createdAt(),
+                Comparator.nullsLast(Comparator.reverseOrder())
+        ));
 
         return result;
     }
