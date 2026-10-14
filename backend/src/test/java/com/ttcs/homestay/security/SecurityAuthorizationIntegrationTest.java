@@ -169,6 +169,31 @@ void setUp() {
     }
 
     @Test
+    void endpointPermissionMatrixIsAdminOnlyAndListsEffectivePolicies() throws Exception {
+        String response = mockMvc.perform(get("/api/admin/security/endpoint-permissions")
+                        .header("Authorization", "Bearer admin-test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.method == 'GET' && @.path == '/api/admin/users')].roles[0]")
+                        .value("ADMIN"))
+                .andExpect(jsonPath("$[?(@.method == 'GET' && @.path == '/api/rooms/calendar')].roles[0]")
+                        .value("RECEPTIONIST"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(response).contains(
+                "\"path\":\"/api/public/rooms/search\",\"access\":\"PUBLIC\"",
+                "\"path\":\"/api/rooms/{roomId}/history\",\"access\":\"ROLES\""
+        );
+
+        mockMvc.perform(get("/api/admin/security/endpoint-permissions"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/admin/security/endpoint-permissions")
+                        .header("Authorization", "Bearer receptionist-test-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void roomManagementApiChiAdminVaOwnerDuocTruyCap() throws Exception {
         mockMvc.perform(get("/api/room-management/rooms")
                         .header("Authorization", "Bearer admin-test-token"))

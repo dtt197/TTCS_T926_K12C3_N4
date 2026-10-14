@@ -70,6 +70,20 @@ that lack the required role receive `403`; missing or invalid tokens receive
 `401`. Both outcomes are logged with the HTTP method and route path; credentials,
 request bodies, query strings, and token values are not logged.
 
+## Permission review screen
+
+The admin-only screen at `/security-endpoint-matrix` compares this approved
+matrix with the effective permissions of registered API handler methods. The
+actual side is read from the same ordered policy catalog used by
+`SecurityConfig`, so the report reflects the rules that protect requests rather
+than a second backend copy of those rules. The API report is available at
+`GET /api/admin/security/endpoint-permissions`.
+
+The screen highlights and filters mismatches but does not modify authorization.
+When a route is added or its approved access changes, update the approved
+frontend matrix and this document independently, then review any reported
+differences.
+
 ## Public frontend pages
 
 `AppRoutes` intentionally renders these paths without a signed-in user:

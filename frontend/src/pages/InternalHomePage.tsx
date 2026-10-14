@@ -14,6 +14,7 @@ import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
 import { BookingListPage } from './BookingListPage'
 import { WalkInBookingPage } from './WalkInBookingPage'
+import { SecurityEndpointMatrixPage } from './SecurityEndpointMatrixPage'
 import './AuthPages.css'
 
 type InternalHomePageProps = {
@@ -34,6 +35,7 @@ type View =
   | 'reminderEmails'
   | 'bookings'
   | 'walkInBooking'
+  | 'security-matrix'
 
 type Tab = {
   view: View
@@ -142,6 +144,14 @@ const TABS: ReadonlyArray<Tab> = [
     title: 'Email nhắc nhận phòng',
     icon: '✉',
     permission: 'auditLogs:view',
+  },
+  {
+    view: 'security-matrix',
+    path: '/security-endpoint-matrix',
+    label: 'Ma trận quyền API',
+    title: 'Đối chiếu ma trận quyền API',
+    icon: '⚿',
+    permission: 'security:matrix:view',
   },
 ]
 
@@ -355,6 +365,8 @@ export function InternalHomePage({
             <AuditLogPage />
           ) : activeView === 'reminderEmails' ? (
             <ReminderEmailLogPage />
+          ) : activeView === 'security-matrix' ? (
+            <SecurityEndpointMatrixPage />
           ) : activeView === 'roomManagement' ? (
             <RoomManagementPage />
           ) : activeView === 'users' ? (
