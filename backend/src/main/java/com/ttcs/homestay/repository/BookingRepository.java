@@ -126,4 +126,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             return cb.and(predicates.toArray(new Predicate[0]));
         }, pageable);
     }
+
+
+    List<Booking> findByStatusAndCheckInDate(BookingStatus status, LocalDate checkInDate);
 }

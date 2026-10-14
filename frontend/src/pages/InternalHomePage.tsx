@@ -3,6 +3,7 @@ import { apiRequest } from '../services/apiClient'
 import { hasPermission, type Permission } from '../permissions/rolePermissions'
 import type { LoginResponse } from '../types/auth'
 import { AuditLogPage } from './AuditLogPage'
+import { ReminderEmailLogPage } from './ReminderEmailLogPage' 
 import { RoomManagementPage } from './RoomManagementPage'
 import { AmenityPage } from './AmenityPage'
 import { PriceOverridePage } from './PriceOverridePage'
@@ -30,6 +31,7 @@ type View =
   | 'settings'
   | 'users'
   | 'audit-logs'
+  | 'reminderEmails'
   | 'bookings'
   | 'walkInBooking'
 
@@ -130,6 +132,15 @@ const TABS: ReadonlyArray<Tab> = [
     label: 'Nhật ký',
     title: 'Nhật ký hoạt động',
     icon: '☷',
+    permission: 'auditLogs:view',
+  },
+  {
+    // S4-05: email nhắc nhận phòng (chỉ ADMIN, khớp /api/admin/** ở backend).
+    view: 'reminderEmails',
+    path: '/reminder-emails',
+    label: 'Email nhắc',
+    title: 'Email nhắc nhận phòng',
+    icon: '✉',
     permission: 'auditLogs:view',
   },
 ]
@@ -342,6 +353,8 @@ export function InternalHomePage({
             <WalkInBookingPage />
           ) : activeView === 'audit-logs' ? (
             <AuditLogPage />
+          ) : activeView === 'reminderEmails' ? (
+            <ReminderEmailLogPage />
           ) : activeView === 'roomManagement' ? (
             <RoomManagementPage />
           ) : activeView === 'users' ? (
