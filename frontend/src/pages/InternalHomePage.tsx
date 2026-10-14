@@ -274,11 +274,8 @@ const TABS: ReadonlyArray<Tab> = [
     view: 'reminderEmails',
 
     path: '/reminder-emails',
-
-    label: 'Email nhắc',
-
-    title: 'Email nhắc nhận phòng',
-
+    label: 'Email đã gửi',
+    title: 'Email đã gửi cho khách',
     icon: '✉',
 
     permission: 'auditLogs:view',
