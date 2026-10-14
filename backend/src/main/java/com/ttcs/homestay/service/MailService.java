@@ -11,6 +11,10 @@ import org.springframework.stereotype.Service;
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.entity.Booking;
 import java.time.format.DateTimeFormatter; 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+import java.util.Map; 
 
 @Service
 public class MailService {
@@ -92,6 +96,71 @@ public class MailService {
 		message.setTo(booking.getGuestEmail());
 		message.setSubject(reminderSubject(booking));
 		message.setText(reminderBody(booking));
+		mailSender.send(message);
+	}
+
+	private static final Map<String, String> CANCEL_REASON_LABELS = Map.of(
+			"KHACH_DOI_KE_HOACH", "Khách đổi kế hoạch",
+			"KHACH_KHONG_LIEN_LAC", "Không liên lạc được với khách",
+			"TRUNG_BOOKING", "Booking bị trùng",
+			"LY_DO_KHAC", "Lý do khác");
+
+	/** Lý do hiển thị cho khách; lý do chữ tự do cũ (S3-02) giữ nguyên văn. */
+	public static String cancelReasonLabel(String reason) {
+		if (reason == null || reason.isBlank()) {
+			return "Không có";
+		}
+		return CANCEL_REASON_LABELS.getOrDefault(reason, reason);
+	}
+
+	/** Số nguyên VND, dạng 1.500.000 đ (không phụ thuộc cấu hình máy chủ). */
+	public static String formatMoneyVnd(long amount) {
+		DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.ROOT);
+		symbols.setGroupingSeparator('.');
+		return new DecimalFormat("#,##0", symbols).format(amount) + " đ";
+	}
+
+	public static String cancellationSubject(Booking booking) {
+		return "Thông báo huỷ booking " + booking.getBookingCode();
+	}
+
+	public static String cancellationBody(Booking booking) {
+		long deposit = booking.getCancelDepositAmount() == null ? 0L : booking.getCancelDepositAmount();
+		int percent = booking.getCancelRefundPercent() == null ? 0 : booking.getCancelRefundPercent();
+		long refund = booking.getCancelRefundAmount() == null ? 0L : booking.getCancelRefundAmount();
+		String reason = booking.getCancelReason();
+		String note = booking.getCancelNote();
+
+		StringBuilder sb = new StringBuilder();
+		sb.append("Xin chào ").append(booking.getGuestName()).append(",\n\n")
+				.append("Booking ").append(booking.getBookingCode())
+				.append(" (").append(booking.getRoomTypeNameSnapshot())
+				.append(", nhận phòng ngày ").append(booking.getCheckInDate().format(DATE_VN))
+				.append(") đã được huỷ.\n\n")
+				.append("Lý do huỷ: ").append(cancelReasonLabel(reason)).append("\n");
+		if ("LY_DO_KHAC".equals(reason) && note != null && !note.isBlank()) {
+			sb.append("Chi tiết: ").append(note.trim()).append("\n");
+		}
+		sb.append("Tiền cọc đã ghi nhận: ").append(formatMoneyVnd(deposit)).append("\n")
+				.append("Tỷ lệ hoàn cọc áp dụng: ").append(percent).append("%\n");
+		if (refund > 0) {
+			sb.append("Số tiền được hoàn: ").append(formatMoneyVnd(refund)).append("\n");
+		} else if (deposit == 0) {
+			sb.append("Số tiền được hoàn: 0 đ (booking chưa ghi nhận tiền cọc)\n");
+		} else {
+			sb.append("Số tiền được hoàn: Không hoàn cọc (0 đ)\n");
+		}
+		sb.append("\nXin lỗi vì sự bất tiện này. Vui lòng liên hệ HomeStay nếu bạn cần hỗ trợ thêm.");
+		return sb.toString();
+	}
+
+	/** Như sendCheckInReminder: gửi lỗi thì ném MailException để nơi gọi ghi nhật ký. */
+	public void sendCancellationEmail(Booking booking) {
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(from);
+		message.setTo(booking.getGuestEmail());
+		message.setSubject(cancellationSubject(booking));
+		message.setText(cancellationBody(booking));
 		mailSender.send(message);
 	}
 }

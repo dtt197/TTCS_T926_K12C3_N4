@@ -138,8 +138,8 @@ const TABS: ReadonlyArray<Tab> = [
     // S4-05: email nhắc nhận phòng (chỉ ADMIN, khớp /api/admin/** ở backend).
     view: 'reminderEmails',
     path: '/reminder-emails',
-    label: 'Email nhắc',
-    title: 'Email nhắc nhận phòng',
+    label: 'Email đã gửi',
+    title: 'Email đã gửi cho khách',
     icon: '✉',
     permission: 'auditLogs:view',
   },

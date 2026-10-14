@@ -26,11 +26,17 @@ public class BookingCancellationInfoController {
     @GetMapping("/{id}/cancellation-info")
     public Map<String, Object> getCancellationInfo(@PathVariable Long id) {
         List<Map<String, Object>> rows = jdbcTemplate.query(
-                "SELECT status, cancel_reason, cancelled_by, cancelled_at FROM bookings WHERE id = ?",
+                         "SELECT status, cancel_reason, cancel_note, cancel_deposit_amount,"
+                        + " cancel_refund_percent, cancel_refund_amount, cancelled_by, cancelled_at"
+                        + " FROM bookings WHERE id = ?",
                 (rs, rowNum) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
                     row.put("status", rs.getString("status"));
                     row.put("cancelReason", rs.getString("cancel_reason"));
+                    row.put("cancelNote", rs.getString("cancel_note"));
+                    row.put("cancelDepositAmount", rs.getObject("cancel_deposit_amount", Long.class));
+                    row.put("cancelRefundPercent", rs.getObject("cancel_refund_percent", Integer.class));
+                    row.put("cancelRefundAmount", rs.getObject("cancel_refund_amount", Long.class));
                     row.put("cancelledBy", rs.getString("cancelled_by"));
                     row.put("cancelledAt", rs.getObject("cancelled_at", OffsetDateTime.class));
                     return row;
