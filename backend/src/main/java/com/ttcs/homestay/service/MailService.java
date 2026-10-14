@@ -9,6 +9,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import com.ttcs.homestay.entity.User;
+import com.ttcs.homestay.entity.Booking;
+import java.time.format.DateTimeFormatter; 
 
 @Service
 public class MailService {
@@ -59,5 +61,37 @@ public class MailService {
 		} catch (MailException e) {
 			log.warn("Không gửi được email đặt lại mật khẩu tới {}: {}", user.getEmail(), e.getMessage());
 		}
+	}
+
+	private static final DateTimeFormatter DATE_VN = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+	/** Tiêu đề email nhắc nhận phòng (tách riêng để test). */
+	public static String reminderSubject(Booking booking) {
+		return "Nhắc lịch nhận phòng ngày " + booking.getCheckInDate().format(DATE_VN)
+				+ " - Mã booking " + booking.getBookingCode();
+	}
+
+	/** Nội dung email nhắc nhận phòng (tách riêng để test). */
+	public static String reminderBody(Booking booking) {
+		return "Xin chào " + booking.getGuestName() + ",\n\n"
+				+ "HomeStay xin nhắc bạn sắp đến ngày nhận phòng.\n"
+				+ "Mã booking: " + booking.getBookingCode() + "\n"
+				+ "Loại phòng: " + booking.getRoomTypeNameSnapshot() + "\n"
+				+ "Ngày nhận phòng: " + booking.getCheckInDate().format(DATE_VN) + "\n"
+				+ "Ngày trả phòng: " + booking.getCheckOutDate().format(DATE_VN) + "\n\n"
+				+ "Hẹn gặp bạn tại HomeStay.";
+	}
+
+	/**
+	 * Gửi email nhắc nhận phòng. KHÁC các phương thức trên: nếu gửi lỗi thì ném MailException
+	 * để nơi gọi ghi nhận thất bại vào nhật ký.
+	 */
+	public void sendCheckInReminder(Booking booking) {
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(from);
+		message.setTo(booking.getGuestEmail());
+		message.setSubject(reminderSubject(booking));
+		message.setText(reminderBody(booking));
+		mailSender.send(message);
 	}
 }
