@@ -50,6 +50,9 @@ public record OperatingSettingsRequest(
         @Min(value = 0, message = "Phụ thu thêm người không được âm")
         @Max(value = 100_000_000, message = "Phụ thu thêm người quá lớn")
         Long extraPersonFee,
+        @Min(value = 0, message = "Phụ thu thêm giường không được âm")
+        @Max(value = 100_000_000, message = "Phụ thu thêm giường quá lớn")
+        Long extraBedFee,
 
         @NotNull(message = "Vui lòng khai báo chính sách huỷ")
         @Size(min = 1, max = 3, message = "Chính sách huỷ có từ 1 đến 3 mốc")
@@ -64,4 +67,14 @@ public record OperatingSettingsRequest(
         List<String> weekendDays
 
 ) {
+
+    /** Giữ constructor cũ (chưa có phụ thu thêm giường) cho code và test hiện có. */
+    public OperatingSettingsRequest(
+            String homestayName, String address, String phone, String email,
+            LocalTime checkInTime, LocalTime checkOutTime,
+            Long lateCheckoutFeePerHour, Long extraPersonFee,
+            List<CancellationTierRequest> cancellationTiers, List<String> weekendDays) {
+        this(homestayName, address, phone, email, checkInTime, checkOutTime,
+                lateCheckoutFeePerHour, extraPersonFee, null, cancellationTiers, weekendDays);
+    }
 }

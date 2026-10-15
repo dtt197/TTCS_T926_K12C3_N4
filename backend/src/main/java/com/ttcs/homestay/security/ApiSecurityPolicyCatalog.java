@@ -136,7 +136,7 @@ public class ApiSecurityPolicyCatalog {
                 "/api/bookings", "/api/bookings/*/preview",
                 "/api/bookings/*/cancel");
         add(policies, "POST", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
-                "/api/bookings/*/deposit-adjustments");
+                "/api/bookings/*/deposit-adjustments", "/api/bookings/*/surcharges");
         add(policies, "PUT", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/bookings/*/confirm",
                 "/api/bookings/*/room",

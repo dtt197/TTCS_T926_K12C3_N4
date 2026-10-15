@@ -68,6 +68,7 @@ export const APPROVED_ENDPOINT_MATRIX: readonly EndpointPolicy[] = [
   ...policies('POST', 'ROLES', ['RECEPTIONIST'],
     '/api/bookings', '/api/bookings/*/preview', '/api/bookings/*/cancel'),
   policy('POST', '/api/bookings/*/deposit-adjustments', 'ROLES', ['OWNER', 'RECEPTIONIST']),
+  policy('POST', '/api/bookings/*/surcharges', 'ROLES', ['OWNER', 'RECEPTIONIST']),
   ...policies('PUT', 'ROLES', ['RECEPTIONIST'],
     '/api/bookings/*/confirm', '/api/bookings/*/room', '/api/bookings/*/room-change',
     '/api/bookings/*/cancel', '/api/bookings/*'),

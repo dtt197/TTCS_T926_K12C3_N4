@@ -32,6 +32,7 @@ import { BookingCheckedInCancelNotice } from '../components/BookingCheckedInCanc
 import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 import CancelBookingDialog from '../components/CancelBookingDialog'
+import { BookingSurchargeSection } from '../components/BookingSurchargeSection'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -80,6 +81,7 @@ export function BookingListPage({ role }: { role: string }) {
   const canAdjustDeposit = hasPermission(role, 'bookings:deposit-adjust')
   const canCancel = hasPermission(role, 'bookings:cancel')
   const canManage = hasPermission(role, 'bookings:manage')
+  const canAddSurcharge = hasPermission(role, 'bookings:surcharge-add')
   const [bookings, setBookings] = useState<BookingListItem[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -918,6 +920,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                     </>}
                   </section>
                 </div>
+                <BookingSurchargeSection key={detailBooking.id} bookingId={detailBooking.id} canAdd={canAddSurcharge} />
                 {detailData.registeredGuests && detailData.registeredGuests.length > 0 && (
                   <section className="booking-detail-section booking-detail-full" aria-labelledby="booking-guests-title">
                     <h4 id="booking-guests-title">Khách lưu trú</h4>
