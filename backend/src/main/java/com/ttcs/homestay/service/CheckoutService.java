@@ -19,6 +19,7 @@ import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -117,10 +118,15 @@ public class CheckoutService {
 
     private CheckoutPreviewResponse buildPreview(Room room, Booking booking) {
         BigDecimal roomTotal = BigDecimal.valueOf(booking.getTotalAmount());
+        // Legacy rows with a missing/null DB value are represented as zero; never infer
+        // an amount from today's room type fee or add this informational amount to roomTotal.
+        BigDecimal surchargeAmount = BigDecimal.valueOf(Math.max(0L, booking.getSurchargeAmount()));
+        long surchargeNights = ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate());
+        List<BookingNightlyPriceSnapshot> stored = booking.getNightlyPriceSnapshots();
+        SurchargeBreakdown surcharge = buildSurchargeBreakdown(booking, stored, surchargeNights);
         BigDecimal deposit = depositService.currentDepositTotalExact(booking);
         BigDecimal difference = roomTotal.subtract(deposit);
         String type = difference.signum() > 0 ? "COLLECT" : difference.signum() < 0 ? "REFUND" : "ZERO";
-        List<BookingNightlyPriceSnapshot> stored = booking.getNightlyPriceSnapshots();
         long storedTotal = 0;
         for (BookingNightlyPriceSnapshot line : stored) {
             storedTotal = Math.addExact(storedTotal, Math.addExact(line.getRoomPrice(), line.getSurchargeAmount()));
@@ -142,14 +148,80 @@ public class CheckoutService {
         String warning = reliable ? null
                 : "Booking cũ chưa có chi tiết giá từng đêm đáng tin cậy. Quyết toán theo tổng tiền đã chốt.";
         String fingerprint = booking.getId() + "|" + room.getId() + "|" + booking.getStatus() + "|"
-                + booking.getTotalAmount() + "|" + deposit.toPlainString() + "|" + booking.getCheckInDate() + "|"
+                + booking.getTotalAmount() + "|" + booking.getExtraGuestCount() + "|"
+                + booking.getExtraPersonFeeSnapshot() + "|" + surchargeAmount.toPlainString() + "|"
+                + deposit.toPlainString() + "|" + booking.getCheckInDate() + "|"
                 + booking.getCheckOutDate() + "|" + (reliable ? stored.stream()
                         .sorted(java.util.Comparator.comparing(BookingNightlyPriceSnapshot::getNightDate))
                         .map(x -> x.getNightDate() + ":" + x.getRoomPrice() + ":" + x.getSurchargeAmount())
                         .toList() : "NO_RELIABLE_BREAKDOWN");
         return new CheckoutPreviewResponse(booking.getId(), booking.getBookingCode(), room.getId(),
                 room.getRoomNumber(), booking.getGuestName(), booking.getCheckInDate(), booking.getCheckOutDate(),
-                lines, reliable, warning, roomTotal, deposit, type, difference.abs(), token(fingerprint));
+                lines, reliable, warning, roomTotal, surchargeAmount, surcharge.complete(),
+                surcharge.complete() ? booking.getExtraGuestCount() : null,
+                surcharge.complete() ? booking.getExtraPersonFeeSnapshot() : null,
+                surcharge.complete() ? surchargeNights : null,
+                surcharge.roomTotalExcludingSurcharge(), surcharge.warning(),
+                deposit, type, difference.abs(), token(fingerprint));
+    }
+
+    private static SurchargeBreakdown buildSurchargeBreakdown(Booking booking,
+            List<BookingNightlyPriceSnapshot> snapshots, long nights) {
+        long count = booking.getExtraGuestCount();
+        long fee = booking.getExtraPersonFeeSnapshot();
+        long surcharge = booking.getSurchargeAmount();
+        if (count < 0 || fee < 0 || surcharge < 0 || nights <= 0) {
+            return SurchargeBreakdown.incomplete("Không đủ dữ liệu để tách phụ thu; chỉ hiển thị tổng phụ thu đã lưu.");
+        }
+        long calculated;
+        try {
+            calculated = Math.multiplyExact(Math.multiplyExact(count, fee), nights);
+        } catch (ArithmeticException exception) {
+            return SurchargeBreakdown.incomplete("Dữ liệu phụ thu không khớp; chỉ hiển thị tổng phụ thu đã lưu.");
+        }
+        if (calculated != surcharge || (surcharge > 0 && (count == 0 || fee == 0))) {
+            return SurchargeBreakdown.incomplete("Dữ liệu phụ thu không khớp; chỉ hiển thị tổng phụ thu đã lưu.");
+        }
+
+        List<BookingNightlyPriceSnapshot> ordered = snapshots.stream()
+                .sorted(java.util.Comparator.comparing(BookingNightlyPriceSnapshot::getNightDate)).toList();
+        long snapshotNightSurcharge = 0;
+        if (!ordered.isEmpty()) {
+            if (ordered.size() != nights) {
+                return SurchargeBreakdown.incomplete("Chi tiết phụ thu theo đêm không khớp booking; chỉ hiển thị tổng phụ thu đã lưu.");
+            }
+            for (int index = 0; index < ordered.size(); index++) {
+                BookingNightlyPriceSnapshot line = ordered.get(index);
+                if (!booking.getCheckInDate().plusDays(index).equals(line.getNightDate())) {
+                    return SurchargeBreakdown.incomplete("Chi tiết phụ thu theo đêm không khớp booking; chỉ hiển thị tổng phụ thu đã lưu.");
+                }
+                try {
+                    snapshotNightSurcharge = Math.addExact(snapshotNightSurcharge, line.getSurchargeAmount());
+                } catch (ArithmeticException exception) {
+                    return SurchargeBreakdown.incomplete("Chi tiết phụ thu theo đêm không khớp booking; chỉ hiển thị tổng phụ thu đã lưu.");
+                }
+            }
+            if (snapshotNightSurcharge != surcharge) {
+                return SurchargeBreakdown.incomplete("Chi tiết phụ thu theo đêm không khớp booking; chỉ hiển thị tổng phụ thu đã lưu.");
+            }
+        } else if (surcharge != 0) {
+            return SurchargeBreakdown.incomplete("Booking không có snapshot theo đêm; chỉ hiển thị tổng phụ thu đã lưu.");
+        } else if (nights > 0) {
+            // With no nightly source rows, a zero surcharge is only attributable to
+            // the booking summary when its recorded quantity or saved fee is zero.
+            if (count != 0 && fee != 0) {
+                return SurchargeBreakdown.incomplete("Booking không có snapshot theo đêm để xác thực chi tiết phụ thu.");
+            }
+        }
+
+        return new SurchargeBreakdown(true,
+                BigDecimal.valueOf(booking.getTotalAmount()).subtract(BigDecimal.valueOf(surcharge)), null);
+    }
+
+    private record SurchargeBreakdown(boolean complete, BigDecimal roomTotalExcludingSurcharge, String warning) {
+        private static SurchargeBreakdown incomplete(String warning) {
+            return new SurchargeBreakdown(false, null, warning);
+        }
     }
 
     private Booking findSingleInStayBooking(Long roomId) {

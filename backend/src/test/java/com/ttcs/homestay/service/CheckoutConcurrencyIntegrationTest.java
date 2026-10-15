@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ttcs.homestay.dto.CheckoutPaymentRequest;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingNightlyPriceSnapshot;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
@@ -61,7 +62,18 @@ class CheckoutConcurrencyIntegrationTest {
         booking.setWeekdayPriceSnapshot(100_000);
         booking.setWeekendPriceSnapshot(100_000);
         booking.setWeekendDaysSnapshot("SATURDAY,SUNDAY");
-        booking.setTotalAmount(100_000);
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(50_000);
+        booking.setSurchargeAmount(50_000);
+        booking.setTotalAmount(150_000);
+        BookingNightlyPriceSnapshot nightly = new BookingNightlyPriceSnapshot();
+        nightly.setBooking(booking);
+        nightly.setNightDate(LocalDate.of(2026, 10, 14));
+        nightly.setPriceType("WEEKDAY");
+        nightly.setPriceLabel("Weekday");
+        nightly.setRoomPrice(100_000);
+        nightly.setSurchargeAmount(50_000);
+        booking.getNightlyPriceSnapshots().add(nightly);
         booking.setCreatedAt(OffsetDateTime.now());
         booking.setBookingCode("BK-CHECKOUT-RACE");
         booking.setGuestName("Guest");
@@ -72,6 +84,9 @@ class CheckoutConcurrencyIntegrationTest {
     @Test
     void simultaneousCheckoutCreatesOneSettlementAndClosesOnce() throws Exception {
         var preview = checkoutService.preview(roomId);
+        assertThat(preview.surchargeBreakdownComplete()).isTrue();
+        assertThat(preview.extraGuestCount()).isEqualTo(1);
+        assertThat(preview.surchargeNights()).isEqualTo(1L);
         var request = new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
