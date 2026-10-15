@@ -179,6 +179,10 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "POST", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/public/bookings/walk-in");
         add(policies, null, Access.PUBLIC, List.of(), "/uploads/**");
+        // S4-09: Nạp dữ liệu mẫu – chỉ Chủ homestay (OWNER) được phép.
+        add(policies, "POST", Access.ROLES, List.of("OWNER"),
+                "/api/admin/sample-data/reload");
+
         add(policies, null, Access.DENIED, List.of(), "/api", "/api/**");
 
         return List.copyOf(policies);
