@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -65,7 +64,6 @@ class NotificationEventServiceTest {
         private final List<SseEmitter.SseEventBuilder> sent = new ArrayList<>();
         private Runnable completion;
         private Runnable timeoutCallback;
-        private Consumer<Throwable> errorCallback;
         private boolean fail;
 
         private RecordingEmitter(long timeout) {
@@ -90,9 +88,5 @@ class NotificationEventServiceTest {
             timeoutCallback = callback;
         }
 
-        @Override
-        public void onError(Consumer<Throwable> callback) {
-            errorCallback = callback;
-        }
     }
 }

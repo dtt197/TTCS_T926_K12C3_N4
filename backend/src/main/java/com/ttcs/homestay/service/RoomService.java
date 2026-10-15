@@ -36,7 +36,6 @@ import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 import com.ttcs.homestay.repository.UserRepository;
-import com.ttcs.homestay.service.AuditLogService;
 
 @Service
 public class RoomService {

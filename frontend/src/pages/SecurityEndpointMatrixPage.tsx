@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createEndpointDiscrepancy, getEndpointDiscrepancies } from '../services/endpointDiscrepancyService'
+import { apiRequest } from '../services/apiClient'
+import { getUsers } from '../services/userService'
 import {
   compareEndpointPermissions,
   filterEndpointPermissionComparisons,
+  getEndpointFollowUpStatus,
+  ticketMatchesCurrentMismatch,
 } from '../permissions/compareEndpointPermissions'
 import type {
+  CreateEndpointDiscrepancyPayload,
+  EndpointDiscrepancyTicket,
   EndpointPermission,
   EndpointPermissionComparison,
   Role,
 } from '../types/endpointPermission'
-import { apiRequest } from '../services/apiClient'
+import type { StaffUser } from '../types/user'
 import './SecurityEndpointMatrixPage.css'
 
 const ROLES: readonly Role[] = [
@@ -34,17 +41,32 @@ export function SecurityEndpointMatrixPage() {
   const [filter, setFilter] = useState<ReviewFilter>('all')
   const [roleFilter, setRoleFilter] = useState<Role | 'ALL'>('ALL')
   const [query, setQuery] = useState('')
+  const [tickets, setTickets] = useState<EndpointDiscrepancyTicket[]>([])
+  const [users, setUsers] = useState<StaffUser[]>([])
+  const [activeTicketKey, setActiveTicketKey] = useState<string | null>(null)
+  const [assigneeId, setAssigneeId] = useState('')
+  const [description, setDescription] = useState('')
+  const [ticketError, setTicketError] = useState<string | null>(null)
+  const [submittingKey, setSubmittingKey] = useState<string | null>(null)
 
   const requestEndpoints = useCallback(() => (
     apiRequest<EndpointPermission[]>('/api/admin/security/endpoint-permissions')
   ), [])
+  const requestTickets = useCallback(() => getEndpointDiscrepancies(), [])
+  const requestUsers = useCallback(() => getUsers(), [])
 
   const loadEndpoints = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      const result = await requestEndpoints()
-      setEndpoints(result)
+      const [endpointResult, ticketResult, userResult] = await Promise.all([
+        requestEndpoints(),
+        requestTickets(),
+        requestUsers(),
+      ])
+      setEndpoints(endpointResult)
+      setTickets(ticketResult)
+      setUsers(userResult)
     } catch (loadError) {
       setError(loadError instanceof Error
         ? loadError.message
@@ -52,13 +74,17 @@ export function SecurityEndpointMatrixPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [requestEndpoints])
+  }, [requestEndpoints, requestTickets, requestUsers])
 
   useEffect(() => {
     let isActive = true
-    requestEndpoints()
-      .then((result) => {
-        if (isActive) setEndpoints(result)
+    Promise.all([requestEndpoints(), requestTickets(), requestUsers()])
+      .then(([endpointResult, ticketResult, userResult]) => {
+        if (isActive) {
+          setEndpoints(endpointResult)
+          setTickets(ticketResult)
+          setUsers(userResult)
+        }
       })
       .catch((loadError: unknown) => {
         if (isActive) {
@@ -74,18 +100,74 @@ export function SecurityEndpointMatrixPage() {
     return () => {
       isActive = false
     }
-  }, [requestEndpoints])
+  }, [requestEndpoints, requestTickets, requestUsers])
 
   const comparisons = useMemo(
     () => compareEndpointPermissions(endpoints),
     [endpoints],
   )
   const mismatchCount = comparisons.filter((item) => item.hasMismatch).length
+  const ticketsByEndpoint = useMemo(() => {
+    const result = new Map<string, EndpointDiscrepancyTicket>()
+    tickets.forEach((ticket) => {
+      const key = endpointKey(ticket.method, ticket.path)
+      if (!result.has(key)) result.set(key, ticket)
+    })
+    return result
+  }, [tickets])
+  const unrecordedCount = comparisons.filter((item) => (
+    item.hasMismatch
+    && !ticketMatchesCurrentMismatch(
+      ticketsByEndpoint.get(endpointKey(item.endpoint.method, item.endpoint.path)),
+      item,
+    )
+  )).length
   const filteredComparisons = filterEndpointPermissionComparisons(comparisons, {
     mismatchesOnly: filter === 'mismatches',
     role: roleFilter,
     query,
   })
+
+  const startTicket = (item: EndpointPermissionComparison) => {
+    setActiveTicketKey(endpointKey(item.endpoint.method, item.endpoint.path))
+    setAssigneeId('')
+    setDescription('')
+    setTicketError(null)
+  }
+
+  const submitTicket = async (item: EndpointPermissionComparison) => {
+    const key = endpointKey(item.endpoint.method, item.endpoint.path)
+    const selectedAssigneeId = Number(assigneeId)
+    if (!selectedAssigneeId || !description.trim()) {
+      setTicketError('Chọn người phụ trách và nhập nội dung khiếm khuyết.')
+      return
+    }
+
+    const payload: CreateEndpointDiscrepancyPayload = {
+      method: item.endpoint.method,
+      path: item.endpoint.path,
+      approvedAccess: item.approved.access,
+      approvedRoles: item.approved.roles,
+      assigneeId: selectedAssigneeId,
+      description: description.trim(),
+    }
+
+    setSubmittingKey(key)
+    setTicketError(null)
+    try {
+      const createdTicket = await createEndpointDiscrepancy(payload)
+      setTickets((current) => [createdTicket, ...current])
+      setActiveTicketKey(null)
+      setAssigneeId('')
+      setDescription('')
+    } catch (submitError) {
+      setTicketError(submitError instanceof Error
+        ? submitError.message
+        : 'Không thể tạo phiếu ghi nhận khiếm khuyết.')
+    } finally {
+      setSubmittingKey(null)
+    }
+  }
 
   return (
     <section className="endpoint-matrix-page">
@@ -123,12 +205,16 @@ export function SecurityEndpointMatrixPage() {
           <strong>{isLoading ? '—' : comparisons.length}</strong>
         </article>
         <article className={mismatchCount ? 'has-mismatch' : 'is-matched'}>
-          <span>Chênh lệch cần rà soát</span>
+          <span>Tổng chênh lệch hiện tại</span>
           <strong>{isLoading ? '—' : mismatchCount}</strong>
         </article>
         <article>
           <span>Khớp ma trận</span>
           <strong>{isLoading ? '—' : comparisons.length - mismatchCount}</strong>
+        </article>
+        <article className={unrecordedCount ? 'has-mismatch' : 'is-matched'}>
+          <span>Chưa có người phụ trách</span>
+          <strong>{isLoading ? '—' : unrecordedCount}</strong>
         </article>
       </div>
 
@@ -174,17 +260,40 @@ export function SecurityEndpointMatrixPage() {
               <th scope="col">Ma trận đã duyệt</th>
               <th scope="col">Quyền thực tế</th>
               <th scope="col">Đánh giá</th>
+              <th scope="col">Theo dõi xử lý</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={4} className="endpoint-matrix-empty">Đang tải quyền endpoint…</td></tr>
+              <tr><td colSpan={5} className="endpoint-matrix-empty">Đang tải quyền endpoint…</td></tr>
             ) : filteredComparisons.map((item) => (
-              <EndpointRow key={`${item.endpoint.method} ${item.endpoint.path}`} item={item} />
+              <EndpointRow
+                key={endpointKey(item.endpoint.method, item.endpoint.path)}
+                item={item}
+                ticket={ticketsByEndpoint.get(endpointKey(item.endpoint.method, item.endpoint.path))}
+                hasTicketForCurrentMismatch={ticketMatchesCurrentMismatch(
+                  ticketsByEndpoint.get(endpointKey(item.endpoint.method, item.endpoint.path)),
+                  item,
+                )}
+                users={users}
+                activeTicketKey={activeTicketKey}
+                assigneeId={assigneeId}
+                description={description}
+                ticketError={ticketError}
+                isSubmitting={submittingKey === endpointKey(item.endpoint.method, item.endpoint.path)}
+                onStartTicket={() => startTicket(item)}
+                onAssigneeChange={setAssigneeId}
+                onDescriptionChange={setDescription}
+                onSubmit={() => void submitTicket(item)}
+                onCancel={() => {
+                  setActiveTicketKey(null)
+                  setTicketError(null)
+                }}
+              />
             ))}
             {!isLoading && !error && filteredComparisons.length === 0 && (
               <tr>
-                <td colSpan={4} className="endpoint-matrix-empty">
+                <td colSpan={5} className="endpoint-matrix-empty">
                   {comparisons.length === 0
                     ? 'Không tìm thấy endpoint API nào để đối chiếu.'
                     : 'Không có endpoint phù hợp với bộ lọc.'}
@@ -198,7 +307,52 @@ export function SecurityEndpointMatrixPage() {
   )
 }
 
-function EndpointRow({ item }: { item: EndpointPermissionComparison }) {
+function EndpointRow({
+  item,
+  ticket,
+  hasTicketForCurrentMismatch,
+  users,
+  activeTicketKey,
+  assigneeId,
+  description,
+  ticketError,
+  isSubmitting,
+  onStartTicket,
+  onAssigneeChange,
+  onDescriptionChange,
+  onSubmit,
+  onCancel,
+}: {
+  item: EndpointPermissionComparison
+  ticket: EndpointDiscrepancyTicket | undefined
+  hasTicketForCurrentMismatch: boolean
+  users: StaffUser[]
+  activeTicketKey: string | null
+  assigneeId: string
+  description: string
+  ticketError: string | null
+  isSubmitting: boolean
+  onStartTicket: () => void
+  onAssigneeChange: (value: string) => void
+  onDescriptionChange: (value: string) => void
+  onSubmit: () => void
+  onCancel: () => void
+}) {
+  const key = endpointKey(item.endpoint.method, item.endpoint.path)
+  const isFormOpen = activeTicketKey === key
+  const activeUsers = users.filter((user) => user.active)
+  const statusLabels = {
+    UNRECORDED: 'Chưa ghi nhận',
+    RECORDED: 'Đã ghi nhận',
+    RESOLVED: 'Đã khắc phục',
+    MATCHED: 'Khớp',
+  } as const
+  const followUpStatus = getEndpointFollowUpStatus(
+    item.hasMismatch,
+    hasTicketForCurrentMismatch,
+    ticket !== undefined,
+  )
+
   return (
     <tr className={item.hasMismatch ? 'endpoint-mismatch' : undefined}>
       <td>
@@ -209,11 +363,85 @@ function EndpointRow({ item }: { item: EndpointPermissionComparison }) {
       <td><PermissionSummary roles={item.endpoint.roles} access={item.endpoint.access} /></td>
       <td>
         <span className={item.hasMismatch ? 'endpoint-status mismatch' : 'endpoint-status matched'}>
-          {item.hasMismatch ? 'Cần rà soát' : 'Khớp'}
+          {item.hasMismatch ? 'Cần xử lý' : 'Khớp'}
         </span>
+      </td>
+      <td className="endpoint-follow-up">
+        <span className={`endpoint-follow-up-status ${
+          item.hasMismatch && !hasTicketForCurrentMismatch ? 'pending' : ''
+        }`}>
+          {statusLabels[followUpStatus]}
+        </span>
+        {ticket && (
+          <div className="endpoint-ticket-summary">
+            <strong>Phụ trách: {ticket.assigneeName}</strong>
+            <span>{ROLE_LABELS[ticket.assigneeRole]}</span>
+            <p>{ticket.description}</p>
+            <small>Ghi nhận bởi {ticket.createdByName}</small>
+          </div>
+        )}
+        {item.hasMismatch && !hasTicketForCurrentMismatch && !isFormOpen && (
+          <button className="secondary-button endpoint-record-button" type="button" onClick={onStartTicket}>
+            Ghi nhận khiếm khuyết
+          </button>
+        )}
+        {isFormOpen && (
+          <div className="endpoint-ticket-form">
+            <label>
+              Người phụ trách
+              <select
+                value={assigneeId}
+                onChange={(event) => onAssigneeChange(event.target.value)}
+                disabled={isSubmitting}
+              >
+                <option value="">Chọn nhân viên</option>
+                {activeUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName} — {ROLE_LABELS[user.role]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {activeUsers.length === 0 && <small>Không có tài khoản hoạt động để giao việc.</small>}
+            <label>
+              Mô tả khiếm khuyết
+              <textarea
+                value={description}
+                onChange={(event) => onDescriptionChange(event.target.value)}
+                maxLength={2000}
+                rows={3}
+                disabled={isSubmitting}
+                placeholder="Mô tả sai lệch và việc cần xử lý"
+              />
+            </label>
+            {ticketError && <span className="endpoint-ticket-error" role="alert">{ticketError}</span>}
+            <div className="endpoint-ticket-actions">
+              <button
+                className="primary-button"
+                type="button"
+                onClick={onSubmit}
+                disabled={isSubmitting || activeUsers.length === 0}
+              >
+                {isSubmitting ? 'Đang lưu…' : 'Tạo phiếu'}
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={onCancel}
+                disabled={isSubmitting}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        )}
       </td>
     </tr>
   )
+}
+
+function endpointKey(method: string, path: string) {
+  return `${method} ${path}`
 }
 
 function PermissionSummary({

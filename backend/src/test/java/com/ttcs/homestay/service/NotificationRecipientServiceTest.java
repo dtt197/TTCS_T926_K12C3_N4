@@ -34,7 +34,8 @@ class NotificationRecipientServiceTest {
         List<User> recipients = new NotificationRecipientService(userRepository).findRecipients();
 
         assertThat(recipients).containsExactly(receptionist, owner);
-        assertThat(recipients).extracting(User::getId).containsExactly(2L, 5L);
+        assertThat(recipients.get(0).getId()).isEqualTo(2L);
+        assertThat(recipients.get(1).getId()).isEqualTo(5L);
         assertThat(recipients).doesNotHaveDuplicates();
         verify(userRepository).findActiveRecipientsByRoleCodes(List.of("OWNER", "RECEPTIONIST"));
     }

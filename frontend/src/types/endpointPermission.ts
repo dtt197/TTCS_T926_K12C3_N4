@@ -21,3 +21,28 @@ export type EndpointPermissionComparison = {
   approved: EndpointPolicy
   hasMismatch: boolean
 }
+
+export type EndpointDiscrepancyTicket = {
+  id: number
+  method: string
+  path: string
+  approvedAccess: ApiAccess
+  approvedRoles: Role[]
+  actualAccess: ApiAccess
+  actualRoles: Role[]
+  description: string
+  assigneeId: number
+  assigneeName: string
+  assigneeRole: Role
+  createdByName: string
+  createdAt: string
+}
+
+export type CreateEndpointDiscrepancyPayload = {
+  method: string
+  path: string
+  approvedAccess: ApiAccess
+  approvedRoles: readonly Role[]
+  assigneeId: number
+  description: string
+}

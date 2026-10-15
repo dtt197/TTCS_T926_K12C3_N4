@@ -24,7 +24,7 @@
 
 .endpoint-matrix-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -98,6 +98,7 @@
 
 .endpoint-matrix-table {
   width: 100%;
+  min-width: 1050px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -204,6 +205,88 @@
 .endpoint-status.mismatch {
   background: var(--red-soft);
   color: var(--red);
+}
+
+.endpoint-follow-up {
+  min-width: 230px;
+}
+
+.endpoint-follow-up-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.endpoint-follow-up-status.pending {
+  background: #fff1df;
+  color: #8a4b00;
+}
+
+.endpoint-ticket-summary,
+.endpoint-ticket-form {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.endpoint-ticket-summary strong,
+.endpoint-ticket-summary span,
+.endpoint-ticket-summary small,
+.endpoint-ticket-form small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.endpoint-ticket-summary p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.endpoint-ticket-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.endpoint-ticket-form select,
+.endpoint-ticket-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.endpoint-ticket-form textarea {
+  resize: vertical;
+}
+
+.endpoint-ticket-error {
+  color: var(--red);
+  font-size: 11px;
+}
+
+.endpoint-ticket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.endpoint-record-button {
+  margin-top: 8px;
+  white-space: nowrap;
 }
 
 .endpoint-matrix-error {

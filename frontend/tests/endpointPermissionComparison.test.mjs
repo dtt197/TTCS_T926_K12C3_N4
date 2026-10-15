@@ -3,6 +3,8 @@ import test from 'node:test'
 import {
   compareEndpointPermissions,
   filterEndpointPermissionComparisons,
+  getEndpointFollowUpStatus,
+  ticketMatchesCurrentMismatch,
 } from '../src/permissions/compareEndpointPermissions.ts'
 
 test('matches approved wildcard policies to concrete controller paths', () => {
@@ -80,4 +82,36 @@ test('mismatch filter excludes matched endpoints and retains discrepancies', () 
 
   assert.equal(filtered.length, 1)
   assert.equal(filtered[0].hasMismatch, true)
+})
+
+test('endpoint follow-up status reflects mismatch repair and ticket assignment', () => {
+  assert.equal(getEndpointFollowUpStatus(true, false, false), 'UNRECORDED')
+  assert.equal(getEndpointFollowUpStatus(true, true, true), 'RECORDED')
+  assert.equal(getEndpointFollowUpStatus(false, false, true), 'RESOLVED')
+  assert.equal(getEndpointFollowUpStatus(false, false, false), 'MATCHED')
+})
+
+test('only treats a ticket matching the current permission snapshot as recorded', () => {
+  const [comparison] = compareEndpointPermissions([
+    {
+      method: 'GET',
+      path: '/api/rooms/calendar',
+      access: 'ROLES',
+      roles: ['ADMIN', 'RECEPTIONIST'],
+    },
+  ])
+  const ticket = {
+    method: 'GET',
+    path: '/api/rooms/calendar',
+    approvedAccess: 'ROLES',
+    approvedRoles: ['RECEPTIONIST'],
+    actualAccess: 'ROLES',
+    actualRoles: ['ADMIN', 'RECEPTIONIST'],
+  }
+
+  assert.equal(ticketMatchesCurrentMismatch(ticket, comparison), true)
+  assert.equal(ticketMatchesCurrentMismatch({
+    ...ticket,
+    actualRoles: ['OWNER', 'RECEPTIONIST'],
+  }, comparison), false)
 })

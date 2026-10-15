@@ -43,8 +43,8 @@ public class OccupancyReportService {
         List<Booking> soldBookings = bookings.findOccupyingInDateRange(
                 startDate, endExclusive, SOLD_STATUSES);
         List<DailyOccupancy> daily = startDate.datesUntil(endExclusive).map(date -> daily(date, activeRooms, soldBookings)).toList();
-        long sold = daily.stream().mapToLong(DailyOccupancy::soldNights).sum();
-        long available = daily.stream().mapToLong(DailyOccupancy::availableNights).sum();
+        long sold = daily.stream().mapToLong(day -> day.soldNights()).sum();
+        long available = daily.stream().mapToLong(day -> day.availableNights()).sum();
         return new OccupancyReportResponse(startDate, endDate, sold, available, percent(sold, available), daily);
     }
 
