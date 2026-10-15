@@ -64,6 +64,9 @@ public class H2DevDataLoader implements ApplicationRunner {
             jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'admin.demo@homestay.local'", demoPasswordHash);
         }
 
+        // Tài khoản Chủ homestay mẫu: owner.demo@homestay.local / password.
+        // Dùng để kiểm tra báo cáo công suất chỉ dành cho OWNER.
+
         // Tài khoản Chủ homestay mẫu để thử các chức năng chỉ OWNER được phép xem, như báo cáo công suất.
         Long ownerRoleId = jdbcTemplate.queryForObject("SELECT id FROM roles WHERE code = 'OWNER'", Long.class);
         Integer ownerCount = jdbcTemplate.queryForObject(

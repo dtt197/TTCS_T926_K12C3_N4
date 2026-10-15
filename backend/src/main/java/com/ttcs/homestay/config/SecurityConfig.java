@@ -77,6 +77,10 @@ public class SecurityConfig {
                         // Thông tin phiên đăng nhập
                         .requestMatchers("/api/internal/**").authenticated()
 
+                        // S4-06: Báo cáo công suất và tải CSV chỉ dành cho Chủ homestay.
+                        .requestMatchers(HttpMethod.GET, "/api/reports/occupancy", "/api/reports/occupancy.csv")
+                        .hasRole("OWNER")
+
                         // S4-06: Chủ homestay xem báo cáo công suất theo loại phòng.
                         // S4-06: báo cáo công suất chỉ dành cho chủ homestay.
                         .requestMatchers(HttpMethod.GET, "/api/reports/occupancy").hasRole("OWNER")
@@ -296,6 +300,7 @@ public class SecurityConfig {
 
                         .anyRequest().permitAll()
                 )
+
                 .authorizeHttpRequests(authorize -> {
                     for (ApiSecurityPolicyCatalog.Policy policy : policyCatalog.policies()) {
                         var request = policy.method() == null
