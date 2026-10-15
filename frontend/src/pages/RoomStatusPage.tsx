@@ -1887,7 +1887,7 @@ async function handleViewHistory(room: Room) {
                 {checkoutDialog.preview.surchargeBreakdownWarning && <div><dt>Chi tiết phụ thu</dt><dd>{checkoutDialog.preview.surchargeBreakdownWarning}</dd></div>}
                 {checkoutDialog.preview.bookingSurcharges.map((line) => (
                   <div key={line.id}>
-                    <dt>Phụ thu phát sinh: {line.type === 'THEM_NGUOI' ? 'thêm người' : 'thêm giường'}{line.note ? ` · ${line.note}` : ''}</dt>
+                    <dt>Phụ thu phát sinh: {line.type === 'THEM_NGUOI' ? 'thêm người' : 'thêm giường'}{line.note ? ` · ${line.note}` : ''}{line.priceOverridden ? ` · giá đã sửa (mặc định ${checkoutMoney.format(line.defaultUnitPrice)} đ): ${line.priceOverrideReason}` : ''}</dt>
                     <dd>{line.quantity} × {checkoutMoney.format(line.unitPrice)} đ × {line.nights} đêm = {checkoutMoney.format(line.amount)} đ</dd>
                   </div>
                 ))}

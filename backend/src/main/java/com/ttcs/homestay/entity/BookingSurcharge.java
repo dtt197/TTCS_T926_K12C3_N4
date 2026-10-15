@@ -49,6 +49,15 @@ public class BookingSurcharge {
     @Column(name = "unit_price", nullable = false, updatable = false)
     private long unitPrice;
 
+    /** S4-02 Lát 4: giá mặc định tại thời điểm thêm (để biết dòng có bị sửa giá không). */
+    @Column(name = "default_unit_price", nullable = false, updatable = false)
+    private long defaultUnitPrice;
+
+    @Column(name = "price_override_reason", length = 500, updatable = false)
+    private String priceOverrideReason;
+
+    @Column(name = "price_overridden_by", length = 120, updatable = false)
+    private String priceOverriddenBy;
     @Column(name = "nights", nullable = false, updatable = false)
     private int nights;
 

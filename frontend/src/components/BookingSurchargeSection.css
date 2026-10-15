@@ -27,3 +27,6 @@
 /* S4-02 Lát 3: dòng "Đang có X khách / tối đa Y" */
 .booking-surcharge-capacity { margin: 0; padding: 6px 10px; border-radius: 8px; background: #eef5ef; color: #2f6b4a; font-size: 13px; }
 .booking-surcharge-capacity.is-full { background: #fdecea; color: #b42318; }
+/* S4-02 Lát 4: sửa tay đơn giá */
+.booking-surcharge-required { color: #b42318; }
+.booking-surcharge-table td small.booking-surcharge-overridden { color: #b45309; }

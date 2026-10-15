@@ -37,7 +37,7 @@ public class BookingSurchargeService {
             EnumSet.of(BookingStatus.DA_XAC_NHAN, BookingStatus.DA_NHAN_PHONG);
     static final int MAX_QUANTITY = 10;
     static final int MAX_NOTE_LENGTH = 500;
-
+    static final long MAX_UNIT_PRICE = 100_000_000L;
     private final BookingRepository bookingRepository;
     private final BookingSurchargeRepository surchargeRepository;
     private final OperatingSettingsRepository settingsRepository;
@@ -76,17 +76,30 @@ public class BookingSurchargeService {
             ensureCapacity(booking, request.quantity());
         }
 
-        long unitPrice = defaultUnitPrice(booking, request.type());
+        long defaultPrice = defaultUnitPrice(booking, request.type());
+        // S4-02 Lát 4: lễ tân được sửa tay đơn giá nhưng bắt buộc nhập lý do.
+        long unitPrice = request.unitPrice() == null ? defaultPrice : request.unitPrice();
+        String priceReason = null;
+        if (unitPrice != defaultPrice) {
+            if (request.priceReason() == null || request.priceReason().isBlank()) {
+                throw badRequest("Đơn giá khác giá mặc định, vui lòng nhập lý do sửa giá");
+            }
+            priceReason = request.priceReason().trim();
+        }
+        String actor = currentActorName();
 
         BookingSurcharge surcharge = new BookingSurcharge();
         surcharge.setBooking(booking);
         surcharge.setSurchargeType(request.type());
         surcharge.setQuantity(request.quantity());
         surcharge.setUnitPrice(unitPrice);
+        surcharge.setDefaultUnitPrice(defaultPrice);
+        surcharge.setPriceOverrideReason(priceReason);
+        surcharge.setPriceOverriddenBy(priceReason == null ? null : actor);
         surcharge.setNights(request.nights());
         surcharge.setAmount(amountOf(request.quantity(), unitPrice, request.nights()));
         surcharge.setNote(request.note() == null || request.note().isBlank() ? null : request.note().trim());
-        surcharge.setCreatedBy(currentActorName());
+        surcharge.setCreatedBy(actor);
         surcharge.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
         surchargeRepository.saveAndFlush(surcharge);
 
@@ -201,6 +214,12 @@ public class BookingSurchargeService {
         }
         if (request.nights() > maxNights) {
             throw badRequest("Số đêm áp dụng không được vượt quá " + maxNights + " đêm của booking");
+        }
+        if (request.unitPrice() != null && (request.unitPrice() < 0 || request.unitPrice() > MAX_UNIT_PRICE)) {
+            throw badRequest("Đơn giá phải từ 0 đến 100.000.000 đ");
+        }
+        if (request.priceReason() != null && request.priceReason().length() > MAX_NOTE_LENGTH) {
+            throw badRequest("Lý do sửa giá tối đa 500 ký tự");
         }
         if (request.note() != null && request.note().length() > MAX_NOTE_LENGTH) {
             throw badRequest("Ghi chú tối đa 500 ký tự");

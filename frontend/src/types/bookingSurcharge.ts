@@ -11,6 +11,10 @@ export type BookingSurcharge = {
   note: string | null
   createdBy: string
   createdAt: string
+  defaultUnitPrice: number
+  priceOverridden: boolean
+  priceOverrideReason: string | null
+  priceOverriddenBy: string | null
 }
 
 export type BookingSurchargeList = {
@@ -31,4 +35,6 @@ export type BookingSurchargeRequest = {
   quantity: number
   nights: number
   note: string | null
+  unitPrice: number | null
+  priceReason: string | null
 }
