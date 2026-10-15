@@ -9,7 +9,7 @@ const TYPE_LABELS: Record<SurchargeType, string> = {
 }
 
 const money = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 })
-
+const MAX_UNIT_PRICE = 100_000_000
 type BookingSurchargeSectionProps = {
   bookingId: number
   canAdd: boolean
@@ -24,6 +24,8 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
   const [quantity, setQuantity] = useState('1')
   const [nights, setNights] = useState('1')
   const [note, setNote] = useState('')
+  const [priceInput, setPriceInput] = useState<string | null>(null)
+  const [priceReason, setPriceReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -41,7 +43,11 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
     }
   }, [bookingId])
 
-  const unitPrice = data ? (type === 'THEM_NGUOI' ? data.defaultExtraPersonPrice : data.defaultExtraBedPrice) : 0
+  const defaultPrice = data ? (type === 'THEM_NGUOI' ? data.defaultExtraPersonPrice : data.defaultExtraBedPrice) : 0
+  // S4-02 Lát 4: đơn giá điền sẵn giá mặc định, lễ tân sửa tay được nhưng phải nhập lý do.
+  const unitPrice = priceInput === null ? defaultPrice : Number(priceInput)
+  const priceValid = priceInput !== '' && Number.isInteger(unitPrice) && unitPrice >= 0 && unitPrice <= MAX_UNIT_PRICE
+  const priceChanged = priceInput !== null && unitPrice !== defaultPrice
   const quantityValue = Number(quantity)
   const nightsValue = Number(nights)
   const previewValid = Number.isInteger(quantityValue) && quantityValue >= 1 && Number.isInteger(nightsValue) && nightsValue >= 1
@@ -56,6 +62,8 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
     setQuantity('1')
     setNights('1')
     setNote('')
+    setPriceInput(null)
+    setPriceReason('')
     setFormError(null)
   }
 
@@ -78,6 +86,14 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
       setFormError(`Số đêm áp dụng phải từ 1 đến ${data.maxNights}.`)
       return
     }
+    if (!priceValid) {
+      setFormError('Đơn giá phải là số nguyên từ 0 đến 100.000.000 đ.')
+      return
+    }
+    if (priceChanged && !priceReason.trim()) {
+      setFormError('Đơn giá khác giá mặc định, vui lòng nhập lý do sửa giá.')
+      return
+    }
     setSaving(true)
     setFormError(null)
     try {
@@ -86,6 +102,8 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
         quantity: quantityValue,
         nights: nightsValue,
         note: note.trim() || null,
+        unitPrice: priceChanged ? unitPrice : null,
+        priceReason: priceChanged ? priceReason.trim() : null,
       })
       setData(result)
       resetForm()
@@ -135,7 +153,14 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
                     <tr key={item.id}>
                       <td>{TYPE_LABELS[item.type] ?? item.type}</td>
                       <td>{item.quantity}</td>
-                      <td>{money.format(item.unitPrice)}</td>
+                      <td>
+                        {money.format(item.unitPrice)}
+                        {item.priceOverridden && (
+                          <small className="booking-surcharge-overridden">
+                            Giá đã sửa (mặc định {money.format(item.defaultUnitPrice)}): {item.priceOverrideReason}
+                          </small>
+                        )}
+                      </td>
                       <td>{item.nights}</td>
                       <td>{money.format(item.amount)}</td>
                       <td>{item.note || '—'}</td>
@@ -164,15 +189,24 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
             <form className="booking-surcharge-form" onSubmit={(event) => void handleSubmit(event)} noValidate>
               <label>
                 Loại phụ thu
-                <select value={type} onChange={(e) => setType(e.target.value as SurchargeType)}>
+                <select value={type} onChange={(e) => { setType(e.target.value as SurchargeType); setPriceInput(null) }}>
                   <option value="THEM_NGUOI">Thêm người</option>
                   <option value="THEM_GIUONG">Thêm giường</option>
                 </select>
               </label>
               <label>
-                Đơn giá mặc định
-                <input value={money.format(unitPrice)} readOnly aria-readonly="true" />
+                Đơn giá (mặc định {money.format(defaultPrice)})
+                <input type="number" min={0} max={MAX_UNIT_PRICE} step={1000}
+                  value={priceInput ?? String(defaultPrice)}
+                  onChange={(e) => setPriceInput(e.target.value)} />
               </label>
+              {priceChanged && (
+                <label className="booking-surcharge-wide">
+                  <span>Lý do sửa giá <span className="booking-surcharge-required">*</span></span>
+                  <input maxLength={500} value={priceReason} onChange={(e) => setPriceReason(e.target.value)}
+                    placeholder="Bắt buộc khi đơn giá khác giá mặc định" />
+                </label>
+              )}
               {isExtraPerson && data.maxCapacity !== null && (
                 <p className={`booking-surcharge-capacity booking-surcharge-wide${roomFull ? ' is-full' : ''}`}>
                   Đang có {data.currentGuestCount} khách / tối đa {data.maxCapacity}
@@ -192,7 +226,7 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
                 <input maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Không bắt buộc" />
               </label>
               <p className="booking-surcharge-preview">
-                Thành tiền: <strong>{previewValid ? money.format(quantityValue * unitPrice * nightsValue) : '—'}</strong>
+                Thành tiền: <strong>{previewValid && priceValid ? money.format(quantityValue * unitPrice * nightsValue) : '—'}</strong>
               </p>
               {formError && <p className="booking-surcharge-error" role="alert">{formError}</p>}
               <div className="booking-surcharge-actions">
