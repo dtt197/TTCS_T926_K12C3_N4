@@ -149,7 +149,9 @@ public class ApiSecurityPolicyCatalog {
                 "/api/bookings", "/api/bookings/*/preview",
                 "/api/bookings/*/cancel",
                 "/api/bookings/*/no-show",
-                "/api/appointments/*/no-show");
+                "/api/appointments/*/no-show",
+                "/api/bookings/*/no-show/undo",
+                "/api/appointments/*/no-show/undo");
         add(policies, "POST", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
                 "/api/bookings/*/deposit-adjustments",
                 "/api/bookings/*/surcharges");

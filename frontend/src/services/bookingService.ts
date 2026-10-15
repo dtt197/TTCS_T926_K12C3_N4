@@ -9,6 +9,8 @@ import type {
   BookingRoomChangeHistory,
   CheckInOption,
   CustomerNoShowResponse,
+  NoShowUndoEligibility,
+  AppointmentActionLog,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -276,4 +278,22 @@ export function getCustomerNoShowHistory(phone: string): Promise<CustomerNoShowR
     `/api/customers/no-show-history?phone=${encodeURIComponent(phone.trim())}`,
   )
 }
+
+/** S4-04 (SCRUM-151): Kiểm tra điều kiện hoàn tác thao tác không đến (15 phút) */
+export function checkNoShowUndoEligibility(id: number): Promise<NoShowUndoEligibility> {
+  return apiRequest<NoShowUndoEligibility>(`/api/bookings/${id}/no-show/undo-eligibility`)
+}
+
+/** S4-04 (SCRUM-151): Hoàn tác thao tác đánh dấu không đến */
+export function undoBookingNoShow(id: number): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/no-show/undo`, {
+    method: 'POST',
+  })
+}
+
+/** S4-04 (SCRUM-151): Xem lịch sử nhật ký thao tác lễ tân */
+export function getAppointmentActionLogs(id: number): Promise<AppointmentActionLog[]> {
+  return apiRequest<AppointmentActionLog[]>(`/api/bookings/${id}/action-logs`)
+}
+
 

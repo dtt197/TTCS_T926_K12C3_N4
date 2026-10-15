@@ -35,6 +35,8 @@ import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as run
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 import CancelBookingDialog from '../components/CancelBookingDialog'
 import { BookingSurchargeSection } from '../components/BookingSurchargeSection'
+import { BookingNoShowUndoButton } from '../components/BookingNoShowUndoButton'
+import { BookingActionLogSection } from '../components/BookingActionLogSection'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -813,6 +815,15 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                           Quá hạn giữ chỗ 24 giờ
                         </span>
                       )}
+                      {booking.status === 'NO_SHOW' && canNoShow && (
+                        <div style={{ marginTop: '4px' }}>
+                          <BookingNoShowUndoButton
+                            bookingId={booking.id}
+                            variant="inline"
+                            onSuccess={() => setRefreshVersion((v) => v + 1)}
+                          />
+                        </div>
+                      )}
                     </td>
                     <td className="booking-actions-cell">
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
@@ -885,6 +896,18 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                                   </button>
                                 )
                               })()}
+                              {actions.includes('undo-no-show') && (
+                                <div style={{ padding: '4px 8px' }}>
+                                  <BookingNoShowUndoButton
+                                    bookingId={booking.id}
+                                    variant="inline"
+                                    onSuccess={() => {
+                                      closeActionMenuAndRun(() => {})
+                                      setRefreshVersion((v) => v + 1)
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </div>, document.body,
                           )}
                         </>
@@ -1055,6 +1078,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                   </div>
                 )) : <p className="booking-history-empty">Chưa có lịch sử đổi phòng.</p>}
                 </section>
+                <BookingActionLogSection bookingId={detailBooking.id} />
               </div>
             )}
             <footer className="booking-detail-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1085,6 +1109,16 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                   </button>
                 )
               })()}
+              {canNoShow && detailBooking.status === 'NO_SHOW' && (
+                <BookingNoShowUndoButton
+                  bookingId={detailBooking.id}
+                  variant="detail"
+                  onSuccess={() => {
+                    setRefreshVersion((v) => v + 1)
+                    setDetailBooking(null)
+                  }}
+                />
+              )}
               <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
             </footer>
           </section>
