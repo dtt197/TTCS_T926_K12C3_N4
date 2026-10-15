@@ -128,6 +128,13 @@ export type CheckoutPreview = {
   nightlyBreakdownReliable: boolean
   warning: string | null
   roomTotal: number
+  surchargeAmount: number
+  surchargeBreakdownComplete: boolean
+  extraGuestCount: number | null
+  extraPersonFeeSnapshot: number | null
+  surchargeNights: number | null
+  roomTotalExcludingSurcharge: number | null
+  surchargeBreakdownWarning: string | null
   depositTotal: number
   settlementType: 'COLLECT' | 'ZERO' | 'REFUND'
   amount: number

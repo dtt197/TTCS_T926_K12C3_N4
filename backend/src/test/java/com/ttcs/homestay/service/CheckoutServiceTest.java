@@ -83,6 +83,160 @@ class CheckoutServiceTest {
     }
 
     @Test
+    void surchargeIsInformationalAndNotAddedTwiceToSettlement() {
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(200_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 400_000, "Đêm 1", 100_000),
+                nightly(LocalDate.of(2026, 10, 11), 400_000, "Đêm 2", 100_000)));
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThat(preview.roomTotal()).isEqualByComparingTo("1000000");
+        assertThat(preview.surchargeAmount()).isEqualByComparingTo("200000");
+        assertThat(preview.surchargeBreakdownComplete()).isTrue();
+        assertThat(preview.extraGuestCount()).isEqualTo(1);
+        assertThat(preview.extraPersonFeeSnapshot()).isEqualTo(100_000L);
+        assertThat(preview.surchargeNights()).isEqualTo(2L);
+        assertThat(preview.roomTotalExcludingSurcharge()).isEqualByComparingTo("800000");
+        assertThat(preview.amount()).isEqualByComparingTo("1000000");
+
+        service.checkout(12L, new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Lá»… tÃ¢n");
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getRoomTotal()).isEqualByComparingTo("1000000");
+        assertThat(captor.getValue().getAmount()).isEqualByComparingTo("1000000");
+    }
+
+    @Test
+    void legacyBookingWithoutSnapshotsKeepsCommittedTotalAndSavedSurcharge() {
+        booking.setSurchargeAmount(200_000L);
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThat(preview.nightlyBreakdownReliable()).isFalse();
+        assertThat(preview.surchargeAmount()).isEqualByComparingTo("200000");
+        assertThat(preview.surchargeBreakdownComplete()).isFalse();
+        assertThat(preview.extraGuestCount()).isNull();
+        assertThat(preview.extraPersonFeeSnapshot()).isNull();
+        assertThat(preview.surchargeNights()).isNull();
+        assertThat(preview.roomTotalExcludingSurcharge()).isNull();
+        assertThat(preview.surchargeBreakdownWarning()).isNotBlank();
+        assertThat(preview.roomTotal()).isEqualByComparingTo("1000000");
+        assertThat(preview.amount()).isEqualByComparingTo("1000000");
+    }
+
+    @Test
+    void legacyBreakdownThatDoesNotMatchStoredTotalIsHidden() {
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(200_000L);
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.surchargeBreakdownComplete()).isFalse();
+        assertThat(preview.surchargeAmount()).isEqualByComparingTo("200000");
+        assertThat(preview.roomTotalExcludingSurcharge()).isNull();
+        assertThat(preview.surchargeBreakdownWarning()).isNotBlank();
+    }
+
+    @Test
+    void changedSurchargeInvalidatesPreviousPreviewToken() {
+        assertTokenInvalidatedByBookingMutation(() -> booking.setSurchargeAmount(1L));
+    }
+
+    @Test
+    void changedExtraGuestCountInvalidatesPreviousPreviewToken() {
+        assertTokenInvalidatedByBookingMutation(() -> booking.setExtraGuestCount(1));
+    }
+
+    @Test
+    void changedFeeSnapshotInvalidatesPreviousPreviewToken() {
+        assertTokenInvalidatedByBookingMutation(() -> booking.setExtraPersonFeeSnapshot(1));
+    }
+
+    private void assertTokenInvalidatedByBookingMutation(Runnable mutation) {
+        CheckoutPreviewResponse preview = service.preview(12L);
+        mutation.run();
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Lá»… tÃ¢n"))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(settlementRepository, never()).save(any(BookingSettlement.class));
+    }
+
+    @Test
+    void nullLikeLegacySurchargeDefaultsToZeroWithoutInference() {
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThat(preview.surchargeAmount()).isEqualByComparingTo("0");
+        assertThat(preview.surchargeBreakdownComplete()).isTrue();
+        assertThat(preview.extraGuestCount()).isEqualTo(0);
+        assertThat(preview.extraPersonFeeSnapshot()).isEqualTo(0L);
+        assertThat(preview.surchargeNights()).isEqualTo(2L);
+        assertThat(preview.roomTotalExcludingSurcharge()).isEqualByComparingTo("1000000");
+    }
+
+    @Test
+    void oneExtraGuestForOneNightHasCompleteBreakdown() {
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 11));
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(200_000L);
+        booking.setSurchargeAmount(200_000L);
+        booking.setTotalAmount(700_000L);
+        booking.setNightlyPriceSnapshots(List.of(nightly(LocalDate.of(2026, 10, 10), 500_000, "Đêm 1", 200_000)));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.surchargeBreakdownComplete()).isTrue();
+        assertThat(preview.extraGuestCount()).isEqualTo(1);
+        assertThat(preview.surchargeNights()).isEqualTo(1L);
+        assertThat(preview.roomTotalExcludingSurcharge()).isEqualByComparingTo("500000");
+    }
+
+    @Test
+    void multipleExtraGuestsUseSavedFeeSnapshot() {
+        booking.setExtraGuestCount(2);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(400_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 300_000, "Đêm 1", 200_000),
+                nightly(LocalDate.of(2026, 10, 11), 300_000, "Đêm 2", 200_000)));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.surchargeBreakdownComplete()).isTrue();
+        assertThat(preview.extraGuestCount()).isEqualTo(2);
+        assertThat(preview.extraPersonFeeSnapshot()).isEqualTo(100_000L);
+        assertThat(preview.surchargeNights()).isEqualTo(2L);
+    }
+
+    @Test
+    void surchargeMismatchDoesNotExposeInferredBreakdown() {
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(200_000L);
+        booking.setSurchargeAmount(300_000L);
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.surchargeBreakdownComplete()).isFalse();
+        assertThat(preview.extraGuestCount()).isNull();
+        assertThat(preview.extraPersonFeeSnapshot()).isNull();
+        assertThat(preview.surchargeNights()).isNull();
+        assertThat(preview.roomTotalExcludingSurcharge()).isNull();
+        assertThat(preview.surchargeAmount()).isEqualByComparingTo("300000");
+    }
+
+    @Test
+    void nightlySurchargeMismatchDoesNotExposeBreakdown() {
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(200_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 400_000, "Đêm 1", 100_000),
+                nightly(LocalDate.of(2026, 10, 11), 400_000, "Đêm 2", 0)));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.surchargeBreakdownComplete()).isFalse();
+        assertThat(preview.roomTotalExcludingSurcharge()).isNull();
+    }
+
+    @Test
     void depositInsufficientCollectsDifferenceAndRequiresReferenceForTransfer() {
         when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(250_000));
         CheckoutPreviewResponse preview = service.preview(12L);
@@ -238,14 +392,56 @@ class CheckoutServiceTest {
         verify(roomRepository, never()).save(any(Room.class));
     }
 
+    @Test
+    void surchargeCheckoutSubtractsDepositFromCommittedBookingTotalExactly() {
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(200_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 400_000, "Đêm 1", 100_000),
+                nightly(LocalDate.of(2026, 10, 11), 400_000, "Đêm 2", 100_000)));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(250_000));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.roomTotal()).isEqualByComparingTo("1000000");
+        assertThat(preview.amount()).isEqualByComparingTo("750000");
+        assertThat(preview.surchargeBreakdownComplete()).isTrue();
+    }
+
+    @Test
+    void surchargeCheckoutSucceedsWithoutAddingSurchargeAgain() {
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(200_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 400_000, "Đêm 1", 100_000),
+                nightly(LocalDate.of(2026, 10, 11), 400_000, "Đêm 2", 100_000)));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(250_000));
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        service.checkout(12L, new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Lễ tân");
+
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getRoomTotal()).isEqualByComparingTo("1000000");
+        assertThat(captor.getValue().getAmount()).isEqualByComparingTo("750000");
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_TRA_PHONG);
+    }
+
     private BookingNightlyPriceSnapshot nightly(LocalDate date, long price, String label) {
+        return nightly(date, price, label, 0);
+    }
+
+    private BookingNightlyPriceSnapshot nightly(LocalDate date, long price, String label, long surcharge) {
         BookingNightlyPriceSnapshot line = new BookingNightlyPriceSnapshot();
         line.setBooking(booking);
         line.setNightDate(date);
         line.setPriceType("OVERRIDE");
         line.setPriceLabel(label);
         line.setRoomPrice(price);
-        line.setSurchargeAmount(0);
+        line.setSurchargeAmount(surcharge);
         return line;
     }
 }

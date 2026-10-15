@@ -1000,7 +1000,10 @@ async function handleViewHistory(room: Room) {
             bookingId: room.id, bookingCode: `DEMO-${room.id}`, roomId: room.id,
             roomNumber: room.roomNumber, guestName: 'Khách demo', checkInDate: '', checkOutDate: '',
             nightlyPrices: [], nightlyBreakdownReliable: false, warning: 'Dữ liệu minh họa.',
-            roomTotal: 0, depositTotal: 0, settlementType: 'ZERO', amount: 0, previewToken: 'demo',
+            roomTotal: 0, surchargeAmount: 0, surchargeBreakdownComplete: false,
+            extraGuestCount: null, extraPersonFeeSnapshot: null, surchargeNights: null,
+            roomTotalExcludingSurcharge: null, surchargeBreakdownWarning: null,
+            depositTotal: 0, settlementType: 'ZERO', amount: 0, previewToken: 'demo',
           }
         : await getCheckoutPreview(room.id)
       setCheckoutDialog({ room, preview, paymentMethod: 'CASH', paymentReference: '', confirmed: false, error: null })
@@ -1829,9 +1832,17 @@ async function handleViewHistory(room: Room) {
                 </div>
               )}
               <dl className="checkout-totals">
-                <div><dt>Tổng tiền phòng đã chốt</dt><dd>{checkoutMoney.format(checkoutDialog.preview.roomTotal)} đ</dd></div>
+                <div><dt>Tổng tiền đặt phòng đã chốt (đã bao gồm phụ thu)</dt><dd>{checkoutMoney.format(checkoutDialog.preview.roomTotal)} đ</dd></div>
+                {checkoutDialog.preview.surchargeBreakdownComplete && checkoutDialog.preview.roomTotalExcludingSurcharge !== null && (
+                  <div><dt>Tiền phòng chưa gồm phụ thu</dt><dd>{checkoutMoney.format(checkoutDialog.preview.roomTotalExcludingSurcharge)} đ</dd></div>
+                )}
+                <div><dt>Phụ thu thêm người đã chốt{checkoutDialog.preview.surchargeBreakdownComplete ? ' (đã gồm trong tổng booking)' : ''}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.surchargeAmount)} đ</dd></div>
+                {checkoutDialog.preview.surchargeBreakdownComplete && checkoutDialog.preview.surchargeAmount > 0 && (
+                  <div><dt>Chi tiết phụ thu thêm người</dt><dd>{checkoutDialog.preview.extraGuestCount} khách × {checkoutMoney.format(checkoutDialog.preview.extraPersonFeeSnapshot ?? 0)} đ/người/đêm × {checkoutDialog.preview.surchargeNights} đêm = {checkoutMoney.format(checkoutDialog.preview.surchargeAmount)} đ</dd></div>
+                )}
+                {checkoutDialog.preview.surchargeBreakdownWarning && <div><dt>Chi tiết phụ thu</dt><dd>{checkoutDialog.preview.surchargeBreakdownWarning}</dd></div>}
                 <div><dt>Tổng cọc hiện tại</dt><dd>{checkoutMoney.format(checkoutDialog.preview.depositTotal)} đ</dd></div>
-                <div><dt>{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Cần thu thêm' : checkoutDialog.preview.settlementType === 'REFUND' ? 'Cần hoàn lại' : 'Quyết toán'}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.amount)} đ</dd></div>
+                <div><dt>{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Cần thu thêm' : checkoutDialog.preview.settlementType === 'REFUND' ? 'Cần hoàn lại' : 'Đã thanh toán đủ'}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.amount)} đ</dd></div>
               </dl>
               {checkoutDialog.preview.settlementType !== 'ZERO' && (
                 <>
