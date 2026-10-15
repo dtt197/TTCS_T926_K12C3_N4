@@ -125,6 +125,15 @@ public class OperatingSettingsService {
         settings.setExtraPersonFee(
                 request.extraPersonFee()
         );
+         // S4-02: không gửi thì giữ giá thêm giường của phiên bản hiện tại.
+        settings.setExtraBedFee(
+                request.extraBedFee() != null
+                        ? request.extraBedFee()
+                        : settingsRepository
+                                .findFirstByOrderByCreatedAtDescIdDesc()
+                                .map(OperatingSettings::getExtraBedFee)
+                                .orElse(0L)
+        );
 
         settings.setWeekendDays(
                 String.join(",", weekendDays)

@@ -238,6 +238,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/bookings/*/deposit-adjustments")
                         .hasAnyRole("OWNER", "RECEPTIONIST")
 
+                        // S4-02: Lễ tân và Chủ homestay thêm dòng phụ thu (ma trận "Thanh toán": Lễ tân W, Chủ F, Admin R).
+                        .requestMatchers(HttpMethod.POST, "/api/bookings/*/surcharges")
+                        .hasAnyRole("OWNER", "RECEPTIONIST")
+
                         // S3-01: Le tan xac nhan booking va ghi nhan tien coc.
                         .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
                         .hasRole("RECEPTIONIST")
