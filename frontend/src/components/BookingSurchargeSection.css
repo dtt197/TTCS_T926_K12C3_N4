@@ -30,3 +30,7 @@
 /* S4-02 Lát 4: sửa tay đơn giá */
 .booking-surcharge-required { color: #b42318; }
 .booking-surcharge-table td small.booking-surcharge-overridden { color: #b45309; }
+.booking-surcharge-auto { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; margin: 8px 0 16px; border-radius: 8px; background: #f3f7f4; }
+.booking-surcharge-auto span, .booking-surcharge-auto small { display: block; }
+.booking-surcharge-auto small { color: #68756d; }
+.booking-surcharge-section h5 { margin: 12px 0; }

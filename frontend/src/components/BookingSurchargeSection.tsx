@@ -132,9 +132,21 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
 
       {data && (
         <>
-          {data.items.length === 0 ? (
-            <p className="booking-surcharge-muted">Chưa có dòng phụ thu nào.</p>
-          ) : (
+          <div className="booking-surcharge-auto" aria-label="Phụ thu thêm người đã chốt">
+            <strong>Phụ thu thêm người đã chốt</strong>
+            {data.automaticSurchargeBreakdownComplete ? (
+              <span>
+                {money.format(data.automaticSurchargeAmount)}
+                {data.automaticSurchargeAmount > 0 && (
+                  <small> ({data.automaticExtraGuestCount} khách × {money.format(data.automaticExtraPersonFeeSnapshot)} / khách / đêm × {data.maxNights} đêm; đã gồm trong tổng booking)</small>
+                )}
+              </span>
+            ) : (
+              <small>{data.automaticSurchargeBreakdownWarning ?? 'Không đủ snapshot để xác thực phụ thu đã chốt.'}</small>
+            )}
+          </div>
+          {data.items.length > 0 && <h5>Phụ thu phát sinh</h5>}
+          {data.items.length > 0 && (
             <div className="booking-surcharge-table-wrap">
               <table className="booking-surcharge-table">
                 <thead>
@@ -179,6 +191,10 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
                 </tfoot>
               </table>
             </div>
+          )}
+
+          {data.items.length === 0 && data.automaticSurchargeAmount <= 0 && (
+            <p className="booking-surcharge-muted">Chưa có khoản phụ thu nào.</p>
           )}
 
           {!data.canAddSurcharge && (

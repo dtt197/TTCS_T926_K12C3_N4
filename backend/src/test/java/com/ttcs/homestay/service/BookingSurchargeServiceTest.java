@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.ttcs.homestay.dto.booking.BookingSurchargeListResponse;
 import com.ttcs.homestay.dto.booking.BookingSurchargeRequest;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingNightlyPriceSnapshot;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.RoomType;
@@ -70,6 +71,16 @@ class BookingSurchargeServiceTest {
         item.setWeekendDaysSnapshot("FRIDAY,SATURDAY");
         item.setTotalAmount(1_500_000L);
         item.setCreatedAt(OffsetDateTime.now());
+        for (int i = 0; i < 3; i++) {
+            BookingNightlyPriceSnapshot snapshot = new BookingNightlyPriceSnapshot();
+            snapshot.setBooking(item);
+            snapshot.setNightDate(item.getCheckInDate().plusDays(i));
+            snapshot.setPriceType("WEEKDAY");
+            snapshot.setPriceLabel("Ngày thường");
+            snapshot.setRoomPrice(500_000L);
+            snapshot.setSurchargeAmount(0L);
+            item.getNightlyPriceSnapshots().add(snapshot);
+        }
         return bookingRepository.saveAndFlush(item);
     }
 
@@ -97,6 +108,25 @@ class BookingSurchargeServiceTest {
 
     private static HttpStatus statusOf(Throwable error) {
         return HttpStatus.valueOf(((ResponseStatusException) error).getStatusCode().value());
+    }
+
+    @Test
+    void detailResponseExposesCommittedAutomaticSurchargeSnapshotSeparatelyFromS402Rows() {
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(300_000L);
+        booking.setTotalAmount(1_800_000L);
+        booking.getNightlyPriceSnapshots().forEach(snapshot -> snapshot.setSurchargeAmount(100_000L));
+        bookingRepository.saveAndFlush(booking);
+
+        BookingSurchargeListResponse result = surchargeService.getSurcharges(booking.getId());
+
+        assertThat(result.automaticExtraGuestCount()).isEqualTo(1);
+        assertThat(result.automaticExtraPersonFeeSnapshot()).isEqualTo(100_000L);
+        assertThat(result.automaticSurchargeAmount()).isEqualTo(300_000L);
+        assertThat(result.automaticSurchargeBreakdownComplete()).isTrue();
+        assertThat(result.items()).isEmpty();
+        assertThat(result.totalAmount()).isZero();
     }
 
     @Test

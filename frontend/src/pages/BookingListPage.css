@@ -635,7 +635,9 @@
 .booking-deposit-total { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; padding: 12px; border-radius: 9px; background: #edf5ee; color: #496356; font-size: 12px; }
 .booking-deposit-total strong { color: #174d37; font-size: 16px; text-align: right; overflow-wrap: anywhere; }
 .booking-detail-section .booking-adjustment-list { margin: 10px 0 0; }
-.booking-detail-footer { flex: 0 0 auto; display: flex; justify-content: flex-end; padding: 12px 28px; border-top: 1px solid #e2e9e2; background: #fffdf8; }
+.booking-detail-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 28px; border-top: 1px solid #e2e9e2; background: #fffdf8; }
+.booking-invoice-actions { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.booking-invoice-actions .alert { margin: 0; }
 .booking-detail-footer .booking-cancel-button { min-width: 100px; }
 @media (max-width: 700px) {
   .booking-detail-backdrop { padding: 8px; }

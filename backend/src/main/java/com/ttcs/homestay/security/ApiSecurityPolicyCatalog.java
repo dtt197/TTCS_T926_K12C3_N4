@@ -164,6 +164,8 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/bookings/*/room-change-history",
                 "/api/bookings/*/available-rooms");
+        add(policies, "GET", Access.ROLES, List.of("RECEPTIONIST", "OWNER"),
+                "/api/bookings/*/invoice.pdf");
         add(policies, "PUT", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
                 "/api/bookings/*/deposit", "/api/bookings/*/deposits/**");
         add(policies, "DELETE", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
