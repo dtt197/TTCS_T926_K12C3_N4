@@ -24,9 +24,7 @@ function today() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-const MAX_CONCURRENT_CALENDAR_REQUESTS = 3
-const MAX_SELECTED_END_DATE = '9999-12-16'
-const MAX_DEFAULT_START_DATE = '9999-12-03'
+const MAX_SELECTED_END_DATE = '9999-12-31'
 
 function addCalendarDays(value: string, days: number) {
   const [year, month, day] = value.split('-').map(Number)
@@ -192,8 +190,8 @@ export function RoomCalendarPage() {
     }
   }, [startDate, endDate])
   const rangeError = planResult.error ?? null
-  const selectedDays = planResult.plan ? planResult.plan.totalDays - 14 : null
-  const expandedEndDate = planResult.plan?.displayEndDate ?? null
+  const selectedDays = planResult.plan?.totalDays ?? null
+  const displayEndDate = planResult.plan?.displayEndDate ?? null
 
   useEffect(() => {
     if (rangeError || !planResult.plan) return
@@ -204,33 +202,17 @@ export function RoomCalendarPage() {
     const plan = planResult.plan
     loadStartedAt.current = performance.now()
 
-    const responses: RoomCalendar[] = new Array(plan.segments.length)
-    let nextSegmentIndex = 0
-    let completed = 0
-    const worker = async () => {
-      while (isCurrent()) {
-        const segmentIndex = nextSegmentIndex
-        nextSegmentIndex += 1
-        if (segmentIndex >= plan.segments.length) return
-        const segment = plan.segments[segmentIndex]
-        const response = await getRoomCalendar(segment.startDate, segment.days, controller.signal)
-        if (!isCurrent()) return
-        responses[segmentIndex] = response
-        completed += 1
-        setLoadProgress({ range, completed, total: plan.segments.length })
-      }
-    }
-
-    void Promise.all(Array.from({ length: Math.min(MAX_CONCURRENT_CALENDAR_REQUESTS, plan.segments.length) }, worker)).then(
-      () => {
+    const segment = plan.segments[0]
+    void getRoomCalendar(segment.startDate, segment.days, controller.signal).then(
+      response => {
         if (!isCurrent()) return
         try {
-          const data = mergeRoomCalendarResponses(responses, plan)
+          const data = mergeRoomCalendarResponses([response], plan)
           setOpenCell(null)
           setPopoverPosition(null)
           setResult({ range, data })
         } catch (error) {
-          setLoadProgress({ range, completed, total: plan.segments.length, error: error instanceof Error ? error.message : 'Không thể ghép dữ liệu sơ đồ phòng.' })
+          setLoadProgress({ range, completed: 1, total: 1, error: error instanceof Error ? error.message : 'Không thể ghép dữ liệu sơ đồ phòng.' })
         }
       },
       error => {
@@ -238,7 +220,7 @@ export function RoomCalendarPage() {
         controller.abort()
         setOpenCell(null)
         setPopoverPosition(null)
-        setLoadProgress({ range, completed, total: plan.segments.length, error: error instanceof Error ? error.message : 'Không tải được sơ đồ phòng.' })
+        setLoadProgress({ range, completed: 0, total: 1, error: error instanceof Error ? error.message : 'Không tải được sơ đồ phòng.' })
       },
     )
 
@@ -324,14 +306,14 @@ export function RoomCalendarPage() {
             <p>Chọn khoảng ngày cần xem tình trạng phòng.</p>
           </div>
         </div>
+        <div className="room-calendar-controls">
         <div className="room-calendar-date-fields">
           <label htmlFor="room-calendar-start">Ngày bắt đầu
-            <input id="room-calendar-start" type="date" value={startDate} min="0001-01-01" max={MAX_DEFAULT_START_DATE}
+            <input id="room-calendar-start" type="date" value={startDate} min="0001-01-01" max={MAX_SELECTED_END_DATE}
               onChange={event => {
                 const nextStartDate = event.target.value
                 setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null)
                 setStartDate(nextStartDate)
-                if (nextStartDate) setEndDate(addCalendarDays(nextStartDate, 13))
               }} />
           </label>
           <label htmlFor="room-calendar-end">Ngày kết thúc
@@ -339,41 +321,40 @@ export function RoomCalendarPage() {
               onChange={event => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null); setEndDate(event.target.value) }} />
           </label>
         </div>
-        {planResult.plan && selectedDays != null && expandedEndDate && <>
-          <div className="room-calendar-stats" aria-label="Tóm tắt khoảng ngày">
-            <article className="room-calendar-stat"><span>Ngày đã chọn</span><strong>{selectedDays}</strong></article>
-            <article className="room-calendar-stat"><span>Ngày mở rộng</span><strong>14</strong></article>
-            <article className="room-calendar-stat room-calendar-stat--total"><span>Tổng ngày xem</span><strong>{selectedDays + 14}</strong></article>
+        </div>
+        {planResult.plan && selectedDays != null && displayEndDate && <div className="room-calendar-info-bar" aria-label="Tóm tắt sơ đồ phòng">
+          <p className="room-calendar-range-summary">Sơ đồ hiển thị từ <strong>{formatDate(startDate)}</strong> đến <strong>{formatDate(displayEndDate)}</strong></p>
+          <span className="room-calendar-day-count">{selectedDays} ngày</span>
+          <div className="room-calendar-legend" aria-label="Chú giải trạng thái">
+            {Object.entries(labels).map(([status, label]) => <span key={status} className={`calendar-${status}`}>
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                {status === 'AVAILABLE' && <><path d="M8 14s5-2.5 5-7V3L8 1 3 3v4c0 4.5 5 7 5 7Z" /><path d="m5.5 7.5 1.6 1.6 3.4-3.6" /></>}
+                {status === 'BOOKED' && <><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M5 6h6M5 9h4" /></>}
+                {status === 'MAINTENANCE' && <><path d="M9.2 2.2a4 4 0 0 0 4.6 5.1l-6.5 6.5a1.7 1.7 0 0 1-2.4-2.4l6.5-6.5a4 4 0 0 0-5.1-4.6l2.3 2.3-2.1 2.1-2.3-2.3a4 4 0 0 0 5-0.2Z" /></>}
+              </svg>
+              {label}
+            </span>)}
           </div>
-          <p className="room-calendar-range-summary">Sơ đồ hiển thị từ <strong>{formatDate(startDate)}</strong> đến <strong>{formatDate(expandedEndDate)}</strong>.</p>
-        </>}
+        </div>}
       </header>
       <div className="room-calendar-guidance">
-        <div className="room-calendar-legend" aria-label="Chú giải trạng thái">
-          {Object.entries(labels).map(([status, label]) => <span key={status} className={`calendar-${status}`}>
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              {status === 'AVAILABLE' && <><path d="M8 14s5-2.5 5-7V3L8 1 3 3v4c0 4.5 5 7 5 7Z" /><path d="m5.5 7.5 1.6 1.6 3.4-3.6" /></>}
-              {status === 'BOOKED' && <><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M5 6h6M5 9h4" /></>}
-              {status === 'MAINTENANCE' && <><path d="M9.2 2.2a4 4 0 0 0 4.6 5.1l-6.5 6.5a1.7 1.7 0 0 1-2.4-2.4l6.5-6.5a4 4 0 0 0-5.1-4.6l2.3 2.3-2.1 2.1-2.3-2.3a4 4 0 0 0 5-0.2Z" /></>}
-            </svg>
-            {label}
-          </span>)}
-        </div>
-        <aside className="room-calendar-guidance-card" aria-label="Thông tin sơ đồ phòng">
+        <details className="room-calendar-guidance-card">
+          <summary aria-label="Mở hoặc đóng hướng dẫn cách đọc sơ đồ">
           <span className="room-calendar-guidance-icon" aria-hidden="true">
             <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" /><path d="M10 9v4m0-7h.01" /></svg>
           </span>
-          <div className="room-calendar-guidance-content">
             <strong>Cách đọc sơ đồ</strong>
+          </summary>
+          <div className="room-calendar-guidance-content">
             <ul>
               <li>Chỉ hiển thị phòng đang hoạt động; mỗi ô đại diện cho một đêm lưu trú.</li>
               <li>Sơ đồ theo phòng được gán, không thể hiện đầy đủ lịch sử đổi phòng và booking đã trả phòng.</li>
               <li>Ô Trống không bảo đảm có thể nhận booking mới. Nhấn ô Có booking để xem chi tiết.</li>
             </ul>
           </div>
-        </aside>
+        </details>
       </div>
-      {rangeError && <p role="alert">{rangeError}</p>}
+      {rangeError && <p className="room-calendar-range-error" role="alert">{rangeError}</p>}
       {loading && !visibleLoadProgress?.error &&
         <p className="room-calendar-load-status" role="status">Đang tải {visibleLoadProgress?.completed ?? 0}/{visibleLoadProgress?.total ?? planResult.plan?.segments.length ?? 0} đoạn…</p>}
       {visibleLoadProgress?.error && <div className="room-calendar-load-status" role="alert">

@@ -1,7 +1,6 @@
 import type { RoomCalendar } from './roomCalendarService'
 
 export const ROOM_CALENDAR_REQUEST_MAX_DAYS = 14
-const EXTENSION_DAYS = 14
 const MILLISECONDS_PER_DAY = 86_400_000
 
 export type RoomCalendarRange = {
@@ -47,14 +46,17 @@ function datesForRange(startDate: string, days: number): string[] {
   return Array.from({ length: days }, (_, index) => formatUtcDay(startDay + index))
 }
 
-/** Builds the inclusive selected range plus 14 calendar days after its end. */
+/** Builds an inclusive selected range limited to one API request (1–14 days). */
 export function createRoomCalendarPlan(startDate: string, selectedEndDate: string): RoomCalendarPlan {
   const startDay = parseCalendarDate(startDate, 'startDate')
   const selectedEndDay = parseCalendarDate(selectedEndDate, 'selectedEndDate')
   if (selectedEndDay < startDay) throw new RangeError('selectedEndDate must be on or after startDate')
 
-  const totalDays = selectedEndDay - startDay + 1 + EXTENSION_DAYS
-  const displayEndDate = formatUtcDay(selectedEndDay + EXTENSION_DAYS)
+  const totalDays = selectedEndDay - startDay + 1
+  if (totalDays > ROOM_CALENDAR_REQUEST_MAX_DAYS) {
+    throw new RangeError('Khoảng ngày xem không được vượt quá 14 ngày.')
+  }
+  const displayEndDate = selectedEndDate
   const endDateExclusive = formatUtcDay(startDay + totalDays)
   const segments: RoomCalendarRange[] = []
   for (let offset = 0; offset < totalDays; offset += ROOM_CALENDAR_REQUEST_MAX_DAYS) {
