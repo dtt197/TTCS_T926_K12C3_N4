@@ -24,6 +24,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.controller.notification.NotificationController;
 import com.ttcs.homestay.security.AccountStatusFilter;
 import com.ttcs.homestay.security.ApiAccessDeniedHandler;
 import com.ttcs.homestay.security.ApiAuthenticationEntryPoint;
@@ -63,7 +64,8 @@ public class SecurityConfig {
                 .formLogin(formLogin -> formLogin.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authorize -> authorize
+                .authorizeHttpRequests(authorize -> {
+                    authorize
 
                         // API xác thực công khai
                         .requestMatchers(
@@ -78,12 +80,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/internal/**").authenticated()
 
                         // S4-06: Báo cáo công suất và tải CSV chỉ dành cho Chủ homestay.
-                        .requestMatchers(HttpMethod.GET, "/api/reports/occupancy", "/api/reports/occupancy.csv")
+                        .requestMatchers(HttpMethod.GET, "/api/reports/occupancy", "/api/reports/occupancy.csv",
+                                "/api/reports/occupancy/detailed")
                         .hasRole("OWNER")
 
                         // S4-06: Chủ homestay xem báo cáo công suất theo loại phòng.
                         // S4-06: báo cáo công suất chỉ dành cho chủ homestay.
-                        .requestMatchers(HttpMethod.GET, "/api/reports/occupancy").hasRole("OWNER")
                         .requestMatchers(HttpMethod.GET, "/api/maintenance-requests/cleaning-room-ids")
                         .hasRole("HOUSEKEEPING")
                         .requestMatchers(HttpMethod.GET, "/api/maintenance-requests", "/api/maintenance-requests/*")
@@ -297,12 +299,8 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
 
                         // API chưa khai báo quyền sẽ bị từ chối
-                        .requestMatchers("/api/**").denyAll()
+                        ;
 
-                        .anyRequest().permitAll()
-                )
-
-                .authorizeHttpRequests(authorize -> {
                     for (ApiSecurityPolicyCatalog.Policy policy : policyCatalog.policies()) {
                         var request = policy.method() == null
                                 ? authorize.requestMatchers(policy.path())
@@ -320,6 +318,7 @@ public class SecurityConfig {
                             case DENIED -> request.denyAll();
                         }
                     }
+                    authorize.requestMatchers("/api/**").denyAll();
                     authorize.anyRequest().permitAll();
                 })
                 .exceptionHandling(exceptions -> exceptions

@@ -1,11 +1,19 @@
 import { getAccessToken } from './tokenStore'
 import { apiRequest } from './apiClient'
+import type { DailyOccupancy, RoomTypeOccupancy } from './occupancyReportService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
-export type DailyOccupancy = { date: string; soldNights: number; availableNights: number; occupancyPercent: number | null }
-export type RoomTypeOccupancy = { roomTypeId: number; code: string; name: string; active: boolean; soldNights: number; availableNights: number; averageOccupancyPercent: number | null }
-export type OccupancyReport = { startDate: string; endDate: string; selectedRoomTypeId: number | null; selectedRoomTypeName: string; totalSoldNights: number; totalAvailableNights: number; totalAverageOccupancyPercent: number | null; roomTypes: RoomTypeOccupancy[]; dailyOccupancies: DailyOccupancy[] }
+export type OccupancyByRoomTypeReport = {
+  startDate: string
+  endDate: string
+  selectedRoomTypeId: number | null
+  totalSoldNights: number
+  totalAvailableNights: number
+  totalAverageOccupancyPercent: number | null
+  roomTypes: RoomTypeOccupancy[]
+  dailyOccupancies: DailyOccupancy[]
+}
 
 function query(startDate: string, endDate: string, roomTypeId: string) {
   const params = new URLSearchParams({ startDate, endDate })
@@ -13,11 +21,13 @@ function query(startDate: string, endDate: string, roomTypeId: string) {
   return params.toString()
 }
 
-export function getOccupancyReport(startDate: string, endDate: string, roomTypeId: string) {
-  return apiRequest<OccupancyReport>(`/api/reports/occupancy?${query(startDate, endDate, roomTypeId)}`)
+/** Summary by room type: GET /api/reports/occupancy. */
+export function getOccupancyReport(startDate: string, endDate: string, roomTypeId = '') {
+  return apiRequest<OccupancyByRoomTypeReport>(`/api/reports/occupancy?${query(startDate, endDate, roomTypeId)}`)
 }
 
-export async function downloadOccupancyCsv(startDate: string, endDate: string, roomTypeId: string) {
+/** CSV export: GET /api/reports/occupancy.csv. */
+export async function downloadOccupancyCsv(startDate: string, endDate: string, roomTypeId = '') {
   const token = getAccessToken()
   const response = await fetch(`${API_BASE_URL}/api/reports/occupancy.csv?${query(startDate, endDate, roomTypeId)}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include',
@@ -29,18 +39,4 @@ export async function downloadOccupancyCsv(startDate: string, endDate: string, r
   link.download = `bao-cao-cong-suat-${startDate}-${endDate}.csv`
   link.click()
   URL.revokeObjectURL(link.href)
-import { apiRequest } from './apiClient'
-
-export type DailyOccupancy = { date: string; soldNights: number; availableNights: number; occupancyPercent: number | null }
-export type RoomTypeOccupancy = { roomTypeId: number; code: string; name: string; active: boolean; soldNights: number; availableNights: number; averageOccupancyPercent: number | null }
-export type OccupancyReport = {
-  startDate: string; endDate: string; selectedRoomTypeId: number | null
-  totalSoldNights: number; totalAvailableNights: number; totalAverageOccupancyPercent: number | null
-  roomTypes: RoomTypeOccupancy[]; dailyOccupancies: DailyOccupancy[]
-}
-
-export function getOccupancyReport(startDate: string, endDate: string, roomTypeId: string) {
-  const query = new URLSearchParams({ startDate, endDate })
-  if (roomTypeId) query.set('roomTypeId', roomTypeId)
-  return apiRequest<OccupancyReport>(`/api/reports/occupancy?${query}`)
 }

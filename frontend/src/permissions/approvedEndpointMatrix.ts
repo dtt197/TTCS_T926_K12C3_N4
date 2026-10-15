@@ -40,6 +40,8 @@ export const APPROVED_ENDPOINT_MATRIX: readonly EndpointPolicy[] = [
   policy('PUT', '/api/maintenance-requests/*/vendor', 'ROLES', ['OWNER']),
   ...policies('GET', 'ROLES', ['OWNER', 'RECEPTIONIST'],
     '/api/notifications', '/api/notifications/stream', '/api/notifications/unread-count'),
+  ...policies('GET', 'ROLES', ['OWNER'],
+    '/api/reports/occupancy', '/api/reports/occupancy/detailed', '/api/reports/occupancy.csv'),
   policy('PATCH', '/api/notifications/*/read', 'ROLES', ['OWNER', 'RECEPTIONIST']),
   policy(null, '/api/admin/audit-logs/**', 'ROLES', ['ADMIN']),
   policy('GET', '/api/admin/users', 'ROLES', ['ADMIN', 'OWNER']),

@@ -776,8 +776,6 @@ export function InternalHomePage({
           ) : activeView === 'walkInBooking' ? (
 
             <WalkInBookingPage />
-          ) : activeView === 'occupancyReport' ? (
-            <OccupancyReportPage />
 
           ) : activeView === 'audit-logs' ? (
 
