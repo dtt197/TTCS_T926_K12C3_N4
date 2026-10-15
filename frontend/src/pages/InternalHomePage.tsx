@@ -27,8 +27,9 @@ import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
 
 import { BookingListPage } from './BookingListPage'
-
 import { WalkInBookingPage } from './WalkInBookingPage'
+import { OccupancyReportPage } from './OccupancyReportPage'
+import { SecurityEndpointMatrixPage } from './SecurityEndpointMatrixPage'
 
 import { NotificationBell } from '../components/NotificationBell'
 
@@ -70,6 +71,9 @@ type View =
   | 'bookings'
 
   | 'walkInBooking'
+  | 'occupancyReport'
+
+  | 'security-matrix'
 
 type Tab = {
 
@@ -88,7 +92,18 @@ type Tab = {
 }
 
 const TABS: ReadonlyArray<Tab> = [
+  { view: 'occupancyReport', path: '/bao-cao-cong-suat', label: 'Công suất phòng', title: 'Báo cáo công suất phòng', icon: '◔', permission: 'reports:occupancy' },
 
+
+
+  {
+    view: 'occupancyReport',
+    path: '/bao-cao-cong-suat',
+    label: 'Công suất phòng',
+    title: 'Báo cáo công suất phòng',
+    icon: '◔',
+    permission: 'reports:occupancy',
+  },
   {
 
     view: 'roomCalendar',
@@ -281,7 +296,14 @@ const TABS: ReadonlyArray<Tab> = [
     permission: 'auditLogs:view',
 
   },
-
+  {
+    view: 'security-matrix',
+    path: '/security-endpoint-matrix',
+    label: 'Ma trận quyền API',
+    title: 'Đối chiếu ma trận quyền API',
+    icon: '⚿',
+    permission: 'security:matrix:view',
+  },
 ]
 
 const SESSION_CHECK_INTERVAL_MS = 30_000
@@ -367,10 +389,6 @@ export function InternalHomePage({
     const currentMaintenanceId = getMaintenanceId(currentPath)
     if (currentPath.startsWith('/maintenance') && (!canAccessMaintenance || currentMaintenanceId === undefined)) {
       window.history.replaceState({}, '', fallbackTab.path)
-      setMaintenance(null)
-      setView(fallbackTab.view)
-    } else if (currentMaintenanceId !== undefined) {
-      setMaintenance({ id: currentMaintenanceId })
     }
 
     function handlePopState() {
@@ -747,6 +765,9 @@ export function InternalHomePage({
           ) : activeView === 'roomCalendar' ? (
 
             <RoomCalendarPage />
+          ) : activeView === 'occupancyReport' ? (
+            <OccupancyReportPage />
+
 
           ) : activeView === 'bookings' ? (
 
@@ -755,6 +776,8 @@ export function InternalHomePage({
           ) : activeView === 'walkInBooking' ? (
 
             <WalkInBookingPage />
+          ) : activeView === 'occupancyReport' ? (
+            <OccupancyReportPage />
 
           ) : activeView === 'audit-logs' ? (
 
@@ -763,7 +786,8 @@ export function InternalHomePage({
           ) : activeView === 'reminderEmails' ? (
 
             <ReminderEmailLogPage />
-
+          ) : activeView === 'security-matrix' ? (
+          <SecurityEndpointMatrixPage />
           ) : activeView === 'roomManagement' ? (
 
             <RoomManagementPage />
