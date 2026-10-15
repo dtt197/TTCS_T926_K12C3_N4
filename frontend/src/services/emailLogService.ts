@@ -28,3 +28,32 @@ export function runReminders(date?: string): Promise<ReminderRunResult> {
     method: 'POST',
   })
 }
+export type BookingReminderItem = {
+  bookingId: number
+  bookingCode: string
+  guestName: string
+  recipientEmail: string | null
+  checkInDate: string
+  bookingStatus: string
+  reminderStatus: 'NOT_SENT' | 'SENT' | 'FAILED'
+  remindedAt: string | null
+  lastAttemptAt: string | null
+  errorMessage: string | null
+}
+
+export type BookingReminderPage = {
+  content: BookingReminderItem[]
+  number: number
+  totalPages: number
+  totalElements: number
+  first: boolean
+  last: boolean
+}
+
+export function getBookingReminderStatuses(
+  page = 0,
+): Promise<BookingReminderPage> {
+  return apiRequest<BookingReminderPage>(
+    `/api/admin/reminders/bookings?page=${page}&size=20`,
+  )
+}
