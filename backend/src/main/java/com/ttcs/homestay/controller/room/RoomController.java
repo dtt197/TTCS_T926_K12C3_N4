@@ -100,7 +100,7 @@ public class RoomController {
             return java.util.stream.Stream
         .concat(dirtyRooms.stream(), maintenanceCleaningRooms.stream())
         .collect(java.util.stream.Collectors.toMap(
-                RoomResponse::id,
+                room -> room.id(),
                 java.util.function.Function.identity(),
                 (existing, duplicate) -> existing,
                 java.util.LinkedHashMap::new

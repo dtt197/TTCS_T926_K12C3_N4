@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react'
 import '../App.css'
 import { hasPermission } from '../permissions/rolePermissions'
 import { getCheckInOptions } from '../services/bookingService'
@@ -370,6 +370,10 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedHistoryRoomId])
+  const closeStatusModal = useCallback(() => {
+    if (statusSaveLockRef.current || isSaving) return
+    setSelectedStatusRoomId(null)
+  }, [isSaving])
   useEffect(() => {
     if (selectedStatusRoomId === null || isSaving) return
     function handleKeyDown(event: KeyboardEvent) {
@@ -377,7 +381,7 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedStatusRoomId, isSaving])
+  }, [selectedStatusRoomId, isSaving, closeStatusModal])
   useEffect(() => {
     if (openRoomActionsId === null) return
     function onEscape(event: KeyboardEvent) {
@@ -396,11 +400,6 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
       document.removeEventListener('pointerdown', onPointerDown)
     }
   }, [openRoomActionsId])
-
-  function closeStatusModal() {
-    if (statusSaveLockRef.current || isSaving) return
-    setSelectedStatusRoomId(null)
-  }
 
   function openStatusModal(room: Room) {
     if (isSaving) return

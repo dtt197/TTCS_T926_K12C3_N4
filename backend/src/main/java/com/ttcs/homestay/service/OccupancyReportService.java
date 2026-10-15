@@ -43,7 +43,7 @@ public class OccupancyReportService {
         List<Booking> bookings = bookingRepository.findSoldInDateRange(startDate, endExclusive, SOLD_STATUSES);
         List<RoomType> types = roomTypeRepository.findAllByOrderByCodeAsc().stream()
                 .filter(type -> Boolean.TRUE.equals(type.getStatus()) || hasBooking(type, bookings)).toList();
-        Map<Long, RoomType> typeById = types.stream().collect(Collectors.toMap(RoomType::getId, type -> type));
+        Map<Long, RoomType> typeById = types.stream().collect(Collectors.toMap(type -> type.getId(), type -> type));
         List<Room> reportRooms = rooms.stream()
                 .filter(room -> types.stream().anyMatch(type -> type.getName().equalsIgnoreCase(room.getRoomType())))
                 .toList();
@@ -54,10 +54,10 @@ public class OccupancyReportService {
                 .map(type -> summary(type, startDate, endExclusive, reportRooms, bookings)).toList();
         List<DailyOccupancy> days = startDate.datesUntil(endExclusive)
                 .map(day -> daily(day, roomTypeId, typeById, reportRooms, bookings)).toList();
-        long sold = roomTypeId == null ? summaries.stream().mapToLong(RoomTypeOccupancy::soldNights).sum()
-                : days.stream().mapToLong(DailyOccupancy::soldNights).sum();
-        long available = roomTypeId == null ? summaries.stream().mapToLong(RoomTypeOccupancy::availableNights).sum()
-                : days.stream().mapToLong(DailyOccupancy::availableNights).sum();
+        long sold = roomTypeId == null ? summaries.stream().mapToLong(type -> type.soldNights()).sum()
+                : days.stream().mapToLong(day -> day.soldNights()).sum();
+        long available = roomTypeId == null ? summaries.stream().mapToLong(type -> type.availableNights()).sum()
+                : days.stream().mapToLong(day -> day.availableNights()).sum();
         return new OccupancyReportResponse(startDate, endDate, roomTypeId,
                 roomTypeId == null ? "Tất cả loại phòng" : typeById.get(roomTypeId).getName(),
                 sold, available, percent(sold, available), summaries, days);

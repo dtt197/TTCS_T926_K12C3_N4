@@ -183,6 +183,12 @@ void setUp() {
         assertThat(response).contains(
                 "\"path\":\"/api/public/rooms/search\",\"access\":\"PUBLIC\"",
                 "\"path\":\"/api/rooms/{roomId}/history\",\"access\":\"ROLES\"",
+                "\"path\":\"/api/admin/security/endpoint-discrepancies\",\"access\":\"ROLES\",\"roles\":[\"ADMIN\"]",
+                "\"path\":\"/api/reports/occupancy\",\"access\":\"ROLES\",\"roles\":[\"OWNER\"]",
+                "\"path\":\"/api/reports/occupancy.csv\",\"access\":\"ROLES\",\"roles\":[\"OWNER\"]",
+                "\"path\":\"/api/reports/occupancy/detailed\",\"access\":\"ROLES\",\"roles\":[\"OWNER\"]",
+                "\"path\":\"/api/rooms/{roomId}/checkout-preview\",\"access\":\"ROLES\",\"roles\":[\"RECEPTIONIST\"]",
+                "\"path\":\"/api/bookings/{id}/surcharges\",\"access\":\"ROLES\",\"roles\":[\"OWNER\",\"RECEPTIONIST\"]",
                 "\"path\":\"/api/maintenance-requests/cleaning-room-ids\",\"access\":\"ROLES\",\"roles\":[\"HOUSEKEEPING\"]",
                 "\"path\":\"/api/notifications/stream\",\"access\":\"ROLES\",\"roles\":[\"OWNER\",\"RECEPTIONIST\"]"
         );
@@ -191,6 +197,18 @@ void setUp() {
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(get("/api/admin/security/endpoint-permissions")
+                        .header("Authorization", "Bearer receptionist-test-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void endpointDiscrepancyTicketsAreAdminOnly() throws Exception {
+        mockMvc.perform(get("/api/admin/security/endpoint-discrepancies")
+                        .header("Authorization", "Bearer admin-test-token"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/admin/security/endpoint-discrepancies"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/admin/security/endpoint-discrepancies")
                         .header("Authorization", "Bearer receptionist-test-token"))
                 .andExpect(status().isForbidden());
     }
@@ -798,8 +816,10 @@ void setUp() {
         List<MockHttpServletRequestBuilder> requests = List.of(
                 get("/api/public/room-types"),
                 get("/api/public/room-types/999999"),
+                get("/api/public/room-types/nonexistent/path"),
                 get("/api/public/room-type-cards"),
                 get("/api/public/quote"),
+                get("/api/public/rooms/nonexistent/path"),
                 get("/api/public/rooms/search")
                         .param("checkIn", checkIn.toString())
                         .param("checkOut", checkIn.plusDays(2).toString())

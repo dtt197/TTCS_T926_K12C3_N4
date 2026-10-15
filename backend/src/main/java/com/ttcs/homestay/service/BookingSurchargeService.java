@@ -6,7 +6,6 @@ import com.ttcs.homestay.dto.booking.BookingSurchargeResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.BookingSurcharge;
-import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.entity.SurchargeType;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.BookingSurchargeRepository;
@@ -101,7 +100,7 @@ public class BookingSurchargeService {
         }
         // Thêm giường: tham số vận hành đang có hiệu lực (phiên bản mới nhất).
         return settingsRepository.findFirstByOrderByCreatedAtDescIdDesc()
-                .map(OperatingSettings::getExtraBedFee)
+                .map(settings -> settings.getExtraBedFee())
                 .orElse(0L);
     }
 
@@ -111,7 +110,7 @@ public class BookingSurchargeService {
                 .stream()
                 .map(BookingSurchargeResponse::from)
                 .toList();
-        long totalAmount = items.stream().mapToLong(BookingSurchargeResponse::amount).sum();
+        long totalAmount = items.stream().mapToLong(item -> item.amount()).sum();
 
         return new BookingSurchargeListResponse(
                 booking.getId(),

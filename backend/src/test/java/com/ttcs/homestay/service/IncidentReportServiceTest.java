@@ -139,9 +139,12 @@ class IncidentReportServiceTest {
         User existingReporter = reporter(REPORTER_ID, "Housekeeper", "housekeeper@example.test");
         MaintenanceRequestEntity existing = existingRequest(room, existingReporter,
                 "NHE", DESCRIPTION, IDEMPOTENCY_KEY);
-        when(roomRepository.findByIdForUpdate(ROOM_ID)).thenReturn(Optional.of(room), Optional.of(room));
+        when(roomRepository.findByIdForUpdate(ROOM_ID))
+                .thenReturn(Optional.of(room))
+                .thenReturn(Optional.of(room));
         when(maintenanceRequestRepository.findByIdempotencyKey(IDEMPOTENCY_KEY))
-                .thenReturn(Optional.empty(), Optional.of(existing));
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(existing));
         when(userRepository.findWithRoleById(REPORTER_ID)).thenReturn(Optional.of(existingReporter));
         when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(maintenanceRequestRepository.saveAndFlush(any(MaintenanceRequestEntity.class)))
@@ -194,7 +197,8 @@ class IncidentReportServiceTest {
     void rollsBackTransactionWhenRequestWriteFails() {
         when(roomRepository.findByIdForUpdate(ROOM_ID)).thenReturn(Optional.of(room));
         when(maintenanceRequestRepository.findByIdempotencyKey(IDEMPOTENCY_KEY))
-                .thenReturn(Optional.empty(), Optional.empty());
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.empty());
         when(userRepository.findWithRoleById(REPORTER_ID)).thenReturn(Optional.of(reporter));
         when(roomRepository.save(room)).thenReturn(room);
         org.mockito.Mockito.doThrow(new DataIntegrityViolationException("write failed"))
@@ -239,7 +243,8 @@ class IncidentReportServiceTest {
     void propagatesNotificationFailureAndRollsBackTransaction() {
         when(roomRepository.findByIdForUpdate(ROOM_ID)).thenReturn(Optional.of(room));
         when(maintenanceRequestRepository.findByIdempotencyKey(IDEMPOTENCY_KEY))
-                .thenReturn(Optional.empty(), Optional.empty());
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.empty());
         when(userRepository.findWithRoleById(REPORTER_ID)).thenReturn(Optional.of(reporter));
         when(roomRepository.save(room)).thenReturn(room);
         when(maintenanceRequestRepository.saveAndFlush(any(MaintenanceRequestEntity.class)))

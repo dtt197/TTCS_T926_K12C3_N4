@@ -16,7 +16,6 @@ import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -133,14 +132,16 @@ public class CheckoutService {
         }
         long expectedNights = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate());
         List<BookingNightlyPriceSnapshot> orderedStored = stored.stream()
-                .sorted(java.util.Comparator.comparing(BookingNightlyPriceSnapshot::getNightDate)).toList();
+                .sorted(java.util.Comparator.comparing(
+                        (BookingNightlyPriceSnapshot line) -> line.getNightDate())).toList();
         boolean datesMatch = orderedStored.size() == expectedNights;
         for (int index = 0; datesMatch && index < orderedStored.size(); index++) {
             datesMatch = booking.getCheckInDate().plusDays(index).equals(orderedStored.get(index).getNightDate());
         }
         boolean reliable = !stored.isEmpty() && datesMatch && storedTotal == booking.getTotalAmount();
         List<CheckoutPreviewResponse.NightlyLine> lines = reliable ? stored.stream()
-                .sorted(java.util.Comparator.comparing(BookingNightlyPriceSnapshot::getNightDate))
+                .sorted(java.util.Comparator.comparing(
+                        (BookingNightlyPriceSnapshot line) -> line.getNightDate()))
                 .map(line -> new CheckoutPreviewResponse.NightlyLine(line.getNightDate(), line.getPriceLabel(),
                         line.getRoomPrice(), line.getSurchargeAmount(),
                         Math.addExact(line.getRoomPrice(), line.getSurchargeAmount())))
@@ -152,7 +153,8 @@ public class CheckoutService {
                 + booking.getExtraPersonFeeSnapshot() + "|" + surchargeAmount.toPlainString() + "|"
                 + deposit.toPlainString() + "|" + booking.getCheckInDate() + "|"
                 + booking.getCheckOutDate() + "|" + (reliable ? stored.stream()
-                        .sorted(java.util.Comparator.comparing(BookingNightlyPriceSnapshot::getNightDate))
+                        .sorted(java.util.Comparator.comparing(
+                                (BookingNightlyPriceSnapshot line) -> line.getNightDate()))
                         .map(x -> x.getNightDate() + ":" + x.getRoomPrice() + ":" + x.getSurchargeAmount())
                         .toList() : "NO_RELIABLE_BREAKDOWN");
         return new CheckoutPreviewResponse(booking.getId(), booking.getBookingCode(), room.getId(),
@@ -184,7 +186,8 @@ public class CheckoutService {
         }
 
         List<BookingNightlyPriceSnapshot> ordered = snapshots.stream()
-                .sorted(java.util.Comparator.comparing(BookingNightlyPriceSnapshot::getNightDate)).toList();
+                .sorted(java.util.Comparator.comparing(
+                        (BookingNightlyPriceSnapshot line) -> line.getNightDate())).toList();
         long snapshotNightSurcharge = 0;
         if (!ordered.isEmpty()) {
             if (ordered.size() != nights) {

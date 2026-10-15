@@ -62,10 +62,15 @@ export function WalkInBookingPage() {
   // S3-06 Lát 4: booking vừa tạo, hiện ra để lễ tân đọc hoặc in cho khách.
   const [created, setCreated] = useState<WalkInBookingResult | null>(null)
   // Số phòng còn trống theo loại phòng và khoảng ngày đã chọn.
-  const [availableRooms, setAvailableRooms] = useState<number | null>(null)
-  const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availabilityRefresh, setAvailabilityRefresh] = useState(0)
-  const [quotedTotal, setQuotedTotal] = useState<number | null>(null)
+  const [availabilityResult, setAvailabilityResult] = useState<{
+    key: string
+    availableRooms: number | null
+  } | null>(null)
+  const [quoteResult, setQuoteResult] = useState<{
+    key: string
+    totalAmount: number | null
+  } | null>(null)
 
   useEffect(() => {
     getRoomTypes()
@@ -90,46 +95,44 @@ export function WalkInBookingPage() {
 
   const guestCount = Number(form.guestCount)
   const depositAmount = Number(form.depositAmount)
+  const quoteQueryKey = Number.isInteger(Number(form.roomTypeId)) &&
+    Number(form.roomTypeId) > 0 &&
+    Boolean(form.checkInDate && form.checkOutDate && form.checkOutDate > form.checkInDate) &&
+    Number.isInteger(guestCount) && guestCount >= 1
+    ? `${form.roomTypeId}|${form.checkInDate}|${form.checkOutDate}|${guestCount}`
+    : null
+  const quotedTotal = quoteQueryKey !== null && quoteResult?.key === quoteQueryKey
+    ? quoteResult.totalAmount
+    : null
+  const availabilityQueryKey = quoteQueryKey === null
+    ? null
+    : `${quoteQueryKey}|${availabilityRefresh}`
+  const currentAvailabilityResult = availabilityQueryKey !== null &&
+    availabilityResult?.key === availabilityQueryKey
+    ? availabilityResult
+    : null
+  const availableRooms = currentAvailabilityResult?.availableRooms ?? null
+  const checkingAvailability = availabilityQueryKey !== null && currentAvailabilityResult === null
 
   useEffect(() => {
+    if (quoteQueryKey === null) return
     const roomTypeId = Number(form.roomTypeId)
-    if (!Number.isInteger(roomTypeId) || roomTypeId <= 0 || !form.checkInDate || !form.checkOutDate
-      || form.checkOutDate <= form.checkInDate || !Number.isInteger(guestCount) || guestCount < 1) {
-      setQuotedTotal(null)
-      return
-    }
     let cancelled = false
     getGuestQuote(roomTypeId, form.checkInDate, form.checkOutDate, guestCount)
-      .then((quote) => { if (!cancelled) setQuotedTotal(quote.totalAmount) })
-      .catch(() => { if (!cancelled) setQuotedTotal(null) })
+      .then((quote) => {
+        if (!cancelled) setQuoteResult({ key: quoteQueryKey, totalAmount: quote.totalAmount })
+      })
+      .catch(() => {
+        if (!cancelled) setQuoteResult({ key: quoteQueryKey, totalAmount: null })
+      })
     return () => { cancelled = true }
-  }, [form.roomTypeId, form.checkInDate, form.checkOutDate, form.guestCount, guestCount])
-
+  }, [quoteQueryKey, form.roomTypeId, form.checkInDate, form.checkOutDate, guestCount])
 
   useEffect(() => {
+    if (availabilityQueryKey === null) return
     const roomTypeId = Number(form.roomTypeId)
     const guests = Number(form.guestCount)
-
-    if (
-      !form.roomTypeId ||
-      !Number.isInteger(roomTypeId) ||
-      roomTypeId <= 0 ||
-      !form.checkInDate ||
-      !form.checkOutDate ||
-      form.checkOutDate <= form.checkInDate ||
-      !Number.isInteger(guests) ||
-      guests < 1
-    ) {
-      setAvailableRooms(null)
-      setCheckingAvailability(false)
-      return
-    }
-
     let cancelled = false
-
-    setCheckingAvailability(true)
-    setAvailableRooms(null)
-
     searchAvailableRooms(
       form.checkInDate,
       form.checkOutDate,
@@ -142,16 +145,14 @@ export function WalkInBookingPage() {
           (room) => room.roomTypeId === roomTypeId,
         )
 
-        setAvailableRooms(selected?.availableRooms ?? 0)
+        setAvailabilityResult({
+          key: availabilityQueryKey,
+          availableRooms: selected?.availableRooms ?? 0,
+        })
       })
       .catch(() => {
         if (!cancelled) {
-          setAvailableRooms(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCheckingAvailability(false)
+          setAvailabilityResult({ key: availabilityQueryKey, availableRooms: null })
         }
       })
 
@@ -163,7 +164,7 @@ export function WalkInBookingPage() {
     form.checkInDate,
     form.checkOutDate,
     form.guestCount,
-    availabilityRefresh,
+    availabilityQueryKey,
   ])
 
 
@@ -171,6 +172,13 @@ export function WalkInBookingPage() {
     field: keyof WalkInForm,
     value: string,
   ) {
+    if (
+      (field === 'roomTypeId' || field === 'checkInDate' || field === 'checkOutDate' || field === 'guestCount') &&
+      form[field] !== value
+    ) {
+      setQuoteResult(null)
+      setAvailabilityResult(null)
+    }
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -290,7 +298,6 @@ export function WalkInBookingPage() {
       })
 
       setCreated(result)
-      setAvailableRooms(null)
       setAvailabilityRefresh((current) => current + 1)
     } catch (err: unknown) {
       setError(

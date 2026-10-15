@@ -46,8 +46,6 @@ import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 import com.ttcs.homestay.repository.UserRepository;
-import com.ttcs.homestay.entity.NotificationEntity;
-import com.ttcs.homestay.service.NotificationWriterService;
 
 /**
  * Kiểm thử nghiệp vụ S1-10: Ngăn chuyển thẳng phòng đang ở sang bảo trì.
@@ -681,7 +679,10 @@ class RoomServiceTest {
         when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
         when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        IncidentReportRequest req = new IncidentReportRequest("Hỏng vòi sen nhà tắm và chập công tắc");
+        IncidentReportRequest req = new IncidentReportRequest(
+                "NHE",
+                "Hỏng vòi sen nhà tắm và chập công tắc"
+        );
         RoomResponse response = roomService.reportIncident(roomId, req, "Nhân viên buồng phòng");
 
         assertThat(response.status()).isEqualTo(RoomStatus.BAO_TRI);
@@ -711,7 +712,7 @@ class RoomServiceTest {
 
         when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
 
-        IncidentReportRequest req = new IncidentReportRequest("Hỏng đèn trần");
+        IncidentReportRequest req = new IncidentReportRequest("NHE", "Hỏng đèn trần");
         assertThatThrownBy(() -> roomService.reportIncident(roomId, req, "Buồng phòng"))
                 .isInstanceOf(RoomStatusConflictException.class)
                 .hasMessageContaining("Chỉ có thể báo sự cố cho phòng đang ở trạng thái Trống bẩn");

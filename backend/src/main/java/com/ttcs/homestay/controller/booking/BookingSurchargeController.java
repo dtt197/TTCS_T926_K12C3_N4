@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,7 +50,7 @@ public class BookingSurchargeController {
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .findFirst()
-                .map(FieldError::getDefaultMessage)
+                .map(error -> error.getDefaultMessage())
                 .orElse("Dữ liệu phụ thu không hợp lệ");
         return ResponseEntity.badRequest().body(ApiError.of(message));
     }

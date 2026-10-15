@@ -68,7 +68,8 @@ public class MaintenanceWorkflowService {
     }
 
     public Detail detail(Jwt jwt, Long id) {
-        if (jwt != null && "HOUSEKEEPING".equals(jwt.getClaimAsString("role"))) authorizeHousekeeping(jwt);
+        if (jwt == null) throw new AccessDeniedException("Authenticated user required");
+        if ("HOUSEKEEPING".equals(jwt.getClaimAsString("role"))) authorizeHousekeeping(jwt);
         else authorize(jwt, false);
         var request = requests.findById(id).orElseThrow(MaintenanceWorkflowService::notFound);
         if ("HOUSEKEEPING".equals(jwt.getClaimAsString("role")) && !"CHO_VE_SINH".equals(request.getStatus())) {

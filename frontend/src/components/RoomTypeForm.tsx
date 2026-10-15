@@ -79,23 +79,18 @@ export function RoomTypeForm({
   const [pendingImages, setPendingImages] = useState<PendingRoomTypeImage[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const onDirtyChangeRef = useRef(onDirtyChange)
-  const onSavingChangeRef = useRef(onSavingChange)
-  onDirtyChangeRef.current = onDirtyChange
-  onSavingChangeRef.current = onSavingChange
-
   useEffect(() => {
     const initialForm = toFormState(initial)
     const initialAmenities = initial?.amenities.map((amenity) => amenity.id) ?? []
     const dirty = JSON.stringify(form) !== JSON.stringify(initialForm) ||
       JSON.stringify([...amenityIds].sort()) !== JSON.stringify([...initialAmenities].sort()) ||
       pendingImages.length > 0
-    onDirtyChangeRef.current?.(dirty)
-  }, [form, amenityIds, pendingImages, initial])
+    onDirtyChange?.(dirty)
+  }, [form, amenityIds, pendingImages, initial, onDirtyChange])
 
   useEffect(() => {
-    onSavingChangeRef.current?.(isSaving)
-  }, [isSaving])
+    onSavingChange?.(isSaving)
+  }, [isSaving, onSavingChange])
 
   useEffect(() => {
     return () => {

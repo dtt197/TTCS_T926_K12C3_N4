@@ -71,7 +71,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
     setIsFormModalOpen(true)
   }
 
-  function requestCloseFormModal() {
+  const requestCloseFormModal = useCallback(() => {
     if (isSavingForm) return
     if (isFormDirty) {
       const target = editing ? `sửa ${editing.name}` : 'thêm loại phòng'
@@ -81,7 +81,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
     setEditing(null)
     setIsFormDirty(false)
     window.setTimeout(() => addRoomTypeButtonRef.current?.focus(), 0)
-  }
+  }, [isSavingForm, isFormDirty, editing])
 
   useEffect(() => {
     if (!isFormModalOpen) return
@@ -124,7 +124,7 @@ export function RoomTypePage({ role }: RoomTypePageProps) {
       document.removeEventListener('keydown', handleKeyDown)
       previousFocus?.focus()
     }
-  }, [isFormModalOpen, isSavingForm, isFormDirty, editing])
+  }, [isFormModalOpen, requestCloseFormModal])
 
   const load = useCallback(
     () =>

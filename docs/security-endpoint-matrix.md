@@ -40,15 +40,17 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `GET /api/internal/me`, `POST /api/account/change-password` | Any authenticated active user |
 | `GET /api/admin/audit-logs` | `ADMIN` |
 | `GET /api/admin/users` | `ADMIN`, `OWNER` |
+| `GET /api/admin/security/endpoint-permissions`, `GET /api/admin/security/endpoint-discrepancies`, `POST /api/admin/security/endpoint-discrepancies` | `ADMIN` |
 | `POST /api/admin/users`, `PATCH /api/admin/users/{id}/status`, `PUT /api/admin/users/{id}`, `POST /api/admin/users/{id}/resend-temporary-password` | `ADMIN` |
 | `POST /api/admin/reminders/run`, `GET /api/admin/email-logs` | `ADMIN` |
+| `GET /api/reports/occupancy`, `/api/reports/occupancy.csv`, `/api/reports/occupancy/detailed` | `OWNER` |
 | `GET /api/maintenance-requests/cleaning-room-ids` | `HOUSEKEEPING` |
 | `GET /api/maintenance-requests`, `GET /api/maintenance-requests/{id}` | `OWNER`, `RECEPTIONIST`, `HOUSEKEEPING` |
 | `POST /api/maintenance-requests/{id}/accept`, `/start`, `/repair-completed`, `/verify`, `PUT /api/maintenance-requests/{id}/vendor` | `OWNER` |
 | `POST /api/maintenance-requests/{id}/cleaning-completed` | `HOUSEKEEPING` |
 | `GET /api/notifications`, `/stream`, `/unread-count`, `PATCH /api/notifications/{id}/read` | `OWNER`, `RECEPTIONIST` |
 | `GET /api/rooms`, `GET /api/rooms/{roomId}/history` | `ADMIN`, `OWNER`, `RECEPTIONIST`, `HOUSEKEEPING` |
-| `GET /api/rooms/calendar` | `RECEPTIONIST` |
+| `GET /api/rooms/calendar`, `GET /api/rooms/{roomId}/checkout-preview` | `RECEPTIONIST` |
 | `PATCH /api/rooms/{roomId}/status` | `RECEPTIONIST`, `HOUSEKEEPING` |
 | `PATCH /api/rooms/{roomId}/maintenance` | `RECEPTIONIST` |
 | `PATCH /api/rooms/{roomId}/incident` | `HOUSEKEEPING` |
@@ -66,7 +68,7 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `GET /api/pricing/quote` | `OWNER`, `ADMIN`, `RECEPTIONIST` |
 | `GET /api/bookings`, `GET /api/bookings/latest`, `GET /api/bookings/check-in-options`, `GET /api/bookings/{id}/summary`, `GET /api/bookings/{id}/available-rooms`, `GET /api/bookings/{id}/room-change-history`, `GET /api/bookings/{id}/history`, `GET /api/bookings/{id}/details`, `GET /api/bookings/{id}/cancellation-info`, `GET /api/bookings/{bookingCode}/cancellation-preview` | `ADMIN`, `OWNER`, `RECEPTIONIST` |
 | `POST /api/bookings`, `POST /api/bookings/{id}/preview`, `POST /api/bookings/{bookingCode}/cancel`, `PUT /api/bookings/{id}/confirm`, `PUT /api/bookings/{id}/room`, `PUT /api/bookings/{id}/room-change`, `PUT /api/bookings/{id}/cancel`, `PUT /api/bookings/{id}` | `RECEPTIONIST` |
-| `POST /api/bookings/{id}/deposit-adjustments` | `OWNER`, `RECEPTIONIST` |
+| `POST /api/bookings/{id}/deposit-adjustments`, `POST /api/bookings/{id}/surcharges` | `OWNER`, `RECEPTIONIST` |
 | `PUT /api/bookings/{id}/deposit`, `PUT /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}/deposit`, `DELETE /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}` | `OWNER`, `RECEPTIONIST` |
 | `POST /api/public/bookings/walk-in` | `RECEPTIONIST` |
 
@@ -88,6 +90,13 @@ The screen highlights and filters mismatches but does not modify authorization.
 When a route is added or its approved access changes, update the approved
 frontend matrix and this document independently, then review any reported
 differences.
+
+For a mismatch that cannot be fixed in the sprint, an administrator can create
+an endpoint discrepancy ticket and assign it to an active staff account. The
+ticket retains the approved and effective permission snapshots and its
+assignee. The matrix marks an outstanding mismatch as `Đã ghi nhận` when a
+ticket exists, and displays `Đã khắc phục` once the live permissions match the
+approved matrix again.
 
 ## Public frontend pages
 

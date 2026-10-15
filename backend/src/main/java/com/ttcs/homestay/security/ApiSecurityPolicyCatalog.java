@@ -98,10 +98,20 @@ public class ApiSecurityPolicyCatalog {
                 "/api/admin/audit-logs/**");
         add(policies, "GET", Access.ROLES, List.of("ADMIN", "OWNER"),
                 "/api/admin/users");
+        add(policies, "GET", Access.ROLES, List.of("ADMIN"),
+                "/api/admin/security/endpoint-permissions",
+                "/api/admin/security/endpoint-discrepancies");
+        add(policies, "POST", Access.ROLES, List.of("ADMIN"),
+                "/api/admin/security/endpoint-discrepancies");
         add(policies, null, Access.ROLES, List.of("ADMIN"), "/api/admin/**");
+        add(policies, "GET", Access.ROLES, List.of("OWNER"),
+                "/api/reports/occupancy",
+                "/api/reports/occupancy.csv",
+                "/api/reports/occupancy/detailed");
         add(policies, null, Access.AUTHENTICATED, List.of(), "/api/account/**");
         add(policies, "GET", Access.ROLES, List.of("RECEPTIONIST"),
-                "/api/rooms/calendar");
+                "/api/rooms/calendar",
+                "/api/rooms/*/checkout-preview");
         add(policies, "GET", Access.ROLES, INTERNAL_ROLES,
                 "/api/rooms", "/api/rooms/**");
         add(policies, "PATCH", Access.ROLES, List.of("RECEPTIONIST", "HOUSEKEEPING"),
@@ -136,7 +146,8 @@ public class ApiSecurityPolicyCatalog {
                 "/api/bookings", "/api/bookings/*/preview",
                 "/api/bookings/*/cancel");
         add(policies, "POST", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
-                "/api/bookings/*/deposit-adjustments", "/api/bookings/*/surcharges");
+                "/api/bookings/*/deposit-adjustments",
+                "/api/bookings/*/surcharges");
         add(policies, "PUT", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/bookings/*/confirm",
                 "/api/bookings/*/room",
@@ -157,12 +168,11 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/bookings", "/api/bookings/**");
         add(policies, "GET", Access.PUBLIC, List.of(),
-                "/api/public/room-types",
-                "/api/public/room-types/*",
+                "/api/public/room-types/**",
                 "/api/public/room-types-catalog",
                 "/api/public/quote",
                 "/api/public/room-type-cards",
-                "/api/public/rooms/search");
+                "/api/public/rooms/**");
         add(policies, "POST", Access.PUBLIC, List.of(),
                 "/api/public/bookings",
                 "/api/public/bookings/lookup");

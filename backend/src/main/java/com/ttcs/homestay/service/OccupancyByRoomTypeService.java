@@ -40,7 +40,8 @@ public class OccupancyByRoomTypeService {
         List<Room> activeRooms = rooms.findAllByActiveTrueOrderByRoomNumberAsc();
         List<Booking> soldBookings = bookings.findSoldInDateRange(startDate, endExclusive, SOLD_STATUSES);
         List<RoomType> allTypes = roomTypes.findAllByOrderByCodeAsc();
-        Map<Long, String> typeNames = allTypes.stream().collect(Collectors.toMap(RoomType::getId, RoomType::getName));
+        Map<Long, String> typeNames = allTypes.stream()
+                .collect(Collectors.toMap(type -> type.getId(), type -> type.getName()));
         List<RoomType> visibleTypes = allTypes.stream()
                 .filter(type -> Boolean.TRUE.equals(type.getStatus()) || hasBooking(type, soldBookings))
                 .toList();
@@ -49,12 +50,13 @@ public class OccupancyByRoomTypeService {
         }
         List<RoomTypeOccupancy> summaries = visibleTypes.stream()
                 .map(type -> summary(type, startDate, endExclusive, activeRooms, soldBookings, typeNames))
-                .sorted(Comparator.comparing(RoomTypeOccupancy::code, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .sorted(Comparator.comparing((RoomTypeOccupancy item) -> item.code(),
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .toList();
         List<DailyOccupancy> daily = startDate.datesUntil(endExclusive)
                 .map(day -> daily(day, selectedRoomTypeId, activeRooms, soldBookings, typeNames)).toList();
-        long totalSold = summaries.stream().mapToLong(RoomTypeOccupancy::soldNights).sum();
-        long totalAvailable = summaries.stream().mapToLong(RoomTypeOccupancy::availableNights).sum();
+        long totalSold = summaries.stream().mapToLong(item -> item.soldNights()).sum();
+        long totalAvailable = summaries.stream().mapToLong(item -> item.availableNights()).sum();
         return new OccupancyByRoomTypeResponse(startDate, endDate, selectedRoomTypeId,
                 totalSold, totalAvailable, percent(totalSold, totalAvailable), summaries, daily);
     }

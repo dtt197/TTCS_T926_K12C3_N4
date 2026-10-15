@@ -1,6 +1,7 @@
 import { APPROVED_ENDPOINT_MATRIX } from './approvedEndpointMatrix.ts'
 import type {
   ApiAccess,
+  EndpointDiscrepancyTicket,
   EndpointPermission,
   EndpointPermissionComparison,
   EndpointPolicy,
@@ -79,6 +80,33 @@ export function filterEndpointPermissionComparisons(
         .toLowerCase()
         .includes(normalizedQuery)
   })
+}
+
+export type EndpointFollowUpStatus = 'UNRECORDED' | 'RECORDED' | 'RESOLVED' | 'MATCHED'
+
+export function ticketMatchesCurrentMismatch(
+  ticket: EndpointDiscrepancyTicket | undefined,
+  comparison: EndpointPermissionComparison,
+): boolean {
+  if (!ticket || !comparison.hasMismatch) return false
+
+  return ticket.method === comparison.endpoint.method
+    && ticket.path === comparison.endpoint.path
+    && ticket.approvedAccess === comparison.approved.access
+    && ticket.actualAccess === comparison.endpoint.access
+    && JSON.stringify(sortedRoles(ticket.approvedRoles))
+      === JSON.stringify(sortedRoles(comparison.approved.roles))
+    && JSON.stringify(sortedRoles(ticket.actualRoles))
+      === JSON.stringify(sortedRoles(comparison.endpoint.roles))
+}
+
+export function getEndpointFollowUpStatus(
+  hasMismatch: boolean,
+  hasTicketForCurrentMismatch: boolean,
+  hasTicket: boolean,
+): EndpointFollowUpStatus {
+  if (!hasMismatch) return hasTicket ? 'RESOLVED' : 'MATCHED'
+  return hasTicketForCurrentMismatch ? 'RECORDED' : 'UNRECORDED'
 }
 
 export function accessLabel(access: ApiAccess): string {

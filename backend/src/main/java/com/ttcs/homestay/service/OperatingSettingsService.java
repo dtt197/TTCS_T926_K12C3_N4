@@ -131,7 +131,7 @@ public class OperatingSettingsService {
                         ? request.extraBedFee()
                         : settingsRepository
                                 .findFirstByOrderByCreatedAtDescIdDesc()
-                                .map(OperatingSettings::getExtraBedFee)
+                                .map(currentSettings -> currentSettings.getExtraBedFee())
                                 .orElse(0L)
         );
 

@@ -281,7 +281,7 @@ class CheckoutServiceTest {
         booking.setNightlyPriceSnapshots(List.of(first, second));
         CheckoutPreviewResponse preview = service.preview(12L);
         assertThat(preview.nightlyBreakdownReliable()).isTrue();
-        assertThat(preview.nightlyPrices()).extracting(CheckoutPreviewResponse.NightlyLine::roomPrice)
+        assertThat(preview.nightlyPrices()).extracting(line -> line.roomPrice())
                 .containsExactly(400_000L, 600_000L);
         assertThat(preview.warning()).isNull();
     }

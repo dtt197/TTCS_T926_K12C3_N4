@@ -115,7 +115,7 @@ class CheckoutConcurrencyIntegrationTest {
 
         assertThat(settlements.count()).isZero();
         assertThat(bookings.findAll()).singleElement()
-                .extracting(Booking::getStatus).isEqualTo(BookingStatus.DA_NHAN_PHONG);
+                .extracting(booking -> booking.getStatus()).isEqualTo(BookingStatus.DA_NHAN_PHONG);
         assertThat(rooms.findById(roomId).orElseThrow().getStatus()).isEqualTo(RoomStatus.DANG_O);
         assertThat(histories.findByRoomIdInChronologicalOrder(roomId)).isEmpty();
     }
