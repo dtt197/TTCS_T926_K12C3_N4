@@ -135,6 +135,71 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
 
+          {/* S4-09: Tài khoản mẫu thử nghiệm theo vai trò */}
+          <div className="demo-accounts-card" aria-label="Tài khoản mẫu theo vai trò">
+            <div className="demo-accounts-header">
+              <span className="demo-accounts-badge">S4-09</span>
+              <span className="demo-accounts-title">Tài khoản mẫu thử nghiệm</span>
+            </div>
+            <p className="demo-accounts-desc">
+              Bấm chọn vai trò bên dưới để tự động điền tài khoản:
+            </p>
+            <div className="demo-accounts-grid">
+              <button
+                type="button"
+                className="demo-account-btn demo-account-btn--owner"
+                onClick={() => {
+                  setEmail('owner.demo@homestay.local')
+                  setPassword('password')
+                }}
+                title="Chủ homestay: Xem báo cáo, nạp dữ liệu mẫu, thiết lập giá"
+              >
+                <span className="demo-account-icon" aria-hidden="true">👑</span>
+                <span className="demo-account-name">Chủ homestay</span>
+                <span className="demo-account-role">OWNER</span>
+              </button>
+              <button
+                type="button"
+                className="demo-account-btn demo-account-btn--receptionist"
+                onClick={() => {
+                  setEmail('letan.demo@homestay.local')
+                  setPassword('password')
+                }}
+                title="Lễ tân: Tra phòng, tạo booking, check-in, check-out"
+              >
+                <span className="demo-account-icon" aria-hidden="true">🛎️</span>
+                <span className="demo-account-name">Lễ tân</span>
+                <span className="demo-account-role">RECEPTIONIST</span>
+              </button>
+              <button
+                type="button"
+                className="demo-account-btn demo-account-btn--housekeeping"
+                onClick={() => {
+                  setEmail('buongphong.demo@homestay.local')
+                  setPassword('password')
+                }}
+                title="Buồng phòng: Xem phòng cần dọn, chuyển Trống sạch"
+              >
+                <span className="demo-account-icon" aria-hidden="true">🧹</span>
+                <span className="demo-account-name">Buồng phòng</span>
+                <span className="demo-account-role">HOUSEKEEPING</span>
+              </button>
+              <button
+                type="button"
+                className="demo-account-btn demo-account-btn--admin"
+                onClick={() => {
+                  setEmail('admin.demo@homestay.local')
+                  setPassword('password')
+                }}
+                title="Quản trị viên: Quản trị tài khoản, kiểm toán hệ thống"
+              >
+                <span className="demo-account-icon" aria-hidden="true">⚙️</span>
+                <span className="demo-account-name">Quản trị</span>
+                <span className="demo-account-role">ADMIN</span>
+              </button>
+            </div>
+          </div>
+
           <div className="customer-links">
             <p>Bạn là khách hàng đang tìm phòng nghỉ?</p>
             <a href="/danh-sach-loai-phong">

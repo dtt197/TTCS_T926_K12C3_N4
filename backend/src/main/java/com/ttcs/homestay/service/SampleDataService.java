@@ -48,6 +48,9 @@ public class SampleDataService {
         // ── 5. Nạp booking ───────────────────────────────────────────────────
         int bookingCount = seedBookings();
 
+        // ── 6. Nạp tài khoản mẫu cho từng vai trò (S4-09) ────────────────────
+        seedDemoAccounts();
+
         return new SampleDataSummary(roomTypeCount, roomCount, priceOverrideCount, bookingCount);
     }
 
@@ -342,6 +345,53 @@ public class SampleDataService {
                 checkIn, checkOut,
                 weekdayPrice, weekendPrice,
                 total, status, now);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tài khoản mẫu cho từng vai trò (S4-09)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void seedDemoAccounts() {
+        upsertUser("Chủ homestay Demo", "owner.demo@homestay.local", "OWNER");
+        upsertUser("Lễ tân Demo", "letan.demo@homestay.local", "RECEPTIONIST");
+        upsertUser("Buồng phòng Demo", "buongphong.demo@homestay.local", "HOUSEKEEPING");
+        upsertUser("Demo Administrator", "admin.demo@homestay.local", "ADMIN");
+    }
+
+    private void upsertUser(String fullName, String email, String roleCode) {
+        try {
+            List<Long> roleIds = jdbcTemplate.queryForList("SELECT id FROM roles WHERE code = ?", Long.class, roleCode);
+            Long roleId;
+            if (roleIds.isEmpty()) {
+                jdbcTemplate.update("INSERT INTO roles (code, name) VALUES (?, ?)", roleCode, roleCode);
+                roleId = jdbcTemplate.queryForObject("SELECT id FROM roles WHERE code = ?", Long.class, roleCode);
+            } else {
+                roleId = roleIds.get(0);
+            }
+            if (roleId == null) return;
+
+            // Mật khẩu mẫu chuẩn: "password"
+            String passHash = "$2a$10$i8R8MorFFrpX4sP1O6xihOX1M3V5ICzfLPuym.EpIZnx7s6y.mwcm";
+            List<Integer> userExists = jdbcTemplate.queryForList(
+                    "SELECT 1 FROM users WHERE LOWER(email) = LOWER(?)", Integer.class, email);
+            if (userExists.isEmpty()) {
+                jdbcTemplate.update("""
+                    INSERT INTO users (
+                        full_name, email, password_hash, role_id, is_active,
+                        failed_login_count, token_version, must_change_password, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, TRUE, 0, 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """, fullName, email, passHash, roleId);
+            } else {
+                jdbcTemplate.update("""
+                    UPDATE users
+                    SET password_hash = ?, role_id = ?, is_active = TRUE,
+                        failed_login_count = 0, must_change_password = FALSE, updated_at = CURRENT_TIMESTAMP
+                    WHERE LOWER(email) = LOWER(?)
+                """, passHash, roleId, email);
+            }
+        } catch (Exception e) {
+            // Không làm gián đoạn reload dữ liệu mẫu nếu có vấn đề về user
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
