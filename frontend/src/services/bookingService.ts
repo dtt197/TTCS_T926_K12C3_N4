@@ -246,3 +246,25 @@ export function getBookingCancellationInfo(
     `/api/bookings/${id}/cancellation-info`,
   )
 }
+
+export type NoShowEligibility = {
+  bookingId: number
+  bookingCode: string
+  eligible: boolean
+  reason: string
+  scheduledCheckIn: string
+  eligibleAfter: string
+  evaluatedAt: string
+  status: string
+  checkedIn: boolean
+}
+
+export function checkBookingNoShowEligibility(id: number): Promise<NoShowEligibility> {
+  return apiRequest<NoShowEligibility>(`/api/bookings/${id}/no-show/eligibility`)
+}
+
+export function markBookingNoShow(id: number): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/no-show`, {
+    method: 'POST',
+  })
+}

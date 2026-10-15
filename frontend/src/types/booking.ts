@@ -5,6 +5,7 @@ export type BookingStatus =
   | 'DA_NHAN_PHONG'
   | 'DA_TRA_PHONG'
   | 'DA_HET_HAN'
+  | 'NO_SHOW'
 
 /** S2-10: một dòng trong danh sách booking (GET /api/bookings, có phân trang). */
 export type BookingListItem = {
