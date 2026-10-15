@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.CustomerNoShowResponse;
 import com.ttcs.homestay.dto.booking.NoShowEligibilityResponse;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Role;
@@ -145,5 +146,37 @@ class BookingNoShowControllerTest {
     void markNoShow_unauthorized_returnsUnauthorized() throws Exception {
         mockMvc.perform(post("/api/bookings/10/no-show"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getCustomerNoShowHistory_receptionist_returnsSuccess() throws Exception {
+        CustomerNoShowResponse response = new CustomerNoShowResponse(
+                "0987654321", "Nguyen Van A", 2, true, "⚠️ Khách hàng này đã bỏ hẹn 2 lần"
+        );
+        when(noShowService.getCustomerNoShowHistory("0987654321")).thenReturn(response);
+
+        mockMvc.perform(get("/api/customers/no-show-history")
+                        .param("phone", "0987654321")
+                        .header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phone").value("0987654321"))
+                .andExpect(jsonPath("$.noShowCount").value(2))
+                .andExpect(jsonPath("$.hasWarning").value(true))
+                .andExpect(jsonPath("$.warningMessage").value("⚠️ Khách hàng này đã bỏ hẹn 2 lần"));
+    }
+
+    @Test
+    void getCustomerNoShowHistory_aliasEndpoint_works() throws Exception {
+        CustomerNoShowResponse response = new CustomerNoShowResponse(
+                "0912345678", "Tran Thi B", 1, true, "⚠️ Khách hàng này đã bỏ hẹn 1 lần"
+        );
+        when(noShowService.getCustomerNoShowHistory("0912345678")).thenReturn(response);
+
+        mockMvc.perform(get("/api/bookings/customer-no-show")
+                        .param("phone", "0912345678")
+                        .header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.noShowCount").value(1))
+                .andExpect(jsonPath("$.hasWarning").value(true));
     }
 }

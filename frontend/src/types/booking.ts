@@ -177,3 +177,12 @@ export type BookingCancellationResult = {
   refundPercent: number
   refundAmount: number
 }
+
+/** S4-04 (SCRUM-150): Kết quả tra cứu số lần bỏ hẹn của khách hàng theo SĐT. */
+export type CustomerNoShowResponse = {
+  phone: string | null
+  fullName: string | null
+  noShowCount: number
+  hasWarning: boolean
+  warningMessage: string | null
+}

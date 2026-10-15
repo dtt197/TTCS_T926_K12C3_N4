@@ -1,6 +1,7 @@
 package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.CustomerNoShowResponse;
 import com.ttcs.homestay.dto.booking.NoShowEligibilityResponse;
 import com.ttcs.homestay.entity.AppointmentActionLog;
 import com.ttcs.homestay.entity.Booking;
@@ -16,6 +17,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -208,10 +210,38 @@ public class BookingNoShowService {
         return BookingResponse.from(saved);
     }
 
-    private void updateCustomerNoShowCount(Booking booking) {
+    @Transactional(readOnly = true)
+    public CustomerNoShowResponse getCustomerNoShowHistory(String phone) {
+        if (phone == null || phone.isBlank()) {
+            return new CustomerNoShowResponse(null, null, 0, false, null);
+        }
+        String cleanPhone = phone.trim();
+        Optional<Customer> optionalCustomer = customerRepository.findFirstByPhone(cleanPhone);
+        if (optionalCustomer.isEmpty()) {
+            return new CustomerNoShowResponse(cleanPhone, null, 0, false, null);
+        }
+
+        Customer customer = optionalCustomer.get();
+        int count = customer.getNoShowCount();
+        boolean hasWarning = count > 0;
+        String warningMessage = hasWarning
+                ? "⚠️ Khách hàng này đã bỏ hẹn " + count + " lần"
+                : null;
+
+        return new CustomerNoShowResponse(
+                customer.getPhone(),
+                customer.getFullName(),
+                count,
+                hasWarning,
+                warningMessage
+        );
+    }
+
+    public void updateCustomerNoShowCount(Booking booking) {
+        String phone = booking.getGuestPhone() != null ? booking.getGuestPhone().trim() : null;
         Customer customer = null;
-        if (booking.getGuestPhone() != null && !booking.getGuestPhone().isBlank()) {
-            customer = customerRepository.findFirstByPhone(booking.getGuestPhone().trim()).orElse(null);
+        if (phone != null && !phone.isBlank()) {
+            customer = customerRepository.findFirstByPhone(phone).orElse(null);
         }
         if (customer == null && booking.getGuestEmail() != null && !booking.getGuestEmail().isBlank()) {
             customer = customerRepository.findFirstByEmail(booking.getGuestEmail().trim()).orElse(null);
@@ -219,8 +249,11 @@ public class BookingNoShowService {
 
         if (customer != null) {
             customer.setNoShowCount(customer.getNoShowCount() + 1);
-            if (booking.getGuestName() != null && !booking.getGuestName().isBlank()) {
+            if ((customer.getFullName() == null || customer.getFullName().isBlank()) && booking.getGuestName() != null) {
                 customer.setFullName(booking.getGuestName().trim());
+            }
+            if ((customer.getPhone() == null || customer.getPhone().isBlank()) && phone != null) {
+                customer.setPhone(phone);
             }
             customerRepository.save(customer);
         } else {

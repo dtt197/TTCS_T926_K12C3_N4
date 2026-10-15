@@ -152,3 +152,98 @@
     padding: 20px;
   }
 }
+
+/* S4-04 (SCRUM-150): Khách không đến - Thẻ cảnh báo số lần bỏ hẹn */
+.walk-in-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.no-show-checking-hint {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.no-show-warning-badge {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-top: 4px;
+  animation: fadeInDown 0.2s ease-out;
+  transition: all 0.2s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mức cảnh báo vàng: 1 lần bỏ hẹn */
+.no-show-warning-badge.is-warning {
+  background-color: #fffbeb;
+  border: 1.5px solid #f59e0b;
+  color: #92400e;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12);
+}
+
+/* Mức cảnh báo đỏ: từ 2 lần bỏ hẹn trở lên */
+.no-show-warning-badge.is-danger {
+  background-color: #fef2f2;
+  border: 1.5px solid #ef4444;
+  color: #991b1b;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.14);
+}
+
+.no-show-warning-icon {
+  font-size: 18px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.no-show-warning-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.no-show-warning-title {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.no-show-warning-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+.no-show-autofill-btn {
+  margin-top: 6px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid currentColor;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+
+.no-show-autofill-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
