@@ -30,6 +30,7 @@ import { BookingListPage } from './BookingListPage'
 import { WalkInBookingPage } from './WalkInBookingPage'
 import { OccupancyReportPage } from './OccupancyReportPage'
 import { SecurityEndpointMatrixPage } from './SecurityEndpointMatrixPage'
+import { SampleDataPage } from './SampleDataPage'
 
 import { NotificationBell } from '../components/NotificationBell'
 
@@ -74,6 +75,8 @@ type View =
   | 'occupancyReport'
 
   | 'security-matrix'
+
+  | 'sampleData'
 
 type Tab = {
 
@@ -303,6 +306,15 @@ const TABS: ReadonlyArray<Tab> = [
     title: 'Đối chiếu ma trận quyền API',
     icon: '⚿',
     permission: 'security:matrix:view',
+  },
+  {
+    // S4-09: Nạp bộ dữ liệu mẫu – chỉ Chủ homestay (OWNER) được phép.
+    view: 'sampleData',
+    path: '/sample-data',
+    label: 'Dữ liệu mẫu',
+    title: 'Nạp dữ liệu mẫu',
+    icon: '📦',
+    permission: 'sampleData:manage',
   },
 ]
 
@@ -786,6 +798,8 @@ export function InternalHomePage({
             <ReminderEmailLogPage />
           ) : activeView === 'security-matrix' ? (
           <SecurityEndpointMatrixPage />
+          ) : activeView === 'sampleData' ? (
+            <SampleDataPage />
           ) : activeView === 'roomManagement' ? (
 
             <RoomManagementPage />
