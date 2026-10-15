@@ -1,0 +1,367 @@
+
+.maintenance-page {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #dce4e3;
+  border-radius: 16px;
+  color: #243b38;
+}
+
+.maintenance-page header,
+.maintenance-page footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.maintenance-page button {
+  padding: 10px 16px;
+  border: 1px solid #adc5bf;
+  border-radius: 8px;
+  background: #f0f7f4;
+  color: #174b40;
+  cursor: pointer;
+}
+
+.maintenance-page button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.maintenance-page button:focus-visible,
+.maintenance-page input:focus-visible,
+.maintenance-page textarea:focus-visible {
+  outline: 3px solid #368e7b;
+  outline-offset: 2px;
+}
+
+.maintenance-list {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.maintenance-list button {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.maintenance-page dl {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  gap: 12px;
+}
+
+.maintenance-page dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.maintenance-page fieldset {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #adc5bf;
+  border-radius: 10px;
+  padding: 20px;
+  max-width: 680px;
+}
+
+.maintenance-page label {
+  display: grid;
+  gap: 6px;
+}
+
+.maintenance-page input,
+.maintenance-page textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #adc5bf;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.maintenance-page textarea {
+  min-height: 100px;
+}
+
+.maintenance-page [role=alert] {
+  color: #a22a26;
+}
+
+.maintenance-page li {
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 600px) {
+  .maintenance-page {
+    padding: 14px;
+  }
+
+  .maintenance-page dl {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .maintenance-page dd {
+    margin-bottom: 10px;
+  }
+}
+
+/* SCRUM-137 - Maintenance UI refinement */
+
+.maintenance-page {
+  padding: 30px;
+  border: 1px solid #e1e9e4;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 12px 35px rgba(22, 65, 49, 0.045);
+}
+
+.maintenance-page > header {
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #edf1ed;
+}
+
+.maintenance-page > header h2 {
+  margin: 0;
+  color: #173d32;
+  font-size: 24px;
+  font-weight: 750;
+}
+
+.maintenance-page h3 {
+  margin: 25px 0 18px;
+  color: #173d32;
+  font-size: 21px;
+}
+
+.maintenance-page button {
+  border: 1px solid #d2e3da;
+  border-radius: 11px;
+  padding: 11px 17px;
+  background: #f0f7f3;
+  color: #176c51;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background .15s, border-color .15s;
+}
+
+.maintenance-page button:hover:not(:disabled) {
+  background: #e0f0e7;
+  border-color: #a9d0bd;
+}
+
+.maintenance-page button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* Danh sach yeu cau */
+
+.maintenance-list {
+  display: grid;
+  gap: 14px;
+  margin: 24px 0;
+}
+
+.maintenance-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 9px;
+  width: 100%;
+  padding: 20px 22px;
+  border: 1px solid #dce9e1;
+  border-radius: 15px;
+  background: #f8fbf9;
+  color: #567268;
+  text-align: left;
+}
+
+.maintenance-list button:hover {
+  background: #edf7f1;
+  border-color: #9fcdb8;
+}
+
+.maintenance-list button strong {
+  color: #163f34;
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.maintenance-list button span {
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.maintenance-page > footer {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid #edf1ed;
+  color: #64786f;
+}
+
+/* Thong tin chi tiet */
+
+.maintenance-page dl {
+  display: grid;
+  grid-template-columns: minmax(150px, 200px) minmax(0, 1fr);
+  gap: 16px 22px;
+  padding: 23px;
+  border: 1px solid #e3ece6;
+  border-radius: 15px;
+  background: #fafcfb;
+}
+
+.maintenance-page dt {
+  color: #75887e;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.maintenance-page dd {
+  margin: 0;
+  color: #193e33;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.maintenance-page fieldset {
+  max-width: 800px;
+  margin: 22px 0;
+  padding: 24px;
+  border: 1px solid #d9e8df;
+  border-radius: 16px;
+  background: #f9fcfa;
+}
+
+.maintenance-page legend {
+  padding: 0 10px;
+  color: #174e3d;
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.maintenance-page label {
+  color: #38584a;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.maintenance-page input,
+.maintenance-page textarea {
+  border: 1px solid #d3e1d8;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  color: #213e32;
+  font-size: 14px;
+}
+
+.maintenance-page input:focus,
+.maintenance-page textarea:focus {
+  border-color: #399b77;
+  outline: 2px solid rgba(57, 155, 119, .12);
+}
+
+.maintenance-page textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+/* Lich su xu ly */
+
+.maintenance-page ol {
+  position: relative;
+  margin: 22px 0 0;
+  padding: 4px 0 4px 32px;
+  list-style: none;
+  border-left: 2px solid #d7e9df;
+}
+
+.maintenance-page ol li {
+  position: relative;
+  margin: 0 0 24px 12px;
+  padding: 18px 20px;
+  border: 1px solid #e2ebe5;
+  border-radius: 13px;
+  background: #fafcfb;
+  color: #456359;
+  line-height: 1.6;
+}
+
+.maintenance-page ol li::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: -52px;
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #258666;
+  box-shadow: 0 0 0 2px #cce5d7;
+}
+
+.maintenance-page ol li strong {
+  color: #164936;
+}
+
+.maintenance-page ol li p {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.maintenance-page [role="alert"] {
+  padding: 13px 16px;
+  border-radius: 10px;
+  background: #fff1ee;
+  color: #a43b32;
+}
+
+.maintenance-page [role="status"] {
+  color: #32785c;
+}
+
+/* Mobile */
+
+@media (max-width: 760px) {
+  .maintenance-page {
+    padding: 18px;
+    border-radius: 15px;
+  }
+
+  .maintenance-page > header h2 {
+    font-size: 20px;
+  }
+
+  .maintenance-page dl {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 17px;
+  }
+
+  .maintenance-page dd {
+    margin-bottom: 12px;
+  }
+
+  .maintenance-page fieldset {
+    padding: 16px;
+  }
+
+  .maintenance-list button {
+    padding: 16px;
+  }
+}

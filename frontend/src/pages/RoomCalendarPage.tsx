@@ -1,6 +1,7 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiRequestError } from '../services/apiClient'
 import { getBookingDetails, getBookingSummary, type BookingDetailResponse } from '../services/bookingService'
+import { createRoomCalendarPlan, mergeRoomCalendarResponses, type RoomCalendarPlan } from '../services/roomCalendarRanges'
 import { getRoomCalendar, type CalendarStatus, type RoomCalendar } from '../services/roomCalendarService'
 import type { BookingListItem } from '../types/booking'
 import './RoomCalendarPage.css'
@@ -23,9 +24,35 @@ function today() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+const MAX_CONCURRENT_CALENDAR_REQUESTS = 3
+const MAX_SELECTED_END_DATE = '9999-12-16'
+const MAX_DEFAULT_START_DATE = '9999-12-03'
+
+function addCalendarDays(value: string, days: number) {
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(0)
+  date.setUTCFullYear(year, month - 1, day + days)
+  return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, '0'), String(date.getUTCDate()).padStart(2, '0')].join('-')
+}
+
 function formatDate(value: string) {
   const [year, month, day] = value.split('-')
   return `${day}/${month}/${year}`
+}
+
+const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+
+function getWeekdayLabel(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(0)
+  date.setUTCFullYear(year, month - 1, day)
+  return WEEKDAY_LABELS[date.getUTCDay()]
+}
+
+function getNextLocalMidnightDelay() {
+  const now = new Date()
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  return Math.max(1, nextMidnight.getTime() - now.getTime())
 }
 
 function formatCurrency(value: number) {
@@ -36,7 +63,8 @@ function formatSeconds(milliseconds: number) {
   return (milliseconds / 1000).toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-type Result = { date: string; data?: RoomCalendar; error?: string }
+type Result = { range: string; data?: RoomCalendar; error?: string }
+type LoadProgress = { range: string; completed: number; total: number; error?: string }
 type PopoverPosition = { left: number; top: number }
 type CalendarRoom = RoomCalendar['rooms'][number]
 
@@ -103,8 +131,11 @@ const CalendarRow = memo(function CalendarRow({
 })
 
 export function RoomCalendarPage() {
+  const [todayDate, setTodayDate] = useState(today)
   const [startDate, setStartDate] = useState(today)
+  const [endDate, setEndDate] = useState(() => addCalendarDays(today(), 13))
   const [result, setResult] = useState<Result | null>(null)
+  const [loadProgress, setLoadProgress] = useState<LoadProgress | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [openCell, setOpenCell] = useState<string | null>(null)
   const [popoverPosition, setPopoverPosition] = useState<PopoverPosition | null>(null)
@@ -113,8 +144,19 @@ export function RoomCalendarPage() {
   const [loadMs, setLoadMs] = useState<number | null>(null)
   const triggerRefs = useRef(new Map<string, HTMLButtonElement>())
   const detailRequest = useRef(0)
+  const calendarRequestGeneration = useRef(0)
   const skipFocusPopover = useRef(false)
   const loadStartedAt = useRef(0)
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    const updateAtNextLocalMidnight = () => {
+      setTodayDate(today())
+      timeout = setTimeout(updateAtNextLocalMidnight, getNextLocalMidnightDelay())
+    }
+    timeout = setTimeout(updateAtNextLocalMidnight, getNextLocalMidnightDelay())
+    return () => clearTimeout(timeout)
+  }, [])
 
   useEffect(() => {
     if (!openCell) return
@@ -139,17 +181,75 @@ export function RoomCalendarPage() {
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [detail])
 
+  const range = `${startDate}/${endDate}`
+  const planResult = useMemo((): { plan: RoomCalendarPlan; error?: never } | { plan?: never; error: string } => {
+    if (!startDate || !endDate) return { error: 'Vui lòng chọn cả ngày bắt đầu và ngày kết thúc.' }
+    if (endDate < startDate) return { error: 'Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.' }
+    try {
+      return { plan: createRoomCalendarPlan(startDate, endDate) }
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : 'Khoảng ngày không hợp lệ.' }
+    }
+  }, [startDate, endDate])
+  const rangeError = planResult.error ?? null
+  const selectedDays = planResult.plan ? planResult.plan.totalDays - 14 : null
+  const expandedEndDate = planResult.plan?.displayEndDate ?? null
+
   useEffect(() => {
-    if (!startDate) return
+    if (rangeError || !planResult.plan) return
     const controller = new AbortController()
-    let current = true
+    const generation = calendarRequestGeneration.current + 1
+    calendarRequestGeneration.current = generation
+    const isCurrent = () => calendarRequestGeneration.current === generation && !controller.signal.aborted
+    const plan = planResult.plan
     loadStartedAt.current = performance.now()
-    getRoomCalendar(startDate, controller.signal).then(
-      data => { if (current) { setOpenCell(null); setPopoverPosition(null); setResult({ date: startDate, data }) } },
-      error => { if (current) { setOpenCell(null); setPopoverPosition(null); setResult({ date: startDate, error: error instanceof Error ? error.message : 'Không tải được sơ đồ phòng' }) } },
+    setResult(null)
+    setLoadProgress({ range, completed: 0, total: plan.segments.length })
+    setLoadMs(null)
+
+    const responses: RoomCalendar[] = new Array(plan.segments.length)
+    let nextSegmentIndex = 0
+    let completed = 0
+    const worker = async () => {
+      while (isCurrent()) {
+        const segmentIndex = nextSegmentIndex
+        nextSegmentIndex += 1
+        if (segmentIndex >= plan.segments.length) return
+        const segment = plan.segments[segmentIndex]
+        const response = await getRoomCalendar(segment.startDate, segment.days, controller.signal)
+        if (!isCurrent()) return
+        responses[segmentIndex] = response
+        completed += 1
+        setLoadProgress({ range, completed, total: plan.segments.length })
+      }
+    }
+
+    void Promise.all(Array.from({ length: Math.min(MAX_CONCURRENT_CALENDAR_REQUESTS, plan.segments.length) }, worker)).then(
+      () => {
+        if (!isCurrent()) return
+        try {
+          const data = mergeRoomCalendarResponses(responses, plan)
+          setOpenCell(null)
+          setPopoverPosition(null)
+          setResult({ range, data })
+        } catch (error) {
+          setLoadProgress({ range, completed, total: plan.segments.length, error: error instanceof Error ? error.message : 'Không thể ghép dữ liệu sơ đồ phòng.' })
+        }
+      },
+      error => {
+        if (!isCurrent()) return
+        controller.abort()
+        setOpenCell(null)
+        setPopoverPosition(null)
+        setLoadProgress({ range, completed, total: plan.segments.length, error: error instanceof Error ? error.message : 'Không tải được sơ đồ phòng.' })
+      },
     )
-    return () => { current = false; controller.abort() }
-  }, [startDate, attempt])
+
+    return () => {
+      calendarRequestGeneration.current += 1
+      controller.abort()
+    }
+  }, [planResult, range, rangeError, attempt])
 
   // S3-10 Lát 4: đo đến khi trình duyệt vẽ xong lưới (sau hai khung hình kể từ lúc dữ liệu được dựng).
   useEffect(() => {
@@ -209,21 +309,79 @@ export function RoomCalendarPage() {
     }
   }
 
-  const visible = result?.date === startDate ? result : null
-  const loading = Boolean(startDate && !visible)
+  const visible = result?.range === range ? result : null
+  const loading = !rangeError && !visible
   return (
     <section className="room-calendar" aria-label="Sơ đồ phòng theo ngày" aria-busy={loading}>
-      <label>Ngày bắt đầu <input type="date" value={startDate} min="0001-01-01" max="9999-12-17"
-        onChange={event => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setStartDate(event.target.value) }} /></label>
-      <p>14 ngày • Chỉ hiển thị phòng đang hoạt động. Mỗi ô tương ứng một đêm lưu trú.</p>
-      <div className="room-calendar-legend" aria-label="Chú giải">
-        {Object.entries(labels).map(([status, label]) => <span key={status} className={`calendar-${status}`}>{label}</span>)}
+      <header className="room-calendar-header">
+        <div className="room-calendar-title-row">
+          <span className="room-calendar-title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+              <path d="M7.5 3.5v3M16.5 3.5v3M4 9.5h16M8 13h2m4 0h2M8 16.5h2" />
+            </svg>
+          </span>
+          <div>
+            <h1>Sơ đồ phòng theo ngày</h1>
+            <p>Chọn khoảng ngày cần xem tình trạng phòng.</p>
+          </div>
+        </div>
+        <div className="room-calendar-date-fields">
+          <label htmlFor="room-calendar-start">Ngày bắt đầu
+            <input id="room-calendar-start" type="date" value={startDate} min="0001-01-01" max={MAX_DEFAULT_START_DATE}
+              onChange={event => {
+                const nextStartDate = event.target.value
+                setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null)
+                setStartDate(nextStartDate)
+                if (nextStartDate) setEndDate(addCalendarDays(nextStartDate, 13))
+              }} />
+          </label>
+          <label htmlFor="room-calendar-end">Ngày kết thúc
+            <input id="room-calendar-end" type="date" value={endDate} min={startDate || '0001-01-01'} max={MAX_SELECTED_END_DATE}
+              onChange={event => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null); setEndDate(event.target.value) }} />
+          </label>
+        </div>
+        {planResult.plan && selectedDays != null && expandedEndDate && <>
+          <div className="room-calendar-stats" aria-label="Tóm tắt khoảng ngày">
+            <article className="room-calendar-stat"><span>Ngày đã chọn</span><strong>{selectedDays}</strong></article>
+            <article className="room-calendar-stat"><span>Ngày mở rộng</span><strong>14</strong></article>
+            <article className="room-calendar-stat room-calendar-stat--total"><span>Tổng ngày xem</span><strong>{selectedDays + 14}</strong></article>
+          </div>
+          <p className="room-calendar-range-summary">Sơ đồ hiển thị từ <strong>{formatDate(startDate)}</strong> đến <strong>{formatDate(expandedEndDate)}</strong>.</p>
+        </>}
+      </header>
+      <div className="room-calendar-guidance">
+        <div className="room-calendar-legend" aria-label="Chú giải trạng thái">
+          {Object.entries(labels).map(([status, label]) => <span key={status} className={`calendar-${status}`}>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              {status === 'AVAILABLE' && <><path d="M8 14s5-2.5 5-7V3L8 1 3 3v4c0 4.5 5 7 5 7Z" /><path d="m5.5 7.5 1.6 1.6 3.4-3.6" /></>}
+              {status === 'BOOKED' && <><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M5 6h6M5 9h4" /></>}
+              {status === 'MAINTENANCE' && <><path d="M9.2 2.2a4 4 0 0 0 4.6 5.1l-6.5 6.5a1.7 1.7 0 0 1-2.4-2.4l6.5-6.5a4 4 0 0 0-5.1-4.6l2.3 2.3-2.1 2.1-2.3-2.3a4 4 0 0 0 5-0.2Z" /></>}
+            </svg>
+            {label}
+          </span>)}
+        </div>
+        <aside className="room-calendar-guidance-card" aria-label="Thông tin sơ đồ phòng">
+          <span className="room-calendar-guidance-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" /><path d="M10 9v4m0-7h.01" /></svg>
+          </span>
+          <div className="room-calendar-guidance-content">
+            <strong>Cách đọc sơ đồ</strong>
+            <ul>
+              <li>Chỉ hiển thị phòng đang hoạt động; mỗi ô đại diện cho một đêm lưu trú.</li>
+              <li>Sơ đồ theo phòng được gán, không thể hiện đầy đủ lịch sử đổi phòng và booking đã trả phòng.</li>
+              <li>Ô Trống không bảo đảm có thể nhận booking mới. Nhấn ô Có booking để xem chi tiết.</li>
+            </ul>
+          </div>
+        </aside>
       </div>
-      <p>Lịch theo phòng đang gán; chưa thể hiện lịch sử đổi phòng và booking đã trả phòng. Trống trên sơ đồ chưa bảo đảm có thể nhận booking mới. Bấm vào ô có booking để xem chi tiết.</p>
-      {!startDate && <p role="status">Vui lòng chọn ngày bắt đầu.</p>}
-      {loading && <p role="status">Đang tải sơ đồ phòng…</p>}
-      {visible?.error && <div role="alert">Không tải được sơ đồ phòng: {visible.error} <button type="button"
-        onClick={() => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setAttempt(value => value + 1) }}>Thử lại</button></div>}
+      {rangeError && <p role="alert">{rangeError}</p>}
+      {loading && loadProgress?.range === range && !loadProgress.error &&
+        <p className="room-calendar-load-status" role="status">Đang tải {loadProgress.completed}/{loadProgress.total} đoạn…</p>}
+      {loadProgress?.range === range && loadProgress.error && <div className="room-calendar-load-status" role="alert">
+        Không tải được đầy đủ sơ đồ phòng: {loadProgress.error} <button type="button"
+          onClick={() => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null); setAttempt(value => value + 1) }}>Thử lại</button>
+      </div>}
       {visible?.data && loadMs != null && (
         <p className="room-calendar-timing">
           Sơ đồ {visible.data.rooms.length} phòng × {visible.data.dates.length} ngày tải xong trong {formatSeconds(loadMs)} giây.
@@ -233,7 +391,17 @@ export function RoomCalendarPage() {
         <div className="room-calendar-scroll" tabIndex={0} role="region" aria-label="Lưới phòng, cuộn để xem thêm">
           <table>
             <caption>Sơ đồ từ {visible.data.startDate} — {visible.data.dates.at(-1)}</caption>
-            <thead><tr><th scope="col">Phòng</th>{visible.data.dates.map(date => <th scope="col" key={date}><time dateTime={date}>{date.slice(8)}/{date.slice(5, 7)}</time></th>)}</tr></thead>
+            <thead><tr><th scope="col">Phòng</th>{visible.data.dates.map(date => {
+              const isToday = date === todayDate
+              const weekday = getWeekdayLabel(date)
+              return <th scope="col" key={date} className={`calendar-date-header${isToday ? ' calendar-date-header--today' : ''}${weekday === 'T7' || weekday === 'CN' ? ' calendar-date-header--weekend' : ''}`}>
+                <time dateTime={date} title={formatDate(date)}>
+                  <span className="calendar-date-weekday">{weekday}</span>
+                  <span className="calendar-date-day">{date.slice(8)}/{date.slice(5, 7)}</span>
+                  {isToday && <span className="calendar-today-label">Hôm nay</span>}
+                </time>
+              </th>
+            })}</tr></thead>
             <tbody>{visible.data.rooms.map(room => {
               const prefix = `${room.roomId}:`
               const expandedDate = openCell?.startsWith(prefix) ? openCell.slice(prefix.length) : null

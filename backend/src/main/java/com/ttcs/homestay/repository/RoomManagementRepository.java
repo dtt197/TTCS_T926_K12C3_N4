@@ -9,6 +9,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface RoomManagementRepository extends JpaRepository<Room, Long> {
 
+    @Override
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    java.util.Optional<Room> findById(Long id);
+
+    @Query("select (count(m) > 0) from MaintenanceRequestEntity m where m.room.id = :roomId and m.status <> 'HOAN_TAT'")
+    boolean hasOpenMaintenanceRequest(@Param("roomId") Long roomId);
+
     boolean existsByRoomNumberIgnoreCase(String roomNumber);
 
     boolean existsByRoomNumberIgnoreCaseAndIdNot(String roomNumber, Long id);

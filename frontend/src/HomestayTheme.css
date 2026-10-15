@@ -1525,10 +1525,7 @@
 
   color: #10382d !important;
 
-  font-family:
-    Georgia,
-    'Times New Roman',
-    serif !important;
+  font-family: var(--font-sans) !important;
 
   font-size: clamp(42px, 3.8vw, 54px) !important;
   font-weight: 900 !important;
@@ -1611,10 +1608,7 @@
 .dashboard-header h1 {
   color: #0d3027 !important;
 
-  font-family:
-    Georgia,
-    'Times New Roman',
-    serif !important;
+  font-family: var(--font-sans) !important;
 
   font-size: clamp(44px, 4vw, 58px) !important;
   font-weight: 900 !important;
@@ -2005,4 +1999,28 @@
     margin-left: 0;
   }
 }
+}
+
+.incident-severity-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+}
+
+.incident-severity-select:focus {
+  outline: none;
+  border-color: #ea580c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
+}
+
+.incident-error {
+  margin: 14px 0 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }

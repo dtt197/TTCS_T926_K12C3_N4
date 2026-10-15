@@ -15,7 +15,7 @@
   min-height: 100vh;
   background-color: var(--lookup-ivory);
   color: var(--lookup-text);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .booking-lookup-header {
@@ -192,7 +192,7 @@
   max-width: 540px;
   margin: 0;
   color: var(--lookup-green-900);
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-sans);
   font-size: clamp(2.75rem, 5vw, 4.35rem);
   font-weight: 600;
   letter-spacing: -0.045em;
@@ -250,7 +250,7 @@
 .booking-lookup-card h2 {
   margin: 0;
   color: var(--lookup-green-900);
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-sans);
   font-size: clamp(1.65rem, 2.7vw, 2.05rem);
   font-weight: 600;
   line-height: 1.2;

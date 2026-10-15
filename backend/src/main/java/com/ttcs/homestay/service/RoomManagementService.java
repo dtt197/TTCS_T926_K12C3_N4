@@ -91,6 +91,13 @@ public class RoomManagementService {
         Room room = roomRepository.findById(roomId)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phòng với ID " + roomId + "."));
 
+        if (request.status() != null && request.status() != RoomStatus.BAO_TRI
+                && roomRepository.hasOpenMaintenanceRequest(roomId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Phòng phải giữ Bảo trì cho tới khi hoàn tất vệ sinh sau sửa chữa.");
+        }
+
         String newRoomNumber = normalize(request.roomNumber());
         String newRoomType = normalize(request.roomType());
         String newNote = request.note() == null ? "" : request.note().trim();
