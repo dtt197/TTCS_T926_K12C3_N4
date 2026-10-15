@@ -96,6 +96,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("endDate") LocalDate endDate,
             @Param("statuses") Collection<BookingStatus> statuses);
 
+    /** Booking có ít nhất một đêm trong khoảng báo cáo nửa mở. */
+    @Query("select b from Booking b join fetch b.roomType"
+            + " where b.checkInDate < :endDate and b.checkOutDate > :startDate"
+            + " and b.status in :statuses")
+    List<Booking> findSoldInDateRange(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") Collection<BookingStatus> statuses);
+
     @EntityGraph(attributePaths = {"roomConfirmedByUser", "room", "roomType"})
     @Override
     Page<Booking> findAll(org.springframework.data.jpa.domain.Specification<Booking> spec, Pageable pageable);
