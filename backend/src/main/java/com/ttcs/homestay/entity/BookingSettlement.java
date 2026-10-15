@@ -67,6 +67,9 @@ public class BookingSettlement {
     @Column(name = "checked_out_at", nullable = false)
     private OffsetDateTime checkedOutAt;
 
+    @Column(name = "early_checkout_reason", length = 500)
+    private String earlyCheckoutReason;
+
     @Column(name = "late_checkout_fee", nullable = false)
     private long lateCheckoutFee;
 

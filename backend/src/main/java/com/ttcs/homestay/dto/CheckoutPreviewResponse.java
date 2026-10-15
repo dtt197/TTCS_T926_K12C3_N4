@@ -41,6 +41,12 @@ public record CheckoutPreviewResponse(
         String checkoutBlockedReason,
         String settlementType,
         BigDecimal amount,
-        String previewToken) {
+        String previewToken,
+        boolean earlyCheckout,
+        long bookedNights,
+        long usedNights,
+        long unusedNights,
+        BigDecimal unusedRoomValue,
+        String unusedRoomValueWarning) {
     public record NightlyLine(LocalDate date, String label, long roomPrice, long surchargeAmount, long total) {}
 }

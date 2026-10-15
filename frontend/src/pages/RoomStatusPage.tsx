@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } fro
 import '../App.css'
 import { hasPermission } from '../permissions/rolePermissions'
 import { getCheckInOptions } from '../services/bookingService'
+import { getEarlyCheckoutReasonError, getEarlyCheckoutSummary } from '../services/checkoutAc3'
 import { completeCleaning, getMaintenanceCleaningRoomIds, getMaintenanceRequests } from '../services/maintenanceService'
 import type { CheckInOption } from '../types/booking'
 import {
   checkIn,
   checkOut,
+  buildCheckoutPaymentRequest,
   getCheckoutPreview,
   getRoomHistory,
   getRooms,
@@ -346,6 +348,8 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     paymentMethod: 'CASH' | 'BANK_TRANSFER'
     paymentReference: string
     confirmed: boolean
+    earlyCheckoutReason: string
+    earlyCheckoutReasonTouched: boolean
     error: string | null
   } | null>(null)
   const [notice, setNotice] = useState<{
@@ -1008,9 +1012,11 @@ async function handleViewHistory(room: Room) {
             lateCheckoutFee: 0, settlementTotalBeforeDeposit: 0, lateCheckoutPricingBasis: 'NONE',
             checkoutAllowed: true, checkoutBlockedReason: null,
             settlementType: 'ZERO', amount: 0, previewToken: 'demo',
+            earlyCheckout: false, bookedNights: 0, usedNights: 0, unusedNights: 0,
+            unusedRoomValue: null, unusedRoomValueWarning: null,
           }
         : await getCheckoutPreview(room.id)
-      setCheckoutDialog({ room, preview, paymentMethod: 'CASH', paymentReference: '', confirmed: false, error: null })
+      setCheckoutDialog({ room, preview, paymentMethod: 'CASH', paymentReference: '', confirmed: false, earlyCheckoutReason: '', earlyCheckoutReasonTouched: false, error: null })
     } catch (error) {
       showError(
         error instanceof Error
@@ -1026,7 +1032,7 @@ async function handleViewHistory(room: Room) {
     if (!checkoutDialog) return
     try {
       const preview = await getCheckoutPreview(checkoutDialog.room.id)
-      setCheckoutDialog((current) => current ? { ...current, preview, confirmed: false, error: null } : current)
+      setCheckoutDialog((current) => current ? { ...current, preview, confirmed: false, earlyCheckoutReason: '', earlyCheckoutReasonTouched: false, error: null } : current)
     } catch (error) {
       setCheckoutDialog((current) => current ? {
         ...current,
@@ -1038,19 +1044,21 @@ async function handleViewHistory(room: Room) {
   async function confirmCheckout() {
     if (!checkoutDialog) return
     const { room, preview } = checkoutDialog
+    const reasonError = getEarlyCheckoutReasonError(preview.earlyCheckout, checkoutDialog.earlyCheckoutReason)
+    if (reasonError) {
+      setCheckoutDialog((current) => current ? { ...current, error: reasonError } : current)
+      return
+    }
     setIsSaving(true)
     try {
       const savedRoom = isDemoMode
         ? { ...room, status: 'TRONG_BAN' as RoomStatus, maintenanceReason: null, maintenanceStartDate: null, maintenanceEndDate: null }
-        : await checkOut(room.id, {
-            previewToken: preview.previewToken,
-            ...(preview.settlementType !== 'ZERO' ? {
+        : await checkOut(room.id, buildCheckoutPaymentRequest(preview, {
               paymentMethod: checkoutDialog.paymentMethod,
               paymentReference: checkoutDialog.paymentReference,
               amountReceivedConfirmed: preview.settlementType === 'COLLECT' ? checkoutDialog.confirmed : undefined,
               refundCompletedConfirmed: preview.settlementType === 'REFUND' ? checkoutDialog.confirmed : undefined,
-            } : {}),
-          })
+            }, checkoutDialog.earlyCheckoutReason))
       setRooms((current) => current.map((item) => item.id === room.id ? savedRoom : item))
       window.dispatchEvent(new CustomEvent('room-status-changed'))
       setDraftStatuses((current) => ({ ...current, [room.id]: 'TRONG_BAN' }))
@@ -1065,7 +1073,11 @@ async function handleViewHistory(room: Room) {
       setIsSaving(false)
     }
   }
-    return (
+  const earlyCheckoutSummary = checkoutDialog?.preview.earlyCheckout
+    ? getEarlyCheckoutSummary(checkoutDialog.preview)
+    : null
+
+  return (
     <div className="app-shell room-status-modern">
       <main className="main-content">
         {/* =========================
@@ -1826,12 +1838,32 @@ async function handleViewHistory(room: Room) {
               <p>{checkoutDialog.preview.guestName} · Booking {checkoutDialog.preview.bookingCode} · Phòng {checkoutDialog.preview.roomNumber}</p>
               {checkoutDialog.preview.warning && <p className="checkout-warning">{checkoutDialog.preview.warning}</p>}
               {!checkoutDialog.preview.checkoutAllowed && <p className="checkout-error" role="alert">{checkoutDialog.preview.checkoutBlockedReason}</p>}
+              {checkoutDialog.preview.earlyCheckout && (
+                <section className="checkout-warning" aria-labelledby="early-checkout-title">
+                  <h3 id="early-checkout-title">Trả phòng sớm</h3>
+                  <dl className="checkout-totals">
+                    <div><dt>Số đêm đặt</dt><dd>{earlyCheckoutSummary?.bookedNights}</dd></div>
+                    <div><dt>Số đêm đã sử dụng</dt><dd>{earlyCheckoutSummary?.usedNights}</dd></div>
+                    <div><dt>Số đêm chưa sử dụng</dt><dd>{earlyCheckoutSummary?.unusedNights}</dd></div>
+                    <div><dt>Giá trị phòng chưa sử dụng (tham khảo)</dt><dd>{earlyCheckoutSummary?.unusedRoomValue === null ? 'Không có dữ liệu' : `${checkoutMoney.format(earlyCheckoutSummary?.unusedRoomValue ?? 0)} đ`}</dd></div>
+                  </dl>
+                  {earlyCheckoutSummary?.unusedRoomValueWarning && <p>{earlyCheckoutSummary.unusedRoomValueWarning}</p>}
+                  <p>{earlyCheckoutSummary?.warning}</p>
+                  <label className="checkout-field">Lý do trả phòng sớm
+                    <textarea value={checkoutDialog.earlyCheckoutReason} maxLength={500} rows={3} aria-invalid={checkoutDialog.earlyCheckoutReasonTouched && Boolean(getEarlyCheckoutReasonError(true, checkoutDialog.earlyCheckoutReason))} aria-describedby="early-checkout-reason-error" onChange={(event) => setCheckoutDialog((current) => current ? { ...current, earlyCheckoutReason: event.target.value, earlyCheckoutReasonTouched: true, error: null } : current)} />
+                  </label>
+                  {checkoutDialog.earlyCheckoutReasonTouched && getEarlyCheckoutReasonError(true, checkoutDialog.earlyCheckoutReason) && <p id="early-checkout-reason-error" className="checkout-error" role="alert">{getEarlyCheckoutReasonError(true, checkoutDialog.earlyCheckoutReason)}</p>}
+                  <small>{checkoutDialog.earlyCheckoutReason.length}/500 ký tự</small>
+                </section>
+              )}
               <dl className="checkout-totals">
                 <div><dt>Giờ checkout chuẩn</dt><dd>{checkoutDialog.preview.checkoutTimeSnapshot.slice(0, 5)}</dd></div>
                 <div><dt>Thời điểm server</dt><dd>{new Date(checkoutDialog.preview.serverCheckoutTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</dd></div>
-                <div><dt>Số giờ tính phí</dt><dd>{checkoutDialog.preview.lateCheckoutHours}</dd></div>
-                <div><dt>Đơn giá theo giờ</dt><dd>{checkoutDialog.preview.lateCheckoutFeePerHour === null ? '—' : `${checkoutMoney.format(checkoutDialog.preview.lateCheckoutFeePerHour)} đ`}</dd></div>
-                <div><dt>Phụ thu trả muộn ({checkoutDialog.preview.lateCheckoutPricingBasis})</dt><dd>{checkoutMoney.format(checkoutDialog.preview.lateCheckoutFee)} đ</dd></div>
+                {!checkoutDialog.preview.earlyCheckout && <>
+                  <div><dt>Số giờ tính phí</dt><dd>{checkoutDialog.preview.lateCheckoutHours}</dd></div>
+                  <div><dt>Đơn giá theo giờ</dt><dd>{checkoutDialog.preview.lateCheckoutFeePerHour === null ? '—' : `${checkoutMoney.format(checkoutDialog.preview.lateCheckoutFeePerHour)} đ`}</dd></div>
+                  <div><dt>Phụ thu trả muộn ({checkoutDialog.preview.lateCheckoutPricingBasis})</dt><dd>{checkoutMoney.format(checkoutDialog.preview.lateCheckoutFee)} đ</dd></div>
+                </>}
               </dl>
               {checkoutDialog.preview.nightlyBreakdownReliable && (
                 <div className="checkout-night-table-wrap">
@@ -1862,7 +1894,7 @@ async function handleViewHistory(room: Room) {
                 {checkoutDialog.preview.bookingSurcharges.length > 0 && (
                   <div><dt>Tổng phụ thu phát sinh</dt><dd>{checkoutMoney.format(checkoutDialog.preview.bookingSurchargeTotal)} đ</dd></div>
                 )}
-                                <div><dt><strong>Tổng phải thanh toán (trước khi trừ cọc)</strong></dt><dd><strong>{checkoutMoney.format(checkoutDialog.preview.settlementTotalBeforeDeposit)} đ</strong></dd></div>
+                <div><dt><strong>Tổng phải thanh toán (trước khi trừ cọc)</strong></dt><dd><strong>{checkoutMoney.format(checkoutDialog.preview.settlementTotalBeforeDeposit)} đ</strong></dd></div>
                 <div><dt>Tổng cọc hiện tại</dt><dd>{checkoutMoney.format(checkoutDialog.preview.depositTotal)} đ</dd></div>
                 <div><dt>{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Cần thu thêm' : checkoutDialog.preview.settlementType === 'REFUND' ? 'Cần hoàn lại' : 'Đã thanh toán đủ'}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.amount)} đ</dd></div>
               </dl>
@@ -1887,7 +1919,7 @@ async function handleViewHistory(room: Room) {
               <div className="checkout-actions">
                 {(checkoutDialog.error || !checkoutDialog.preview.checkoutAllowed) && !isDemoMode && <button type="button" className="secondary-button" onClick={() => void reloadCheckoutPreview()} disabled={isSaving}>Tải lại bảng quyết toán</button>}
                 <button type="button" className="secondary-button" onClick={() => setCheckoutDialog(null)} disabled={isSaving}>Đóng</button>
-                <button type="button" className="primary-button" onClick={() => void confirmCheckout()} disabled={isSaving || !checkoutDialog.preview.checkoutAllowed || (checkoutDialog.preview.settlementType !== 'ZERO' && (!checkoutDialog.confirmed || (checkoutDialog.paymentMethod === 'BANK_TRANSFER' && !checkoutDialog.paymentReference.trim())))}>
+                <button type="button" className="primary-button" onClick={() => void confirmCheckout()} disabled={isSaving || !checkoutDialog.preview.checkoutAllowed || (checkoutDialog.preview.earlyCheckout && !checkoutDialog.earlyCheckoutReason.trim()) || (checkoutDialog.preview.settlementType !== 'ZERO' && (!checkoutDialog.confirmed || (checkoutDialog.paymentMethod === 'BANK_TRANSFER' && !checkoutDialog.paymentReference.trim())))}>
                   {isSaving ? 'Đang xử lý…' : 'Xác nhận quyết toán và trả phòng'}
                 </button>
               </div>
