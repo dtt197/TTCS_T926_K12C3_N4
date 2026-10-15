@@ -244,4 +244,3 @@ export function getBookingCancellationInfo(
     `/api/bookings/${id}/cancellation-info`,
   )
 }
-  

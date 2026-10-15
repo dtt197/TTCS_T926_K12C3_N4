@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Noto+Serif:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 :root {
   --ink: #17332f;
   --muted: #687873;
@@ -26,10 +26,11 @@ body {
   min-width: 320px;
   background: var(--cream);
   color: var(--ink);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 button, select, input, textarea { font: inherit; }
 button { cursor: pointer; }
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-sans); }
 .app-shell { min-height: 100vh; padding: 28px var(--page-gutter) 56px; }
 .topbar, .main-content, .internal-header, .room-management-page, .audit-page {
   width: 100%; max-width: var(--content-width); min-width: 0; margin-inline: auto;
@@ -46,7 +47,7 @@ button { cursor: pointer; }
 }
 .internal-brand {
   margin-right: auto; color: var(--green);
-  font-family: 'Playfair Display', Georgia, serif; font-size: 22px;
+  font-family: var(--font-sans); font-size: 22px;
 }
 .view-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
 .internal-header .role-badge {
@@ -79,7 +80,7 @@ button { cursor: pointer; }
   margin: 0 0 10px; color: var(--green); font-size: 12px; font-weight: 700;
   letter-spacing: .13em; text-transform: uppercase;
 }
-h1, h2 { margin: 0; font-family: 'Playfair Display', Georgia, serif; }
+h1, h2 { margin: 0; font-family: var(--font-sans); }
 h1 { max-width: 900px; font-size: clamp(28px, 2.5vw, 36px); line-height: 1.2; letter-spacing: -.025em; }
 h2 { font-size: 22px; line-height: 1.3; }
 .intro, .management-heading, .audit-heading {
@@ -305,10 +306,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 }
 .sidebar-brand strong {
   display: block;
-  font-family:
-    'Playfair Display',
-    Georgia,
-    serif;
+  font-family: var(--font-sans);
   font-size: 21px;
   line-height: 1.05;
 }
@@ -471,10 +469,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .dashboard-header h1 {
   margin: 0;
   color: #102f26;
-  font-family:
-    'Playfair Display',
-    Georgia,
-    serif;
+  font-family: var(--font-sans);
   font-size: clamp(31px, 3vw, 42px);
   font-weight: 800;
   line-height: 1.08;
@@ -792,10 +787,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .internal-page-content .panel-heading h2 {
   margin: 0;
   color: #1b3b32;
-  font-family:
-    'DM Sans',
-    system-ui,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 17px;
   font-weight: 700;
 }
@@ -1235,10 +1227,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 }
 .quick-checkin-heading h2 {
   margin: 0;
-  font-family:
-    'DM Sans',
-    system-ui,
-    sans-serif;
+  font-family: var(--font-sans);
   color: #18392f;
   font-size: 16px;
 }
@@ -1286,10 +1275,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   letter-spacing: 0.13em;
 }
 .rooms-section-header h2 {
-  font-family:
-    'DM Sans',
-    system-ui,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 19px;
   font-weight: 750;
 }

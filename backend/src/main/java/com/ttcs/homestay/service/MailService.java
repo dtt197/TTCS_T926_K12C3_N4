@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
-import java.util.Map; 
+import java.util.Map;
 
 @Service
 public class MailService {

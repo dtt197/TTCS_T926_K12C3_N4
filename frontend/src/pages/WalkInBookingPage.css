@@ -20,7 +20,7 @@
 .walk-in-header h2 {
   margin: 0;
   color: #18382d;
-  font-family: 'Noto Serif', Georgia, 'Times New Roman', serif;
+  font-family: var(--font-sans);
   font-size: 30px;
   font-weight: 600;
   font-synthesis: none;
@@ -32,7 +32,7 @@
 
 /* The large title belongs to InternalHomePage's shared dashboard banner. */
 .internal-layout--walk-in-booking .dashboard-header h1 {
-  font-family: 'Noto Serif', Georgia, 'Times New Roman', serif !important;
+  font-family: var(--font-sans) !important;
   font-size: clamp(42px, 3.8vw, 54px) !important;
   font-weight: 700 !important;
   font-synthesis: none;

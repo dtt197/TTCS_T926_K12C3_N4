@@ -36,6 +36,14 @@ public class AuditLogService {
     @Transactional
     public void recordSensitiveAction(Long actorUserId, String actorEmail, Long userId,
             String accountEmail, String action, String ipAddress) {
+        recordSensitiveActionInCurrentTransaction(
+                actorUserId, actorEmail, userId, accountEmail, action, ipAddress);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void recordSensitiveActionInCurrentTransaction(
+            Long actorUserId, String actorEmail, Long userId,
+            String accountEmail, String action, String ipAddress) {
         insert(actorUserId, actorEmail, userId, accountEmail, action, "SUCCESS", ipAddress);
     }
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useRef, type FormEvent } from 'react'
 import '../App.css'
 import { hasPermission } from '../permissions/rolePermissions'
-import { RoomShortageAlertSection } from '../components/RoomShortageAlertSection'
 import { getCheckInOptions } from '../services/bookingService'
+import { completeCleaning, getMaintenanceCleaningRoomIds, getMaintenanceRequests } from '../services/maintenanceService'
 import type { CheckInOption } from '../types/booking'
 import {
   checkIn,
@@ -12,6 +12,7 @@ import {
   putRoomIntoMaintenance,
   reportRoomIncident,
   updateRoomStatus,
+  type IncidentSeverity,
 } from '../services/roomService'
 import {
   ROOM_STATUS_HELP,
@@ -302,6 +303,8 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   const canReportIncident = hasPermission(role, 'rooms:report-incident')
   const [rooms, setRooms] = useState<Room[]>([])
   const [cleaningRoomId, setCleaningRoomId] = useState<number | null>(null)
+  const [cleaningMaintenanceIds, setCleaningMaintenanceIds] = useState<Record<number, number>>({})
+  const [maintenanceCleaningNotes, setMaintenanceCleaningNotes] = useState<Record<number, string>>({})
   const [selectedStatusRoomId, setSelectedStatusRoomId] = useState<number | null>(null)
   const [openRoomActionsId, setOpenRoomActionsId] = useState<number | null>(null)
   const statusSaveLockRef = useRef(false)
@@ -310,8 +313,12 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     roomId: number
     roomNumber: string
     note: string
+    severity: IncidentSeverity | ''
     submitting: boolean
+    error: string | null
+    retryRequest: { roomId: number; severity: IncidentSeverity; description: string; idempotencyKey: string } | null
   } | null>(null)
+  const incidentSubmitLockRef = useRef(false)
   const [draftStatuses, setDraftStatuses] = useState<
     Record<number, RoomStatus>
   >({})
@@ -417,9 +424,15 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     const checkInOptionsRequest: Promise<CheckInOption[]> = isHousekeeping
       ? Promise.resolve([])
       : getCheckInOptions()
-    Promise.all([getRooms(), checkInOptionsRequest])
-      .then(([data, options]) => {
-        setRooms(data)
+    Promise.all([getRooms(), checkInOptionsRequest, isHousekeeping ? Promise.all([getMaintenanceRequests(0), getMaintenanceCleaningRoomIds()]) : Promise.resolve(null)])
+      .then(([data, options, housekeepingData]) => {
+        const cleaningRoomIds = new Set(housekeepingData?.[1] ?? [])
+        setRooms(isHousekeeping
+          ? data.filter(room => room.status === 'TRONG_BAN' || cleaningRoomIds.has(room.id))
+          : data)
+        setCleaningMaintenanceIds(Object.fromEntries((housekeepingData?.[0].content ?? [])
+          .filter((request) => request.status === 'CHO_VE_SINH')
+          .map((request) => [request.roomId, request.id])))
         setCheckInOptions(options)
         setMaintenanceDrafts(
           Object.fromEntries(
@@ -471,7 +484,7 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
    }, [isHousekeeping])
   const visibleRooms = useMemo(() => {
     const list = isHousekeeping
-      ? rooms.filter((room) => room.status === 'TRONG_BAN')
+      ? rooms.filter((room) => room.status === 'TRONG_BAN' || cleaningMaintenanceIds[room.id] !== undefined)
       : rooms
     return [...list].sort((a, b) => {
       // S3-09: Sắp xếp phòng có khách nhận trong ngày lên trước
@@ -486,7 +499,7 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
       }
       return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })
     })
-  }, [rooms, isHousekeeping])
+  }, [rooms, isHousekeeping, cleaningMaintenanceIds])
 const counts = useMemo(
   () =>
     STATUS_OPTIONS.reduce(
@@ -673,6 +686,26 @@ async function handleViewHistory(room: Room) {
     setIsSaving(true)
     setNotice(null)
     try {
+      const maintenanceId = cleaningMaintenanceIds[room.id]
+      if (maintenanceId !== undefined) {
+        const notes = maintenanceCleaningNotes[room.id]?.trim()
+        if (!notes) {
+          setNotice({ type: 'error', text: 'Vui lòng nhập ghi chú vệ sinh sau bảo trì.' })
+          return
+        }
+        await completeCleaning(maintenanceId, notes)
+        const cleanedRoom = { ...room, status: 'TRONG_SACH' as const }
+        setRooms(current => current.map(item => item.id === room.id ? cleanedRoom : item))
+        setCleaningMaintenanceIds(current => {
+          const next = { ...current }
+          delete next[room.id]
+          return next
+        })
+        setMaintenanceCleaningNotes(current => ({ ...current, [room.id]: '' }))
+        window.dispatchEvent(new CustomEvent('room-status-changed'))
+        setNotice({ type: 'success', text: `Đã vệ sinh và hoàn tất bảo trì phòng ${room.roomNumber}.` })
+        return
+      }
       const savedRoom: Room = isDemoMode
         ? {
             ...room,
@@ -728,19 +761,35 @@ async function handleViewHistory(room: Room) {
   /** S3-09 AC4: Xử lý gửi báo sự cố từ modal */
   async function handleReportIncident(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!incidentModal) return
+    if (!incidentModal || incidentSubmitLockRef.current || incidentModal.submitting) return
     const trimmedNote = incidentModal.note.trim()
     if (!trimmedNote) {
-      setNotice({ type: 'error', text: 'Ghi chú sự cố không được để trống.' })
+      setIncidentModal((prev) => prev && { ...prev, error: 'Vui lòng nhập mô tả sự cố.' })
       return
     }
-    setIncidentModal((prev) => prev && { ...prev, submitting: true })
+    if (trimmedNote.length > 2000) {
+      setIncidentModal((prev) => prev && { ...prev, error: 'Mô tả sự cố không được vượt quá 2000 ký tự.' })
+      return
+    }
+    if (!incidentModal.severity) {
+      setIncidentModal((prev) => prev && { ...prev, error: 'Vui lòng chọn mức độ sự cố.' })
+      return
+    }
+    const { roomId, roomNumber, severity } = incidentModal
+    const retry = incidentModal.retryRequest
+    const request = retry
+      && retry.roomId === roomId
+      && retry.severity === severity
+      && retry.description === trimmedNote
+      ? retry
+      : { roomId, severity, description: trimmedNote, idempotencyKey: crypto.randomUUID() }
+    incidentSubmitLockRef.current = true
+    setIncidentModal((prev) => prev && { ...prev, submitting: true, error: null, retryRequest: request })
     setNotice(null)
     try {
-      const { roomId, roomNumber } = incidentModal
       const savedRoom: Room = isDemoMode
         ? { ...rooms.find((r) => r.id === roomId)!, status: 'BAO_TRI', maintenanceReason: trimmedNote }
-        : await reportRoomIncident(roomId, trimmedNote)
+        : await reportRoomIncident(request.roomId, request.severity, request.description, request.idempotencyKey)
       setRooms((current) =>
         current.map((item) => (item.id === roomId ? savedRoom : item)),
       )
@@ -778,12 +827,28 @@ async function handleViewHistory(room: Room) {
         text: `Đã báo sự cố phòng ${roomNumber}. Phòng chuyển sang bảo trì.`,
       })
     } catch (error) {
-      setIncidentModal((prev) => prev && { ...prev, submitting: false })
-      showError(
-        error instanceof Error
-          ? error.message
-          : 'Không thể báo sự cố. Vui lòng thử lại.',
-      )
+      const errorWithStatus = error as Error & { status?: number }
+      const isAmbiguousNetworkError = typeof errorWithStatus.status !== 'number'
+      const isServerError = (errorWithStatus.status ?? 0) >= 500 && (errorWithStatus.status ?? 0) < 600
+      const canRetrySameRequest = isAmbiguousNetworkError || isServerError
+      const message = isAmbiguousNetworkError
+        ? 'Không xác định được yêu cầu đã được ghi nhận hay chưa. Hãy thử lại để gửi cùng yêu cầu an toàn.'
+        : isServerError
+          ? 'Máy chủ gặp lỗi và chưa thể xác nhận kết quả. Hãy thử lại để gửi cùng yêu cầu an toàn.'
+        : error instanceof Error ? error.message : 'Không thể báo sự cố.'
+      const isNonRetryableStatus = [400, 403, 409].includes(errorWithStatus.status ?? 0)
+      setIncidentModal((prev) => prev && {
+        ...prev,
+        submitting: false,
+        error: canRetrySameRequest
+          ? isAmbiguousNetworkError ? `${message} (Lỗi mạng)` : message
+          : isNonRetryableStatus
+            ? `${message} Hãy chỉnh thông tin hoặc bắt đầu báo cáo mới.`
+            : message,
+        retryRequest: canRetrySameRequest ? request : null,
+      })
+    } finally {
+      incidentSubmitLockRef.current = false
     }
   }
   async function handleCheckIn(event: FormEvent<HTMLFormElement>) {
@@ -974,12 +1039,6 @@ async function handleViewHistory(room: Room) {
     return (
     <div className="app-shell room-status-modern">
       <main className="main-content">
-        {!isHousekeeping && (
-          <RoomShortageAlertSection
-            rooms={rooms}
-            isDemoMode={isDemoMode}
-          />
-        )}
         {/* =========================
             TỔNG QUAN TRẠNG THÁI
            ========================= */}
@@ -1246,15 +1305,15 @@ async function handleViewHistory(room: Room) {
             <div className="modern-room-grid">
               {visibleRooms.map((room) => {
                 const actions = [
-                  ...(room.status === 'TRONG_BAN' && (isHousekeeping || canCleanRoom) ? [{
+                  ...((room.status === 'TRONG_BAN' || cleaningMaintenanceIds[room.id] !== undefined) && (isHousekeeping || canCleanRoom) ? [{
                     id: 'clean', label: cleaningRoomId === room.id ? 'Đang xử lý...' : 'Báo đã sạch',
                     icon: 'check' as const, disabled: isSaving || cleaningRoomId === room.id,
                     run: () => void handleMarkClean(room),
                   }] : []),
-                  ...(room.status === 'TRONG_BAN' && (isHousekeeping || canReportIncident) ? [{
+                  ...(room.status === 'TRONG_BAN' && cleaningMaintenanceIds[room.id] === undefined && (isHousekeeping || canReportIncident) ? [{
                     id: 'incident', label: 'Báo sự cố', icon: 'maintenance' as const,
                     disabled: isSaving || cleaningRoomId === room.id,
-                    run: () => setIncidentModal({ roomId: room.id, roomNumber: room.roomNumber, note: '', submitting: false }),
+                    run: () => setIncidentModal({ roomId: room.id, roomNumber: room.roomNumber, note: '', severity: '', submitting: false, error: null, retryRequest: null }),
                   }] : []),
                   ...(canUseCheckOut && room.status === 'DANG_O' ? [{
                     id: 'checkout', label: 'Trả phòng', icon: 'checkout' as const,
@@ -1270,6 +1329,7 @@ async function handleViewHistory(room: Room) {
                     className="modern-room-card"
                     key={room.id}
                   >
+
                     <div className="modern-room-card-top">
                       <div className="room-identity">
                         <span className="room-icon">
@@ -1315,6 +1375,13 @@ async function handleViewHistory(room: Room) {
                       )}
                     </div>
                     <div className="room-card-spacer" aria-hidden="true" />
+                    {cleaningMaintenanceIds[room.id] !== undefined && (
+                      <label className="maintenance-cleaning-notes">
+                        Ghi chú vệ sinh sau bảo trì
+                        <textarea required maxLength={2000} value={maintenanceCleaningNotes[room.id] ?? ''}
+                          onChange={event => setMaintenanceCleaningNotes(current => ({ ...current, [room.id]: event.target.value }))} />
+                      </label>
+                    )}
                     <div className="modern-room-actions">
                       <button className="secondary-button" type="button"
                         onClick={() => void handleViewHistory(room)}>
@@ -1651,8 +1718,30 @@ async function handleViewHistory(room: Room) {
               <form onSubmit={(e) => void handleReportIncident(e)}>
                 <div className="incident-modal-body">
                   <div className="form-group">
+                    <label htmlFor="incident-severity-select">
+                      Mức độ sự cố <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <select
+                      id="incident-severity-select"
+                      className="incident-severity-select"
+                      value={incidentModal.severity}
+                      disabled={incidentModal.submitting}
+                      onChange={(e) => setIncidentModal((prev) => prev && ({
+                        ...prev,
+                        severity: e.target.value as IncidentSeverity | '',
+                        error: null,
+                        retryRequest: null,
+                      }))}
+                      required
+                    >
+                      <option value="" disabled>Chọn mức độ sự cố</option>
+                      <option value="NHE">Nhẹ</option>
+                      <option value="NGHIEM_TRONG">Nghiêm trọng</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
                     <label htmlFor="incident-note-input">
-                      Ghi chú về sự cố <span style={{ color: '#dc2626' }}>*</span>
+                      Mô tả sự cố <span style={{ color: '#dc2626' }}>*</span>
                     </label>
                     <textarea
                       id="incident-note-input"
@@ -1660,19 +1749,25 @@ async function handleViewHistory(room: Room) {
                       rows={4}
                       placeholder="Nhập chi tiết sự cố tại phòng (VD: Hỏng khóa cửa, hỏng điều hòa, sự cố đường ống nước...)"
                       value={incidentModal.note}
+                      maxLength={2001}
                       onChange={(e) =>
                         setIncidentModal((prev) =>
-                          prev ? { ...prev, note: e.target.value } : null,
+                          prev ? { ...prev, note: e.target.value, error: null, retryRequest: null } : null,
                         )
                       }
                       disabled={incidentModal.submitting}
                       required
                       autoFocus
+                      aria-describedby="incident-description-count"
                     />
+                    <p id="incident-description-count" className="incident-hint">
+                      {incidentModal.note.trim().length}/2000 ký tự (không tính khoảng trắng đầu/cuối)
+                    </p>
                     <p className="incident-hint">
                       Phòng sẽ được chuyển sang trạng thái Bảo trì và ghi chú sự cố sẽ hiển thị cho Lễ tân.
                     </p>
                   </div>
+                  {incidentModal.error && <p className="incident-error" role="alert">{incidentModal.error}</p>}
                 </div>
                 <div className="incident-modal-footer">
                   <button
@@ -1686,7 +1781,7 @@ async function handleViewHistory(room: Room) {
                   <button
                     type="submit"
                     className="submit-incident-btn"
-                    disabled={incidentModal.submitting || !incidentModal.note.trim()}
+                    disabled={incidentModal.submitting}
                   >
                     {incidentModal.submitting ? 'Đang gửi...' : 'Gửi báo cáo sự cố'}
                   </button>

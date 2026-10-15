@@ -28,9 +28,6 @@ class BookingAvailableRoomsControllerTest {
     private BookingService bookingService;
 
     @MockitoBean
-    private com.ttcs.homestay.service.RoomShortageAlertService roomShortageAlertService;
-
-    @MockitoBean
     private com.ttcs.homestay.service.BookingDepositAdjustmentService bookingDepositAdjustmentService;
 
     @Test
