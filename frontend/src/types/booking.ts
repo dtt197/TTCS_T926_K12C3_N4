@@ -5,6 +5,7 @@ export type BookingStatus =
   | 'DA_NHAN_PHONG'
   | 'DA_TRA_PHONG'
   | 'DA_HET_HAN'
+  | 'NO_SHOW'
 
 /** S2-10: một dòng trong danh sách booking (GET /api/bookings, có phân trang). */
 export type BookingListItem = {
@@ -176,3 +177,37 @@ export type BookingCancellationResult = {
   refundPercent: number
   refundAmount: number
 }
+
+/** S4-04 (SCRUM-150): Kết quả tra cứu số lần bỏ hẹn của khách hàng theo SĐT. */
+export type CustomerNoShowResponse = {
+  phone: string | null
+  fullName: string | null
+  noShowCount: number
+  hasWarning: boolean
+  warningMessage: string | null
+}
+
+/** S4-04 (SCRUM-151): Thông tin điều kiện hoàn tác thao tác không đến. */
+export type NoShowUndoEligibility = {
+  bookingId: number
+  bookingCode: string
+  eligible: boolean
+  reason: string
+  markedAt: string | null
+  expiresAt: string | null
+  remainingSeconds: number
+  receptionistId: number | null
+  receptionistName: string | null
+}
+
+/** S4-04 (SCRUM-151): Nhật ký thao tác lịch hẹn / booking. */
+export type AppointmentActionLog = {
+  id: number
+  appointmentId: number
+  receptionistId: number | null
+  receptionistName: string | null
+  actionType: string
+  previousStatus: string | null
+  createdAt: string
+}
+

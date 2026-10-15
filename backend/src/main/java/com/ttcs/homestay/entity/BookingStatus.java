@@ -6,5 +6,6 @@ public enum BookingStatus {
     DA_HUY,
     DA_NHAN_PHONG,
     DA_TRA_PHONG,
-    DA_HET_HAN
+    DA_HET_HAN,
+    NO_SHOW
 }

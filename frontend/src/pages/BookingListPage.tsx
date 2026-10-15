@@ -1,5 +1,5 @@
 import { canChangeBookingRoom, roomChangeOptions } from './bookingRoomChangeActions'
-import { bookingActionsFor } from './bookingActionVisibility'
+import { bookingActionsFor, isNoShowEligible } from './bookingActionVisibility'
 import './BookingListPage.css'
 import { ApiRequestError } from '../services/apiClient'
 import type {
@@ -26,6 +26,7 @@ import {
   changeBookingRoom,
   getBookingRoomChangeHistory,
   downloadBookingInvoice,
+  markBookingNoShow,
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
@@ -35,6 +36,8 @@ import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as run
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 import CancelBookingDialog from '../components/CancelBookingDialog'
 import { BookingSurchargeSection } from '../components/BookingSurchargeSection'
+import { BookingNoShowUndoButton } from '../components/BookingNoShowUndoButton'
+import { BookingActionLogSection } from '../components/BookingActionLogSection'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -43,6 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
   DA_NHAN_PHONG: 'Đã nhận phòng',
   DA_TRA_PHONG: 'Đã trả phòng',
   DA_HET_HAN: 'Đã hết hạn',
+  NO_SHOW: 'Không đến',
 }
 
 const STATUS_CLASS_NAMES: Record<string, string> = {
@@ -52,6 +56,7 @@ const STATUS_CLASS_NAMES: Record<string, string> = {
   DA_NHAN_PHONG: 'checked-in',
   DA_TRA_PHONG: 'checked-out',
   DA_HET_HAN: 'cancelled',
+  NO_SHOW: 'cancelled',
 }
 
 const EMPTY_FILTERS = {
@@ -83,6 +88,7 @@ export function BookingListPage({ role }: { role: string }) {
   const canAdjustDeposit = hasPermission(role, 'bookings:deposit-adjust')
   const canCancel = hasPermission(role, 'bookings:cancel')
   const canManage = hasPermission(role, 'bookings:manage')
+  const canNoShow = canManage || canCancel || role === 'RECEPTIONIST'
   const canAddSurcharge = hasPermission(role, 'bookings:surcharge-add')
   const [bookings, setBookings] = useState<BookingListItem[]>([])
   const [page, setPage] = useState(0)
@@ -127,6 +133,38 @@ export function BookingListPage({ role }: { role: string }) {
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
     // S3-02 Lát 3: huỷ booking
   const [cancellingBooking, setCancellingBooking] = useState<BookingListItem | null>(null)
+
+  // S4-04 (SCRUM-149): Khách không đến (No-show)
+  const [noShowBooking, setNoShowBooking] = useState<BookingListItem | null>(null)
+  const [noShowLoading, setNoShowLoading] = useState(false)
+  const [noShowError, setNoShowError] = useState<string | null>(null)
+  const [noShowSuccess, setNoShowSuccess] = useState<string | null>(null)
+
+  function startNoShow(booking: BookingListItem) {
+    setNoShowBooking(booking)
+    setNoShowError(null)
+  }
+
+  async function handleConfirmNoShow() {
+    if (!noShowBooking || noShowLoading) return
+    setNoShowLoading(true)
+    setNoShowError(null)
+    try {
+      await markBookingNoShow(noShowBooking.id)
+      setNoShowSuccess(`Đã đánh dấu khách không đến cho booking ${noShowBooking.bookingCode} và giải phóng phòng thành công.`)
+      const updatedId = noShowBooking.id
+      setNoShowBooking(null)
+      if (detailBooking && detailBooking.id === updatedId) {
+        setDetailBooking({ ...detailBooking, status: 'NO_SHOW', roomNumber: null })
+      }
+      setRefreshVersion((v) => v + 1)
+      window.dispatchEvent(new CustomEvent('homestay:booking-changed', { detail: { bookingId: updatedId } }))
+    } catch (err) {
+      setNoShowError(err instanceof Error ? err.message : 'Không thể đánh dấu khách không đến.')
+    } finally {
+      setNoShowLoading(false)
+    }
+  }
 
   const [editForm, setEditForm] = useState({
     checkInDate: '',
@@ -697,6 +735,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
             <option value="DA_NHAN_PHONG">Đã nhận phòng</option>
             <option value="DA_TRA_PHONG">Đã trả phòng</option>
             <option value="DA_HET_HAN">Đã hết hạn</option>
+            <option value="NO_SHOW">Không đến</option>
           </select>
         </label>
 
@@ -801,6 +840,15 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                           Quá hạn giữ chỗ 24 giờ
                         </span>
                       )}
+                      {booking.status === 'NO_SHOW' && canNoShow && (
+                        <div style={{ marginTop: '4px' }}>
+                          <BookingNoShowUndoButton
+                            bookingId={booking.id}
+                            variant="inline"
+                            onSuccess={() => setRefreshVersion((v) => v + 1)}
+                          />
+                        </div>
+                      )}
                     </td>
                     <td className="booking-actions-cell">
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
@@ -810,7 +858,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                       {(() => {
                         const actions = bookingActionsFor(
                           booking,
-                          { manage: canManage, cancel: canCancel },
+                          { manage: canManage, cancel: canCancel, noShow: canNoShow },
                           canChangeBookingRoom(role, booking, new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' })),
                         )
                         const hasActions = actions.length > 0
@@ -857,6 +905,34 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                               {actions.includes('change-room') && <button type="button" role="menuitem" onClick={() => closeActionMenuAndRun(() => void openRoomChange(booking))}><span aria-hidden="true">⇄</span>Đổi phòng</button>}
                               {actions.includes('edit') && <button type="button" role="menuitem" id={`booking-edit-btn-${booking.id}`} onClick={() => closeActionMenuAndRun(() => startEditing(booking))}><span aria-hidden="true">✎</span>Cập nhật</button>}
                               {actions.includes('cancel') && <button type="button" role="menuitem" className="booking-actions-menu-danger" onClick={() => closeActionMenuAndRun(() => startCancelling(booking))}><span aria-hidden="true">×</span>Huỷ booking</button>}
+                              {actions.includes('no-show') && (() => {
+                                const eligibility = isNoShowEligible(booking)
+                                return (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    id={`booking-no-show-btn-${booking.id}`}
+                                    className={`booking-actions-menu-warning ${eligibility.eligible ? 'is-active' : ''}`}
+                                    disabled={!eligibility.eligible}
+                                    title={eligibility.reason || 'Đánh dấu khách không đến'}
+                                    onClick={() => closeActionMenuAndRun(() => startNoShow(booking))}
+                                  >
+                                    <span aria-hidden="true">⏱</span>Khách không đến
+                                  </button>
+                                )
+                              })()}
+                              {actions.includes('undo-no-show') && (
+                                <div style={{ padding: '4px 8px' }}>
+                                  <BookingNoShowUndoButton
+                                    bookingId={booking.id}
+                                    variant="inline"
+                                    onSuccess={() => {
+                                      closeActionMenuAndRun(() => {})
+                                      setRefreshVersion((v) => v + 1)
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </div>, document.body,
                           )}
                         </>
@@ -1027,16 +1103,123 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                   </div>
                 )) : <p className="booking-history-empty">Chưa có lịch sử đổi phòng.</p>}
                 </section>
+                <BookingActionLogSection bookingId={detailBooking.id} />
               </div>
             )}
-            <footer className="booking-detail-footer">
+            <footer className="booking-detail-footer" style={{ flexWrap: 'wrap' }}>
               {canExportInvoice && <div className="booking-invoice-actions">
                 {invoiceError && <div className="alert" role="alert">{invoiceError}</div>}
                 <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={invoiceDownloading}>
                   {invoiceDownloading ? 'Đang tạo hóa đơn...' : 'Xuất hóa đơn PDF'}
                 </button>
               </div>}
+              {canNoShow && (detailBooking.status === 'CHO_XAC_NHAN' || detailBooking.status === 'DA_XAC_NHAN') && (() => {
+                const eligibility = isNoShowEligible(detailBooking)
+                return (
+                  <button
+                    type="button"
+                    id={`booking-detail-no-show-btn-${detailBooking.id}`}
+                    className={`booking-no-show-button ${eligibility.eligible ? 'is-active' : ''}`}
+                    disabled={!eligibility.eligible}
+                    title={eligibility.reason || 'Đánh dấu khách không đến'}
+                    onClick={() => startNoShow(detailBooking)}
+                    style={{
+                      backgroundColor: eligibility.eligible ? '#d97706' : '#9ca3af',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 14px',
+                      fontWeight: 500,
+                      cursor: eligibility.eligible ? 'pointer' : 'not-allowed',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span aria-hidden="true">⏱</span> Khách không đến
+                  </button>
+                )
+              })()}
+              {canNoShow && detailBooking.status === 'NO_SHOW' && (
+                <BookingNoShowUndoButton
+                  bookingId={detailBooking.id}
+                  variant="detail"
+                  onSuccess={() => {
+                    setRefreshVersion((v) => v + 1)
+                    setDetailBooking(null)
+                  }}
+                />
+              )}
               <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
+            </footer>
+          </section>
+        </div>
+      )}
+
+      {noShowSuccess && (
+        <div className="alert alert-success" role="status" style={{ margin: '16px 0', padding: '12px 16px', backgroundColor: '#ecfdf5', border: '1px solid #10b981', color: '#065f46', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{noShowSuccess}</span>
+          <button type="button" onClick={() => setNoShowSuccess(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#065f46' }}>×</button>
+        </div>
+      )}
+
+      {noShowBooking && (
+        <div className="booking-dialog-backdrop">
+          <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-no-show-title">
+            <div className="booking-edit-heading">
+              <div>
+                <h3 id="booking-no-show-title">Xác nhận khách không đến (No-show)</h3>
+                <p className="booking-edit-subheading">
+                  Booking: <strong>{noShowBooking.bookingCode}</strong> — Khách: <strong>{noShowBooking.guestName}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="booking-dialog-close"
+                aria-label="Đóng"
+                disabled={noShowLoading}
+                onClick={() => setNoShowBooking(null)}
+              >×</button>
+            </div>
+
+            <div className="booking-dialog-body" style={{ padding: '16px 24px' }}>
+              <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                Bạn có chắc chắn muốn đánh dấu khách không đến cho booking này?
+              </p>
+              <div style={{ backgroundColor: '#fffbeb', borderLeft: '4px solid #f59e0b', padding: '12px', borderRadius: '4px', fontSize: '14px', color: '#92400e' }}>
+                <strong>Lưu ý:</strong>
+                <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                  <li>Trạng thái booking sẽ chuyển sang <strong>Không đến (NO_SHOW)</strong>.</li>
+                  <li>Phòng <strong>{noShowBooking.roomNumber ? `Phòng ${noShowBooking.roomNumber}` : 'đã gán'}</strong> sẽ được tự động <strong>giải phóng</strong> ngay lập tức.</li>
+                  <li>Hệ thống sẽ tăng số lần không đến (no-show count) của khách hàng và ghi nhận lịch sử thao tác lễ tân.</li>
+                </ul>
+              </div>
+              {noShowError && (
+                <div className="alert alert-error" role="alert" style={{ marginTop: '12px', color: '#dc2626' }}>
+                  {noShowError}
+                </div>
+              )}
+            </div>
+
+            <footer className="booking-edit-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '16px 24px' }}>
+              <button
+                type="button"
+                className="booking-cancel-button"
+                disabled={noShowLoading}
+                onClick={() => setNoShowBooking(null)}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                id="confirm-no-show-btn"
+                className="booking-confirm-submit"
+                disabled={noShowLoading}
+                onClick={handleConfirmNoShow}
+                style={{ backgroundColor: '#d97706', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 600, cursor: noShowLoading ? 'not-allowed' : 'pointer' }}
+              >
+                {noShowLoading ? 'Đang xử lý…' : 'Xác nhận khách không đến'}
+              </button>
             </footer>
           </section>
         </div>

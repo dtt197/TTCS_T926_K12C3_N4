@@ -103,6 +103,9 @@ public class ApiSecurityPolicyCatalog {
                 "/api/admin/security/endpoint-discrepancies");
         add(policies, "POST", Access.ROLES, List.of("ADMIN"),
                 "/api/admin/security/endpoint-discrepancies");
+        // S4-09: Nạp dữ liệu mẫu – chỉ Chủ homestay (OWNER) được phép.
+        add(policies, "POST", Access.ROLES, List.of("OWNER"),
+                "/api/admin/sample-data/reload");
         add(policies, null, Access.ROLES, List.of("ADMIN"), "/api/admin/**");
         add(policies, "GET", Access.ROLES, List.of("OWNER"),
                 "/api/reports/occupancy",
@@ -144,7 +147,11 @@ public class ApiSecurityPolicyCatalog {
                 "/api/price-overrides/**");
         add(policies, "POST", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/bookings", "/api/bookings/*/preview",
-                "/api/bookings/*/cancel");
+                "/api/bookings/*/cancel",
+                "/api/bookings/*/no-show",
+                "/api/appointments/*/no-show",
+                "/api/bookings/*/no-show/undo",
+                "/api/appointments/*/no-show/undo");
         add(policies, "POST", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
                 "/api/bookings/*/deposit-adjustments",
                 "/api/bookings/*/surcharges");
@@ -168,7 +175,9 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/pricing/**");
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
-                "/api/bookings", "/api/bookings/**");
+                "/api/bookings", "/api/bookings/**",
+                "/api/appointments/**",
+                "/api/customers", "/api/customers/**");
         add(policies, "GET", Access.PUBLIC, List.of(),
                 "/api/public/room-types/**",
                 "/api/public/room-types-catalog",
@@ -181,9 +190,6 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "POST", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/public/bookings/walk-in");
         add(policies, null, Access.PUBLIC, List.of(), "/uploads/**");
-        // S4-09: Nạp dữ liệu mẫu – chỉ Chủ homestay (OWNER) được phép.
-        add(policies, "POST", Access.ROLES, List.of("OWNER"),
-                "/api/admin/sample-data/reload");
 
         add(policies, null, Access.DENIED, List.of(), "/api", "/api/**");
 
