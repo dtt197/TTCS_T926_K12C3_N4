@@ -4,6 +4,15 @@ import { getRoomTypes } from '../services/roomTypeService'
 import { apiRequest } from '../services/apiClient'
 import './SampleDataPage.css'
 
+/** Đo thời gian nạp dữ liệu; để ngoài component vì react-hooks/purity cấm gọi performance.now() trong component. */
+function startTimer(): number {
+  return performance.now()
+}
+
+function secondsSince(start: number): number {
+  return Math.round((performance.now() - start) / 1000)
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RoomSummary {
@@ -82,7 +91,7 @@ export function SampleDataPage() {
     setPrices([])
     setBookings([])
 
-    const t0 = performance.now()
+    const t0 = startTimer()
 
     try {
       const result = await reloadSampleData()
@@ -96,7 +105,7 @@ export function SampleDataPage() {
         fetchBookings(),
       ])
 
-      setElapsed(Math.round((performance.now() - t0) / 1000))
+      setElapsed(secondsSince(t0))
       setLoadState('success')
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Có lỗi xảy ra')
@@ -122,10 +131,8 @@ export function SampleDataPage() {
 
   async function fetchRooms() {
     try {
-      const res = await apiRequest('/api/rooms')
-      if (!res.ok) return
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any[] = await res.json()
+      const data = await apiRequest<any[]>('/api/rooms')
       setRooms(data.map((r) => ({
         roomNumber: r.roomNumber,
         floor:      r.floor,
@@ -137,10 +144,8 @@ export function SampleDataPage() {
 
   async function fetchPriceOverrides() {
     try {
-      const res = await apiRequest('/api/price-overrides')
-      if (!res.ok) return
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any[] = await res.json()
+      const data = await apiRequest<any[]>('/api/price-overrides')
       setPrices(data.map((p) => ({
         id:             p.id,
         name:           p.name,
@@ -154,10 +159,8 @@ export function SampleDataPage() {
 
   async function fetchBookings() {
     try {
-      const res = await apiRequest('/api/bookings?size=30&page=0')
-      if (!res.ok) return
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data: any = await res.json()
+      const data = await apiRequest<any>('/api/bookings?size=30&page=0')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const list: any[] = data.content ?? data ?? []
       setBookings(list.map((b) => ({
