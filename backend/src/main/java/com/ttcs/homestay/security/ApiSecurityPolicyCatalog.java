@@ -103,6 +103,9 @@ public class ApiSecurityPolicyCatalog {
                 "/api/admin/security/endpoint-discrepancies");
         add(policies, "POST", Access.ROLES, List.of("ADMIN"),
                 "/api/admin/security/endpoint-discrepancies");
+        // S4-09: Nạp dữ liệu mẫu – chỉ Chủ homestay (OWNER) được phép.
+        add(policies, "POST", Access.ROLES, List.of("OWNER"),
+                "/api/admin/sample-data/reload");
         add(policies, null, Access.ROLES, List.of("ADMIN"), "/api/admin/**");
         add(policies, "GET", Access.ROLES, List.of("OWNER"),
                 "/api/reports/occupancy",
@@ -179,9 +182,6 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "POST", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/public/bookings/walk-in");
         add(policies, null, Access.PUBLIC, List.of(), "/uploads/**");
-        // S4-09: Nạp dữ liệu mẫu – chỉ Chủ homestay (OWNER) được phép.
-        add(policies, "POST", Access.ROLES, List.of("OWNER"),
-                "/api/admin/sample-data/reload");
 
         add(policies, null, Access.DENIED, List.of(), "/api", "/api/**");
 

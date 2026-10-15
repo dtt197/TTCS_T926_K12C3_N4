@@ -48,6 +48,7 @@ export const APPROVED_ENDPOINT_MATRIX: readonly EndpointPolicy[] = [
   policy('GET', '/api/admin/security/endpoint-permissions', 'ROLES', ['ADMIN']),
   policy('GET', '/api/admin/security/endpoint-discrepancies', 'ROLES', ['ADMIN']),
   policy('POST', '/api/admin/security/endpoint-discrepancies', 'ROLES', ['ADMIN']),
+  policy('POST', '/api/admin/sample-data/reload', 'ROLES', ['OWNER']),
   policy(null, '/api/admin/**', 'ROLES', ['ADMIN']),
   policy(null, '/api/account/**', 'AUTHENTICATED', INTERNAL_ROLES),
   ...policies('GET', 'ROLES', ['RECEPTIONIST'],

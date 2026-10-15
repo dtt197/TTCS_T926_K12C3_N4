@@ -72,6 +72,7 @@ public class SampleDataService {
         jdbcTemplate.execute("DELETE FROM maintenance_requests");
         jdbcTemplate.execute("DELETE FROM room_status_history");
         jdbcTemplate.execute("DELETE FROM check_ins");
+        jdbcTemplate.execute("DELETE FROM room_notes");
         jdbcTemplate.execute("DELETE FROM rooms");
         jdbcTemplate.execute("DELETE FROM room_type_cancellation_tiers");
         jdbcTemplate.execute("DELETE FROM room_type_amenities");
