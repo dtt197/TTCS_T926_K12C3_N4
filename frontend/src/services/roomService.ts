@@ -1,6 +1,7 @@
 import { getAccessToken } from './tokenStore'
 import type { Room, RoomStatus, MaintenanceDraft, RoomStatusHistory } from '../types/room'
 import type { BookingStatus } from '../types/booking'
+import type { BookingSurcharge } from '../types/bookingSurcharge'
 
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/api`
 
@@ -135,7 +136,19 @@ export type CheckoutPreview = {
   surchargeNights: number | null
   roomTotalExcludingSurcharge: number | null
   surchargeBreakdownWarning: string | null
+  bookingSurcharges: BookingSurcharge[]
+  bookingSurchargeTotal: number
   depositTotal: number
+  checkoutTimeSnapshot: string
+  serverCheckoutTime: string
+  operatingSettingsId: number
+  lateCheckoutHours: number
+  lateCheckoutFeePerHour: number | null
+  lateCheckoutFee: number
+  settlementTotalBeforeDeposit: number
+  lateCheckoutPricingBasis: 'NONE' | 'HOURLY' | 'LAST_NIGHT'
+  checkoutAllowed: boolean
+  checkoutBlockedReason: string | null
   settlementType: 'COLLECT' | 'ZERO' | 'REFUND'
   amount: number
   previewToken: string

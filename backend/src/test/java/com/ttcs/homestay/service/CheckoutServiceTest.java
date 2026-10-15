@@ -13,14 +13,23 @@ import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingNightlyPriceSnapshot;
 import com.ttcs.homestay.entity.BookingSettlement;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.BookingSurcharge;
+import com.ttcs.homestay.entity.SurchargeType;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
+import com.ttcs.homestay.entity.OperatingSettings;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.BookingSettlementRepository;
+import com.ttcs.homestay.repository.BookingSurchargeRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,17 +47,28 @@ class CheckoutServiceTest {
     @Mock RoomRepository roomRepository;
     @Mock BookingRepository bookingRepository;
     @Mock BookingSettlementRepository settlementRepository;
+    @Mock BookingSurchargeRepository surchargeRepository;
     @Mock RoomStatusHistoryRepository historyRepository;
     @Mock BookingDepositService depositService;
+    @Mock OperatingSettingsRepository settingsRepository;
 
     private CheckoutService service;
+    private OperatingSettings settings;
     private Room room;
     private Booking booking;
 
     @BeforeEach
     void setUp() {
         service = new CheckoutService(roomRepository, bookingRepository, settlementRepository,
-                historyRepository, depositService);
+                surchargeRepository, historyRepository, depositService, settingsRepository,
+                Clock.fixed(OffsetDateTime.parse("2026-10-12T12:00:00+07:00").toInstant(), ZoneId.of("Asia/Ho_Chi_Minh")));
+        settings = new OperatingSettings();
+        settings.setId(7L);
+        settings.setCheckOutTime(LocalTime.NOON);
+        settings.setLateCheckoutFeePerHour(100_000L);
+        settings.setCreatedAt(OffsetDateTime.parse("2026-10-01T00:00:00+07:00"));
+        when(settingsRepository.findFirstByCreatedAtLessThanEqualOrderByCreatedAtDescIdDesc(any()))
+                .thenReturn(Optional.of(settings));
         room = new Room();
         room.setId(12L);
         room.setRoomNumber("201");
@@ -71,6 +91,272 @@ class CheckoutServiceTest {
         when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(settlementRepository.save(any(BookingSettlement.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    void hourlyFeeBoundariesUseCeilingAndStableTokenWithinSameBand() {
+        String[] times = {"11:59", "12:00", "12:01", "13:00", "13:01", "13:20", "18:00"};
+        int[] expectedHours = {0, 0, 1, 1, 2, 2, 6};
+        long[] expectedFees = {0, 0, 100_000, 100_000, 200_000, 200_000, 600_000};
+        CheckoutPreviewResponse[] previews = new CheckoutPreviewResponse[times.length];
+        for (int i = 0; i < times.length; i++) {
+            useClockAt(times[i]);
+            previews[i] = service.preview(12L);
+            assertThat(previews[i].lateCheckoutHours()).isEqualTo(expectedHours[i]);
+            assertThat(previews[i].lateCheckoutFee()).isEqualTo(BigDecimal.valueOf(expectedFees[i]));
+            assertThat(previews[i].checkoutAllowed()).isTrue();
+        }
+        assertThat(previews[4].previewToken()).isEqualTo(previews[5].previewToken());
+        useClockAt("18:01");
+        assertThat(service.preview(12L).lateCheckoutPricingBasis()).isEqualTo("LAST_NIGHT");
+    }
+
+    @Test
+    void afterSixUsesLastNightRoomPriceOnlyAndBlocksUnreliableSnapshot() {
+        useClockAt("18:01");
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 300_000, "night one", 100_000),
+                nightly(LocalDate.of(2026, 10, 11), 500_000, "last night", 100_000)));
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000);
+        booking.setSurchargeAmount(200_000);
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThat(preview.lateCheckoutFee()).isEqualTo(BigDecimal.valueOf(500_000));
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualTo(BigDecimal.valueOf(1_500_000));
+
+        booking.setNightlyPriceSnapshots(List.of());
+        CheckoutPreviewResponse blocked = service.preview(12L);
+        assertThat(blocked.checkoutAllowed()).isFalse();
+        assertThat(blocked.checkoutBlockedReason()).contains("snapshot");
+    }
+
+    @Test
+    void checkoutAt1801UsesLastNightSnapshotAndPersistsSettlementOnce() {
+        useClockAt("18:01");
+        booking.setTotalAmount(800_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 300_000, "night one"),
+                nightly(LocalDate.of(2026, 10, 11), 500_000, "last night")));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(250_000));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.checkoutTimeSnapshot()).isEqualTo(LocalTime.NOON);
+        assertThat(preview.lateCheckoutPricingBasis()).isEqualTo("LAST_NIGHT");
+        assertThat(preview.lateCheckoutHours()).isZero();
+        assertThat(preview.lateCheckoutFee()).isEqualByComparingTo("500000");
+        assertThat(preview.lateCheckoutFee()).isEqualTo(BigDecimal.valueOf(
+                booking.getNightlyPriceSnapshots().get(1).getRoomPrice()));
+        assertThat(preview.checkoutAllowed()).isTrue();
+        assertThat(preview.nightlyBreakdownReliable()).isTrue();
+        assertThat(preview.roomTotal()).isEqualByComparingTo("800000");
+        assertThat(preview.bookingSurchargeTotal()).isEqualByComparingTo("0");
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo("1300000");
+        assertThat(preview.depositTotal()).isEqualByComparingTo("250000");
+        assertThat(preview.amount()).isEqualByComparingTo("1050000");
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo(
+                preview.roomTotal().add(preview.bookingSurchargeTotal()).add(BigDecimal.valueOf(500_000)));
+        assertThat(preview.amount()).isEqualByComparingTo(
+                preview.settlementTotalBeforeDeposit().subtract(preview.depositTotal()));
+
+        service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception");
+
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        BookingSettlement saved = captor.getValue();
+        assertThat(saved.getLateCheckoutFee()).isEqualTo(500_000L);
+        assertThat(saved.getLateCheckoutHours()).isZero();
+        assertThat(saved.getLateCheckoutPricingBasis()).isEqualTo("LAST_NIGHT");
+        assertThat(saved.getFinalTotal()).isEqualTo(1_300_000L);
+        assertThat(saved.getDepositTotal()).isEqualByComparingTo("250000");
+        assertThat(saved.getAmount()).isEqualByComparingTo("1050000");
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_TRA_PHONG);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        verify(settlementRepository, org.mockito.Mockito.times(1)).save(any(BookingSettlement.class));
+    }
+
+    @Test
+    void hourlyFeeStartsAtConfiguredCheckoutTime() {
+        settings.setCheckOutTime(LocalTime.of(11, 0));
+        useClockAt("12:00");
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.checkoutTimeSnapshot()).isEqualTo(LocalTime.of(11, 0));
+        assertThat(preview.lateCheckoutHours()).isEqualTo(1);
+        assertThat(preview.lateCheckoutFee()).isEqualByComparingTo("100000");
+    }
+
+    @Test
+    void s402SurchargesAreAddedOnceToSettlementAndRemainSeparateFromBookingTotal() {
+        BookingSurcharge line = surcharge(901L, 150_000L);
+        booking.setExtraGuestCount(1);
+        booking.setExtraPersonFeeSnapshot(100_000L);
+        booking.setSurchargeAmount(200_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 400_000, "Night 1", 100_000),
+                nightly(LocalDate.of(2026, 10, 11), 400_000, "Night 2", 100_000)));
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of(line));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(50_000));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.bookingSurcharges()).hasSize(1);
+        assertThat(preview.surchargeBreakdownComplete()).isTrue();
+        assertThat(preview.surchargeAmount()).isEqualByComparingTo("200000");
+        assertThat(preview.bookingSurchargeTotal()).isEqualByComparingTo("150000");
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo("1150000");
+        assertThat(preview.amount()).isEqualByComparingTo("1100000");
+
+        service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception");
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getRoomTotal()).isEqualByComparingTo("1000000");
+        assertThat(captor.getValue().getAdditionalSurchargeTotal()).isEqualTo(150_000L);
+        assertThat(captor.getValue().getLateCheckoutFee()).isEqualTo(0L);
+        assertThat(captor.getValue().getFinalTotal()).isEqualTo(1_150_000L);
+        assertThat(captor.getValue().getAmount()).isEqualByComparingTo("1100000");
+    }
+
+    @Test
+    void multipleS402LinesAreSummedOnceAndSnapshottedWithLateFee() {
+        useClockAt("13:01");
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of(
+                surcharge(903L, 75_000L), surcharge(904L, 125_000L)));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(200_000));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.bookingSurchargeTotal()).isEqualByComparingTo("200000");
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo("1400000");
+        assertThat(preview.amount()).isEqualByComparingTo("1200000");
+        service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception");
+
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getAdditionalSurchargeTotal()).isEqualTo(200_000L);
+        assertThat(captor.getValue().getLateCheckoutFee()).isEqualTo(200_000L);
+        assertThat(captor.getValue().getFinalTotal()).isEqualTo(1_400_000L);
+        assertThat(captor.getValue().getDepositTotal()).isEqualByComparingTo("200000");
+    }
+
+    @Test
+    void checkoutAt1320StoresTwoHourlyLateFeeAndSettlesCorrectAmount() {
+        useClockAt("13:20");
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of(
+                surcharge(905L, 75_000L), surcharge(906L, 125_000L)));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(200_000));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.checkoutTimeSnapshot()).isEqualTo(LocalTime.NOON);
+        assertThat(preview.lateCheckoutHours()).isEqualTo(2);
+        assertThat(preview.lateCheckoutFee()).isEqualByComparingTo("200000");
+        assertThat(preview.lateCheckoutPricingBasis()).isEqualTo("HOURLY");
+        assertThat(preview.checkoutAllowed()).isTrue();
+        assertThat(preview.roomTotal()).isEqualByComparingTo("1000000");
+        assertThat(preview.bookingSurchargeTotal()).isEqualByComparingTo("200000");
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo(
+                preview.roomTotal().add(preview.bookingSurchargeTotal()).add(BigDecimal.valueOf(200_000)));
+        assertThat(preview.depositTotal()).isEqualByComparingTo("200000");
+        assertThat(preview.amount()).isEqualByComparingTo(
+                preview.settlementTotalBeforeDeposit().subtract(preview.depositTotal()));
+
+        service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception");
+
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        BookingSettlement saved = captor.getValue();
+        assertThat(saved.getLateCheckoutFee()).isEqualTo(200_000L);
+        assertThat(saved.getLateCheckoutHours()).isEqualTo(2);
+        assertThat(saved.getLateCheckoutPricingBasis()).isEqualTo("HOURLY");
+        assertThat(saved.getFinalTotal()).isEqualTo(1_400_000L);
+        assertThat(saved.getDepositTotal()).isEqualByComparingTo("200000");
+        assertThat(saved.getAmount()).isEqualByComparingTo("1200000");
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_TRA_PHONG);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        verify(settlementRepository).findByBookingId(44L);
+        verify(settlementRepository, org.mockito.Mockito.times(1)).save(any(BookingSettlement.class));
+    }
+
+    @Test
+    void noS402LinesSnapshotsZeroAndLegacyFinalTotalRemainsNullable() {
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThat(preview.bookingSurchargeTotal()).isEqualByComparingTo("0");
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo("1000000");
+        service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception");
+
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getAdditionalSurchargeTotal()).isZero();
+        assertThat(captor.getValue().getFinalTotal()).isEqualTo(1_000_000L);
+
+        BookingSettlement legacy = new BookingSettlement();
+        assertThat(legacy.getFinalTotal()).isNull();
+    }
+
+    @Test
+    void addingS402SurchargeInvalidatesExistingPreviewToken() {
+        CheckoutPreviewResponse preview = service.preview(12L);
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L))
+                .thenReturn(List.of(surcharge(902L, 75_000L)));
+
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(settlementRepository, never()).save(any(BookingSettlement.class));
+    }
+
+    @Test
+    void changedSettingsVersionInvalidatesToken() {
+        useClockAt("13:20");
+        CheckoutPreviewResponse preview = service.preview(12L);
+        settings.setId(8L);
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(settlementRepository, never()).save(any(BookingSettlement.class));
+    }
+
+    @Test
+    void checkoutOnCalendarDayBeforeOrAfterExpectedDateIsRejected() {
+        useClockAt("2026-10-11", "13:00");
+        assertThat(service.preview(12L).checkoutAllowed()).isFalse();
+        useClockAt("2026-10-13", "13:00");
+        assertThat(service.preview(12L).checkoutAllowed()).isFalse();
+    }
+
+    private void useClockAt(String time) {
+        useClockAt("2026-10-12", time);
+    }
+
+    private void useClockAt(String date, String time) {
+        Clock fixed = Clock.fixed(OffsetDateTime.parse(date + "T" + time + ":00+07:00").toInstant(),
+                ZoneId.of("Asia/Ho_Chi_Minh"));
+        service = new CheckoutService(roomRepository, bookingRepository, settlementRepository,
+                surchargeRepository, historyRepository, depositService, settingsRepository, fixed);
+    }
+
+    private BookingSurcharge surcharge(long id, long amount) {
+        BookingSurcharge line = new BookingSurcharge();
+        line.setId(id);
+        line.setBooking(booking);
+        line.setSurchargeType(SurchargeType.THEM_GIUONG);
+        line.setQuantity(1);
+        line.setUnitPrice(amount);
+        line.setNights(1);
+        line.setAmount(amount);
+        return line;
     }
 
     @Test

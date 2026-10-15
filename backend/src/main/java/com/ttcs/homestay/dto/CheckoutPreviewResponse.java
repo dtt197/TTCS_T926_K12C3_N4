@@ -1,8 +1,11 @@
 package com.ttcs.homestay.dto;
 
+import com.ttcs.homestay.dto.booking.BookingSurchargeResponse;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 
 public record CheckoutPreviewResponse(
         Long bookingId,
@@ -23,7 +26,19 @@ public record CheckoutPreviewResponse(
         Long surchargeNights,
         BigDecimal roomTotalExcludingSurcharge,
         String surchargeBreakdownWarning,
+        List<BookingSurchargeResponse> bookingSurcharges,
+        BigDecimal bookingSurchargeTotal,
         BigDecimal depositTotal,
+        LocalTime checkoutTimeSnapshot,
+        OffsetDateTime serverCheckoutTime,
+        Long operatingSettingsId,
+        int lateCheckoutHours,
+        Long lateCheckoutFeePerHour,
+        BigDecimal lateCheckoutFee,
+        BigDecimal settlementTotalBeforeDeposit,
+        String lateCheckoutPricingBasis,
+        boolean checkoutAllowed,
+        String checkoutBlockedReason,
         String settlementType,
         BigDecimal amount,
         String previewToken) {

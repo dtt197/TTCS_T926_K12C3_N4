@@ -1002,7 +1002,12 @@ async function handleViewHistory(room: Room) {
             roomTotal: 0, surchargeAmount: 0, surchargeBreakdownComplete: false,
             extraGuestCount: null, extraPersonFeeSnapshot: null, surchargeNights: null,
             roomTotalExcludingSurcharge: null, surchargeBreakdownWarning: null,
-            depositTotal: 0, settlementType: 'ZERO', amount: 0, previewToken: 'demo',
+            bookingSurcharges: [], bookingSurchargeTotal: 0,
+            depositTotal: 0, checkoutTimeSnapshot: '12:00:00', serverCheckoutTime: new Date().toISOString(),
+            operatingSettingsId: 0, lateCheckoutHours: 0, lateCheckoutFeePerHour: 0,
+            lateCheckoutFee: 0, settlementTotalBeforeDeposit: 0, lateCheckoutPricingBasis: 'NONE',
+            checkoutAllowed: true, checkoutBlockedReason: null,
+            settlementType: 'ZERO', amount: 0, previewToken: 'demo',
           }
         : await getCheckoutPreview(room.id)
       setCheckoutDialog({ room, preview, paymentMethod: 'CASH', paymentReference: '', confirmed: false, error: null })
@@ -1820,6 +1825,15 @@ async function handleViewHistory(room: Room) {
               <h2 id="checkout-modal-title">Quyết toán và trả phòng</h2>
               <p>{checkoutDialog.preview.guestName} · Booking {checkoutDialog.preview.bookingCode} · Phòng {checkoutDialog.preview.roomNumber}</p>
               {checkoutDialog.preview.warning && <p className="checkout-warning">{checkoutDialog.preview.warning}</p>}
+              {!checkoutDialog.preview.checkoutAllowed && <p className="checkout-error" role="alert">{checkoutDialog.preview.checkoutBlockedReason}</p>}
+              <dl className="checkout-totals">
+                <div><dt>Giờ checkout chuẩn</dt><dd>{checkoutDialog.preview.checkoutTimeSnapshot.slice(0, 5)}</dd></div>
+                <div><dt>Thời điểm server</dt><dd>{new Date(checkoutDialog.preview.serverCheckoutTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</dd></div>
+                <div><dt>Số giờ tính phí</dt><dd>{checkoutDialog.preview.lateCheckoutHours}</dd></div>
+                <div><dt>Đơn giá theo giờ</dt><dd>{checkoutDialog.preview.lateCheckoutFeePerHour === null ? '—' : `${checkoutMoney.format(checkoutDialog.preview.lateCheckoutFeePerHour)} đ`}</dd></div>
+                <div><dt>Phụ thu trả muộn ({checkoutDialog.preview.lateCheckoutPricingBasis})</dt><dd>{checkoutMoney.format(checkoutDialog.preview.lateCheckoutFee)} đ</dd></div>
+                <div><dt>Tổng trước khi trừ cọc</dt><dd>{checkoutMoney.format(checkoutDialog.preview.settlementTotalBeforeDeposit)} đ</dd></div>
+              </dl>
               {checkoutDialog.preview.nightlyBreakdownReliable && (
                 <div className="checkout-night-table-wrap">
                   <table className="checkout-night-table">
@@ -1840,6 +1854,15 @@ async function handleViewHistory(room: Room) {
                   <div><dt>Chi tiết phụ thu thêm người</dt><dd>{checkoutDialog.preview.extraGuestCount} khách × {checkoutMoney.format(checkoutDialog.preview.extraPersonFeeSnapshot ?? 0)} đ/người/đêm × {checkoutDialog.preview.surchargeNights} đêm = {checkoutMoney.format(checkoutDialog.preview.surchargeAmount)} đ</dd></div>
                 )}
                 {checkoutDialog.preview.surchargeBreakdownWarning && <div><dt>Chi tiết phụ thu</dt><dd>{checkoutDialog.preview.surchargeBreakdownWarning}</dd></div>}
+                {checkoutDialog.preview.bookingSurcharges.map((line) => (
+                  <div key={line.id}>
+                    <dt>Phụ thu phát sinh: {line.type === 'THEM_NGUOI' ? 'thêm người' : 'thêm giường'}{line.note ? ` · ${line.note}` : ''}</dt>
+                    <dd>{line.quantity} × {checkoutMoney.format(line.unitPrice)} đ × {line.nights} đêm = {checkoutMoney.format(line.amount)} đ</dd>
+                  </div>
+                ))}
+                {checkoutDialog.preview.bookingSurcharges.length > 0 && (
+                  <div><dt>Tổng phụ thu phát sinh</dt><dd>{checkoutMoney.format(checkoutDialog.preview.bookingSurchargeTotal)} đ</dd></div>
+                )}
                 <div><dt>Tổng cọc hiện tại</dt><dd>{checkoutMoney.format(checkoutDialog.preview.depositTotal)} đ</dd></div>
                 <div><dt>{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Cần thu thêm' : checkoutDialog.preview.settlementType === 'REFUND' ? 'Cần hoàn lại' : 'Đã thanh toán đủ'}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.amount)} đ</dd></div>
               </dl>
@@ -1862,9 +1885,9 @@ async function handleViewHistory(room: Room) {
               )}
               {checkoutDialog.error && <p className="checkout-error" role="alert">{checkoutDialog.error}</p>}
               <div className="checkout-actions">
-                {checkoutDialog.error && !isDemoMode && <button type="button" className="secondary-button" onClick={() => void reloadCheckoutPreview()} disabled={isSaving}>Tải lại bảng quyết toán</button>}
+                {(checkoutDialog.error || !checkoutDialog.preview.checkoutAllowed) && !isDemoMode && <button type="button" className="secondary-button" onClick={() => void reloadCheckoutPreview()} disabled={isSaving}>Tải lại bảng quyết toán</button>}
                 <button type="button" className="secondary-button" onClick={() => setCheckoutDialog(null)} disabled={isSaving}>Đóng</button>
-                <button type="button" className="primary-button" onClick={() => void confirmCheckout()} disabled={isSaving || (checkoutDialog.preview.settlementType !== 'ZERO' && (!checkoutDialog.confirmed || (checkoutDialog.paymentMethod === 'BANK_TRANSFER' && !checkoutDialog.paymentReference.trim())))}>
+                <button type="button" className="primary-button" onClick={() => void confirmCheckout()} disabled={isSaving || !checkoutDialog.preview.checkoutAllowed || (checkoutDialog.preview.settlementType !== 'ZERO' && (!checkoutDialog.confirmed || (checkoutDialog.paymentMethod === 'BANK_TRANSFER' && !checkoutDialog.paymentReference.trim())))}>
                   {isSaving ? 'Đang xử lý…' : 'Xác nhận quyết toán và trả phòng'}
                 </button>
               </div>
