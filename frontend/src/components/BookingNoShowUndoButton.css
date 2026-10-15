@@ -1,0 +1,135 @@
+/* S4-04 (SCRUM-151): Styles cho nút Hoàn tác và đồng hồ đếm ngược 15 phút */
+.no-show-undo-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.no-show-undo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.no-show-undo-btn.inline {
+  padding: 4px 10px;
+  font-size: 12px;
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.no-show-undo-btn.inline:hover:not(:disabled) {
+  background-color: #fde68a;
+  border-color: #d97706;
+}
+
+.no-show-undo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.no-show-undo-card {
+  margin: 16px 0;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1.5px solid #f59e0b;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+}
+
+.no-show-undo-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.no-show-undo-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.no-show-undo-icon {
+  font-size: 24px;
+}
+
+.no-show-undo-header p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #78350f;
+}
+
+.no-show-countdown-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #fbbf24;
+}
+
+.countdown-label {
+  font-size: 12px;
+  color: #92400e;
+  font-weight: 500;
+}
+
+.countdown-clock {
+  font-size: 16px;
+  font-weight: 800;
+  font-family: monospace;
+  color: #b45309;
+}
+
+.no-show-undo-btn.detail {
+  padding: 10px 18px;
+  font-size: 14px;
+  background-color: #d97706;
+  color: #ffffff;
+  border: none;
+  align-self: flex-start;
+}
+
+.no-show-undo-btn.detail:hover:not(:disabled) {
+  background-color: #b45309;
+}
+
+.no-show-undo-expired {
+  margin: 10px 0;
+  padding: 10px 14px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.no-show-undo-error {
+  padding: 8px 12px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.no-show-undo-error-tooltip {
+  font-size: 11px;
+  color: #dc2626;
+}
+
+.no-show-undo-loading {
+  font-size: 12px;
+  color: #9ca3af;
+}

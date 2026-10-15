@@ -186,3 +186,28 @@ export type CustomerNoShowResponse = {
   hasWarning: boolean
   warningMessage: string | null
 }
+
+/** S4-04 (SCRUM-151): Thông tin điều kiện hoàn tác thao tác không đến. */
+export type NoShowUndoEligibility = {
+  bookingId: number
+  bookingCode: string
+  eligible: boolean
+  reason: string
+  markedAt: string | null
+  expiresAt: string | null
+  remainingSeconds: number
+  receptionistId: number | null
+  receptionistName: string | null
+}
+
+/** S4-04 (SCRUM-151): Nhật ký thao tác lịch hẹn / booking. */
+export type AppointmentActionLog = {
+  id: number
+  appointmentId: number
+  receptionistId: number | null
+  receptionistName: string | null
+  actionType: string
+  previousStatus: string | null
+  createdAt: string
+}
+

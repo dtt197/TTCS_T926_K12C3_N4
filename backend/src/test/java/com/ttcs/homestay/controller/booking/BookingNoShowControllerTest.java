@@ -10,9 +10,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ttcs.homestay.dto.booking.AppointmentActionLogResponse;
 import com.ttcs.homestay.dto.booking.BookingResponse;
 import com.ttcs.homestay.dto.booking.CustomerNoShowResponse;
 import com.ttcs.homestay.dto.booking.NoShowEligibilityResponse;
+import com.ttcs.homestay.dto.booking.NoShowUndoEligibilityResponse;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
@@ -178,5 +180,75 @@ class BookingNoShowControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.noShowCount").value(1))
                 .andExpect(jsonPath("$.hasWarning").value(true));
+    }
+
+    @Test
+    void checkUndoEligibility_receptionist_returnsSuccess() throws Exception {
+        OffsetDateTime now = OffsetDateTime.now(BookingNoShowService.ZONE_VN);
+        NoShowUndoEligibilityResponse response = new NoShowUndoEligibilityResponse(
+                10L, "BK-000010", true, "Có thể hoàn tác",
+                now.minusMinutes(5), now.plusMinutes(10), 600, 201L, "Lễ tân Hoa"
+        );
+        when(noShowService.checkUndoEligibility(10L)).thenReturn(response);
+
+        mockMvc.perform(get("/api/bookings/10/no-show/undo-eligibility")
+                        .header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.eligible").value(true))
+                .andExpect(jsonPath("$.remainingSeconds").value(600))
+                .andExpect(jsonPath("$.receptionistName").value("Lễ tân Hoa"));
+    }
+
+    @Test
+    void undoNoShow_receptionist_returnsSuccess() throws Exception {
+        BookingResponse response = new BookingResponse(
+                10L, "BK-000010", "Nguyen Van A", 1L, "Deluxe",
+                LocalDate.now(), LocalDate.now().plusDays(1),
+                500000L, 600000L, "SATURDAY,SUNDAY", 500000L,
+                BookingStatus.DA_XAC_NHAN, OffsetDateTime.now(), false, "0987654321", null, null, null
+        );
+
+        when(noShowService.undoNoShow(eq(10L), any(), any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/bookings/10/no-show/undo")
+                        .header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DA_XAC_NHAN"))
+                .andExpect(jsonPath("$.bookingCode").value("BK-000010"));
+
+        verify(noShowService).undoNoShow(eq(10L), any(), any());
+    }
+
+    @Test
+    void undoNoShow_appointmentAlias_works() throws Exception {
+        BookingResponse response = new BookingResponse(
+                11L, "BK-000011", "Tran Thi B", 1L, "Deluxe",
+                LocalDate.now(), LocalDate.now().plusDays(1),
+                500000L, 600000L, "SATURDAY,SUNDAY", 500000L,
+                BookingStatus.DA_XAC_NHAN, OffsetDateTime.now(), false, "0987654322", null, null, null
+        );
+
+        when(noShowService.undoNoShow(eq(11L), any(), any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/appointments/11/no-show/undo")
+                        .header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DA_XAC_NHAN"));
+    }
+
+    @Test
+    void getActionLogs_receptionist_returnsLogs() throws Exception {
+        OffsetDateTime now = OffsetDateTime.now(BookingNoShowService.ZONE_VN);
+        AppointmentActionLogResponse log = new AppointmentActionLogResponse(
+                1L, 10L, 201L, "Lễ tân Hoa", "MARK_NO_SHOW", "DA_XAC_NHAN", now
+        );
+        when(noShowService.getActionLogs(10L)).thenReturn(List.of(log));
+
+        mockMvc.perform(get("/api/bookings/10/action-logs")
+                        .header("Authorization", "Bearer receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].actionType").value("MARK_NO_SHOW"))
+                .andExpect(jsonPath("$[0].receptionistName").value("Lễ tân Hoa"))
+                .andExpect(jsonPath("$[0].previousStatus").value("DA_XAC_NHAN"));
     }
 }

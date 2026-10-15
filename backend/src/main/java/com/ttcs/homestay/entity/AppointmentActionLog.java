@@ -31,13 +31,21 @@ public class AppointmentActionLog {
     @Column(name = "action_type", nullable = false, length = 50)
     private String actionType;
 
+    @Column(name = "previous_status", length = 50)
+    private String previousStatus;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
     public AppointmentActionLog(Long appointmentId, Long receptionistId, String actionType) {
+        this(appointmentId, receptionistId, actionType, null);
+    }
+
+    public AppointmentActionLog(Long appointmentId, Long receptionistId, String actionType, String previousStatus) {
         this.appointmentId = appointmentId;
         this.receptionistId = receptionistId;
         this.actionType = actionType;
+        this.previousStatus = previousStatus;
         this.createdAt = OffsetDateTime.now();
     }
 }
