@@ -72,6 +72,7 @@ type View =
 
   | 'walkInBooking'
   | 'occupancyReport'
+
   | 'security-matrix'
 
 type Tab = {
@@ -94,6 +95,14 @@ const TABS: ReadonlyArray<Tab> = [
   { view: 'occupancyReport', path: '/bao-cao-cong-suat', label: 'Công suất phòng', title: 'Báo cáo công suất phòng', icon: '◔', permission: 'reports:occupancy' },
 
 
+  {
+    view: 'occupancyReport',
+    path: '/bao-cao-cong-suat',
+    label: 'Công suất phòng',
+    title: 'Báo cáo công suất phòng',
+    icon: '◔',
+    permission: 'reports:occupancy',
+  },
   {
 
     view: 'roomCalendar',
@@ -766,6 +775,8 @@ export function InternalHomePage({
           ) : activeView === 'walkInBooking' ? (
 
             <WalkInBookingPage />
+          ) : activeView === 'occupancyReport' ? (
+            <OccupancyReportPage />
 
           ) : activeView === 'audit-logs' ? (
 

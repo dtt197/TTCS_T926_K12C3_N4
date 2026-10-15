@@ -1,1 +1,17 @@
 .occupancy-report{display:grid;gap:20px}.occupancy-filter{display:flex;gap:14px;align-items:end;flex-wrap:wrap;padding:18px;background:#fff;border:1px solid #e3e8e3;border-radius:14px}.occupancy-filter label{display:grid;gap:6px;color:#24483c;font-weight:700}.occupancy-filter input,.occupancy-filter select{padding:10px;border:1px solid #cbd8cf;border-radius:8px;font:inherit}.occupancy-filter button{border:0;border-radius:8px;padding:11px 18px;background:#176b52;color:#fff;font-weight:700;cursor:pointer}.occupancy-filter .csv-button{background:#2365a5}.occupancy-filter button:disabled{opacity:.6}.occupancy-error{margin:0;padding:12px;color:#a23728;background:#fff0ed;border-left:3px solid #df664c}.occupancy-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.occupancy-summary article{padding:18px;border-radius:14px;background:#fff;border:1px solid #e3e8e3;display:grid;gap:6px}.occupancy-summary span{color:#547064}.occupancy-summary strong{font-size:27px;color:#123f30}.occupancy-summary small{color:#667b72}.occupancy-table-wrap{overflow:auto;background:#fff;border:1px solid #e3e8e3;border-radius:14px}table{width:100%;border-collapse:collapse}th,td{padding:13px;text-align:left;border-bottom:1px solid #edf1ed}th{background:#f2f7f2;color:#24483c}
+.occupancy-report { display: grid; gap: 18px; padding: 20px; background: #fff; border-radius: 12px; }
+.occupancy-report-filter { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
+.occupancy-report-filter label { display: grid; gap: 6px; color: #334155; font-weight: 600; }
+.occupancy-report-filter input { min-height: 42px; padding: 7px 10px; border: 1px solid #94a3b8; border-radius: 7px; font: inherit; }
+.occupancy-report-filter button { min-height: 42px; padding: 0 18px; border: 0; border-radius: 7px; background: #1f5f46; color: #fff; font-weight: 700; cursor: pointer; }
+.occupancy-report-filter button:disabled { opacity: .65; cursor: wait; }
+.occupancy-report-note { margin: 0; color: #526175; font-size: 14px; }
+.occupancy-report-error { margin: 0; color: #a33a22; font-weight: 600; }
+.occupancy-average { display: grid; gap: 6px; padding: 20px; color: #14532d; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; }
+.occupancy-average strong { font-size: clamp(28px, 5vw, 42px); line-height: 1; }
+.occupancy-average small { color: #526175; }
+.occupancy-table-wrap { overflow: auto; border: 1px solid #cbd5e1; border-radius: 8px; }
+.occupancy-table-wrap table { width: 100%; border-collapse: collapse; min-width: 620px; }
+.occupancy-table-wrap caption { padding: 12px; text-align: left; color: #334155; font-weight: 600; }
+.occupancy-table-wrap th, .occupancy-table-wrap td { padding: 12px; border-top: 1px solid #e2e8f0; text-align: left; }
+.occupancy-table-wrap th { color: #334155; background: #f8fafc; }
