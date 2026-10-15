@@ -55,6 +55,7 @@ export type WalkInBookingResult = {
   nights: number
   guestCount: number
   createdAt: string
+  depositAmount: number
 }
 /** S2-06: một đêm trong bảng tạm tính. label là "Ngày thường", "Cuối tuần" hoặc tên đợt lễ. */
 export type QuoteNight = {

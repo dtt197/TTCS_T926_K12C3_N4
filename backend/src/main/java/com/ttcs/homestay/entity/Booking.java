@@ -139,4 +139,7 @@ public class Booking {
 
     @OneToMany(mappedBy = "booking")
     private List<BookingGuest> guests = new ArrayList<>();
+
+    @OneToMany(mappedBy = "booking", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private List<BookingNightlyPriceSnapshot> nightlyPriceSnapshots = new ArrayList<>();
 }

@@ -1185,6 +1185,24 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   padding: 16px;
   background: rgba(15, 23, 42, 0.6);
 }
+
+.checkout-modal-backdrop { position: fixed; inset: 0; z-index: 1300; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15,23,42,.62); }
+.checkout-modal-card { width: min(760px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 24px; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgba(15,23,42,.28); }
+.checkout-modal-card h2 { margin: 0 0 8px; font-size: 21px; }
+.checkout-warning { padding: 11px 13px; border-radius: 8px; color: #92400e; background: #fffbeb; }
+.checkout-night-table-wrap { overflow-x: auto; margin: 16px 0; }
+.checkout-night-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.checkout-night-table th, .checkout-night-table td { padding: 9px 8px; border-bottom: 1px solid #e2e8f0; text-align: right; white-space: nowrap; }
+.checkout-night-table th:first-child, .checkout-night-table td:first-child { text-align: left; }
+.checkout-totals { display: grid; gap: 8px; margin: 18px 0; }
+.checkout-totals > div { display: flex; justify-content: space-between; gap: 16px; }
+.checkout-totals dt { color: #475569; }
+.checkout-totals dd { margin: 0; font-weight: 700; }
+.checkout-field { display: grid; gap: 6px; margin: 12px 0; font-weight: 600; }
+.checkout-field input, .checkout-field select { min-height: 40px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; }
+.checkout-confirm { display: flex; align-items: flex-start; gap: 9px; margin: 14px 0; }
+.checkout-error { color: #b91c1c; }
+.checkout-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 .early-checkin-modal-card {
   width: min(100%, 460px);
   border-radius: 16px;

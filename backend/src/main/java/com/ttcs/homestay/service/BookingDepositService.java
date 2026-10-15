@@ -64,6 +64,18 @@ public class BookingDepositService {
         return total.setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
     }
 
+    @Transactional(readOnly = true)
+    public BigDecimal currentDepositTotalExact(Booking booking) {
+        BookingDeposit deposit = bookingDepositRepository.findByBooking(booking).orElse(null);
+        if (deposit == null) return BigDecimal.ZERO;
+        BigDecimal total = deposit.getAmount();
+        if (adjustmentRepository != null && booking.getId() != null) {
+            BigDecimal adjustments = adjustmentRepository.sumSignedAmountsByBookingId(booking.getId());
+            if (adjustments != null) total = total.add(adjustments);
+        }
+        return total;
+    }
+
     @Transactional
     public BookingConfirmResponse confirmBooking(Long id, BookingConfirmRequest request, String createdBy) {
         Booking booking = bookingRepository.findByIdForUpdate(id)
@@ -99,16 +111,9 @@ public class BookingDepositService {
             throw new DuplicatePaymentException("Đã có tiền cọc cho booking này");
         }
 
-        BookingDeposit deposit = new BookingDeposit();
-        deposit.setBooking(booking);
-        deposit.setAmount(request.amount());
-        deposit.setPaymentMethod(request.paymentMethod().trim().toUpperCase(java.util.Locale.ROOT));
-        deposit.setReceivedDate(request.receivedDate());
-        deposit.setPaymentReference(normalizePaymentReference(request.paymentReference()));
-        deposit.setCreatedBy(createdBy);
-        deposit.setCreatedAt(OffsetDateTime.now());
-
-        BookingDeposit savedDeposit = bookingDepositRepository.save(deposit);
+        BookingDeposit savedDeposit = recordOriginalDeposit(
+                booking, request.amount(), request.paymentMethod(), request.receivedDate(),
+                request.paymentReference(), createdBy);
 
         // Ghi nhận cọc + chuyển booking sang DA_XAC_NHAN + xóa holdExpiresAt
         booking.setStatus(com.ttcs.homestay.entity.BookingStatus.DA_XAC_NHAN);
@@ -131,7 +136,31 @@ public class BookingDepositService {
 );
     }
 
-    private void validateDeposit(BigDecimal amount, String paymentMethod, String paymentReference) {
+    @Transactional
+    public BookingDeposit recordOriginalDeposit(Booking booking, BigDecimal amount, String paymentMethod,
+            java.time.LocalDate receivedDate, String paymentReference, String createdBy) {
+        validateDeposit(amount, paymentMethod, paymentReference);
+        if (amount.compareTo(BigDecimal.valueOf(booking.getTotalAmount())) > 0) {
+            throw new InvalidDepositException("Tiá»n cá»c khÃ´ng Ä‘Æ°á»£c lá»›n hÆ¡n tá»•ng tiá»n Ä‘áº·t phÃ²ng");
+        }
+        if (receivedDate == null) {
+            throw new InvalidDepositException("NgÃ y nháº­n cá»c lÃ  báº¯t buá»™c");
+        }
+        if (bookingDepositRepository.existsByBooking(booking)) {
+            throw new DuplicatePaymentException("ÄÃ£ cÃ³ tiá»n cá»c cho booking nÃ y");
+        }
+        BookingDeposit deposit = new BookingDeposit();
+        deposit.setBooking(booking);
+        deposit.setAmount(amount);
+        deposit.setPaymentMethod(paymentMethod.trim().toUpperCase(java.util.Locale.ROOT));
+        deposit.setReceivedDate(receivedDate);
+        deposit.setPaymentReference(normalizePaymentReference(paymentReference));
+        deposit.setCreatedBy(createdBy);
+        deposit.setCreatedAt(OffsetDateTime.now());
+        return bookingDepositRepository.save(deposit);
+    }
+
+    public void validateDeposit(BigDecimal amount, String paymentMethod, String paymentReference) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidDepositException("Số tiền cọc phải dương");
         }

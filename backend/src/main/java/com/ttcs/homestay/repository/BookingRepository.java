@@ -26,6 +26,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     @Query("select b from Booking b where b.id = :id")
     Optional<Booking> findByIdForUpdate(@Param("id") Long id);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Booking b where b.room.id = :roomId and b.status = :status order by b.id")
+    List<Booking> findByRoomAndStatusForUpdate(@Param("roomId") Long roomId,
+            @Param("status") BookingStatus status);
+
+    @Query("select b from Booking b where b.room.id = :roomId and b.status = :status order by b.id")
+    List<Booking> findByRoomAndStatus(@Param("roomId") Long roomId,
+            @Param("status") BookingStatus status);
+
     List<Booking> findAllByOrderByCreatedAtDescIdDesc();
 
     /** S2-07: mã booking đã có chưa (sinh lại nếu trùng). */

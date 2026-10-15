@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 public record WalkInBookingRequest(
         @NotNull(message = "Vui lòng chọn loại phòng")
@@ -39,6 +40,15 @@ public record WalkInBookingRequest(
         Integer guestCount,
 
         @Size(max = 500, message = "Ghi chú tối đa 500 ký tự")
-        String note
+        String note,
+
+        @NotNull(message = "Tiá»n cá»c Ä‘Ã£ thu khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+        @Min(value = 0, message = "Tiá»n cá»c khÃ´ng Ä‘Æ°á»£c Ã¢m")
+        BigDecimal depositAmount,
+
+        String depositPaymentMethod,
+
+        @Size(max = 255, message = "MÃ£ giao dá»‹ch tá»‘i Ä‘a 255 kÃ½ tá»±")
+        String depositPaymentReference
 ) {
 }
