@@ -77,6 +77,7 @@ public class SecurityConfig {
                         // Thông tin phiên đăng nhập
                         .requestMatchers("/api/internal/**").authenticated()
 
+                        // S4-06: Chủ homestay xem báo cáo công suất theo loại phòng.
                         // S4-06: báo cáo công suất chỉ dành cho chủ homestay.
                         .requestMatchers(HttpMethod.GET, "/api/reports/occupancy").hasRole("OWNER")
                         .requestMatchers(HttpMethod.GET, "/api/maintenance-requests/cleaning-room-ids")
