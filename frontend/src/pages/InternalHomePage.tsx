@@ -95,6 +95,7 @@ const TABS: ReadonlyArray<Tab> = [
   { view: 'occupancyReport', path: '/bao-cao-cong-suat', label: 'Công suất phòng', title: 'Báo cáo công suất phòng', icon: '◔', permission: 'reports:occupancy' },
 
 
+
   {
     view: 'occupancyReport',
     path: '/bao-cao-cong-suat',

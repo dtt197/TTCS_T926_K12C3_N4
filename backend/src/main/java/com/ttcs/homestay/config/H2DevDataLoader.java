@@ -66,6 +66,8 @@ public class H2DevDataLoader implements ApplicationRunner {
 
         // Tài khoản Chủ homestay mẫu: owner.demo@homestay.local / password.
         // Dùng để kiểm tra báo cáo công suất chỉ dành cho OWNER.
+
+        // Tài khoản Chủ homestay mẫu để thử các chức năng chỉ OWNER được phép xem, như báo cáo công suất.
         Long ownerRoleId = jdbcTemplate.queryForObject("SELECT id FROM roles WHERE code = 'OWNER'", Long.class);
         Integer ownerCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM users WHERE email = 'owner.demo@homestay.local'", Integer.class);
