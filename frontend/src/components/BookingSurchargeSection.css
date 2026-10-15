@@ -24,3 +24,6 @@
 .booking-surcharge-muted { color: #6b7c70; margin: 6px 0; }
 .booking-surcharge-error { color: #b42318; margin: 6px 0; }
 @media (max-width: 640px) { .booking-surcharge-form { grid-template-columns: 1fr; } }
+/* S4-02 Lát 3: dòng "Đang có X khách / tối đa Y" */
+.booking-surcharge-capacity { margin: 0; padding: 6px 10px; border-radius: 8px; background: #eef5ef; color: #2f6b4a; font-size: 13px; }
+.booking-surcharge-capacity.is-full { background: #fdecea; color: #b42318; }

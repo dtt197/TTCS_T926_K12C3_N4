@@ -21,6 +21,9 @@ export type BookingSurchargeList = {
   defaultExtraBedPrice: number
   items: BookingSurcharge[]
   totalAmount: number
+  currentGuestCount: number | null
+  maxCapacity: number | null
+  remainingCapacity: number | null
 }
 
 export type BookingSurchargeRequest = {

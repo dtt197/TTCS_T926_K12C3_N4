@@ -45,7 +45,11 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
   const quantityValue = Number(quantity)
   const nightsValue = Number(nights)
   const previewValid = Number.isInteger(quantityValue) && quantityValue >= 1 && Number.isInteger(nightsValue) && nightsValue >= 1
-
+  // S4-02 Lát 3: số người thêm không vượt số chỗ còn lại của loại phòng.
+  const isExtraPerson = type === 'THEM_NGUOI'
+  const remainingCapacity = data?.remainingCapacity ?? null
+  const quantityMax = isExtraPerson && remainingCapacity !== null ? Math.min(10, remainingCapacity) : 10
+  const roomFull = isExtraPerson && remainingCapacity !== null && remainingCapacity <= 0
   function resetForm() {
     setShowForm(false)
     setType('THEM_NGUOI')
@@ -60,6 +64,14 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
     if (!data) return
     if (!Number.isInteger(quantityValue) || quantityValue < 1) {
       setFormError('Số lượng phải từ 1 trở lên.')
+      return
+    }
+      if (quantityValue > quantityMax) {
+      setFormError(isExtraPerson && remainingCapacity !== null
+        ? (roomFull
+          ? `Phòng đã đủ sức chứa tối đa ${data.maxCapacity} khách, không thể thêm người.`
+          : `Chỉ thêm được tối đa ${quantityMax} người (đang có ${data.currentGuestCount} khách / tối đa ${data.maxCapacity}).`)
+        : 'Số lượng tối đa là 10.')
       return
     }
     if (!Number.isInteger(nightsValue) || nightsValue < 1 || nightsValue > data.maxNights) {
@@ -94,7 +106,9 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
           </button>
         )}
       </div>
-
+      {data && data.maxCapacity !== null && (
+        <p className="booking-surcharge-muted">Số khách: {data.currentGuestCount} / tối đa {data.maxCapacity}</p>
+      )}
       {loadError && <p className="booking-surcharge-error" role="alert">{loadError}</p>}
       {!data && !loadError && <p className="booking-surcharge-muted">Đang tải phụ thu...</p>}
 
@@ -159,9 +173,15 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
                 Đơn giá mặc định
                 <input value={money.format(unitPrice)} readOnly aria-readonly="true" />
               </label>
+              {isExtraPerson && data.maxCapacity !== null && (
+                <p className={`booking-surcharge-capacity booking-surcharge-wide${roomFull ? ' is-full' : ''}`}>
+                  Đang có {data.currentGuestCount} khách / tối đa {data.maxCapacity}
+                  {roomFull ? ' · đã đủ sức chứa, không thể thêm người' : ` · còn ${remainingCapacity} chỗ`}
+                </p>
+              )}
               <label>
                 Số lượng
-                <input type="number" min={1} max={10} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+                <input type="number" min={1} max={Math.max(1, quantityMax)} value={quantity} onChange={(e) => setQuantity(e.target.value)} disabled={roomFull} />
               </label>
               <label>
                 Số đêm áp dụng (tối đa {data.maxNights})
@@ -177,7 +197,7 @@ export function BookingSurchargeSection({ bookingId, canAdd }: BookingSurchargeS
               {formError && <p className="booking-surcharge-error" role="alert">{formError}</p>}
               <div className="booking-surcharge-actions">
                 <button type="button" onClick={resetForm} disabled={saving}>Huỷ</button>
-                <button type="submit" className="booking-surcharge-add" disabled={saving}>
+                <button type="submit" className="booking-surcharge-add" disabled={saving || roomFull}>
                   {saving ? 'Đang lưu...' : 'Lưu phụ thu'}
                 </button>
               </div>
