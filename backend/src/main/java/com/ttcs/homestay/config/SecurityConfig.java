@@ -63,6 +63,238 @@ public class SecurityConfig {
                 .formLogin(formLogin -> formLogin.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize
+
+                        // API xác thực công khai
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/refresh",
+                                "/api/auth/logout",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password"
+                        ).permitAll()
+
+                        // Thông tin phiên đăng nhập
+                        .requestMatchers("/api/internal/**").authenticated()
+
+                        // S4-06: báo cáo công suất chỉ dành cho chủ homestay.
+                        .requestMatchers(HttpMethod.GET, "/api/reports/occupancy").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.GET, "/api/maintenance-requests/cleaning-room-ids")
+                        .hasRole("HOUSEKEEPING")
+                        .requestMatchers(HttpMethod.GET, "/api/maintenance-requests", "/api/maintenance-requests/*")
+                        .hasAnyRole("OWNER", "RECEPTIONIST", "HOUSEKEEPING")
+                        .requestMatchers(HttpMethod.POST, "/api/maintenance-requests/*/accept", "/api/maintenance-requests/*/start",
+                                "/api/maintenance-requests/*/repair-completed", "/api/maintenance-requests/*/verify")
+                        .hasRole("OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/maintenance-requests/*/cleaning-completed")
+                        .hasRole("HOUSEKEEPING")
+                        .requestMatchers(HttpMethod.PUT, "/api/maintenance-requests/*/vendor")
+                        .hasRole("OWNER")
+
+                        // Inbox notifications are scoped to the authenticated OWNER or RECEPTIONIST.
+                        .requestMatchers(HttpMethod.GET, "/api/notifications")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/stream")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/unread-count")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
+                        .requestMatchers(HttpMethod.PATCH, "/api/notifications/*/read")
+                        .hasAnyRole(NotificationController.ALLOWED_ROLES)
+
+                        // S1-05: nhật ký chỉ ADMIN được xem
+                        .requestMatchers("/api/admin/audit-logs/**").hasRole("ADMIN")
+
+                        // S1-04: ADMIN và OWNER được xem danh sách tài khoản
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/admin/users"
+                        ).hasAnyRole("ADMIN", "OWNER")
+
+                        // Các thao tác quản lý tài khoản chỉ dành cho ADMIN
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Tài khoản cá nhân
+                        .requestMatchers("/api/account/**").authenticated()
+
+                        // Calendar contains booking occupancy; keep before the general room matcher.
+                        .requestMatchers(HttpMethod.GET, "/api/rooms/calendar").hasRole("RECEPTIONIST")
+
+                        // S1-04: Xem danh sách và thông tin phòng
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/rooms",
+                                "/api/rooms/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "OWNER",
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // Cập nhật trạng thái phòng
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/rooms/*/status"
+                        ).hasAnyRole(
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // Cập nhật bảo trì phòng (lễ tân / admin)
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/rooms/*/maintenance"
+                        ).hasAnyRole(
+                                "RECEPTIONIST"
+                        )
+
+                        // S3-09: Buồng phòng báo sự cố → chuyển sang bảo trì
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/rooms/*/incident"
+                        ).hasAnyRole(
+                                "HOUSEKEEPING"
+                        )
+
+                        // Check-in và check-out
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/rooms/*/check-in",
+                                "/api/rooms/*/check-out"
+                        ).hasAnyRole(
+                                "RECEPTIONIST"
+                        )
+
+                        // Quản lý thông tin phòng
+                        .requestMatchers("/api/room-management/**")
+                        .hasAnyRole("ADMIN", "OWNER")
+
+                        // S1-06: xem loại phòng cho 4 vai trò nội bộ (ma trận: R)
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/room-types",
+                                "/api/room-types/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "OWNER",
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // S1-06: thêm/sửa/ngừng bán/xoá loại phòng (ma trận: Chủ homestay và Admin = F)
+                        .requestMatchers("/api/room-types/**")
+                        .hasAnyRole("ADMIN", "OWNER")
+                                                // S1-08: xem tiện nghi cho 4 vai trò nội bộ (ma trận: R)
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/amenities",
+                                "/api/amenities/**"
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "OWNER",
+                                "RECEPTIONIST",
+                                "HOUSEKEEPING"
+                        )
+
+                        // S1-08: thêm/sửa/ngừng dùng/xoá tiện nghi (ma trận: Chủ homestay và Admin = F)
+                        .requestMatchers("/api/amenities/**")
+                        .hasAnyRole("ADMIN", "OWNER")
+                        // S1-09: lịch sử thay đổi tham số (Chủ homestay, Quản trị)
+                        .requestMatchers(HttpMethod.GET, "/api/settings/history")
+                        .hasAnyRole("OWNER", "ADMIN")
+
+                        // S1-09: xem tham số (ma trận "Bảng giá và chính sách huỷ": Lễ tân R, Admin R)
+                        .requestMatchers(HttpMethod.GET, "/api/settings")
+                        .hasAnyRole("OWNER", "ADMIN", "RECEPTIONIST")
+
+                        // S1-09: sửa tham số chỉ Chủ homestay (ma trận: F)
+                        .requestMatchers(HttpMethod.PUT, "/api/settings")
+                        .hasRole("OWNER")
+                                                // S2-02: xem giá đè (ma trận "Bảng giá và chính sách huỷ": Admin R, Lễ tân R)
+                        .requestMatchers(HttpMethod.GET, "/api/price-overrides", "/api/price-overrides/**")
+                        .hasAnyRole("OWNER", "ADMIN", "RECEPTIONIST")
+
+                        // S2-02: thêm/sửa/xoá giá đè chỉ Chủ homestay (ma trận: F)
+                        .requestMatchers("/api/price-overrides/**")
+                        .hasRole("OWNER")
+
+                        // S2-01 & S3-04: chỉ Lễ tân tạo booking và xem trước thay đổi (ma trận "Vận hành booking": Lễ tân F, Chủ R, Admin R).
+                        .requestMatchers(HttpMethod.POST, "/api/bookings", "/api/bookings/*/preview")
+                        .hasRole("RECEPTIONIST")
+                        
+                        // S3-05: Lễ tân huỷ booking (theo story; chờ PO xác nhận Chủ homestay và Admin có được huỷ không)
+                        .requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel")
+                        .hasRole("RECEPTIONIST") 
+
+                        // S3-01: ghi bút toán điều chỉnh cọc dành cho Lễ tân và Chủ homestay.
+                        .requestMatchers(HttpMethod.POST, "/api/bookings/*/deposit-adjustments")
+                        .hasAnyRole("OWNER", "RECEPTIONIST")
+
+                        // S3-01: Le tan xac nhan booking va ghi nhan tien coc.
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/confirm")
+                        .hasRole("RECEPTIONIST")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/room")
+                        .hasRole("RECEPTIONIST")
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/room-change")
+                        .hasRole("RECEPTIONIST")
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/*/room-change-history")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/*/available-rooms")
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        
+                        // S3-02 Lát 3: chỉ Lễ tân được huỷ booking (ma trận "Vận hành booking": Lễ tân F, Chủ R, Admin R).
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/cancel")
+                        .hasRole("RECEPTIONIST")
+                        // S3-01: tiền cọc theo ma trận "Thanh toán, đặt cọc": Chủ F, Lễ tân W, Admin R.
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*/deposit",
+                                "/api/bookings/*/deposits/**")
+                        .hasAnyRole("OWNER", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.DELETE, "/api/bookings/*/deposit",
+                                "/api/bookings/*/deposits/**", "/api/bookings/*")
+                        .hasAnyRole("OWNER", "RECEPTIONIST")
+
+                        // Lễ tân có thể cập nhật ngày lưu trú và loại phòng của booking hiện có.
+                        .requestMatchers(HttpMethod.PUT, "/api/bookings/*")
+                        .hasRole("RECEPTIONIST")
+                        
+                        // S2-02 Lát 2: xem giá từng đêm (ma trận "Bảng giá": Chủ F, Admin R, Lễ tân R)
+                        .requestMatchers(HttpMethod.GET, "/api/pricing/**")
+                        .hasAnyRole("OWNER", "ADMIN", "RECEPTIONIST")
+
+                        .requestMatchers(
+                          HttpMethod.GET,
+                         "/api/bookings",
+                         "/api/bookings/**"
+)
+                        .hasAnyRole("ADMIN", "OWNER", "RECEPTIONIST")
+                        // S2-07 & S2-04: trang đặt phòng và danh mục/chi tiết loại phòng công khai, khách không cần đăng nhập
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/public/room-types",
+                                "/api/public/room-types/**",
+                                "/api/public/room-types-catalog"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/quote").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/room-type-cards").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/public/bookings").permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/public/bookings/walk-in"
+                        ).hasRole("RECEPTIONIST")
+
+                        // S2-08: khách tra cứu booking bằng mã và email
+                        .requestMatchers(HttpMethod.POST, "/api/public/bookings/lookup").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/rooms/**").permitAll()
+
+                        // S2-09: Tệp ảnh tĩnh loại phòng công khai
+                        .requestMatchers("/uploads/**").permitAll()
+
+                        // API chưa khai báo quyền sẽ bị từ chối
+                        .requestMatchers("/api/**").denyAll()
+
+                        .anyRequest().permitAll()
+                )
                 .authorizeHttpRequests(authorize -> {
                     for (ApiSecurityPolicyCatalog.Policy policy : policyCatalog.policies()) {
                         var request = policy.method() == null

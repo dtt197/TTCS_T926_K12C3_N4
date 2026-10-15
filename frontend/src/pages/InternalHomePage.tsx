@@ -28,6 +28,7 @@ import { UserManagementPage } from './UserManagementPage'
 
 import { BookingListPage } from './BookingListPage'
 import { WalkInBookingPage } from './WalkInBookingPage'
+import { OccupancyReportPage } from './OccupancyReportPage'
 import { SecurityEndpointMatrixPage } from './SecurityEndpointMatrixPage'
 
 import { NotificationBell } from '../components/NotificationBell'
@@ -70,6 +71,8 @@ type View =
   | 'bookings'
 
   | 'walkInBooking'
+  | 'occupancyReport'
+
   | 'security-matrix'
 
 type Tab = {
@@ -90,6 +93,14 @@ type Tab = {
 
 const TABS: ReadonlyArray<Tab> = [
 
+  {
+    view: 'occupancyReport',
+    path: '/bao-cao-cong-suat',
+    label: 'Công suất phòng',
+    title: 'Báo cáo công suất phòng',
+    icon: '◔',
+    permission: 'reports:occupancy',
+  },
   {
 
     view: 'roomCalendar',
@@ -759,6 +770,8 @@ export function InternalHomePage({
           ) : activeView === 'walkInBooking' ? (
 
             <WalkInBookingPage />
+          ) : activeView === 'occupancyReport' ? (
+            <OccupancyReportPage />
 
           ) : activeView === 'audit-logs' ? (
 
