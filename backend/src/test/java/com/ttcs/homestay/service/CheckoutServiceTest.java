@@ -112,6 +112,154 @@ class CheckoutServiceTest {
     }
 
     @Test
+    void earlyCheckoutPreviewShowsUnusedNightsAndRoomValueWithoutChangingSettlement() {
+        useClockAt("18:01");
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 14));
+        booking.setTotalAmount(1_000_000L);
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 200_000, "n1"),
+                nightly(LocalDate.of(2026, 10, 11), 200_000, "n2"),
+                nightly(LocalDate.of(2026, 10, 12), 300_000, "n3"),
+                nightly(LocalDate.of(2026, 10, 13), 300_000, "n4")));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(100_000));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+
+        assertThat(preview.checkoutAllowed()).isTrue();
+        assertThat(preview.earlyCheckout()).isTrue();
+        assertThat(preview.bookedNights()).isEqualTo(4);
+        assertThat(preview.usedNights()).isEqualTo(2);
+        assertThat(preview.unusedNights()).isEqualTo(2);
+        assertThat(preview.unusedRoomValue()).isEqualByComparingTo("600000");
+        assertThat(preview.lateCheckoutHours()).isZero();
+        assertThat(preview.lateCheckoutFee()).isZero();
+        assertThat(preview.lateCheckoutPricingBasis()).isEqualTo("NONE");
+        assertThat(preview.roomTotal()).isEqualByComparingTo("1000000");
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo("1000000");
+        assertThat(preview.amount()).isEqualByComparingTo("900000");
+    }
+
+    @Test
+    void earlyCheckoutOnCheckInDateReportsZeroUsedNightsAndKeepsFullPrice() {
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 14));
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 250_000, "n1"),
+                nightly(LocalDate.of(2026, 10, 11), 250_000, "n2"),
+                nightly(LocalDate.of(2026, 10, 12), 250_000, "n3"),
+                nightly(LocalDate.of(2026, 10, 13), 250_000, "n4")));
+        useClockAt("2026-10-10", "09:00");
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThat(preview.usedNights()).isZero();
+        assertThat(preview.unusedNights()).isEqualTo(4);
+        assertThat(preview.unusedRoomValue()).isEqualByComparingTo("1000000");
+        assertThat(preview.roomTotal()).isEqualByComparingTo("1000000");
+    }
+
+    @Test
+    void earlyCheckoutReasonIsRequiredTrimmedAndSavedWithSettlement() {
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 14));
+        useClockAt("18:01");
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false, "   "), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false, "  Khách cần về sớm  "), "Reception");
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getEarlyCheckoutReason()).isEqualTo("Khách cần về sớm");
+        assertThat(captor.getValue().getCheckedOutAt()).isEqualTo(OffsetDateTime.parse("2026-10-12T18:01+07:00"));
+        assertThat(captor.getValue().getLateCheckoutFee()).isZero();
+        assertThat(booking.getCheckOutDate()).isEqualTo(LocalDate.of(2026, 10, 14));
+        assertThat(booking.getTotalAmount()).isEqualTo(1_000_000L);
+    }
+
+    @Test
+    void earlyCheckoutReasonLongerThan500CharactersIsRejected() {
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 14));
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false, "x".repeat(501)), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(settlementRepository, never()).save(any(BookingSettlement.class));
+    }
+
+    @Test
+    void earlyCheckoutRejectsMissingAndBlankReasons() {
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 14));
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false, null), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false, "   "), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(settlementRepository, never()).save(any(BookingSettlement.class));
+    }
+
+    @Test
+    void earlyCheckoutAt1801NeverAddsLateFeeAndPreservesBookingSurchargeAndDeposit() {
+        useClockAt("18:01");
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 14));
+        booking.setNightlyPriceSnapshots(List.of(
+                nightly(LocalDate.of(2026, 10, 10), 400_000, "Night 1", 100_000),
+                nightly(LocalDate.of(2026, 10, 11), 400_000, "Night 2", 100_000),
+                nightly(LocalDate.of(2026, 10, 12), 400_000, "Night 3", 100_000),
+                nightly(LocalDate.of(2026, 10, 13), 400_000, "Night 4", 100_000)));
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of(surcharge(8L, 50_000L)));
+        when(depositService.currentDepositTotalExact(booking)).thenReturn(BigDecimal.valueOf(250_000));
+
+        CheckoutPreviewResponse preview = service.preview(12L);
+        assertThat(preview.lateCheckoutFee()).isZero();
+        assertThat(preview.settlementTotalBeforeDeposit()).isEqualByComparingTo("1050000");
+        assertThat(preview.amount()).isEqualByComparingTo("800000");
+        service.checkout(12L, new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false, "Reason"), "Reception");
+
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getRoomTotal()).isEqualByComparingTo("1000000");
+        assertThat(captor.getValue().getAdditionalSurchargeTotal()).isEqualTo(50_000L);
+        assertThat(captor.getValue().getDepositTotal()).isEqualByComparingTo("250000");
+        assertThat(captor.getValue().getLateCheckoutFee()).isZero();
+        assertThat(booking.getTotalAmount()).isEqualTo(1_000_000L);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.DA_TRA_PHONG);
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+    }
+
+    @Test
+    void checkoutOnExpectedDateDoesNotRequireOrStoreEarlyReason() {
+        CheckoutPreviewResponse preview = service.preview(12L);
+        service.checkout(12L, new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Reception");
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getEarlyCheckoutReason()).isNull();
+        assertThat(preview.earlyCheckout()).isFalse();
+    }
+
+    @Test
+    void earlyCheckoutStillRejectsStalePreviewAndRepeatedConfirmation() {
+        booking.setCheckOutDate(LocalDate.of(2026, 10, 14));
+        CheckoutPreviewResponse stale = service.preview(12L);
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L))
+                .thenReturn(List.of(surcharge(903L, 75_000L)));
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(stale.previewToken(), "CASH", null, true, false, "reason"), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of());
+        CheckoutPreviewResponse current = service.preview(12L);
+        service.checkout(12L, new CheckoutPaymentRequest(current.previewToken(), "CASH", null, true, false, "reason"), "Reception");
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(new BookingSettlement()));
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(current.previewToken(), "CASH", null, true, false, "reason"), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(settlementRepository, org.mockito.Mockito.times(1)).save(any(BookingSettlement.class));
+    }
+
+    @Test
     void afterSixUsesLastNightRoomPriceOnlyAndBlocksUnreliableSnapshot() {
         useClockAt("18:01");
         booking.setNightlyPriceSnapshots(List.of(
@@ -329,11 +477,26 @@ class CheckoutServiceTest {
     }
 
     @Test
-    void checkoutOnCalendarDayBeforeOrAfterExpectedDateIsRejected() {
+    void earlyCheckoutCanBePreviewedButRequiresReasonAndCheckoutAfterExpectedDateIsBlocked() {
         useClockAt("2026-10-11", "13:00");
-        assertThat(service.preview(12L).checkoutAllowed()).isFalse();
+        CheckoutPreviewResponse earlyPreview = service.preview(12L);
+        assertThat(earlyPreview.checkoutAllowed()).isTrue();
+        assertThat(earlyPreview.earlyCheckout()).isTrue();
+        assertThatThrownBy(() -> service.checkout(12L,
+                new CheckoutPaymentRequest(earlyPreview.previewToken(), "CASH", null, true, false), "Reception"))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(settlementRepository, never()).save(any(BookingSettlement.class));
+
         useClockAt("2026-10-13", "13:00");
         assertThat(service.preview(12L).checkoutAllowed()).isFalse();
+
+        useClockAt("2026-10-12", "13:00");
+        CheckoutPreviewResponse expectedDayPreview = service.preview(12L);
+        assertThat(expectedDayPreview.checkoutAllowed()).isTrue();
+        assertThat(expectedDayPreview.earlyCheckout()).isFalse();
+        service.checkout(12L,
+                new CheckoutPaymentRequest(expectedDayPreview.previewToken(), "CASH", null, true, false), "Reception");
+        verify(settlementRepository).save(any(BookingSettlement.class));
     }
 
     private void useClockAt(String time) {

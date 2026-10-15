@@ -152,6 +152,12 @@ export type CheckoutPreview = {
   settlementType: 'COLLECT' | 'ZERO' | 'REFUND'
   amount: number
   previewToken: string
+  earlyCheckout: boolean
+  bookedNights: number
+  usedNights: number
+  unusedNights: number
+  unusedRoomValue: number | null
+  unusedRoomValueWarning: string | null
 }
 
 export function getCheckoutPreview(roomId: number) {
@@ -164,7 +170,10 @@ export type CheckoutPaymentRequest = {
   paymentReference?: string
   amountReceivedConfirmed?: boolean
   refundCompletedConfirmed?: boolean
+  earlyCheckoutReason?: string
 }
+
+export { buildCheckoutPaymentRequest } from './checkoutAc3'
 
 export function checkOut(roomId: number, settlement: CheckoutPaymentRequest) {
   return request<Room>(`/rooms/${roomId}/check-out`, {

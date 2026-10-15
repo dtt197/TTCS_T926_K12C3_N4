@@ -93,6 +93,7 @@ public class CheckoutService {
         if (request == null || !current.previewToken().equals(request.previewToken())) {
             throw conflict("Dữ liệu quyết toán đã thay đổi. Hãy tải lại preview và xác nhận lại");
         }
+        String earlyCheckoutReason = validateEarlyCheckoutReason(request, current);
         validateConfirmation(request, current);
 
         BookingSettlement settlement = new BookingSettlement();
@@ -110,6 +111,7 @@ public class CheckoutService {
         settlement.setActedBy(operatorName == null || operatorName.isBlank() ? "RECEPTIONIST" : operatorName);
         settlement.setSettledAt(now);
         settlement.setCheckedOutAt(now);
+        settlement.setEarlyCheckoutReason(earlyCheckoutReason);
         settlement.setLateCheckoutFee(current.lateCheckoutFee().longValueExact());
         settlement.setAdditionalSurchargeTotal(current.bookingSurchargeTotal().longValueExact());
         settlement.setFinalTotal(current.settlementTotalBeforeDeposit().longValueExact());
@@ -173,6 +175,7 @@ public class CheckoutService {
         LocalDateTime actual = at.toLocalDateTime();
         LocalDateTime expectedCheckout = booking.getCheckOutDate().atTime(settings.getCheckOutTime());
         LocalDateTime hardLimit = booking.getCheckOutDate().atTime(18, 0);
+        boolean earlyCheckout = actual.toLocalDate().isBefore(booking.getCheckOutDate());
         boolean dateAllowed = actual.toLocalDate().equals(booking.getCheckOutDate());
         boolean lateHourly = dateAllowed && actual.isAfter(expectedCheckout) && !actual.isAfter(hardLimit);
         boolean afterSix = dateAllowed && actual.isAfter(hardLimit);
@@ -183,10 +186,8 @@ public class CheckoutService {
         long lateFee = 0;
         String pricingBasis = "NONE";
         String blockedReason = null;
-        if (!dateAllowed) {
-            blockedReason = actual.toLocalDate().isBefore(booking.getCheckOutDate())
-                    ? "Checkout trước ngày dự kiến chưa được hỗ trợ; xử lý theo Lát 4."
-                    : "Đã quá ngày checkout dự kiến; không thể checkout theo luồng này.";
+        if (actual.toLocalDate().isAfter(booking.getCheckOutDate())) {
+            blockedReason = "Đã quá ngày checkout dự kiến; không thể checkout theo luồng này.";
         } else if (lateHourly) {
             pricingBasis = "HOURLY";
             lateFee = Math.multiplyExact((long) lateHours, settings.getLateCheckoutFeePerHour());
@@ -212,6 +213,22 @@ public class CheckoutService {
                 .toList() : List.of();
         String warning = reliable ? null
                 : "Booking cũ chưa có chi tiết giá từng đêm đáng tin cậy. Quyết toán theo tổng tiền đã chốt.";
+        long bookedNights = expectedNights;
+        long usedNights = Math.max(0L, Math.min(bookedNights,
+                ChronoUnit.DAYS.between(booking.getCheckInDate(), actual.toLocalDate())));
+        long unusedNights = earlyCheckout ? bookedNights - usedNights : 0L;
+        BigDecimal unusedRoomValue = null;
+        String unusedRoomValueWarning = null;
+        if (earlyCheckout && reliable) {
+            LocalDate firstUnusedNight = booking.getCheckInDate().plusDays(usedNights);
+            long unusedRoomTotal = orderedStored.stream()
+                    .filter(line -> !line.getNightDate().isBefore(firstUnusedNight))
+                    .mapToLong(BookingNightlyPriceSnapshot::getRoomPrice)
+                    .reduce(0L, Math::addExact);
+            unusedRoomValue = BigDecimal.valueOf(unusedRoomTotal);
+        } else if (earlyCheckout) {
+            unusedRoomValueWarning = "Không thể xác định chắc chắn giá trị phòng chưa sử dụng vì nightly snapshots không đáng tin cậy.";
+        }
         String fingerprint = booking.getId() + "|" + room.getId() + "|" + booking.getStatus() + "|"
                 + booking.getTotalAmount() + "|" + booking.getExtraGuestCount() + "|"
                 + booking.getExtraPersonFeeSnapshot() + "|" + surchargeAmount.toPlainString() + "|"
@@ -237,7 +254,8 @@ public class CheckoutService {
                 bookingSurcharges, bookingSurchargeTotal,
                 deposit, settings.getCheckOutTime(), at, settings.getId(), lateHours, feePerHour,
                 lateCheckoutFee, finalTotal, pricingBasis, blockedReason == null, blockedReason,
-                type, difference.abs(), token(fingerprint));
+                type, difference.abs(), token(fingerprint), earlyCheckout, bookedNights, usedNights,
+                unusedNights, unusedRoomValue, unusedRoomValueWarning);
     }
 
     private static SurchargeBreakdown buildSurchargeBreakdown(Booking booking,
@@ -326,6 +344,20 @@ public class CheckoutService {
                 && (request.paymentReference() == null || request.paymentReference().isBlank())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chuyển khoản bắt buộc có mã giao dịch");
         }
+    }
+
+    private static String validateEarlyCheckoutReason(CheckoutPaymentRequest request,
+            CheckoutPreviewResponse preview) {
+        String reason = request.earlyCheckoutReason();
+        if (!preview.earlyCheckout()) return null;
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Checkout sớm bắt buộc nhập lý do");
+        }
+        String normalized = reason.trim();
+        if (normalized.length() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lý do checkout sớm không được vượt quá 500 ký tự");
+        }
+        return normalized;
     }
 
     private static void requireOccupied(Room room) {

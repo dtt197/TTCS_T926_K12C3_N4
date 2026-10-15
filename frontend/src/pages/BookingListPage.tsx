@@ -12,6 +12,7 @@ import type {
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { BookingDetailResponse } from '../services/bookingService'
+import { getClosedBookingCheckoutDisplay } from '../services/checkoutAc3'
 import { createBookingDepositAdjustment } from '../services/bookingService'
 import { hasPermission } from '../permissions/rolePermissions'
 import {
@@ -624,6 +625,10 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     }
   }
 
+  const closedCheckoutDisplay = detailData
+    ? getClosedBookingCheckoutDisplay(detailData.status, detailData.checkedOutAt, detailData.earlyCheckoutReason)
+    : null
+
   return (
     <section className="panel booking-page">
       <div className="panel-heading">
@@ -886,6 +891,10 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                       <div><dt>Phòng</dt><dd>{detailBooking.roomNumber ?? 'Chưa gán'}</dd></div>
                       <div><dt>Ngày nhận phòng</dt><dd>{formatDate(detailBooking.checkInDate)}</dd></div>
                       <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>
+                      {closedCheckoutDisplay && <>
+                        <div><dt>Thời điểm checkout thực tế</dt><dd>{closedCheckoutDisplay.checkedOutAt ? new Date(closedCheckoutDisplay.checkedOutAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Không có dữ liệu'}</dd></div>
+                        {closedCheckoutDisplay.earlyCheckoutReason && <div className="booking-detail-wide"><dt>Lý do trả phòng sớm</dt><dd>{closedCheckoutDisplay.earlyCheckoutReason}</dd></div>}
+                      </>}
                       <div><dt>Hạn giữ chỗ</dt><dd>{detailData.holdExpiresAt ? new Date(detailData.holdExpiresAt).toLocaleString('vi-VN') : 'Đã gỡ / không có'}</dd></div>
                     </dl>
                   </section>
