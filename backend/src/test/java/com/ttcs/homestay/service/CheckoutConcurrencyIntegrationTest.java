@@ -7,12 +7,18 @@ import com.ttcs.homestay.dto.CheckoutPaymentRequest;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingNightlyPriceSnapshot;
 import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.BookingSurcharge;
+import com.ttcs.homestay.entity.SurchargeType;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
+import com.ttcs.homestay.entity.OperatingSettings;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.BookingSettlementRepository;
+import com.ttcs.homestay.repository.BookingSurchargeRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
+import java.time.LocalTime;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.concurrent.CountDownLatch;
@@ -36,16 +42,31 @@ class CheckoutConcurrencyIntegrationTest {
     @Autowired private RoomRepository rooms;
     @Autowired private BookingRepository bookings;
     @Autowired private BookingSettlementRepository settlements;
+    @Autowired private BookingSurchargeRepository surcharges;
     @Autowired private RoomStatusHistoryRepository histories;
+    @Autowired private OperatingSettingsRepository settings;
 
     private Long roomId;
 
     @BeforeEach
     void setUp() {
         settlements.deleteAll();
+        surcharges.deleteAll();
         histories.deleteAll();
         bookings.deleteAll();
         rooms.deleteAll();
+        settings.deleteAll();
+
+        OperatingSettings operatingSettings = new OperatingSettings();
+        operatingSettings.setHomestayName("Test");
+        operatingSettings.setCheckInTime(LocalTime.of(14, 0));
+        operatingSettings.setCheckOutTime(LocalTime.NOON);
+        operatingSettings.setLateCheckoutFeePerHour(100_000);
+        operatingSettings.setExtraPersonFee(50_000);
+        operatingSettings.setWeekendDays("SATURDAY,SUNDAY");
+        operatingSettings.setCreatedByName("Test");
+        operatingSettings.setCreatedAt(OffsetDateTime.now().minusDays(1));
+        settings.saveAndFlush(operatingSettings);
 
         Room room = new Room();
         room.setRoomNumber("CHECKOUT-RACE");
@@ -79,11 +100,22 @@ class CheckoutConcurrencyIntegrationTest {
         booking.setGuestName("Guest");
         booking.setStatus(BookingStatus.DA_NHAN_PHONG);
         bookings.saveAndFlush(booking);
+        BookingSurcharge surcharge = new BookingSurcharge();
+        surcharge.setBooking(booking);
+        surcharge.setSurchargeType(SurchargeType.THEM_GIUONG);
+        surcharge.setQuantity(1);
+        surcharge.setUnitPrice(75_000);
+        surcharge.setNights(1);
+        surcharge.setAmount(75_000);
+        surcharge.setCreatedBy("Test");
+        surcharge.setCreatedAt(OffsetDateTime.now());
+        surcharges.saveAndFlush(surcharge);
     }
 
     @Test
     void simultaneousCheckoutCreatesOneSettlementAndClosesOnce() throws Exception {
         var preview = checkoutService.preview(roomId);
+        assertThat(preview.bookingSurchargeTotal()).isEqualByComparingTo("75000");
         assertThat(preview.surchargeBreakdownComplete()).isTrue();
         assertThat(preview.extraGuestCount()).isEqualTo(1);
         assertThat(preview.surchargeNights()).isEqualTo(1L);
@@ -100,6 +132,15 @@ class CheckoutConcurrencyIntegrationTest {
             executor.shutdownNow();
         }
         assertThat(settlements.count()).isEqualTo(1);
+        var savedSettlement = settlements.findByBookingId(bookings.findAll().get(0).getId()).orElseThrow();
+        assertThat(savedSettlement.getAmount()).isEqualByComparingTo(preview.amount());
+        assertThat(savedSettlement.getRoomTotal()).isEqualByComparingTo(preview.roomTotal());
+        assertThat(savedSettlement.getAdditionalSurchargeTotal())
+                .isEqualTo(preview.bookingSurchargeTotal().longValueExact());
+        assertThat(savedSettlement.getLateCheckoutFee()).isEqualTo(preview.lateCheckoutFee().longValueExact());
+        assertThat(savedSettlement.getFinalTotal())
+                .isEqualTo(preview.settlementTotalBeforeDeposit().longValueExact());
+        assertThat(savedSettlement.getDepositTotal()).isEqualByComparingTo(preview.depositTotal());
         assertThat(bookings.findAll().get(0).getStatus()).isEqualTo(BookingStatus.DA_TRA_PHONG);
         assertThat(rooms.findById(roomId).orElseThrow().getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
         assertThat(histories.findByRoomIdInChronologicalOrder(roomId)).hasSize(1);

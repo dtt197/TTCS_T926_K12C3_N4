@@ -2,6 +2,7 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.dto.CheckoutPaymentRequest;
 import com.ttcs.homestay.dto.CheckoutPreviewResponse;
+import com.ttcs.homestay.dto.booking.BookingSurchargeResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingNightlyPriceSnapshot;
 import com.ttcs.homestay.entity.BookingSettlement;
@@ -9,15 +10,21 @@ import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomStatusHistory;
+import com.ttcs.homestay.entity.OperatingSettings;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.BookingSettlementRepository;
+import com.ttcs.homestay.repository.BookingSurchargeRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
@@ -32,17 +39,24 @@ public class CheckoutService {
     private final RoomRepository roomRepository;
     private final BookingRepository bookingRepository;
     private final BookingSettlementRepository settlementRepository;
+    private final BookingSurchargeRepository surchargeRepository;
     private final RoomStatusHistoryRepository historyRepository;
     private final BookingDepositService depositService;
+    private final OperatingSettingsRepository settingsRepository;
+    private final Clock clock;
 
     public CheckoutService(RoomRepository roomRepository, BookingRepository bookingRepository,
-            BookingSettlementRepository settlementRepository, RoomStatusHistoryRepository historyRepository,
-            BookingDepositService depositService) {
+            BookingSettlementRepository settlementRepository, BookingSurchargeRepository surchargeRepository,
+            RoomStatusHistoryRepository historyRepository,
+            BookingDepositService depositService, OperatingSettingsRepository settingsRepository, Clock clock) {
         this.roomRepository = roomRepository;
         this.bookingRepository = bookingRepository;
         this.settlementRepository = settlementRepository;
+        this.surchargeRepository = surchargeRepository;
         this.historyRepository = historyRepository;
         this.depositService = depositService;
+        this.settingsRepository = settingsRepository;
+        this.clock = clock.withZone(BUSINESS_ZONE);
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +67,7 @@ public class CheckoutService {
         if (booking.getRoom() == null || !roomId.equals(booking.getRoom().getId())) {
             throw conflict("Booking đang lưu trú không thuộc phòng này");
         }
-        return buildPreview(room, booking);
+        return buildPreview(room, booking, OffsetDateTime.now(clock));
     }
 
     @Transactional
@@ -73,13 +87,14 @@ public class CheckoutService {
             throw conflict("Booking này đã có quyết toán");
         }
 
-        CheckoutPreviewResponse current = buildPreview(room, booking);
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        CheckoutPreviewResponse current = buildPreview(room, booking, now);
+        if (!current.checkoutAllowed()) throw conflict(current.checkoutBlockedReason());
         if (request == null || !current.previewToken().equals(request.previewToken())) {
             throw conflict("Dữ liệu quyết toán đã thay đổi. Hãy tải lại preview và xác nhận lại");
         }
         validateConfirmation(request, current);
 
-        OffsetDateTime now = OffsetDateTime.now(BUSINESS_ZONE);
         BookingSettlement settlement = new BookingSettlement();
         settlement.setBooking(booking);
         settlement.setRoomId(roomId);
@@ -95,6 +110,14 @@ public class CheckoutService {
         settlement.setActedBy(operatorName == null || operatorName.isBlank() ? "RECEPTIONIST" : operatorName);
         settlement.setSettledAt(now);
         settlement.setCheckedOutAt(now);
+        settlement.setLateCheckoutFee(current.lateCheckoutFee().longValueExact());
+        settlement.setAdditionalSurchargeTotal(current.bookingSurchargeTotal().longValueExact());
+        settlement.setFinalTotal(current.settlementTotalBeforeDeposit().longValueExact());
+        settlement.setLateCheckoutHours(current.lateCheckoutHours());
+        settlement.setLateCheckoutFeePerHour(current.lateCheckoutFeePerHour());
+        settlement.setCheckoutTimeSnapshot(current.checkoutTimeSnapshot());
+        settlement.setOperatingSettingsId(current.operatingSettingsId());
+        settlement.setLateCheckoutPricingBasis(current.lateCheckoutPricingBasis());
         settlementRepository.save(settlement);
 
         booking.setStatus(BookingStatus.DA_TRA_PHONG);
@@ -115,7 +138,7 @@ public class CheckoutService {
         return savedRoom;
     }
 
-    private CheckoutPreviewResponse buildPreview(Room room, Booking booking) {
+    private CheckoutPreviewResponse buildPreview(Room room, Booking booking, OffsetDateTime at) {
         BigDecimal roomTotal = BigDecimal.valueOf(booking.getTotalAmount());
         // Legacy rows with a missing/null DB value are represented as zero; never infer
         // an amount from today's room type fee or add this informational amount to roomTotal.
@@ -124,13 +147,18 @@ public class CheckoutService {
         List<BookingNightlyPriceSnapshot> stored = booking.getNightlyPriceSnapshots();
         SurchargeBreakdown surcharge = buildSurchargeBreakdown(booking, stored, surchargeNights);
         BigDecimal deposit = depositService.currentDepositTotalExact(booking);
-        BigDecimal difference = roomTotal.subtract(deposit);
-        String type = difference.signum() > 0 ? "COLLECT" : difference.signum() < 0 ? "REFUND" : "ZERO";
+        List<BookingSurchargeResponse> bookingSurcharges = surchargeRepository
+                .findByBookingIdOrderByCreatedAtAscIdAsc(booking.getId()).stream()
+                .map(BookingSurchargeResponse::from)
+                .toList();
+        BigDecimal bookingSurchargeTotal = bookingSurcharges.stream()
+                .map(line -> BigDecimal.valueOf(line.amount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         long storedTotal = 0;
         for (BookingNightlyPriceSnapshot line : stored) {
             storedTotal = Math.addExact(storedTotal, Math.addExact(line.getRoomPrice(), line.getSurchargeAmount()));
         }
-        long expectedNights = java.time.temporal.ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate());
+        long expectedNights = ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate());
         List<BookingNightlyPriceSnapshot> orderedStored = stored.stream()
                 .sorted(java.util.Comparator.comparing(
                         (BookingNightlyPriceSnapshot line) -> line.getNightDate())).toList();
@@ -139,6 +167,42 @@ public class CheckoutService {
             datesMatch = booking.getCheckInDate().plusDays(index).equals(orderedStored.get(index).getNightDate());
         }
         boolean reliable = !stored.isEmpty() && datesMatch && storedTotal == booking.getTotalAmount();
+        OperatingSettings settings = settingsRepository.findFirstByCreatedAtLessThanEqualOrderByCreatedAtDescIdDesc(at)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Không tìm thấy cấu hình vận hành có hiệu lực tại thời điểm checkout"));
+        LocalDateTime actual = at.toLocalDateTime();
+        LocalDateTime expectedCheckout = booking.getCheckOutDate().atTime(settings.getCheckOutTime());
+        LocalDateTime hardLimit = booking.getCheckOutDate().atTime(18, 0);
+        boolean dateAllowed = actual.toLocalDate().equals(booking.getCheckOutDate());
+        boolean lateHourly = dateAllowed && actual.isAfter(expectedCheckout) && !actual.isAfter(hardLimit);
+        boolean afterSix = dateAllowed && actual.isAfter(hardLimit);
+        int lateHours = lateHourly
+                ? Math.toIntExact((ChronoUnit.MINUTES.between(expectedCheckout, actual) + 59) / 60)
+                : 0;
+        Long feePerHour = lateHourly ? settings.getLateCheckoutFeePerHour() : null;
+        long lateFee = 0;
+        String pricingBasis = "NONE";
+        String blockedReason = null;
+        if (!dateAllowed) {
+            blockedReason = actual.toLocalDate().isBefore(booking.getCheckOutDate())
+                    ? "Checkout trước ngày dự kiến chưa được hỗ trợ; xử lý theo Lát 4."
+                    : "Đã quá ngày checkout dự kiến; không thể checkout theo luồng này.";
+        } else if (lateHourly) {
+            pricingBasis = "HOURLY";
+            lateFee = Math.multiplyExact((long) lateHours, settings.getLateCheckoutFeePerHour());
+        } else if (afterSix) {
+            pricingBasis = "LAST_NIGHT";
+            if (reliable) {
+                LocalDate lastNightDate = booking.getCheckOutDate().minusDays(1);
+                lateFee = orderedStored.stream().filter(line -> lastNightDate.equals(line.getNightDate()))
+                        .mapToLong(BookingNightlyPriceSnapshot::getRoomPrice).findFirst().orElse(-1L);
+                if (lateFee < 0) blockedReason = "Thiếu snapshot giá phòng đêm cuối đáng tin cậy; không thể xác nhận checkout.";
+            } else blockedReason = "Thiếu snapshot giá phòng đêm cuối đáng tin cậy; không thể xác nhận checkout.";
+        }
+        BigDecimal lateCheckoutFee = BigDecimal.valueOf(lateFee);
+        BigDecimal finalTotal = roomTotal.add(bookingSurchargeTotal).add(lateCheckoutFee);
+        BigDecimal difference = finalTotal.subtract(deposit);
+        String type = difference.signum() > 0 ? "COLLECT" : difference.signum() < 0 ? "REFUND" : "ZERO";
         List<CheckoutPreviewResponse.NightlyLine> lines = reliable ? stored.stream()
                 .sorted(java.util.Comparator.comparing(
                         (BookingNightlyPriceSnapshot line) -> line.getNightDate()))
@@ -152,7 +216,13 @@ public class CheckoutService {
                 + booking.getTotalAmount() + "|" + booking.getExtraGuestCount() + "|"
                 + booking.getExtraPersonFeeSnapshot() + "|" + surchargeAmount.toPlainString() + "|"
                 + deposit.toPlainString() + "|" + booking.getCheckInDate() + "|"
-                + booking.getCheckOutDate() + "|" + (reliable ? stored.stream()
+                + booking.getCheckOutDate() + "|settings=" + settings.getId() + "|" + settings.getCheckOutTime()
+                + "|" + settings.getLateCheckoutFeePerHour() + "|" + pricingBasis + "|" + lateHours + "|" + lateFee
+                + "|bookingSurcharges=" + bookingSurcharges.stream()
+                        .map(line -> line.id() + ":" + line.type() + ":" + line.quantity() + ":"
+                                + line.unitPrice() + ":" + line.nights() + ":" + line.amount())
+                        .toList()
+                + "|" + (reliable ? stored.stream()
                         .sorted(java.util.Comparator.comparing(
                                 (BookingNightlyPriceSnapshot line) -> line.getNightDate()))
                         .map(x -> x.getNightDate() + ":" + x.getRoomPrice() + ":" + x.getSurchargeAmount())
@@ -164,7 +234,10 @@ public class CheckoutService {
                 surcharge.complete() ? booking.getExtraPersonFeeSnapshot() : null,
                 surcharge.complete() ? surchargeNights : null,
                 surcharge.roomTotalExcludingSurcharge(), surcharge.warning(),
-                deposit, type, difference.abs(), token(fingerprint));
+                bookingSurcharges, bookingSurchargeTotal,
+                deposit, settings.getCheckOutTime(), at, settings.getId(), lateHours, feePerHour,
+                lateCheckoutFee, finalTotal, pricingBasis, blockedReason == null, blockedReason,
+                type, difference.abs(), token(fingerprint));
     }
 
     private static SurchargeBreakdown buildSurchargeBreakdown(Booking booking,

@@ -13,6 +13,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.LocalTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -65,6 +66,30 @@ public class BookingSettlement {
 
     @Column(name = "checked_out_at", nullable = false)
     private OffsetDateTime checkedOutAt;
+
+    @Column(name = "late_checkout_fee", nullable = false)
+    private long lateCheckoutFee;
+
+    @Column(name = "additional_surcharge_total", nullable = false)
+    private long additionalSurchargeTotal;
+
+    @Column(name = "final_total")
+    private Long finalTotal;
+
+    @Column(name = "late_checkout_hours", nullable = false)
+    private int lateCheckoutHours;
+
+    @Column(name = "late_checkout_fee_per_hour")
+    private Long lateCheckoutFeePerHour;
+
+    @Column(name = "checkout_time_snapshot")
+    private LocalTime checkoutTimeSnapshot;
+
+    @Column(name = "operating_settings_id")
+    private Long operatingSettingsId;
+
+    @Column(name = "late_checkout_pricing_basis", length = 20)
+    private String lateCheckoutPricingBasis;
 
     public enum SettlementType { COLLECT, ZERO, REFUND }
     public enum SettlementPaymentMethod { CASH, BANK_TRANSFER }
