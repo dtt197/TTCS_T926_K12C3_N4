@@ -1,0 +1,236 @@
+.endpoint-matrix-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.endpoint-matrix-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.endpoint-matrix-heading h2 {
+  margin-bottom: 8px;
+}
+
+.endpoint-matrix-heading p:not(.eyebrow) {
+  max-width: 780px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.endpoint-matrix-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.endpoint-matrix-summary article,
+.endpoint-matrix-filters,
+.endpoint-matrix-table-wrap,
+.endpoint-matrix-error {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.endpoint-matrix-summary article {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.endpoint-matrix-summary article span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.endpoint-matrix-summary article strong {
+  font-size: 26px;
+}
+
+.endpoint-matrix-summary .has-mismatch {
+  border-color: #efc7c2;
+  background: #fff6f5;
+  color: var(--red);
+}
+
+.endpoint-matrix-summary .is-matched {
+  border-color: #c8e4d3;
+  background: #f2fbf5;
+  color: var(--green);
+}
+
+.endpoint-matrix-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, .55fr) minmax(180px, .55fr);
+  gap: 14px;
+  padding: 16px;
+}
+
+.endpoint-matrix-filters label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.endpoint-matrix-filters input,
+.endpoint-matrix-filters select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.endpoint-matrix-table-wrap {
+  overflow-x: auto;
+}
+
+.endpoint-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.endpoint-matrix-table th,
+.endpoint-matrix-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.endpoint-matrix-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8faf7;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.endpoint-matrix-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.endpoint-matrix-table .endpoint-mismatch {
+  background: #fff8f6;
+}
+
+.endpoint-method,
+.endpoint-path {
+  display: block;
+  width: fit-content;
+}
+
+.endpoint-method {
+  margin-bottom: 5px;
+  border-radius: 5px;
+  padding: 3px 6px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.endpoint-path {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.endpoint-permission-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 145px;
+}
+
+.endpoint-role,
+.endpoint-access,
+.endpoint-status {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.endpoint-role {
+  background: #eef2ed;
+  color: #46564e;
+}
+
+.endpoint-access.public {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.endpoint-access.authenticated,
+.endpoint-access.roles {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.endpoint-access.denied {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.endpoint-no-roles,
+.endpoint-matrix-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.endpoint-status.matched {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.endpoint-status.mismatch {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.endpoint-matrix-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-color: #efc7c2;
+  padding: 14px 16px;
+  color: var(--red);
+}
+
+.endpoint-matrix-empty {
+  padding-block: 30px !important;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .endpoint-matrix-heading {
+    flex-direction: column;
+  }
+
+  .endpoint-matrix-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .endpoint-matrix-filters {
+    grid-template-columns: 1fr;
+  }
+}
