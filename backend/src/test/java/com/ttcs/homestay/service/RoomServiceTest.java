@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.inOrder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,6 +45,9 @@ import com.ttcs.homestay.repository.CheckInRepository;
 import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
+import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.entity.NotificationEntity;
+import com.ttcs.homestay.service.NotificationWriterService;
 
 /**
  * Kiểm thử nghiệp vụ S1-10: Ngăn chuyển thẳng phòng đang ở sang bảo trì.
@@ -65,6 +72,15 @@ class RoomServiceTest {
 
     @Mock
     OperatingSettingsRepository operatingSettingsRepository;
+
+    @Mock
+    AuditLogService auditLogService;
+
+    @Mock
+    NotificationWriterService notificationWriterService;
+
+    @Mock
+    UserRepository userRepository;
 
     @InjectMocks
     RoomService roomService;
@@ -455,6 +471,180 @@ class RoomServiceTest {
         assertThat(history.getNewStatus()).isEqualTo(RoomStatus.TRONG_SACH);
         assertThat(history.getChangedBy()).isEqualTo("Buồng phòng Demo");
         assertThat(history.getChangedAt()).isNotNull();
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("Báo đã sạch ghi trạng thái, history và audit qua service")
+    void updateStatusWithAudit_whenHousekeepingMarksClean_recordsAuditOnce() {
+        Long roomId = 103L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("103");
+        room.setStatus(RoomStatus.TRONG_BAN);
+        when(roomStatusHistoryRepository.save(any(RoomStatusHistory.class))).thenAnswer(invocation -> {
+            RoomStatusHistory history = invocation.getArgument(0);
+            history.setId(501L);
+            return history;
+        });
+        com.ttcs.homestay.entity.User actor = org.mockito.Mockito.mock(com.ttcs.homestay.entity.User.class);
+        when(userRepository.findById(17L)).thenReturn(Optional.of(actor));
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RoomResponse response = roomService.updateStatusWithAuditAndNotification(
+                roomId, RoomStatus.TRONG_SACH, "Housekeeper", 17L,
+                "housekeeper@example.test", "127.0.0.1");
+
+        assertThat(response.status()).isEqualTo(RoomStatus.TRONG_SACH);
+        ArgumentCaptor<RoomStatusHistory> historyCaptor = ArgumentCaptor.forClass(RoomStatusHistory.class);
+        verify(roomStatusHistoryRepository).save(historyCaptor.capture());
+        assertThat(historyCaptor.getValue().getPreviousStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        assertThat(historyCaptor.getValue().getNewStatus()).isEqualTo(RoomStatus.TRONG_SACH);
+        assertThat(historyCaptor.getValue().getId()).isEqualTo(501L);
+        assertThat(historyCaptor.getValue().getRoom()).isSameAs(room);
+        ArgumentCaptor<RoomStatusHistory> notificationHistoryCaptor =
+                ArgumentCaptor.forClass(RoomStatusHistory.class);
+        verify(notificationWriterService).writeRoomCleaned(
+                notificationHistoryCaptor.capture(), org.mockito.ArgumentMatchers.same(actor));
+        assertThat(notificationHistoryCaptor.getValue()).isSameAs(historyCaptor.getValue());
+        verify(auditLogService).recordSensitiveActionInCurrentTransaction(
+                17L, "housekeeper@example.test", null, "Phòng #103",
+                "ROOM_STATUS_UPDATED", "127.0.0.1");
+        verifyNoMoreInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("Lỗi ghi audit được ném ra để Spring transaction rollback báo sạch")
+    void updateStatusWithAudit_whenAuditFails_propagatesFailure() throws NoSuchMethodException {
+        Long roomId = 104L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("104");
+        room.setStatus(RoomStatus.TRONG_BAN);
+        when(roomStatusHistoryRepository.save(any(RoomStatusHistory.class))).thenAnswer(invocation -> {
+            RoomStatusHistory history = invocation.getArgument(0);
+            history.setId(502L);
+            return history;
+        });
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.doThrow(new IllegalStateException("audit failed"))
+                .when(auditLogService).recordSensitiveActionInCurrentTransaction(
+                        18L, "housekeeper@example.test", null, "Phòng #104",
+                        "ROOM_STATUS_UPDATED", "127.0.0.1");
+
+        assertThatThrownBy(() -> roomService.updateStatusWithAuditAndNotification(
+                roomId, RoomStatus.TRONG_SACH, "Housekeeper", 18L,
+                "housekeeper@example.test", "127.0.0.1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("audit failed");
+
+        assertThat(RoomService.class.getMethod(
+                "updateStatusWithAuditAndNotification", Long.class, RoomStatus.class, String.class,
+                Long.class, String.class, String.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class))
+                .isTrue();
+        var auditMethod = AuditLogService.class.getMethod(
+                "recordSensitiveActionInCurrentTransaction",
+                Long.class, String.class, Long.class, String.class, String.class, String.class);
+        assertThat(auditMethod.getAnnotation(org.springframework.transaction.annotation.Transactional.class)
+                .propagation())
+                .isEqualTo(org.springframework.transaction.annotation.Propagation.REQUIRED);
+
+        verify(roomStatusHistoryRepository).save(any(RoomStatusHistory.class));
+        verify(auditLogService).recordSensitiveActionInCurrentTransaction(
+                18L, "housekeeper@example.test", null, "Phòng #104",
+                "ROOM_STATUS_UPDATED", "127.0.0.1");
+        verifyNoInteractions(notificationWriterService);
+    }
+
+    @Test
+    @DisplayName("Lỗi notification được ném ra sau khi room, history và audit đã chạy")
+    void updateStatusWithAuditAndNotification_whenWriterFails_propagatesFailureAfterWrites() {
+        Long roomId = 105L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("105");
+        room.setStatus(RoomStatus.TRONG_BAN);
+        RoomStatusHistory history = new RoomStatusHistory();
+        history.setId(503L);
+        com.ttcs.homestay.entity.User actor = org.mockito.Mockito.mock(com.ttcs.homestay.entity.User.class);
+
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenReturn(room);
+        when(roomStatusHistoryRepository.save(any(RoomStatusHistory.class))).thenReturn(history);
+        when(userRepository.findById(19L)).thenReturn(Optional.of(actor));
+        org.mockito.Mockito.doThrow(new IllegalStateException("notification failed"))
+                .when(notificationWriterService).writeRoomCleaned(history, actor);
+
+        assertThatThrownBy(() -> roomService.updateStatusWithAuditAndNotification(
+                roomId, RoomStatus.TRONG_SACH, "Housekeeper", 19L,
+                "housekeeper@example.test", "127.0.0.1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("notification failed");
+
+        InOrder writes = inOrder(roomRepository, roomStatusHistoryRepository,
+                auditLogService, userRepository, notificationWriterService);
+        writes.verify(roomRepository).save(room);
+        writes.verify(roomStatusHistoryRepository).save(any(RoomStatusHistory.class));
+        writes.verify(auditLogService).recordSensitiveActionInCurrentTransaction(
+                19L, "housekeeper@example.test", null, "Phòng #105",
+                "ROOM_STATUS_UPDATED", "127.0.0.1");
+        writes.verify(userRepository).findById(19L);
+        writes.verify(notificationWriterService).writeRoomCleaned(history, actor);
+    }
+
+    @Test
+    @DisplayName("Transition khác không phát notification ROOM_CLEANED")
+    void updateStatusWithAuditAndNotification_whenTransitionIsNotDirtyToClean_doesNotNotify() {
+        Long roomId = 106L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("106");
+        room.setStatus(RoomStatus.TRONG_SACH);
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenReturn(room);
+        when(roomStatusHistoryRepository.save(any(RoomStatusHistory.class))).thenAnswer(invocation -> {
+            RoomStatusHistory history = invocation.getArgument(0);
+            history.setId(504L);
+            return history;
+        });
+
+        roomService.updateStatusWithAuditAndNotification(
+                roomId, RoomStatus.TRONG_BAN, "Housekeeper", 20L,
+                "housekeeper@example.test", "127.0.0.1");
+
+        verify(auditLogService).recordSensitiveActionInCurrentTransaction(
+                20L, "housekeeper@example.test", null, "Phòng #106",
+                "ROOM_STATUS_UPDATED", "127.0.0.1");
+        verifyNoInteractions(notificationWriterService);
+    }
+
+    @Test
+    @DisplayName("Transition không đổi theo policy hiện tại không phát notification ROOM_CLEANED")
+    void updateStatusWithAuditAndNotification_whenStatusDoesNotChange_doesNotNotify() {
+        Long roomId = 107L;
+        Room room = new Room();
+        room.setId(roomId);
+        room.setRoomNumber("107");
+        room.setStatus(RoomStatus.TRONG_BAN);
+        when(roomRepository.findByIdForUpdate(roomId)).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenReturn(room);
+        when(roomStatusHistoryRepository.save(any(RoomStatusHistory.class))).thenAnswer(invocation -> {
+            RoomStatusHistory history = invocation.getArgument(0);
+            history.setId(505L);
+            return history;
+        });
+
+        roomService.updateStatusWithAuditAndNotification(
+                roomId, RoomStatus.TRONG_BAN, "Housekeeper", 21L,
+                "housekeeper@example.test", "127.0.0.1");
+
+        assertThat(room.getStatus()).isEqualTo(RoomStatus.TRONG_BAN);
+        verify(roomRepository).save(room);
+        verify(roomStatusHistoryRepository).save(any(RoomStatusHistory.class));
+        verifyNoInteractions(notificationWriterService);
     }
 
     @Test

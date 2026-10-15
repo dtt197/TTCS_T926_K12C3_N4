@@ -48,9 +48,6 @@ class BookingOperationRoleTest {
     private GuestBookingService guestBookingService;
 
     @MockitoBean
-    private com.ttcs.homestay.service.RoomShortageAlertService roomShortageAlertService;
-
-    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     @MockitoBean

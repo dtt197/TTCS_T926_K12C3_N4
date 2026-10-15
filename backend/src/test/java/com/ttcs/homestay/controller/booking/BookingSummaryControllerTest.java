@@ -38,9 +38,6 @@ class BookingSummaryControllerTest {
     private BookingService bookingService;
 
     @MockitoBean
-    private com.ttcs.homestay.service.RoomShortageAlertService roomShortageAlertService;
-
-    @MockitoBean
     private JwtDecoder jwtDecoder;
 
     @MockitoBean

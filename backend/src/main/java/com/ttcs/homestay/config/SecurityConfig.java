@@ -25,14 +25,35 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.ttcs.homestay.repository.UserRepository;
 import com.ttcs.homestay.security.AccountStatusFilter;
+import com.ttcs.homestay.security.ApiAccessDeniedHandler;
+import com.ttcs.homestay.security.ApiAuthenticationEntryPoint;
+import com.ttcs.homestay.security.ApiSecurityPolicyCatalog;
 
 @Configuration
 public class SecurityConfig {
 
     @Bean
+    ApiAuthenticationEntryPoint apiAuthenticationEntryPoint() {
+        return new ApiAuthenticationEntryPoint();
+    }
+
+    @Bean
+    ApiAccessDeniedHandler apiAccessDeniedHandler() {
+        return new ApiAccessDeniedHandler();
+    }
+
+    @Bean
+    ApiSecurityPolicyCatalog apiSecurityPolicyCatalog() {
+        return new ApiSecurityPolicyCatalog();
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ApiAuthenticationEntryPoint authenticationEntryPoint,
+            ApiAccessDeniedHandler accessDeniedHandler,
+            ApiSecurityPolicyCatalog policyCatalog
     ) throws Exception {
 
         http
@@ -254,12 +275,36 @@ public class SecurityConfig {
 
                         .anyRequest().permitAll()
                 )
+
+                .authorizeHttpRequests(authorize -> {
+                    for (ApiSecurityPolicyCatalog.Policy policy : policyCatalog.policies()) {
+                        var request = policy.method() == null
+                                ? authorize.requestMatchers(policy.path())
+                                : authorize.requestMatchers(
+                                        HttpMethod.valueOf(policy.method()),
+                                        policy.path()
+                                );
+
+                        switch (policy.access()) {
+                            case PUBLIC -> request.permitAll();
+                            case AUTHENTICATED -> request.authenticated();
+                            case ROLES -> request.hasAnyRole(
+                                    policy.roles().toArray(String[]::new)
+                            );
+                            case DENIED -> request.denyAll();
+                        }
+                    }
+                    authorize.anyRequest().permitAll();
+                })
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(jwt ->
                                 jwt.jwtAuthenticationConverter(
                                         jwtAuthenticationConverter()
                                 )
-                        )
+                        ).authenticationEntryPoint(authenticationEntryPoint)
                 )
                 .addFilterAfter(
                         new AccountStatusFilter(userRepository),

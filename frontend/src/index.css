@@ -4,6 +4,11 @@ html {
   background: #f4f6f2;
 }
 
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;

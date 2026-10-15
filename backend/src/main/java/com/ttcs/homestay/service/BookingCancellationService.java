@@ -4,7 +4,6 @@ import com.ttcs.homestay.dto.booking.BookingCancellationResponse;
 import com.ttcs.homestay.dto.booking.CancelBookingRequest;
 import com.ttcs.homestay.dto.booking.CancellationPreviewResponse;
 import com.ttcs.homestay.entity.Booking;
-import com.ttcs.homestay.entity.BookingDeposit;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.CancelReason;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -148,7 +147,7 @@ public class BookingCancellationService {
     /** Tiền cọc đã ghi nhận = cọc gốc (S3-01) cộng/trừ các bút toán điều chỉnh. */
     private long recordedDeposit(Booking booking) {
         BigDecimal original = depositRepository.findByBooking(booking)
-                .map(BookingDeposit::getAmount)
+                .map(deposit -> deposit == null ? BigDecimal.ZERO : deposit.getAmount())
                 .orElse(BigDecimal.ZERO);
         BigDecimal adjustments = adjustmentRepository.sumSignedAmountsByBookingId(booking.getId());
         BigDecimal total = original.add(adjustments == null ? BigDecimal.ZERO : adjustments);

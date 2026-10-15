@@ -8,6 +8,16 @@ type ApiError = {
   message?: string
 }
 
+export class RoomApiRequestError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'RoomApiRequestError'
+    this.status = status
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getAccessToken()
 
@@ -29,7 +39,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   if (!response.ok) {
     const errorBody = body as ApiError | null
 
-    throw new Error(
+    throw new RoomApiRequestError(
+      response.status,
       errorBody?.message ??
         `Yêu cầu thất bại (${response.status})`
     )
@@ -104,10 +115,18 @@ export function checkOut(roomId: number) {
 }
 
 /** S3-09 AC4: Buồng phòng báo sự cố → phòng chuyển sang bảo trì */
-export function reportRoomIncident(roomId: number, note: string) {
+export type IncidentSeverity = 'NHE' | 'NGHIEM_TRONG'
+
+export function reportRoomIncident(
+  roomId: number,
+  severity: IncidentSeverity,
+  description: string,
+  idempotencyKey: string,
+) {
   return request<Room>(`/rooms/${roomId}/incident`, {
     method: 'PATCH',
-    body: JSON.stringify({ note }),
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ severity, description }),
   })
 }
 

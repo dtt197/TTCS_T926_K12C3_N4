@@ -10,9 +10,7 @@ import com.ttcs.homestay.dto.booking.BookingUpdateRequest;
 import com.ttcs.homestay.dto.booking.CheckInOptionResponse;
 import com.ttcs.homestay.dto.booking.PageResponse;
 import com.ttcs.homestay.entity.BookingStatus;
-import com.ttcs.homestay.dto.booking.RoomShortageAlertResponse;
 import com.ttcs.homestay.service.BookingService;
-import com.ttcs.homestay.service.RoomShortageAlertService;
 import com.ttcs.homestay.service.BookingDepositAdjustmentService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,39 +27,13 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
-    private final RoomShortageAlertService roomShortageAlertService;
     private final BookingDepositAdjustmentService bookingDepositAdjustmentService;
 
     public BookingController(
             BookingService bookingService,
-            RoomShortageAlertService roomShortageAlertService,
             BookingDepositAdjustmentService bookingDepositAdjustmentService) {
         this.bookingService = bookingService;
-        this.roomShortageAlertService = roomShortageAlertService;
         this.bookingDepositAdjustmentService = bookingDepositAdjustmentService;
-    }
-
-    /**
-     * S3-08: Danh sách cảnh báo các cặp (ngày, loại phòng) có số booking còn hiệu lực vượt số phòng khả dụng.
-     */
-    @GetMapping("/shortage-alerts")
-    public List<RoomShortageAlertResponse> getShortageAlerts() {
-        return roomShortageAlertService.getShortageAlerts();
-    }
-
-    /**
-     * S3-08: Danh sách booking liên quan đến một cảnh báo cụ thể (ngày + loại phòng).
-     * Booking tạo sau cùng lên đầu để ưu tiên xử lý.
-     */
-    @GetMapping("/shortage-alerts/{date}/{roomTypeCode}")
-    public List<com.ttcs.homestay.dto.booking.ShortageBookingResponse> getShortageBookings(
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @PathVariable String roomTypeCode) {
-        try {
-            return roomShortageAlertService.getShortageBookings(date, roomTypeCode);
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
     }
 
     @PostMapping

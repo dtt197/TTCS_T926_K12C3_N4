@@ -9,10 +9,14 @@ import com.ttcs.homestay.dto.RoomStatusHistoryResponse;
 import com.ttcs.homestay.dto.UpdateRoomStatusRequest;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.service.AuditLogService;
+import com.ttcs.homestay.service.IncidentReportService;
 import com.ttcs.homestay.service.RoomService;
+import com.ttcs.homestay.service.MaintenanceWorkflowService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,12 +36,29 @@ public class RoomController {
 
     private final RoomService roomService;
     private final AuditLogService auditLogService;
+    private final IncidentReportService incidentReportService;
+    private final MaintenanceWorkflowService maintenanceWorkflowService;
 
+    @Autowired
     public RoomController(
             RoomService roomService,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            IncidentReportService incidentReportService,
+            MaintenanceWorkflowService maintenanceWorkflowService) {
         this.roomService = roomService;
         this.auditLogService = auditLogService;
+        this.incidentReportService = incidentReportService;
+        this.maintenanceWorkflowService = maintenanceWorkflowService;
+    }
+
+    /** Compatibility constructor for existing controller unit tests. */
+    public RoomController(RoomService roomService, AuditLogService auditLogService) {
+        this(roomService, auditLogService, null, null);
+    }
+
+    public RoomController(RoomService roomService, AuditLogService auditLogService,
+            IncidentReportService incidentReportService) {
+        this(roomService, auditLogService, incidentReportService, null);
     }
 
     @GetMapping
@@ -45,7 +66,7 @@ public class RoomController {
         List<RoomResponse> rooms = roomService.getRooms();
 
         if (isHousekeeping(authentication)) {
-            return rooms.stream()
+            List<RoomResponse> dirtyRooms = rooms.stream()
                     .filter(room -> room.status() == RoomStatus.TRONG_BAN)
                     .sorted((a, b) -> {
                         boolean aToday = Boolean.TRUE.equals(a.hasGuestCheckInToday());
@@ -60,6 +81,22 @@ public class RoomController {
                         return a.roomNumber().compareTo(b.roomNumber());
                     })
                     .toList();
+            java.util.Set<Long> cleaningRoomIds = new java.util.HashSet<>(
+                    maintenanceWorkflowService.cleaningRoomIds(jwt(authentication)));
+            List<RoomResponse> maintenanceCleaningRooms = rooms.stream()
+                    .filter(room -> cleaningRoomIds.contains(room.id()))
+                    .toList();
+            return java.util.stream.Stream
+        .concat(dirtyRooms.stream(), maintenanceCleaningRooms.stream())
+        .collect(java.util.stream.Collectors.toMap(
+                RoomResponse::id,
+                java.util.function.Function.identity(),
+                (existing, duplicate) -> existing,
+                java.util.LinkedHashMap::new
+        ))
+        .values()
+        .stream()
+        .toList();
         }
 
         return rooms;
@@ -86,26 +123,40 @@ public class RoomController {
                             HttpStatus.FORBIDDEN,
                             "Không có quyền thao tác phòng này"));
 
-            if (room.status() != RoomStatus.TRONG_BAN
+            if ((room.status() != RoomStatus.TRONG_BAN && room.status() != RoomStatus.BAO_TRI)
                     || request.status() != RoomStatus.TRONG_SACH) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "Housekeeping chỉ được chuyển phòng Trống bẩn sang Trống sạch");
+                if (roomService.hasOpenMaintenanceRequest(roomId)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Phòng có yêu cầu vệ sinh sau bảo trì; hãy dùng thao tác Đã dọn sạch trong danh sách.");
+                }
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Housekeeping chỉ được chuyển phòng Trống bẩn hoặc phòng bảo trì sang Trống sạch");
             }
+            if (room.status() == RoomStatus.TRONG_BAN && roomService.hasOpenMaintenanceRequest(roomId))
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Phòng có yêu cầu vệ sinh sau bảo trì; hãy dùng thao tác Đã dọn sạch trong danh sách.");
         }
 
-        RoomResponse response = roomService.updateStatus(
-                roomId,
-                request.status(),
-                operatorName(authentication)
-        );
-
-        recordRoomAction(
-                authentication,
-                roomId,
-                "ROOM_STATUS_UPDATED",
-                httpRequest
-        );
+        RoomResponse response;
+        if (isHousekeeping(authentication)) {
+            response = roomService.updateStatusWithAuditAndNotification(
+                    roomId,
+                    request.status(),
+                    operatorName(authentication),
+                    actorUserId(authentication),
+                    actorEmail(authentication),
+                    httpRequest.getRemoteAddr());
+        } else {
+            response = roomService.updateStatus(
+                    roomId,
+                    request.status(),
+                    operatorName(authentication));
+            recordRoomAction(
+                    authentication,
+                    roomId,
+                    "ROOM_STATUS_UPDATED",
+                    httpRequest);
+        }
 
         return response;
     }
@@ -142,6 +193,8 @@ public class RoomController {
             @PathVariable Long roomId,
             @Valid @RequestBody IncidentReportRequest request,
             Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestHeader(
+                    value = "Idempotency-Key", required = false) String idempotencyKeyHeader,
             HttpServletRequest httpRequest) {
 
         // Kiểm tra bảo vệ tầng controller: chỉ HOUSEKEEPING mới được dùng endpoint này
@@ -150,19 +203,45 @@ public class RoomController {
                     HttpStatus.FORBIDDEN, "Chỉ nhân viên buồng phòng mới có thể báo sự cố.");
         }
 
-        RoomResponse response = roomService.reportIncident(
+        UUID idempotencyKey;
+        try {
+            if (idempotencyKeyHeader == null || idempotencyKeyHeader.isBlank()) {
+                throw new IllegalArgumentException("missing");
+            }
+            idempotencyKey = UUID.fromString(idempotencyKeyHeader.trim());
+            if (!idempotencyKey.toString().equalsIgnoreCase(idempotencyKeyHeader.trim())) {
+                throw new IllegalArgumentException("invalid UUID format");
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Header Idempotency-Key là bắt buộc và phải là UUID hợp lệ.");
+        }
+        if (incidentReportService == null) {
+            throw new IllegalStateException("IncidentReportService is required");
+        }
+        return incidentReportService.report(
                 roomId,
                 request,
-                operatorName(authentication)
-        );
+                idempotencyKey,
+                actorUserId(authentication),
+                actorEmail(authentication),
+                httpRequest.getRemoteAddr());
+    }
 
-        recordRoomAction(
-                authentication,
-                roomId,
-                "ROOM_INCIDENT_REPORTED",
-                httpRequest
-        );
-
+    /** Legacy direct-call seam for existing controller unit tests; not mapped as an HTTP handler. */
+    public RoomResponse reportIncident(
+            Long roomId,
+            IncidentReportRequest request,
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
+        if (!isHousekeeping(authentication)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Chỉ nhân viên buồng phòng mới có thể báo sự cố.");
+        }
+        RoomResponse response = roomService.reportIncident(
+                roomId, request, operatorName(authentication));
+        recordRoomAction(authentication, roomId, "ROOM_INCIDENT_REPORTED", httpRequest);
         return response;
     }
 
@@ -248,6 +327,10 @@ public class RoomController {
         }
 
         return authentication.getName();
+    }
+
+    private static org.springframework.security.oauth2.jwt.Jwt jwt(Authentication authentication) {
+        return authentication instanceof JwtAuthenticationToken token ? token.getToken() : null;
     }
 
     private static boolean isHousekeeping(Authentication authentication) {
