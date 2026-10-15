@@ -14,6 +14,7 @@ import { RoomTypePage } from './RoomTypePage'
 import { UserManagementPage } from './UserManagementPage'
 import { BookingListPage } from './BookingListPage'
 import { WalkInBookingPage } from './WalkInBookingPage'
+import { OccupancyReportPage } from './OccupancyReportPage'
 import './AuthPages.css'
 
 type InternalHomePageProps = {
@@ -34,6 +35,7 @@ type View =
   | 'reminderEmails'
   | 'bookings'
   | 'walkInBooking'
+  | 'occupancyReport'
 
 type Tab = {
   view: View
@@ -45,6 +47,7 @@ type Tab = {
 }
 
 const TABS: ReadonlyArray<Tab> = [
+  { view: 'occupancyReport', path: '/bao-cao-cong-suat', label: 'Công suất phòng', title: 'Báo cáo công suất phòng', icon: '◔', permission: 'reports:occupancy' },
   {
     view: 'roomCalendar',
     path: '/room-calendar',
@@ -347,6 +350,8 @@ export function InternalHomePage({
         <div className="internal-page-content">
           {activeView === 'roomCalendar' ? (
             <RoomCalendarPage />
+          ) : activeView === 'occupancyReport' ? (
+            <OccupancyReportPage />
           ) : activeView === 'bookings' ? (
             <BookingListPage role={user.role} />
           ) : activeView === 'walkInBooking' ? (

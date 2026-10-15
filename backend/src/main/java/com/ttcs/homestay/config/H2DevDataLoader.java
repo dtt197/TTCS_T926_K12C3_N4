@@ -64,6 +64,23 @@ public class H2DevDataLoader implements ApplicationRunner {
             jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'admin.demo@homestay.local'", demoPasswordHash);
         }
 
+        // Tài khoản Chủ homestay mẫu: owner.demo@homestay.local / password.
+        // Dùng để kiểm tra báo cáo công suất chỉ dành cho OWNER.
+        Long ownerRoleId = jdbcTemplate.queryForObject("SELECT id FROM roles WHERE code = 'OWNER'", Long.class);
+        Integer ownerCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email = 'owner.demo@homestay.local'", Integer.class);
+        if (ownerCount == null || ownerCount == 0) {
+            jdbcTemplate.update("""
+                INSERT INTO users (
+                    full_name, email, password_hash, role_id, is_active,
+                    failed_login_count, token_version, must_change_password, created_at, updated_at)
+                VALUES ('Chủ homestay Demo', 'owner.demo@homestay.local',
+                        ?, ?, TRUE, 0, 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, demoPasswordHash, ownerRoleId);
+        } else {
+            jdbcTemplate.update("UPDATE users SET password_hash = ?, failed_login_count = 0, is_active = TRUE WHERE email = 'owner.demo@homestay.local'", demoPasswordHash);
+        }
+
         // 4. Khởi tạo tham số vận hành
         Integer settingsCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM operating_settings", Integer.class);
         if (settingsCount == null || settingsCount == 0) {

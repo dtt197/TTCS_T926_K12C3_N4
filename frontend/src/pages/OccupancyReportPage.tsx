@@ -1,0 +1,42 @@
+import { useState } from 'react'
+import { downloadOccupancyCsv, getOccupancyReport, type OccupancyReport } from '../services/occupancyService'
+import './OccupancyReportPage.css'
+
+const today = new Date().toISOString().slice(0, 10)
+const percent = (value: number | null) => value === null ? 'Không có phòng khả dụng' : `${value.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+
+export function OccupancyReportPage() {
+  const [startDate, setStartDate] = useState(today)
+  const [endDate, setEndDate] = useState(today)
+  const [roomTypeId, setRoomTypeId] = useState('')
+  const [report, setReport] = useState<OccupancyReport | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const validate = () => {
+    if (!startDate || !endDate) return 'Vui lòng chọn ngày bắt đầu và ngày kết thúc.'
+    if (endDate < startDate) return 'Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.'
+    const days = (Date.parse(`${endDate}T00:00:00`) - Date.parse(`${startDate}T00:00:00`)) / 86_400_000 + 1
+    return days > 366 ? 'Khoảng ngày báo cáo không được vượt quá 366 ngày.' : ''
+  }
+  const load = async (typeId = roomTypeId) => {
+    const validation = validate(); if (validation) { setError(validation); return }
+    setLoading(true); setError('')
+    try { setReport(await getOccupancyReport(startDate, endDate, typeId)) }
+    catch (e) { setError(e instanceof Error ? e.message : 'Không thể tải báo cáo.') }
+    finally { setLoading(false) }
+  }
+  const changeType = (value: string) => { setRoomTypeId(value); if (report) void load(value) }
+  const download = async () => {
+    const validation = validate(); if (validation) { setError(validation); return }
+    try { setError(''); await downloadOccupancyCsv(startDate, endDate, roomTypeId) }
+    catch (e) { setError(e instanceof Error ? e.message : 'Không thể tải tệp CSV.') }
+  }
+  return <section className="occupancy-report">
+    <div className="occupancy-filter"><label>Từ ngày<input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label><label>Đến ngày<input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></label><button onClick={() => void load()} disabled={loading}>{loading ? 'Đang xem...' : 'Xem báo cáo'}</button><button className="csv-button" onClick={() => void download()} disabled={loading}>Tải CSV</button></div>
+    {error && <p className="occupancy-error">{error}</p>}
+    {report && <><div className="occupancy-filter type-filter"><label>Loại phòng<select value={roomTypeId} onChange={e => changeType(e.target.value)}><option value="">Tất cả loại phòng</option>{report.roomTypes.map(type => <option key={type.roomTypeId} value={type.roomTypeId}>{type.name}</option>)}</select></label></div>
+      <div className="occupancy-summary"><article><span>Công suất trung bình kỳ</span><strong>{percent(report.totalAverageOccupancyPercent)}</strong><small>{report.totalSoldNights} đêm bán / {report.totalAvailableNights} đêm khả dụng</small></article>{report.roomTypes.map(type => <article key={type.roomTypeId}><span>{type.name}</span><strong>{percent(type.averageOccupancyPercent)}</strong><small>{type.soldNights} / {type.availableNights} đêm</small></article>)}</div>
+      <h2>Công suất từng ngày — {report.selectedRoomTypeName}</h2><div className="occupancy-table-wrap"><table><thead><tr><th>Ngày</th><th>Đêm đã bán</th><th>Đêm khả dụng</th><th>Công suất</th></tr></thead><tbody>{report.dailyOccupancies.map(day => <tr key={day.date}><td>{day.date.split('-').reverse().join('/')}</td><td>{day.soldNights}</td><td>{day.availableNights}</td><td>{percent(day.occupancyPercent)}</td></tr>)}</tbody></table></div></>}
+  </section>
+}
