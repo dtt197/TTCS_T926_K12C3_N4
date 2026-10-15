@@ -7,4 +7,10 @@ public record CheckoutPaymentRequest(
         String paymentMethod,
         String paymentReference,
         Boolean amountReceivedConfirmed,
-        Boolean refundCompletedConfirmed) {}
+        Boolean refundCompletedConfirmed,
+        String earlyCheckoutReason) {
+    public CheckoutPaymentRequest(String previewToken, String paymentMethod, String paymentReference,
+            Boolean amountReceivedConfirmed, Boolean refundCompletedConfirmed) {
+        this(previewToken, paymentMethod, paymentReference, amountReceivedConfirmed, refundCompletedConfirmed, null);
+    }
+}
