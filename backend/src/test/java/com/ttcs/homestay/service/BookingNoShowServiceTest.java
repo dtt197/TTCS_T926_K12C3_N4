@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.CustomerNoShowResponse;
 import com.ttcs.homestay.dto.booking.NoShowEligibilityResponse;
 import com.ttcs.homestay.entity.AppointmentActionLog;
 import com.ttcs.homestay.entity.Booking;
@@ -187,5 +188,64 @@ class BookingNoShowServiceTest {
         Customer createdCustomer = customerCaptor.getValue();
         assertThat(createdCustomer.getPhone()).isEqualTo("0987654321");
         assertThat(createdCustomer.getNoShowCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("S4-04 Lát 2: Đánh dấu không đến cho khách A (SĐT X) -> no_show_count tăng thêm 1")
+    void markNoShow_existingCustomer_incrementsCountByOne() {
+        LocalDate today = LocalDate.of(2026, 10, 15);
+        Booking booking = createBooking(5L, BookingStatus.DA_XAC_NHAN, today);
+        booking.setGuestPhone("0912345678");
+
+        Customer existingCustomer = new Customer("Khach Hang A", "0912345678", "khacha@example.com");
+        existingCustomer.setNoShowCount(1);
+        when(customerRepository.findFirstByPhone("0912345678")).thenReturn(Optional.of(existingCustomer));
+
+        OffsetDateTime evaluationTime = today.atTime(15, 0).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
+        BookingResponse response = service.markNoShow(5L, evaluationTime, "127.0.0.1");
+
+        assertThat(response.status()).isEqualTo(BookingStatus.NO_SHOW);
+        assertThat(existingCustomer.getNoShowCount()).isEqualTo(2);
+        verify(customerRepository).save(existingCustomer);
+    }
+
+    @Test
+    @DisplayName("S4-04 Lát 2: Tra cứu số lần không đến theo SĐT -> Khách có lịch sử bỏ hẹn hiển thị cảnh báo")
+    void getCustomerNoShowHistory_existingWithNoShows_returnsWarning() {
+        Customer customer = new Customer("Nguyen Van A", "0987654321", "vana@example.com");
+        customer.setNoShowCount(2);
+        when(customerRepository.findFirstByPhone("0987654321")).thenReturn(Optional.of(customer));
+
+        CustomerNoShowResponse response = service.getCustomerNoShowHistory(" 0987654321 ");
+        assertThat(response.phone()).isEqualTo("0987654321");
+        assertThat(response.fullName()).isEqualTo("Nguyen Van A");
+        assertThat(response.noShowCount()).isEqualTo(2);
+        assertThat(response.hasWarning()).isTrue();
+        assertThat(response.warningMessage()).contains("⚠️ Khách hàng này đã bỏ hẹn 2 lần");
+    }
+
+    @Test
+    @DisplayName("S4-04 Lát 2: Tra cứu số lần không đến theo SĐT -> Khách mới hoặc không có bỏ hẹn không cảnh báo")
+    void getCustomerNoShowHistory_cleanCustomerOrNotFound_returnsNoWarning() {
+        // Trường hợp 1: Không tìm thấy khách theo SĐT
+        when(customerRepository.findFirstByPhone("0900000000")).thenReturn(Optional.empty());
+        CustomerNoShowResponse notFound = service.getCustomerNoShowHistory("0900000000");
+        assertThat(notFound.noShowCount()).isEqualTo(0);
+        assertThat(notFound.hasWarning()).isFalse();
+        assertThat(notFound.warningMessage()).isNull();
+
+        // Trường hợp 2: Khách có hồ sơ nhưng no_show_count = 0
+        Customer cleanCustomer = new Customer("Tran Van C", "0911111111", "vanc@example.com");
+        cleanCustomer.setNoShowCount(0);
+        when(customerRepository.findFirstByPhone("0911111111")).thenReturn(Optional.of(cleanCustomer));
+        CustomerNoShowResponse cleanResponse = service.getCustomerNoShowHistory("0911111111");
+        assertThat(cleanResponse.noShowCount()).isEqualTo(0);
+        assertThat(cleanResponse.hasWarning()).isFalse();
+        assertThat(cleanResponse.warningMessage()).isNull();
+
+        // Trường hợp 3: SĐT null hoặc rỗng
+        CustomerNoShowResponse emptyResponse = service.getCustomerNoShowHistory("");
+        assertThat(emptyResponse.noShowCount()).isEqualTo(0);
+        assertThat(emptyResponse.hasWarning()).isFalse();
     }
 }

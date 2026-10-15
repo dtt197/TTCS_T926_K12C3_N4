@@ -8,6 +8,7 @@ import type {
   AssignableRoom,
   BookingRoomChangeHistory,
   CheckInOption,
+  CustomerNoShowResponse,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -268,3 +269,11 @@ export function markBookingNoShow(id: number): Promise<BookingListItem> {
     method: 'POST',
   })
 }
+
+/** S4-04 (SCRUM-150): Tra cứu lịch sử khách bỏ hẹn theo số điện thoại */
+export function getCustomerNoShowHistory(phone: string): Promise<CustomerNoShowResponse> {
+  return apiRequest<CustomerNoShowResponse>(
+    `/api/customers/no-show-history?phone=${encodeURIComponent(phone.trim())}`,
+  )
+}
+

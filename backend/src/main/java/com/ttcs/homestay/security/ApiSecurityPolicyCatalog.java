@@ -172,7 +172,8 @@ public class ApiSecurityPolicyCatalog {
                 "/api/pricing/**");
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/bookings", "/api/bookings/**",
-                "/api/appointments/**");
+                "/api/appointments/**",
+                "/api/customers", "/api/customers/**");
         add(policies, "GET", Access.PUBLIC, List.of(),
                 "/api/public/room-types/**",
                 "/api/public/room-types-catalog",
