@@ -41,6 +41,7 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `GET /api/admin/audit-logs` | `ADMIN` |
 | `GET /api/admin/users` | `ADMIN`, `OWNER` |
 | `GET /api/admin/security/endpoint-permissions`, `GET /api/admin/security/endpoint-discrepancies`, `POST /api/admin/security/endpoint-discrepancies` | `ADMIN` |
+| `POST /api/admin/sample-data/reload` | `OWNER` |
 | `POST /api/admin/users`, `PATCH /api/admin/users/{id}/status`, `PUT /api/admin/users/{id}`, `POST /api/admin/users/{id}/resend-temporary-password` | `ADMIN` |
 | `POST /api/admin/reminders/run`, `GET /api/admin/email-logs` | `ADMIN` |
 | `GET /api/reports/occupancy`, `/api/reports/occupancy.csv`, `/api/reports/occupancy/detailed` | `OWNER` |

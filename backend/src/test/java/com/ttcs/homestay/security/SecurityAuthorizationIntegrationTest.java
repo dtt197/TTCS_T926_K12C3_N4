@@ -214,6 +214,27 @@ void setUp() {
     }
 
     @Test
+    void sampleDataReloadApiChiOwnerDuocTruyCap() throws Exception {
+        mockMvc.perform(post("/api/admin/sample-data/reload"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/admin/sample-data/reload")
+                        .header("Authorization", "Bearer receptionist-test-token"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/admin/sample-data/reload")
+                        .header("Authorization", "Bearer housekeeping-test-token"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/admin/sample-data/reload")
+                        .header("Authorization", "Bearer admin-test-token"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/admin/sample-data/reload")
+                        .header("Authorization", "Bearer owner-test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roomTypeCount").value(4))
+                .andExpect(jsonPath("$.roomCount").value(20))
+                .andExpect(jsonPath("$.bookingCount").value(30));
+    }
+
+    @Test
     void roomManagementApiChiAdminVaOwnerDuocTruyCap() throws Exception {
         mockMvc.perform(get("/api/room-management/rooms")
                         .header("Authorization", "Bearer admin-test-token"))
