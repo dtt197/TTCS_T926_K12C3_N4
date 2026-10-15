@@ -371,7 +371,7 @@ public class SampleDataService {
             if (roleId == null) return;
 
             // Mật khẩu mẫu chuẩn: "password"
-            String passHash = "$2a$10$i8R8MorFFrpX4sP1O6xihOX1M3V5ICzfLPuym.EpIZnx7s6y.mwcm";
+            String passHash = "$2a$10$86R0Ma3Tt357LyDMkPMisO8KNPrFR5XpR974IaxOXAF8HPGjFrfWq";
             List<Integer> userExists = jdbcTemplate.queryForList(
                     "SELECT 1 FROM users WHERE LOWER(email) = LOWER(?)", Integer.class, email);
             if (userExists.isEmpty()) {

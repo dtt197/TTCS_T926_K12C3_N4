@@ -21,8 +21,8 @@ public class DemoAccountInitializer implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DemoAccountInitializer.class);
     private final JdbcTemplate jdbcTemplate;
 
-    // Hash BCrypt chuẩn của mật khẩu "password"
-    private static final String DEMO_PASSWORD_HASH = "$2a$10$i8R8MorFFrpX4sP1O6xihOX1M3V5ICzfLPuym.EpIZnx7s6y.mwcm";
+    // Hash BCrypt chuẩn xác của mật khẩu "password"
+    private static final String DEMO_PASSWORD_HASH = "$2a$10$86R0Ma3Tt357LyDMkPMisO8KNPrFR5XpR974IaxOXAF8HPGjFrfWq";
 
     public DemoAccountInitializer(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
