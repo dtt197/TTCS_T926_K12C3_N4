@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiRequestError } from '../services/apiClient'
-import { getBookingDetails, getBookingSummary, type BookingDetailResponse } from '../services/bookingService'
+import { getBookingDetails, getBookingSummary, markBookingNoShow, type BookingDetailResponse } from '../services/bookingService'
 import { createRoomCalendarPlan, mergeRoomCalendarResponses, type RoomCalendarPlan } from '../services/roomCalendarRanges'
 import { getRoomCalendar, type CalendarStatus, type RoomCalendar } from '../services/roomCalendarService'
 import type { BookingListItem } from '../types/booking'
+import { isNoShowEligible } from './bookingActionVisibility'
 import './RoomCalendarPage.css'
 
 const labels: Record<CalendarStatus, string> = {
@@ -17,6 +18,7 @@ const BOOKING_STATUS_LABELS: Record<string, string> = {
   DA_NHAN_PHONG: 'Đã nhận phòng',
   DA_TRA_PHONG: 'Đã trả phòng',
   DA_HET_HAN: 'Đã hết hạn',
+  NO_SHOW: 'Không đến',
 }
 
 function today() {
@@ -140,6 +142,8 @@ export function RoomCalendarPage() {
   const [detail, setDetail] = useState<Detail | null>(null)
   /** S3-10 Lát 4: thời gian từ lúc gửi yêu cầu đến khi lưới hiển thị xong (mili giây). */
   const [loadMs, setLoadMs] = useState<number | null>(null)
+  const [noShowLoading, setNoShowLoading] = useState(false)
+  const [noShowMessage, setNoShowMessage] = useState<string | null>(null)
   const triggerRefs = useRef(new Map<string, HTMLButtonElement>())
   const detailRequest = useRef(0)
   const calendarRequestGeneration = useRef(0)
@@ -280,11 +284,35 @@ export function RoomCalendarPage() {
     setDetail(null)
     setOpenCell(null)
     setPopoverPosition(null)
+    setNoShowMessage(null)
     if (cellKey) {
       // Trả focus về ô vừa bấm nhưng không bật lại khung tên khách của Lát 2.
       skipFocusPopover.current = true
       triggerRefs.current.get(cellKey)?.focus()
       skipFocusPopover.current = false
+    }
+  }
+
+  async function handleCalendarNoShow(bookingId: number) {
+    if (noShowLoading) return
+    const confirmed = window.confirm('Bạn có chắc chắn muốn đánh dấu khách không đến cho booking này? Thao tác này sẽ giải phóng phòng trên sơ đồ ngay lập tức.')
+    if (!confirmed) return
+    setNoShowLoading(true)
+    setNoShowMessage(null)
+    try {
+      await markBookingNoShow(bookingId)
+      setNoShowMessage('Đã đánh dấu khách không đến và giải phóng phòng thành công.')
+      setAttempt(v => v + 1)
+      if (detail && detail.booking) {
+        setDetail({
+          ...detail,
+          booking: { ...detail.booking, status: 'NO_SHOW', roomNumber: null },
+        })
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Không thể đánh dấu khách không đến.')
+    } finally {
+      setNoShowLoading(false)
     }
   }
 
@@ -415,7 +443,37 @@ export function RoomCalendarPage() {
                 <div><dt>Tiền cọc hiện tại</dt><dd>{detail.extra?.currentDepositTotal != null ? formatCurrency(detail.extra.currentDepositTotal) : 'Chưa ghi nhận'}</dd></div>
               </dl>
             )}
-            <div className="calendar-detail-actions">
+            {noShowMessage && (
+              <p role="status" style={{ color: '#059669', fontWeight: 500, margin: '8px 0', fontSize: '14px' }}>{noShowMessage}</p>
+            )}
+            <div className="calendar-detail-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {detail.booking && (detail.booking.status === 'CHO_XAC_NHAN' || detail.booking.status === 'DA_XAC_NHAN') && (() => {
+                const eligibility = isNoShowEligible(detail.booking)
+                return (
+                  <button
+                    type="button"
+                    id={`calendar-no-show-btn-${detail.bookingId}`}
+                    className={`calendar-no-show-button ${eligibility.eligible ? 'is-active' : ''}`}
+                    disabled={!eligibility.eligible || noShowLoading}
+                    title={eligibility.reason || 'Đánh dấu khách không đến'}
+                    onClick={() => handleCalendarNoShow(detail.bookingId)}
+                    style={{
+                      backgroundColor: eligibility.eligible ? '#d97706' : '#9ca3af',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 14px',
+                      fontWeight: 500,
+                      cursor: eligibility.eligible && !noShowLoading ? 'pointer' : 'not-allowed',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span aria-hidden="true">⏱</span> {noShowLoading ? 'Đang xử lý…' : 'Khách không đến'}
+                  </button>
+                )
+              })()}
               <button type="button" onClick={closeDetail}>Quay lại sơ đồ</button>
             </div>
           </div>

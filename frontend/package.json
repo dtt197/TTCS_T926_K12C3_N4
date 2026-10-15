@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "node --experimental-strip-types --test tests/endpointPermissionComparison.test.mjs tests/checkoutAc3.test.mjs tests/roomCalendarRanges.test.ts",
+    "test": "node --experimental-strip-types --test tests/endpointPermissionComparison.test.mjs tests/checkoutAc3.test.mjs tests/roomCalendarRanges.test.ts tests/bookingNoShow.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

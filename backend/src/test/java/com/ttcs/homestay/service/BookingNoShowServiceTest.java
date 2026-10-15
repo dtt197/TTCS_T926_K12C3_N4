@@ -1,0 +1,191 @@
+package com.ttcs.homestay.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.ttcs.homestay.dto.booking.BookingResponse;
+import com.ttcs.homestay.dto.booking.NoShowEligibilityResponse;
+import com.ttcs.homestay.entity.AppointmentActionLog;
+import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.entity.Customer;
+import com.ttcs.homestay.entity.OperatingSettings;
+import com.ttcs.homestay.entity.Room;
+import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.repository.AppointmentActionLogRepository;
+import com.ttcs.homestay.repository.BookingRepository;
+import com.ttcs.homestay.repository.CustomerRepository;
+import com.ttcs.homestay.repository.UserRepository;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.web.server.ResponseStatusException;
+
+class BookingNoShowServiceTest {
+
+    private final BookingRepository bookingRepository = mock(BookingRepository.class);
+    private final CustomerRepository customerRepository = mock(CustomerRepository.class);
+    private final AppointmentActionLogRepository actionLogRepository = mock(AppointmentActionLogRepository.class);
+    private final UserRepository userRepository = mock(UserRepository.class);
+    private final OperatingSettingsService settingsService = mock(OperatingSettingsService.class);
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
+
+    private BookingNoShowService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new BookingNoShowService(
+                bookingRepository,
+                customerRepository,
+                actionLogRepository,
+                userRepository,
+                settingsService,
+                auditLogService
+        );
+
+        OperatingSettings settings = new OperatingSettings();
+        settings.setCheckInTime(LocalTime.of(14, 0));
+        when(settingsService.findEffectiveAt(any())).thenReturn(settings);
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private Booking createBooking(Long id, BookingStatus status, LocalDate checkInDate) {
+        Booking booking = new Booking();
+        booking.setId(id);
+        booking.setBookingCode("BK-" + id);
+        booking.setGuestName("Nguyen Van A");
+        booking.setGuestPhone("0987654321");
+        booking.setGuestEmail("vana@example.com");
+        booking.setStatus(status);
+        booking.setCheckInDate(checkInDate);
+        booking.setCheckOutDate(checkInDate.plusDays(1));
+        booking.setCreatedAt(OffsetDateTime.now(BookingNoShowService.ZONE_VN).minusDays(1));
+        booking.setRoomTypeNameSnapshot("Deluxe Room");
+
+        RoomType roomType = new RoomType();
+        roomType.setName("Deluxe Room");
+        roomType.setCheckInTime(LocalTime.of(14, 0));
+        booking.setRoomType(roomType);
+
+        Room room = new Room();
+        room.setId(101L);
+        room.setRoomNumber("101");
+        booking.setRoom(room);
+
+        when(bookingRepository.findById(id)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(id)).thenReturn(Optional.of(booking));
+        return booking;
+    }
+
+    @Test
+    @DisplayName("Kịch bản 1: Bấm nút trước giờ hẹn 30 phút -> Bị khóa / Báo lỗi")
+    void markNoShow_before30Minutes_fails() {
+        LocalDate today = LocalDate.of(2026, 10, 15);
+        Booking booking = createBooking(1L, BookingStatus.DA_XAC_NHAN, today);
+
+        // Giờ check-in 14:00. Lúc 14:15 mới trôi qua 15 phút, chưa đủ 30 phút.
+        OffsetDateTime evaluationTime = today.atTime(14, 15).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
+
+        // 1. Kiểm tra API eligibility
+        NoShowEligibilityResponse eligibility = service.checkEligibility(1L, evaluationTime);
+        assertThat(eligibility.eligible()).isFalse();
+        assertThat(eligibility.reason()).contains("Chưa đủ điều kiện");
+
+        // 2. Thao tác markNoShow bị ném ngoại lệ 400 Bad Request
+        assertThatThrownBy(() -> service.markNoShow(1L, evaluationTime, "127.0.0.1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Chưa đủ điều kiện");
+    }
+
+    @Test
+    @DisplayName("Kịch bản 2: Bấm nút sau giờ hẹn 30 phút khi đã check-in -> Bị khóa / Báo lỗi")
+    void markNoShow_after30Minutes_alreadyCheckedIn_fails() {
+        LocalDate today = LocalDate.of(2026, 10, 15);
+        Booking booking = createBooking(2L, BookingStatus.DA_NHAN_PHONG, today);
+
+        // Lúc 15:00 đã quá 30 phút sau 14:00 nhưng khách đã check-in
+        OffsetDateTime evaluationTime = today.atTime(15, 0).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
+
+        // 1. Kiểm tra API eligibility
+        NoShowEligibilityResponse eligibility = service.checkEligibility(2L, evaluationTime);
+        assertThat(eligibility.eligible()).isFalse();
+        assertThat(eligibility.checkedIn()).isTrue();
+        assertThat(eligibility.reason()).contains("đã check-in");
+
+        // 2. Thao tác markNoShow bị ném ngoại lệ 409 Conflict
+        assertThatThrownBy(() -> service.markNoShow(2L, evaluationTime, "127.0.0.1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("đã check-in");
+    }
+
+    @Test
+    @DisplayName("Kịch bản 3: Bấm nút sau giờ hẹn 30 phút khi chưa check-in -> Thành công, giải phóng lịch phòng")
+    void markNoShow_after30Minutes_notCheckedIn_success() {
+        LocalDate today = LocalDate.of(2026, 10, 15);
+        Booking booking = createBooking(3L, BookingStatus.DA_XAC_NHAN, today);
+
+        // Giả lập khách hàng cũ đã có trong cơ sở dữ liệu
+        Customer existingCustomer = new Customer("Nguyen Van A", "0987654321", "vana@example.com");
+        existingCustomer.setNoShowCount(2);
+        when(customerRepository.findFirstByPhone("0987654321")).thenReturn(Optional.of(existingCustomer));
+
+        // Lúc 14:35 đã quá 30 phút kể từ 14:00 và khách chưa nhận phòng
+        OffsetDateTime evaluationTime = today.atTime(14, 35).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
+
+        // 1. Kiểm tra eligibility
+        NoShowEligibilityResponse eligibility = service.checkEligibility(3L, evaluationTime);
+        assertThat(eligibility.eligible()).isTrue();
+        assertThat(eligibility.reason()).contains("Đủ điều kiện");
+
+        // 2. Thực hiện đánh dấu không đến
+        BookingResponse response = service.markNoShow(3L, evaluationTime, "127.0.0.1");
+
+        // Kiểm tra trạng thái booking đã cập nhật sang NO_SHOW
+        assertThat(response.status()).isEqualTo(BookingStatus.NO_SHOW);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.NO_SHOW);
+
+        // Kiểm tra tăng no_show_count cho khách hàng (từ 2 lên 3)
+        assertThat(existingCustomer.getNoShowCount()).isEqualTo(3);
+        verify(customerRepository).save(existingCustomer);
+
+        // Kiểm tra lưu bản ghi vào appointment_action_logs
+        ArgumentCaptor<AppointmentActionLog> logCaptor = ArgumentCaptor.forClass(AppointmentActionLog.class);
+        verify(actionLogRepository).save(logCaptor.capture());
+        AppointmentActionLog savedLog = logCaptor.getValue();
+        assertThat(savedLog.getAppointmentId()).isEqualTo(3L);
+        assertThat(savedLog.getActionType()).isEqualTo("NO_SHOW");
+
+        // Kiểm tra ghi audit log
+        verify(auditLogService).recordSensitiveAction(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Kịch bản 3b: Khách hàng chưa có trong bảng customers thì tự động tạo mới với no_show_count = 1")
+    void markNoShow_newCustomer_createsCustomerWithCountOne() {
+        LocalDate today = LocalDate.of(2026, 10, 15);
+        Booking booking = createBooking(4L, BookingStatus.CHO_XAC_NHAN, today);
+
+        when(customerRepository.findFirstByPhone("0987654321")).thenReturn(Optional.empty());
+        when(customerRepository.findFirstByEmail("vana@example.com")).thenReturn(Optional.empty());
+
+        OffsetDateTime evaluationTime = today.atTime(15, 0).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
+        BookingResponse response = service.markNoShow(4L, evaluationTime, "127.0.0.1");
+
+        assertThat(response.status()).isEqualTo(BookingStatus.NO_SHOW);
+
+        ArgumentCaptor<Customer> customerCaptor = ArgumentCaptor.forClass(Customer.class);
+        verify(customerRepository).save(customerCaptor.capture());
+        Customer createdCustomer = customerCaptor.getValue();
+        assertThat(createdCustomer.getPhone()).isEqualTo("0987654321");
+        assertThat(createdCustomer.getNoShowCount()).isEqualTo(1);
+    }
+}

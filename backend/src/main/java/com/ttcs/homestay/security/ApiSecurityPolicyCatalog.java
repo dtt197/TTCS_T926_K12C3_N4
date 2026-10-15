@@ -147,7 +147,9 @@ public class ApiSecurityPolicyCatalog {
                 "/api/price-overrides/**");
         add(policies, "POST", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/bookings", "/api/bookings/*/preview",
-                "/api/bookings/*/cancel");
+                "/api/bookings/*/cancel",
+                "/api/bookings/*/no-show",
+                "/api/appointments/*/no-show");
         add(policies, "POST", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
                 "/api/bookings/*/deposit-adjustments",
                 "/api/bookings/*/surcharges");
@@ -169,7 +171,8 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/pricing/**");
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
-                "/api/bookings", "/api/bookings/**");
+                "/api/bookings", "/api/bookings/**",
+                "/api/appointments/**");
         add(policies, "GET", Access.PUBLIC, List.of(),
                 "/api/public/room-types/**",
                 "/api/public/room-types-catalog",

@@ -50,6 +50,7 @@ public record BookingLookupResponse(
             case DA_NHAN_PHONG -> "Đã nhận phòng";
             case DA_TRA_PHONG -> "Đã trả phòng";
             case DA_HET_HAN -> "Đã hết hạn giữ chỗ";
+            case NO_SHOW -> "Không đến";
         };
     }
 }
