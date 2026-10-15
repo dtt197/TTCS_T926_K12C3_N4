@@ -203,9 +203,6 @@ export function RoomCalendarPage() {
     const isCurrent = () => calendarRequestGeneration.current === generation && !controller.signal.aborted
     const plan = planResult.plan
     loadStartedAt.current = performance.now()
-    setResult(null)
-    setLoadProgress({ range, completed: 0, total: plan.segments.length })
-    setLoadMs(null)
 
     const responses: RoomCalendar[] = new Array(plan.segments.length)
     let nextSegmentIndex = 0
@@ -310,6 +307,7 @@ export function RoomCalendarPage() {
   }
 
   const visible = result?.range === range ? result : null
+  const visibleLoadProgress = loadProgress?.range === range ? loadProgress : null
   const loading = !rangeError && !visible
   return (
     <section className="room-calendar" aria-label="Sơ đồ phòng theo ngày" aria-busy={loading}>
@@ -376,10 +374,10 @@ export function RoomCalendarPage() {
         </aside>
       </div>
       {rangeError && <p role="alert">{rangeError}</p>}
-      {loading && loadProgress?.range === range && !loadProgress.error &&
-        <p className="room-calendar-load-status" role="status">Đang tải {loadProgress.completed}/{loadProgress.total} đoạn…</p>}
-      {loadProgress?.range === range && loadProgress.error && <div className="room-calendar-load-status" role="alert">
-        Không tải được đầy đủ sơ đồ phòng: {loadProgress.error} <button type="button"
+      {loading && !visibleLoadProgress?.error &&
+        <p className="room-calendar-load-status" role="status">Đang tải {visibleLoadProgress?.completed ?? 0}/{visibleLoadProgress?.total ?? planResult.plan?.segments.length ?? 0} đoạn…</p>}
+      {visibleLoadProgress?.error && <div className="room-calendar-load-status" role="alert">
+        Không tải được đầy đủ sơ đồ phòng: {visibleLoadProgress.error} <button type="button"
           onClick={() => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null); setAttempt(value => value + 1) }}>Thử lại</button>
       </div>}
       {visible?.data && loadMs != null && (

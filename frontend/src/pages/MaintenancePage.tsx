@@ -19,30 +19,51 @@ const message = (error: unknown) => error instanceof Error ? error.message : 'Kh
 export function MaintenancePage({ requestId, owner, onSelect, onClose, housekeeping = false }: {
   requestId: number | null; owner: boolean; housekeeping?: boolean; onSelect: (id: number | null) => void; onClose: () => void
 }) {
+  const [detailReload, setDetailReload] = useState(0)
   return <section className="maintenance-page" aria-label="Yêu cầu bảo trì">
     <header><h2>Yêu cầu bảo trì</h2><button onClick={onClose}>Đóng</button></header>
     {requestId === null
       ? <MaintenanceList onSelect={onSelect} />
-      : <MaintenanceDetailView key={requestId} id={requestId} owner={owner} housekeeping={housekeeping} onBack={() => onSelect(null)} />}
+      : <MaintenanceDetailView
+          key={`${requestId}:${detailReload}`}
+          id={requestId}
+          owner={owner}
+          housekeeping={housekeeping}
+          onBack={() => onSelect(null)}
+          onReload={() => setDetailReload((current) => current + 1)}
+        />}
   </section>
 }
 
 function MaintenanceList({ onSelect }: { onSelect: (id: number) => void }) {
   const [page, setPage] = useState(0)
+  const [reload, setReload] = useState(0)
+  return <MaintenanceListResults
+    key={`${page}:${reload}`}
+    page={page}
+    onSelect={onSelect}
+    onPageChange={setPage}
+    onReload={() => setReload((current) => current + 1)}
+  />
+}
+
+function MaintenanceListResults({ page, onSelect, onPageChange, onReload }: {
+  page: number
+  onSelect: (id: number) => void
+  onPageChange: (page: number) => void
+  onReload: () => void
+}) {
   const [data, setData] = useState<Page | null>(null)
   const [error, setError] = useState('')
-  const [reload, setReload] = useState(0)
   useEffect(() => {
     const controller = new AbortController()
-    setData(null)
-    setError('')
     getMaintenanceRequests(page, controller.signal).then(result => {
       if (!controller.signal.aborted) setData(result)
     }).catch(cause => { if (!controller.signal.aborted) setError(message(cause)) })
     return () => controller.abort()
-  }, [page, reload])
+  }, [page])
   return <>
-    {error && <p role="alert">{error} <button onClick={() => setReload(x => x + 1)}>Thử lại</button></p>}
+    {error && <p role="alert">{error} <button onClick={onReload}>Thử lại</button></p>}
     {!data && !error && <p role="status">Đang tải…</p>}
     {data && <>
       {data.content.length === 0 && <p>Chưa có yêu cầu bảo trì.</p>}
@@ -51,14 +72,20 @@ function MaintenanceList({ onSelect }: { onSelect: (id: number) => void }) {
         <span>{item.severity === 'NGHIEM_TRONG' ? 'Nghiêm trọng' : 'Nhẹ'} · {item.reportedByName} · {time(item.reportedAt)}</span>
         <span>{item.description}</span>
       </button>)}</div>
-      <footer><button disabled={page === 0} onClick={() => setPage(x => x - 1)}>Trước</button>
+      <footer><button disabled={page === 0} onClick={() => onPageChange(page - 1)}>Trước</button>
         <span>Trang {data.totalPages ? page + 1 : 0}/{data.totalPages}</span>
-        <button disabled={page + 1 >= data.totalPages} onClick={() => setPage(x => x + 1)}>Tiếp</button></footer>
+        <button disabled={page + 1 >= data.totalPages} onClick={() => onPageChange(page + 1)}>Tiếp</button></footer>
     </>}
   </>
 }
 
-function MaintenanceDetailView({ id, owner, onBack }: { id: number; owner: boolean; housekeeping: boolean; onBack: () => void }) {
+function MaintenanceDetailView({ id, owner, onBack, onReload }: {
+  id: number
+  owner: boolean
+  housekeeping: boolean
+  onBack: () => void
+  onReload: () => void
+}) {
   const [data, setData] = useState<MaintenanceDetail | null>(null)
   const [vendor, setVendor] = useState<VendorInput>({ name: '', phone: '', notes: '' })
   const [repairNotes, setRepairNotes] = useState('')
@@ -66,7 +93,6 @@ function MaintenanceDetailView({ id, owner, onBack }: { id: number; owner: boole
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-  const [reload, setReload] = useState(0)
   const busyRef = useRef(false)
   const lifecycle = useRef<AbortController | null>(null)
   function apply(result: MaintenanceDetail) {
@@ -76,13 +102,11 @@ function MaintenanceDetailView({ id, owner, onBack }: { id: number; owner: boole
   useEffect(() => {
     const controller = new AbortController()
     lifecycle.current = controller
-    setData(null)
-    setError('')
     getMaintenanceDetail(id, controller.signal).then(result => {
       if (!controller.signal.aborted) apply(result)
     }).catch(cause => { if (!controller.signal.aborted) setError(message(cause)) })
     return () => controller.abort()
-  }, [id, reload])
+  }, [id])
 
   async function act(action: 'accept' | 'vendor' | 'start' | 'repair-completed' | 'verify-pass' | 'verify-fail') {
     const controller = lifecycle.current
@@ -117,7 +141,7 @@ function MaintenanceDetailView({ id, owner, onBack }: { id: number; owner: boole
   const request = data?.request
   return <>
     <button disabled={busy} onClick={onBack}>← Danh sách</button>
-    {error && <p role="alert">{error} <button disabled={busy} onClick={() => setReload(x => x + 1)}>Tải lại</button></p>}
+    {error && <p role="alert">{error} <button disabled={busy} onClick={onReload}>Tải lại</button></p>}
     {notice && <p role="status">{notice}</p>}
     {!request && !error && <p role="status">Đang tải…</p>}
     {request && <>

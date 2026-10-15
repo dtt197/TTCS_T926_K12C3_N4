@@ -129,9 +129,11 @@ export function BookingListPage({ role }: { role: string }) {
     checkOutDate: '',
     roomTypeId: '',
   })
-  const [preview, setPreview] = useState<BookingChangePreview | null>(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewResult, setPreviewResult] = useState<{
+    key: string
+    preview: BookingChangePreview | null
+    error: string | null
+  } | null>(null)
   const [roomBooking, setRoomBooking] = useState<BookingListItem | null>(null)
   const [assignableRooms, setAssignableRooms] = useState<AssignableRoom[]>([])
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
@@ -353,32 +355,25 @@ export function BookingListPage({ role }: { role: string }) {
   }, [page, appliedFilters, refreshVersion])
 
   const editingBookingId = editingBooking?.id
+  const hasPreviewInputs = editingBookingId !== undefined &&
+    Boolean(editForm.checkInDate && editForm.checkOutDate && editForm.roomTypeId)
+  const hasInvalidPreviewDates = hasPreviewInputs &&
+    editForm.checkInDate >= editForm.checkOutDate
+  const previewRequestKey = hasPreviewInputs && !hasInvalidPreviewDates
+    ? `${editingBookingId}|${editForm.checkInDate}|${editForm.checkOutDate}|${editForm.roomTypeId}`
+    : null
+  const matchingPreviewResult = previewRequestKey !== null && previewResult?.key === previewRequestKey
+    ? previewResult
+    : null
+  const preview = matchingPreviewResult?.preview ?? null
+  const previewError = hasInvalidPreviewDates
+    ? 'Ngày trả phòng phải sau ngày nhận phòng.'
+    : matchingPreviewResult?.error ?? null
+  const previewLoading = previewRequestKey !== null && matchingPreviewResult === null
+
   useEffect(() => {
-    if (editingBookingId === undefined) {
-      setPreview(null)
-      setPreviewError(null)
-      setPreviewLoading(false)
-      return
-    }
-
-    if (!editForm.checkInDate || !editForm.checkOutDate || !editForm.roomTypeId) {
-      setPreview(null)
-      setPreviewError(null)
-      setPreviewLoading(false)
-      return
-    }
-
-    if (editForm.checkInDate >= editForm.checkOutDate) {
-      setPreview(null)
-      setPreviewError('Ngày trả phòng phải sau ngày nhận phòng.')
-      setPreviewLoading(false)
-      return
-    }
-
+    if (previewRequestKey === null || editingBookingId === undefined) return
     let cancelled = false
-    setPreviewLoading(true)
-    setPreviewError(null)
-
     const timer = setTimeout(() => {
       previewBookingChange(editingBookingId, {
         checkInDate: editForm.checkInDate,
@@ -386,24 +381,17 @@ export function BookingListPage({ role }: { role: string }) {
         roomTypeId: Number(editForm.roomTypeId),
       })
         .then((result) => {
-          if (!cancelled) {
-            setPreview(result)
-            setPreviewError(null)
-          }
+          if (!cancelled) setPreviewResult({ key: previewRequestKey, preview: result, error: null })
         })
         .catch((err: unknown) => {
           if (!cancelled) {
-            setPreview(null)
-            setPreviewError(
-              err instanceof Error
+            setPreviewResult({
+              key: previewRequestKey,
+              preview: null,
+              error: err instanceof Error
                 ? err.message
                 : 'Không thể tính toán giá phòng và kiểm tra phòng trống.',
-            )
-          }
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setPreviewLoading(false)
+            })
           }
         })
     }, 250)
@@ -417,6 +405,7 @@ export function BookingListPage({ role }: { role: string }) {
     editForm.checkInDate,
     editForm.checkOutDate,
     editForm.roomTypeId,
+    previewRequestKey,
   ])
 
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
@@ -530,6 +519,11 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     }
   }
 
+  function updateEditForm(update: (current: typeof editForm) => typeof editForm) {
+    setEditForm(update)
+    setPreviewResult(null)
+  }
+
   function startEditing(booking: BookingListItem) {
     setEditingBooking(booking)
     setEditForm({
@@ -537,9 +531,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
       checkOutDate: booking.checkOutDate,
       roomTypeId: booking.roomTypeId === null ? '' : String(booking.roomTypeId),
     })
-    setPreview(null)
-    setPreviewError(null)
-    setPreviewLoading(false)
+    setPreviewResult(null)
     setEditError(null)
     setEditSuccess(null)
     setEditDetailData(null)
@@ -1168,9 +1160,9 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
               <section className="booking-update-section booking-update-stay" aria-labelledby="booking-stay-title">
                 <div className="booking-update-section-heading"><h4 id="booking-stay-title">Chỉnh sửa lưu trú</h4></div>
                 <div className="booking-edit-form booking-update-form">
-                  <label htmlFor="booking-edit-checkin">Ngày nhận phòng<input id="booking-edit-checkin" type="date" required min={new Date().toLocaleDateString('en-CA')} value={editForm.checkInDate} onChange={(event) => setEditForm((current) => ({ ...current, checkInDate: event.target.value }))} /></label>
-                  <label htmlFor="booking-edit-checkout">Ngày trả phòng<input id="booking-edit-checkout" type="date" required min={editForm.checkInDate || undefined} value={editForm.checkOutDate} onChange={(event) => setEditForm((current) => ({ ...current, checkOutDate: event.target.value }))} /></label>
-                  <label className="booking-update-roomtype" htmlFor="booking-edit-roomtype">Loại phòng mới<select id="booking-edit-roomtype" required value={editForm.roomTypeId} disabled={roomTypesLoading} onChange={(event) => setEditForm((current) => ({ ...current, roomTypeId: event.target.value }))}>
+                  <label htmlFor="booking-edit-checkin">Ngày nhận phòng<input id="booking-edit-checkin" type="date" required min={new Date().toLocaleDateString('en-CA')} value={editForm.checkInDate} onChange={(event) => updateEditForm((current) => ({ ...current, checkInDate: event.target.value }))} /></label>
+                  <label htmlFor="booking-edit-checkout">Ngày trả phòng<input id="booking-edit-checkout" type="date" required min={editForm.checkInDate || undefined} value={editForm.checkOutDate} onChange={(event) => updateEditForm((current) => ({ ...current, checkOutDate: event.target.value }))} /></label>
+                  <label className="booking-update-roomtype" htmlFor="booking-edit-roomtype">Loại phòng mới<select id="booking-edit-roomtype" required value={editForm.roomTypeId} disabled={roomTypesLoading} onChange={(event) => updateEditForm((current) => ({ ...current, roomTypeId: event.target.value }))}>
                     <option value="">{roomTypesLoading ? 'Đang tải loại phòng...' : 'Chọn loại phòng'}</option>
                     {roomTypes.filter((roomType) => roomType.active || String(roomType.id) === editForm.roomTypeId).map((roomType) => <option key={roomType.id} value={roomType.id}>{roomType.name}{roomType.active ? '' : ' (Ngừng bán)'}</option>)}
                   </select></label>

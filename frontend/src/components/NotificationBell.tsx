@@ -29,17 +29,26 @@ function notificationTitle(item: NotificationItem): string {
   return 'Có thông báo mới'
 }
 
-export function NotificationBell({ userId, onOpenMaintenance }: {
+type NotificationBellProps = {
   userId: number
   onOpenMaintenance?: (id: number) => void
-}) {
+}
+
+export function NotificationBell({ userId, onOpenMaintenance }: NotificationBellProps) {
+  return <NotificationBellSession
+    key={userId}
+    onOpenMaintenance={onOpenMaintenance}
+  />
+}
+
+function NotificationBellSession({ onOpenMaintenance }: Pick<NotificationBellProps, 'onOpenMaintenance'>) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [readingIds, setReadingIds] = useState<number[]>([])
   const [streamActive, setStreamActive] = useState(false)
@@ -94,18 +103,7 @@ export function NotificationBell({ userId, onOpenMaintenance }: {
     const generation = ++generationRef.current
     const session = new AbortController()
     sessionRef.current = session
-    currentPageRef.current = 0
     requestRef.current?.abort()
-    setItems([])
-    setUnreadCount(0)
-    setPage(0)
-    setTotalPages(0)
-    setTotalElements(0)
-    setOpen(false)
-    setReadingIds([])
-    setStreamActive(false)
-    setError('')
-    void refresh(0, true)
 
     let pollingTimer: number | undefined
     const startPolling = () => {
@@ -116,10 +114,16 @@ export function NotificationBell({ userId, onOpenMaintenance }: {
       }, POLL_INTERVAL_MS)
     }
     void openNotificationStream(session.signal, refreshCurrent, () => {
-      if (!session.signal.aborted && generation === generationRef.current) setStreamActive(true)
+      if (!session.signal.aborted && generation === generationRef.current) {
+        setStreamActive(true)
+        void refresh(0)
+      }
     }).then(startPolling).catch((cause: unknown) => {
       if (!session.signal.aborted && !(cause instanceof AuthSessionExpiredError)
-        && !(cause instanceof NotificationStreamAuthorizationError)) startPolling()
+        && !(cause instanceof NotificationStreamAuthorizationError)) {
+        void refresh(0)
+        startPolling()
+      }
     })
     return () => {
       session.abort()
@@ -128,7 +132,7 @@ export function NotificationBell({ userId, onOpenMaintenance }: {
       if (sessionRef.current === session) sessionRef.current = null
       generationRef.current = generation + 1
     }
-  }, [userId, refresh, refreshCurrent])
+  }, [refresh, refreshCurrent])
 
   async function handleNotificationClick(item: NotificationItem) {
     if (item.sourceType === 'MAINTENANCE_REQUEST' && onOpenMaintenance) {

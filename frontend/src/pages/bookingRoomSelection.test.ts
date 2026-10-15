@@ -61,7 +61,7 @@ async function runRoomActionTests() {
     setRoomLoading: (value: boolean) => { roomLoading = value },
     setRoomSaving: (value: boolean) => { roomSaving = value },
     setRoomBooking: (value: BookingListItem | null) => { modalBooking = value },
-    setEditSuccess: (_value: string | null) => undefined,
+    setEditSuccess: () => undefined,
     reloadBookings: async () => { reloadCalls += 1 },
   }
 

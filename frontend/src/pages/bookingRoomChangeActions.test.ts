@@ -44,18 +44,18 @@ async function main() {
   let reloadCalls = 0
   let apiError: Error | null = null
   const actions = {
-    changeBookingRoom: async (_id: number, _roomId: number, _reason: string) => {
+    changeBookingRoom: async () => {
       apiCalls += 1
       if (apiError) throw apiError
       return booking
     },
     reloadBookingData: async () => { reloadCalls += 1 },
-    getBookingRoomChangeHistory: async (_id: number) => { historyCalls += 1; return [history] },
+    getBookingRoomChangeHistory: async () => { historyCalls += 1; return [history] },
     setRoomChangeHistory: (rows: BookingRoomChangeHistory[]) => { historyRows = rows },
     setRoomError: (value: string | null) => { error = value },
     setRoomSaving: (value: boolean) => { saving = value },
     setChangeRoomBooking: (value: BookingListItem | null) => { activeBooking = value },
-    setEditSuccess: (_value: string | null) => undefined,
+    setEditSuccess: () => undefined,
   }
 
   await submitRoomChange(booking, 11, '  ', actions)
