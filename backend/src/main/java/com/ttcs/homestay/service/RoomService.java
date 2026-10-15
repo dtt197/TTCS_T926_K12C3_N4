@@ -26,6 +26,7 @@ import com.ttcs.homestay.entity.CheckIn;
 import com.ttcs.homestay.entity.Room;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.entity.RoomStatusHistory;
+import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.exception.RoomNotFoundException;
 import com.ttcs.homestay.exception.RoomStatusConflictException;
 import com.ttcs.homestay.repository.BookingRepository;
@@ -34,6 +35,8 @@ import com.ttcs.homestay.repository.CheckInRepository;
 import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import com.ttcs.homestay.repository.RoomRepository;
 import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
+import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.service.AuditLogService;
 
 @Service
 public class RoomService {
@@ -45,6 +48,9 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final CheckInRepository checkInRepository;
     private final RoomStatusHistoryRepository roomStatusHistoryRepository;
+    private final AuditLogService auditLogService;
+    private final NotificationWriterService notificationWriterService;
+    private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
     private final BookingGuestRepository bookingGuestRepository;
     private final OperatingSettingsRepository operatingSettingsRepository;
@@ -53,7 +59,7 @@ public class RoomService {
             RoomRepository roomRepository,
             CheckInRepository checkInRepository,
             RoomStatusHistoryRepository roomStatusHistoryRepository) {
-        this(roomRepository, checkInRepository, roomStatusHistoryRepository, null, null, null);
+        this(roomRepository, checkInRepository, roomStatusHistoryRepository, null, null, null, null, null, null);
     }
 
     @Autowired
@@ -63,13 +69,31 @@ public class RoomService {
             RoomStatusHistoryRepository roomStatusHistoryRepository,
             BookingRepository bookingRepository,
             OperatingSettingsRepository operatingSettingsRepository,
-            BookingGuestRepository bookingGuestRepository) {
+            BookingGuestRepository bookingGuestRepository,
+            AuditLogService auditLogService,
+            NotificationWriterService notificationWriterService,
+            UserRepository userRepository) {
         this.roomRepository = roomRepository;
         this.checkInRepository = checkInRepository;
         this.roomStatusHistoryRepository = roomStatusHistoryRepository;
         this.bookingRepository = bookingRepository;
         this.operatingSettingsRepository = operatingSettingsRepository;
         this.bookingGuestRepository = bookingGuestRepository;
+        this.auditLogService = auditLogService;
+        this.notificationWriterService = notificationWriterService;
+        this.userRepository = userRepository;
+    }
+
+    /** Compatibility constructor for direct unit-test callers. */
+    public RoomService(
+            RoomRepository roomRepository,
+            CheckInRepository checkInRepository,
+            RoomStatusHistoryRepository roomStatusHistoryRepository,
+            BookingRepository bookingRepository,
+            OperatingSettingsRepository operatingSettingsRepository,
+            BookingGuestRepository bookingGuestRepository) {
+        this(roomRepository, checkInRepository, roomStatusHistoryRepository,
+                bookingRepository, operatingSettingsRepository, bookingGuestRepository, null, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -120,7 +144,7 @@ public class RoomService {
                 .toList();
     }
     @Transactional(readOnly = true)
-public List<RoomStatusHistoryResponse> getHistory(
+    public List<RoomStatusHistoryResponse> getHistory(
         Long roomId
 ) {
     if (!roomRepository.existsById(roomId)) {
@@ -136,12 +160,72 @@ public List<RoomStatusHistoryResponse> getHistory(
 
     @Transactional
     public RoomResponse updateStatus(Long roomId, RoomStatus targetStatus, String operatorName) {
+        return updateStatusInTransaction(roomId, targetStatus, operatorName).response();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasOpenMaintenanceRequest(Long roomId) {
+        return roomRepository.hasOpenMaintenanceRequest(roomId);
+    }
+
+    /**
+     * Housekeeping clean reports include their audit row in the same transaction
+     * as the room update and status history.
+     */
+    @Transactional
+    public RoomResponse updateStatusWithAudit(
+            Long roomId,
+            RoomStatus targetStatus,
+            String operatorName,
+            Long actorUserId,
+            String actorEmail,
+            String ipAddress) {
+        return updateStatusWithAuditAndNotification(
+                roomId, targetStatus, operatorName, actorUserId, actorEmail, ipAddress);
+    }
+
+    @Transactional
+    public RoomResponse updateStatusWithAuditAndNotification(
+            Long roomId, RoomStatus targetStatus, String operatorName,
+            Long actorUserId, String actorEmail, String ipAddress) {
+        UpdateStatusResult result = updateStatusInTransaction(roomId, targetStatus, operatorName);
+        if (auditLogService == null) {
+            throw new IllegalStateException("AuditLogService is required for housekeeping status updates");
+        }
+        auditLogService.recordSensitiveActionInCurrentTransaction(
+                actorUserId,
+                actorEmail,
+                null,
+                "Phòng #" + roomId,
+                "ROOM_STATUS_UPDATED",
+                ipAddress);
+        if (result.previousStatus() == RoomStatus.TRONG_BAN
+                && targetStatus == RoomStatus.TRONG_SACH) {
+            if (notificationWriterService == null) {
+                throw new IllegalStateException("NotificationWriterService is required for housekeeping clean reports");
+            }
+            if (userRepository == null) {
+                throw new IllegalStateException("UserRepository is required for housekeeping clean reports");
+            }
+            User actor = userRepository.findById(actorUserId)
+                    .orElseThrow(() -> new IllegalStateException("Authenticated housekeeping user was not found"));
+            notificationWriterService.writeRoomCleaned(result.history(), actor);
+        }
+        return result.response();
+    }
+
+    private UpdateStatusResult updateStatusInTransaction(
+            Long roomId, RoomStatus targetStatus, String operatorName) {
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
 
         if (targetStatus == RoomStatus.BAO_TRI) {
             throw new RoomStatusConflictException(
                     "Vui lòng dùng biểu mẫu bảo trì để nhập lý do và khoảng ngày.");
+        }
+
+        if (roomRepository.hasOpenMaintenanceRequest(roomId)) {
+            throw new RoomStatusConflictException("Phòng phải giữ Bảo trì cho tới khi hoàn tất quy trình vệ sinh sau sửa chữa.");
         }
 
         if (!RoomStatusPolicy.canChangeTo(room.getStatus(), targetStatus)) {
@@ -159,7 +243,7 @@ public List<RoomStatusHistoryResponse> getHistory(
 
         Room savedRoom = roomRepository.save(room);
 
-        saveHistory(
+        RoomStatusHistory history = saveHistory(
                 savedRoom,
                 previousStatus,
                 targetStatus,
@@ -168,13 +252,20 @@ public List<RoomStatusHistoryResponse> getHistory(
                 null,
                 null);
 
-        return RoomResponse.from(savedRoom);
+        return new UpdateStatusResult(RoomResponse.from(savedRoom), previousStatus, history);
     }
+
+    private record UpdateStatusResult(
+            RoomResponse response, RoomStatus previousStatus, RoomStatusHistory history) {}
 
     @Transactional
     public RoomResponse putIntoMaintenance(Long roomId, MaintenanceRequest request, String operatorName) {
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
+
+        if (roomRepository.hasOpenMaintenanceRequest(roomId)) {
+            throw new RoomStatusConflictException("Yêu cầu bảo trì đang được OWNER xử lý; không cập nhật qua biểu mẫu bảo trì cũ.");
+        }
 
         if (room.getStatus() == RoomStatus.DANG_O) {
             throw new RoomStatusConflictException(
@@ -216,6 +307,10 @@ public List<RoomStatusHistoryResponse> getHistory(
         Room room = roomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new RoomNotFoundException(roomId));
 
+        if (roomRepository.hasOpenMaintenanceRequest(roomId)) {
+            throw new RoomStatusConflictException("Phòng đang trong quy trình bảo trì; không thể báo sự cố mới.");
+        }
+
         if (room.getStatus() != RoomStatus.TRONG_BAN) {
             throw new RoomStatusConflictException(
                     "Chỉ có thể báo sự cố cho phòng đang ở trạng thái Trống bẩn. "
@@ -227,7 +322,7 @@ public List<RoomStatusHistoryResponse> getHistory(
         LocalDate today = LocalDate.now(BUSINESS_ZONE);
 
         room.setStatus(RoomStatus.BAO_TRI);
-        room.setMaintenanceReason(request.note().trim());
+        room.setMaintenanceReason(request.description().trim());
         room.setMaintenanceStartDate(today);
         room.setMaintenanceEndDate(null);
 
@@ -404,7 +499,7 @@ public List<RoomStatusHistoryResponse> getHistory(
         return RoomResponse.from(savedRoom);
     }
 
-    private void saveHistory(
+    private RoomStatusHistory saveHistory(
             Room room,
             RoomStatus previousStatus,
             RoomStatus newStatus,
@@ -432,7 +527,7 @@ public List<RoomStatusHistoryResponse> getHistory(
         history.setMaintenanceStartDate(maintenanceStartDate);
         history.setMaintenanceEndDate(maintenanceEndDate);
 
-        roomStatusHistoryRepository.save(history);
+        return roomStatusHistoryRepository.save(history);
     }
 
     

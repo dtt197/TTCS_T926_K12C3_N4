@@ -1,20 +1,56 @@
-.room-calendar { min-width: 0; padding: 20px; background: #fff; border-radius: 12px; }
+.room-calendar { min-width: 0; padding: 24px; background: var(--card, #fff); border: 1px solid var(--line, #e5e9e2); border-radius: 16px; box-shadow: var(--shadow, 0 14px 38px rgba(28, 70, 53, 0.07)); color: var(--ink, #17332f); }
 .room-calendar p { color: #526175; font-size: 14px; }
-.room-calendar input { margin-left: 12px; padding: 8px; border: 1px solid #94a3b8; border-radius: 6px; }
-.room-calendar-legend { display: flex; flex-wrap: wrap; gap: 12px; }
-.room-calendar-legend span { padding: 8px 14px; border-radius: 6px; }
-.room-calendar-scroll { overflow: auto; max-height: 65vh; border: 1px solid #cbd5e1; }
+.room-calendar-header { display: grid; gap: 20px; margin-bottom: 24px; }
+.room-calendar-title-row { display: flex; align-items: center; gap: 14px; }
+.room-calendar-title-icon { display: grid; flex: 0 0 48px; width: 48px; height: 48px; place-items: center; border-radius: 14px; background: var(--green-soft, #e1f0e8); color: var(--green, #237a63); }
+.room-calendar-title-icon svg { width: 25px; height: 25px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.room-calendar-title-row h1 { margin: 0; color: var(--ink, #17332f); font-size: clamp(20px, 2.2vw, 26px); line-height: 1.25; }
+.room-calendar-title-row p { margin: 5px 0 0; color: var(--muted, #687873); }
+.room-calendar-date-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.room-calendar-date-fields label { display: grid; min-width: 0; gap: 8px; color: var(--ink, #17332f); font-size: 13px; font-weight: 650; }
+.room-calendar input { box-sizing: border-box; width: 100%; min-height: 46px; margin: 0; padding: 10px 12px; border: 1px solid var(--line, #d8e0d8); border-radius: 10px; background: var(--card, #fff); color: var(--ink, #17332f); font: inherit; }
+.room-calendar input:focus-visible { outline: 3px solid color-mix(in srgb, var(--green, #237a63) 25%, transparent); border-color: var(--green, #237a63); }
+.room-calendar-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.room-calendar-stat { display: grid; gap: 5px; min-width: 0; padding: 14px 16px; border: 1px solid var(--line, #e5e9e2); border-radius: 12px; background: var(--cream, #f7f6f0); }
+.room-calendar-stat span { color: var(--muted, #687873); font-size: 12px; font-weight: 600; }
+.room-calendar-stat strong { color: var(--ink, #17332f); font-size: 23px; line-height: 1.1; }
+.room-calendar-stat--total { border-color: color-mix(in srgb, var(--green, #237a63) 24%, white); background: var(--green-soft, #e1f0e8); }
+.room-calendar-stat--total strong { color: var(--green, #237a63); }
+.room-calendar .room-calendar-range-summary { margin: -8px 0 0; color: var(--ink, #17332f); font-size: 14px; }
+.room-calendar-range-summary strong { color: var(--green, #237a63); }
+.room-calendar .room-calendar-hint { margin: -8px 0 0; color: var(--muted, #687873); line-height: 1.55; }
+.room-calendar-guidance { display: grid; gap: 14px; margin: -6px 0 18px; }
+.room-calendar-legend { display: flex; flex-wrap: wrap; gap: 9px; }
+.room-calendar-legend span { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 6px 11px; border: 1px solid currentColor; border-radius: 999px; font-size: 13px; font-weight: 650; }
+.room-calendar-legend svg { width: 15px; height: 15px; flex: 0 0 15px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.room-calendar-guidance-card { display: flex; align-items: flex-start; gap: 11px; padding: 13px 15px; border: 1px solid var(--line, #e5e9e2); border-radius: 12px; background: var(--cream, #f7f6f0); }
+.room-calendar-guidance-icon { display: grid; flex: 0 0 27px; width: 27px; height: 27px; place-items: center; border-radius: 50%; background: var(--green-soft, #e1f0e8); color: var(--green, #237a63); }
+.room-calendar-guidance-icon svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.room-calendar-guidance-content { min-width: 0; }
+.room-calendar-guidance-content > strong { color: var(--ink, #17332f); font-size: 13px; }
+.room-calendar-guidance-content ul { display: grid; gap: 4px; margin: 5px 0 0; padding-left: 17px; color: var(--muted, #687873); font-size: 13px; line-height: 1.5; }
+.room-calendar-load-status { margin: 0 0 12px; padding: 10px 13px; border: 1px solid var(--line, #e5e9e2); border-radius: 10px; background: var(--cream, #f7f6f0); }
+.room-calendar-scroll { min-width: 0; max-width: 100%; overflow: auto; max-height: 65vh; border: 1px solid #cbd5e1; }
 .room-calendar table { border-collapse: separate; border-spacing: 0; width: 100%; }
 .room-calendar caption { text-align: left; padding: 10px; }
-.room-calendar th, .room-calendar td { min-width: 100px; padding: 12px 8px; text-align: center; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; }
+.room-calendar th, .room-calendar td { min-width: 100px; padding: 8px; text-align: center; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; }
+.room-calendar tbody td { height: 40px; box-sizing: border-box; vertical-align: middle; }
 .room-calendar thead th { position: sticky; top: 0; background: #eef2f6; z-index: 2; }
+.room-calendar thead th.calendar-date-header { padding: 6px 8px; }
+.calendar-date-header time { display: grid; justify-items: center; gap: 2px; text-decoration: none; }
+.calendar-date-weekday { color: #66756f; font-size: 11px; font-weight: 650; line-height: 1.2; }
+.calendar-date-day { font-variant-numeric: tabular-nums; }
+.calendar-date-header--weekend .calendar-date-day { color: #526c60; }
+.room-calendar thead th.calendar-date-header--today { background: #e4efe7; box-shadow: inset 0 -3px #648d73; }
+.calendar-today-label { padding: 1px 6px; border-radius: 999px; background: #d1e3d5; color: #315a40; font-size: 10px; font-weight: 700; line-height: 1.3; }
 .room-calendar tr > th:first-child { position: sticky; left: 0; min-width: 140px; background: #eef2f6; z-index: 1; }
-.room-calendar thead tr > th:first-child { z-index: 3; }
+.room-calendar tbody tr > th:first-child { text-align: left; border-right: 1px solid #cbd5e1; }
+.room-calendar thead tr > th:first-child { left: 0; z-index: 3; }
 .room-calendar small { display: block; margin-top: 4px; font-weight: normal; }
 .calendar-AVAILABLE { background: #e5f5eb; color: #165b32; }
 .calendar-BOOKED { background: #dbeafe; color: #193e89; }
 .calendar-MAINTENANCE { background: #ffedd5; color: #853500; }
-.calendar-cell-trigger { position: relative; width: 100%; border: 0; padding: 0; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.calendar-cell-trigger { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 40px; border: 0; padding: 0; color: inherit; background: transparent; font: inherit; cursor: pointer; }
 .calendar-cell-trigger:focus-visible { outline: 3px solid #111827; outline-offset: 3px; border-radius: 3px; }
 .calendar-booking-popover { position: fixed; z-index: 20; display: grid; gap: 5px; width: max-content; max-width: min(260px, calc(100vw - 24px)); padding: 10px 12px; white-space: normal; overflow-wrap: anywhere; text-align: left; color: #172033; background: white; border: 1px solid #94a3b8; border-radius: 7px; box-shadow: 0 5px 16px #0f172a33; transform: translate(-50%, -100%); }
 .calendar-guest-name { overflow-wrap: anywhere; }
@@ -36,3 +72,15 @@
 
 /* S3-10 Lát 4: thời gian tải sơ đồ */
 .room-calendar .room-calendar-timing { margin: 8px 0; color: #165b32; font-weight: 600; }
+
+.room-calendar-timing + .room-calendar-scroll { margin-top: 12px; }
+.room-calendar-guidance + .room-calendar-load-status,
+.room-calendar-guidance + [role="alert"] { margin-top: 0; }
+
+@media (max-width: 640px) {
+  .room-calendar { padding: 18px 14px; border-radius: 12px; }
+  .room-calendar-header { gap: 16px; }
+  .room-calendar-date-fields, .room-calendar-stats { grid-template-columns: 1fr; gap: 10px; }
+  .room-calendar-stat { grid-template-columns: 1fr auto; align-items: center; padding: 11px 13px; }
+  .room-calendar-stat strong { font-size: 20px; }
+}
