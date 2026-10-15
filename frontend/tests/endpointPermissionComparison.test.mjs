@@ -26,6 +26,25 @@ test('matches approved wildcard policies to concrete controller paths', () => {
   ])
 })
 
+test('preserves upstream public wildcard routes for rooms and room types', () => {
+  const comparisons = compareEndpointPermissions([
+    {
+      method: 'GET',
+      path: '/api/public/rooms/availability',
+      access: 'PUBLIC',
+      roles: [],
+    },
+    {
+      method: 'GET',
+      path: '/api/public/room-types/catalog/featured',
+      access: 'PUBLIC',
+      roles: [],
+    },
+  ])
+
+  assert.ok(comparisons.every(({ hasMismatch }) => !hasMismatch))
+})
+
 test('flags role or access-level differences from the approved matrix', () => {
   const comparisons = compareEndpointPermissions([
     {
@@ -83,7 +102,6 @@ test('mismatch filter excludes matched endpoints and retains discrepancies', () 
   assert.equal(filtered.length, 1)
   assert.equal(filtered[0].hasMismatch, true)
 })
-
 test('endpoint follow-up status reflects mismatch repair and ticket assignment', () => {
   assert.equal(getEndpointFollowUpStatus(true, false, false), 'UNRECORDED')
   assert.equal(getEndpointFollowUpStatus(true, true, true), 'RECORDED')
@@ -114,4 +132,14 @@ test('only treats a ticket matching the current permission snapshot as recorded'
     ...ticket,
     actualRoles: ['OWNER', 'RECEPTIONIST'],
   }, comparison), false)
+})
+
+test('occupancy summary, detailed report, and CSV endpoints are owner-only', () => {
+  const endpoints = [
+    '/api/reports/occupancy',
+    '/api/reports/occupancy/detailed',
+    '/api/reports/occupancy.csv',
+  ].map(path => ({ method: 'GET', path, access: 'ROLES', roles: ['OWNER'] }))
+  const comparisons = compareEndpointPermissions(endpoints)
+  assert.ok(comparisons.every(({ hasMismatch }) => !hasMismatch))
 })

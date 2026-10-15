@@ -92,6 +92,9 @@ type Tab = {
 }
 
 const TABS: ReadonlyArray<Tab> = [
+  { view: 'occupancyReport', path: '/bao-cao-cong-suat', label: 'Công suất phòng', title: 'Báo cáo công suất phòng', icon: '◔', permission: 'reports:occupancy' },
+
+
 
   {
     view: 'occupancyReport',
@@ -762,6 +765,9 @@ export function InternalHomePage({
           ) : activeView === 'roomCalendar' ? (
 
             <RoomCalendarPage />
+          ) : activeView === 'occupancyReport' ? (
+            <OccupancyReportPage />
+
 
           ) : activeView === 'bookings' ? (
 
@@ -770,8 +776,6 @@ export function InternalHomePage({
           ) : activeView === 'walkInBooking' ? (
 
             <WalkInBookingPage />
-          ) : activeView === 'occupancyReport' ? (
-            <OccupancyReportPage />
 
           ) : activeView === 'audit-logs' ? (
 

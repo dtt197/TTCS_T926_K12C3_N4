@@ -30,6 +30,7 @@ export type Permission =
   | 'bookings:deposit-adjust'
   | 'bookings:cancel'
   | 'bookings:manage'
+  | 'bookings:surcharge-add'
   | 'reports:occupancy'
   | 'security:matrix:view'
 /** S1-04: ma trận quyền tập trung. S1-06: loại phòng (Chủ homestay, Admin = F; Lễ tân = R). */
@@ -65,6 +66,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'pricing:manage',
     'bookings:view',
     'bookings:deposit-adjust',
+    'bookings:surcharge-add',
     'reports:occupancy',
   ],
   RECEPTIONIST: [
@@ -80,6 +82,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'pricing:view',
     'bookings:view',
     'bookings:deposit-adjust',
+    'bookings:surcharge-add',
     'bookings:cancel',
     'bookings:manage',
   ],

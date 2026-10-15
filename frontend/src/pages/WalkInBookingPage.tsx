@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getRoomTypes } from '../services/roomTypeService'
-import { createWalkInBooking } from '../services/guestBookingService'
+import { createWalkInBooking, getGuestQuote } from '../services/guestBookingService'
 import { searchAvailableRooms } from '../services/roomService'
 import type { RoomType } from '../types/roomType'
 import type { WalkInBookingResult } from '../types/guestBooking'
@@ -16,6 +16,9 @@ type WalkInForm = {
   phone: string
   email: string
   note: string
+  depositAmount: string
+  depositPaymentMethod: 'CASH' | 'BANK_TRANSFER'
+  depositPaymentReference: string
 }
 
 function todayIso() {
@@ -41,6 +44,9 @@ function emptyForm(): WalkInForm {
     phone: '',
     email: '',
     note: '',
+    depositAmount: '0',
+    depositPaymentMethod: 'CASH',
+    depositPaymentReference: '',
   }
 }
 
@@ -59,6 +65,7 @@ export function WalkInBookingPage() {
   const [availableRooms, setAvailableRooms] = useState<number | null>(null)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availabilityRefresh, setAvailabilityRefresh] = useState(0)
+  const [quotedTotal, setQuotedTotal] = useState<number | null>(null)
 
   useEffect(() => {
     getRoomTypes()
@@ -82,6 +89,21 @@ export function WalkInBookingPage() {
   )
 
   const guestCount = Number(form.guestCount)
+  const depositAmount = Number(form.depositAmount)
+
+  useEffect(() => {
+    const roomTypeId = Number(form.roomTypeId)
+    if (!Number.isInteger(roomTypeId) || roomTypeId <= 0 || !form.checkInDate || !form.checkOutDate
+      || form.checkOutDate <= form.checkInDate || !Number.isInteger(guestCount) || guestCount < 1) {
+      setQuotedTotal(null)
+      return
+    }
+    let cancelled = false
+    getGuestQuote(roomTypeId, form.checkInDate, form.checkOutDate, guestCount)
+      .then((quote) => { if (!cancelled) setQuotedTotal(quote.totalAmount) })
+      .catch(() => { if (!cancelled) setQuotedTotal(null) })
+    return () => { cancelled = true }
+  }, [form.roomTypeId, form.checkInDate, form.checkOutDate, form.guestCount, guestCount])
 
 
   useEffect(() => {
@@ -235,6 +257,23 @@ export function WalkInBookingPage() {
       return
     }
 
+    if (!Number.isSafeInteger(depositAmount) || depositAmount < 0) {
+      setError('Tiền cọc phải là số nguyên không âm.')
+      return
+    }
+    if (quotedTotal === null) {
+      setError('Chưa tính được tổng tiền booking. Vui lòng thử lại.')
+      return
+    }
+    if (depositAmount > quotedTotal) {
+      setError('Tiền cọc không được vượt tổng tiền booking đã chốt.')
+      return
+    }
+    if (depositAmount > 0 && form.depositPaymentMethod === 'BANK_TRANSFER' && !form.depositPaymentReference.trim()) {
+      setError('Chuyển khoản phải có mã giao dịch.')
+      return
+    }
+
     try {
       const result = await createWalkInBooking({
         roomTypeId: Number(form.roomTypeId),
@@ -245,6 +284,9 @@ export function WalkInBookingPage() {
         email: form.email.trim() || undefined,
         guestCount,
         note: form.note.trim() || undefined,
+        depositAmount,
+        depositPaymentMethod: depositAmount > 0 ? form.depositPaymentMethod : undefined,
+        depositPaymentReference: depositAmount > 0 ? form.depositPaymentReference.trim() || undefined : undefined,
       })
 
       setCreated(result)
@@ -487,6 +529,28 @@ export function WalkInBookingPage() {
               }
             />
           </label>
+
+          <label>
+            <span>Tiền cọc đã thu (đ)</span>
+            <input type="number" min="0" step="1" value={form.depositAmount}
+              onChange={(event) => update('depositAmount', event.target.value)} />
+            <small>{quotedTotal === null ? 'Tổng tiền booking chưa tính được.' : `Tổng tiền đã chốt: ${new Intl.NumberFormat('vi-VN').format(quotedTotal)} đ`}</small>
+          </label>
+
+          {depositAmount > 0 && <>
+            <label>
+              <span>Phương thức nhận cọc</span>
+              <select value={form.depositPaymentMethod} onChange={(event) => update('depositPaymentMethod', event.target.value)}>
+                <option value="CASH">Tiền mặt</option>
+                <option value="BANK_TRANSFER">Chuyển khoản</option>
+              </select>
+            </label>
+            {form.depositPaymentMethod === 'BANK_TRANSFER' && <label>
+              <span>Mã giao dịch</span>
+              <input type="text" maxLength={255} required value={form.depositPaymentReference}
+                onChange={(event) => update('depositPaymentReference', event.target.value)} />
+            </label>}
+          </>}
 
         </div>
 

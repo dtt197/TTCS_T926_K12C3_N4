@@ -168,12 +168,11 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/bookings", "/api/bookings/**");
         add(policies, "GET", Access.PUBLIC, List.of(),
-                "/api/public/room-types",
-                "/api/public/room-types/*",
+                "/api/public/room-types/**",
                 "/api/public/room-types-catalog",
                 "/api/public/quote",
                 "/api/public/room-type-cards",
-                "/api/public/rooms/search");
+                "/api/public/rooms/**");
         add(policies, "POST", Access.PUBLIC, List.of(),
                 "/api/public/bookings",
                 "/api/public/bookings/lookup");

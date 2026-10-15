@@ -22,9 +22,27 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpecificationExecutor<Booking> {
 
+    /** Booking được tính là đã bán và có ít nhất một đêm trong khoảng báo cáo nửa mở. */
+    @Query("select b from Booking b join fetch b.roomType"
+            + " where b.checkInDate < :endDate and b.checkOutDate > :startDate"
+            + " and b.status in :statuses")
+    List<Booking> findSoldInDateRange(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("statuses") Collection<BookingStatus> statuses);
+
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from Booking b where b.id = :id")
     Optional<Booking> findByIdForUpdate(@Param("id") Long id);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Booking b where b.room.id = :roomId and b.status = :status order by b.id")
+    List<Booking> findByRoomAndStatusForUpdate(@Param("roomId") Long roomId,
+            @Param("status") BookingStatus status);
+
+    @Query("select b from Booking b where b.room.id = :roomId and b.status = :status order by b.id")
+    List<Booking> findByRoomAndStatus(@Param("roomId") Long roomId,
+            @Param("status") BookingStatus status);
 
     List<Booking> findAllByOrderByCreatedAtDescIdDesc();
 

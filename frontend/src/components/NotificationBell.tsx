@@ -126,7 +126,7 @@ export function NotificationBell({ userId, onOpenMaintenance }: {
       requestRef.current?.abort()
       if (pollingTimer !== undefined) window.clearInterval(pollingTimer)
       if (sessionRef.current === session) sessionRef.current = null
-      if (generation === generationRef.current) generationRef.current++
+      generationRef.current = generation + 1
     }
   }, [userId, refresh, refreshCurrent])
 

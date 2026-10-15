@@ -16,6 +16,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 /**
  * S1-09: một PHIÊN BẢN tham số vận hành. Không sửa đè: mỗi lần lưu tạo phiên bản mới (AC4),
@@ -55,6 +56,10 @@ public class OperatingSettings {
 
     @Column(name = "extra_person_fee", nullable = false)
     private long extraPersonFee;
+        /** S4-02: đơn giá phụ thu thêm giường (VND / giường / đêm). */
+    @ColumnDefault("0")
+    @Column(name = "extra_bed_fee", nullable = false)
+    private long extraBedFee;
 
         /**
      * S2-01 Lát 3:

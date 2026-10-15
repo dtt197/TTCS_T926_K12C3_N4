@@ -103,7 +103,8 @@ class BookingRoomHoldingTest {
     }
 
     private static WalkInBookingRequest walkInRequest() {
-        return new WalkInBookingRequest(1L, CHECK_IN, CHECK_OUT, "Khách tại quầy", "0912345678", null, 2, null);
+        return new WalkInBookingRequest(1L, CHECK_IN, CHECK_OUT, "Khách tại quầy", "0912345678", null, 2, null,
+                java.math.BigDecimal.ZERO, null, null);
     }
 
     private Booking savedBooking() {

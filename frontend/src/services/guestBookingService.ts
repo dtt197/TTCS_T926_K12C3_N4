@@ -45,6 +45,9 @@ export type WalkInBookingPayload = {
   email?: string
   guestCount: number
   note?: string
+  depositAmount: number
+  depositPaymentMethod?: 'CASH' | 'BANK_TRANSFER'
+  depositPaymentReference?: string
 }
 
 export function createWalkInBooking(payload: WalkInBookingPayload) {

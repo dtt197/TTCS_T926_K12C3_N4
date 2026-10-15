@@ -816,8 +816,10 @@ void setUp() {
         List<MockHttpServletRequestBuilder> requests = List.of(
                 get("/api/public/room-types"),
                 get("/api/public/room-types/999999"),
+                get("/api/public/room-types/nonexistent/path"),
                 get("/api/public/room-type-cards"),
                 get("/api/public/quote"),
+                get("/api/public/rooms/nonexistent/path"),
                 get("/api/public/rooms/search")
                         .param("checkIn", checkIn.toString())
                         .param("checkOut", checkIn.plusDays(2).toString())
@@ -855,6 +857,14 @@ void housekeepingTruyCapApiCheckOut_biChan403() throws Exception {
                             "Authorization",
                             "Bearer housekeeping-test-token"
                     )
+    ).andExpect(status().isForbidden());
+}
+
+@Test
+void housekeepingTruyCapCheckoutPreview_biChan403() throws Exception {
+    mockMvc.perform(
+            get("/api/rooms/4/checkout-preview")
+                    .header("Authorization", "Bearer housekeeping-test-token")
     ).andExpect(status().isForbidden());
 }
 

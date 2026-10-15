@@ -1,0 +1,31 @@
+/** S4-02 Lát 1: dòng phụ thu của booking. */
+export type SurchargeType = 'THEM_NGUOI' | 'THEM_GIUONG'
+
+export type BookingSurcharge = {
+  id: number
+  type: SurchargeType
+  quantity: number
+  unitPrice: number
+  nights: number
+  amount: number
+  note: string | null
+  createdBy: string
+  createdAt: string
+}
+
+export type BookingSurchargeList = {
+  bookingId: number
+  canAddSurcharge: boolean
+  maxNights: number
+  defaultExtraPersonPrice: number
+  defaultExtraBedPrice: number
+  items: BookingSurcharge[]
+  totalAmount: number
+}
+
+export type BookingSurchargeRequest = {
+  type: SurchargeType
+  quantity: number
+  nights: number
+  note: string | null
+}

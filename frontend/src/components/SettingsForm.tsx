@@ -20,6 +20,7 @@ type FormState = {
   checkOutTime: string
   lateCheckoutFeePerHour: string
   extraPersonFee: string
+  extraBedFee: string
   tiers: TierRow[]
   weekendDays: string[]
 }
@@ -53,6 +54,8 @@ function toFormState(
       String(settings.lateCheckoutFeePerHour),
     extraPersonFee:
       String(settings.extraPersonFee),
+          extraBedFee:
+      String(settings.extraBedFee ?? 0),
     tiers: settings.cancellationTiers.map(
       (tier) => ({
         hours:
@@ -184,7 +187,12 @@ export function SettingsForm({
       )
       return
     }
-
+    if (!isWholeNumber(form.extraBedFee)) {
+      setError(
+        'Phụ thu thêm giường phải là số nguyên từ 0 trở lên (VND)',
+      )
+      return
+    }
     if (
       form.tiers.length === 0 ||
       form.tiers.some(
@@ -229,6 +237,10 @@ export function SettingsForm({
         extraPersonFee:
           Number(
             form.extraPersonFee,
+          ),
+                  extraBedFee:
+          Number(
+            form.extraBedFee,
           ),
         cancellationTiers:
           form.tiers.map((tier) => ({
@@ -381,7 +393,18 @@ export function SettingsForm({
           }
         />
       </label>
+      <label className="form-label">
+        Phụ thu thêm giường (VND / giường / đêm)
 
+        <input
+          className="form-control"
+          inputMode="numeric"
+          value={form.extraBedFee}
+          onChange={(e) =>
+            update('extraBedFee', e.target.value)
+          }
+        />
+      </label>
 <fieldset className="weekend-days-fieldset">
   <legend>Ngày được tính là cuối tuần</legend>
 
