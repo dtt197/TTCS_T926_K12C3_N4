@@ -8,6 +8,7 @@ import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.BookingSurcharge;
 import com.ttcs.homestay.entity.SurchargeType;
 import com.ttcs.homestay.repository.BookingRepository;
+import com.ttcs.homestay.repository.BookingGuestRepository;
 import com.ttcs.homestay.repository.BookingSurchargeRepository;
 import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import java.time.OffsetDateTime;
@@ -40,14 +41,17 @@ public class BookingSurchargeService {
     private final BookingRepository bookingRepository;
     private final BookingSurchargeRepository surchargeRepository;
     private final OperatingSettingsRepository settingsRepository;
+    private final BookingGuestRepository guestRepository;
 
     public BookingSurchargeService(
             BookingRepository bookingRepository,
             BookingSurchargeRepository surchargeRepository,
-            OperatingSettingsRepository settingsRepository) {
+            OperatingSettingsRepository settingsRepository,
+            BookingGuestRepository guestRepository) {
         this.bookingRepository = bookingRepository;
         this.surchargeRepository = surchargeRepository;
         this.settingsRepository = settingsRepository;
+        this.guestRepository = guestRepository;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +71,10 @@ public class BookingSurchargeService {
                     "Chỉ thêm phụ thu cho booking đã xác nhận hoặc đang ở");
         }
         validate(request, maxNights(booking));
+        // S4-02 Lát 3: dòng "thêm người" không được làm tổng số khách vượt sức chứa tối đa của loại phòng.
+        if (request.type() == SurchargeType.THEM_NGUOI) {
+            ensureCapacity(booking, request.quantity());
+        }
 
         long unitPrice = defaultUnitPrice(booking, request.type());
 
@@ -112,6 +120,10 @@ public class BookingSurchargeService {
                 .toList();
         long totalAmount = items.stream().mapToLong(item -> item.amount()).sum();
 
+        int currentGuests = currentGuestCount(booking);
+        Integer maxCapacity = maxCapacity(booking);
+        Integer remainingCapacity = maxCapacity == null ? null : Math.max(0, maxCapacity - currentGuests);
+
         return new BookingSurchargeListResponse(
                 booking.getId(),
                 ALLOWED_STATUSES.contains(booking.getStatus()),
@@ -119,7 +131,54 @@ public class BookingSurchargeService {
                 defaultUnitPrice(booking, SurchargeType.THEM_NGUOI),
                 defaultUnitPrice(booking, SurchargeType.THEM_GIUONG),
                 items,
-                totalAmount);
+                totalAmount,
+                currentGuests,
+                maxCapacity,
+                remainingCapacity);
+    }
+
+    /** S4-02 Lát 3: số khách hiện tại = khách gốc của booking + số người của các dòng "thêm người" đã lưu. */
+    private int currentGuestCount(Booking booking) {
+        return baseGuestCount(booking) + addedGuestCount(booking.getId());
+    }
+
+    /** Khách gốc: số khách đã đăng ký khi nhận phòng; chưa nhận phòng thì lấy số khách lúc đặt; thiếu dữ liệu thì tính 1. */
+    private int baseGuestCount(Booking booking) {
+        int registered = guestRepository.findAllByBookingIdOrderByGuestOrderAsc(booking.getId()).size();
+        if (registered > 0) {
+            return registered;
+        }
+        Integer booked = booking.getGuestCount();
+        return booked != null && booked > 0 ? booked : 1;
+    }
+
+    /** Đề xuất chờ PO chốt: cộng dồn mọi dòng "thêm người"; dòng "thêm giường" không tính khách. */
+    private int addedGuestCount(Long bookingId) {
+        return surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(bookingId).stream()
+                .filter(line -> line.getSurchargeType() == SurchargeType.THEM_NGUOI)
+                .mapToInt(line -> line.getQuantity())
+                .sum();
+    }
+
+    private static Integer maxCapacity(Booking booking) {
+        return booking.getRoomType() == null ? null : booking.getRoomType().getMaxCapacity();
+    }
+
+    private void ensureCapacity(Booking booking, int addedQuantity) {
+        Integer max = maxCapacity(booking);
+        if (max == null) {
+            return;
+        }
+        int current = currentGuestCount(booking);
+        if (current + addedQuantity > max) {
+            int remaining = Math.max(0, max - current);
+            String hint = remaining == 0
+                    ? "không thể thêm người."
+                    : "chỉ thêm được tối đa " + remaining + " người.";
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Vượt sức chứa tối đa " + max + " khách của loại phòng. Booking đang có "
+                            + current + " khách, " + hint);
+        }
     }
 
     private static int maxNights(Booking booking) {
