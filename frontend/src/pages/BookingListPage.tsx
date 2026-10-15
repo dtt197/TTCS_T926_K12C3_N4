@@ -25,6 +25,7 @@ import {
   assignBookingRoom,
   changeBookingRoom,
   getBookingRoomChangeHistory,
+  downloadBookingInvoice,
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
@@ -102,6 +103,8 @@ export function BookingListPage({ role }: { role: string }) {
   const [detailData, setDetailData] = useState<BookingDetailResponse | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const [invoiceDownloading, setInvoiceDownloading] = useState(false)
+  const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [editDetailData, setEditDetailData] = useState<BookingDetailResponse | null>(null)
   const [editDetailLoading, setEditDetailLoading] = useState(false)
   const [editDetailError, setEditDetailError] = useState<string | null>(null)
@@ -629,6 +632,28 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     ? getClosedBookingCheckoutDisplay(detailData.status, detailData.checkedOutAt, detailData.earlyCheckoutReason)
     : null
 
+  async function handleDownloadInvoice() {
+    if (!detailBooking || invoiceDownloading) return
+    setInvoiceDownloading(true)
+    setInvoiceError(null)
+    try {
+      await downloadBookingInvoice(detailBooking.id, detailBooking.bookingCode)
+    } catch (err) {
+      const message = err instanceof ApiRequestError
+        ? err.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err.status === 403 ? 'Bạn không có quyền xuất hóa đơn cho booking này.'
+          : err.message
+        : err instanceof Error && err.name === 'AuthSessionExpiredError'
+          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err instanceof Error ? err.message : 'Không thể tạo hoặc tải hóa đơn PDF. Vui lòng thử lại.'
+      setInvoiceError(message || 'Không thể tạo hóa đơn PDF. Vui lòng thử lại.')
+    } finally {
+      setInvoiceDownloading(false)
+    }
+  }
+
+  const canExportInvoice = (role === 'RECEPTIONIST' || role === 'OWNER') && detailData?.status === 'DA_TRA_PHONG'
+
   return (
     <section className="panel booking-page">
       <div className="panel-heading">
@@ -1005,6 +1030,12 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
               </div>
             )}
             <footer className="booking-detail-footer">
+              {canExportInvoice && <div className="booking-invoice-actions">
+                {invoiceError && <div className="alert" role="alert">{invoiceError}</div>}
+                <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={invoiceDownloading}>
+                  {invoiceDownloading ? 'Đang tạo hóa đơn...' : 'Xuất hóa đơn PDF'}
+                </button>
+              </div>}
               <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
             </footer>
           </section>

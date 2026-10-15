@@ -136,6 +136,7 @@ public class BookingSurchargeService {
         int currentGuests = currentGuestCount(booking);
         Integer maxCapacity = maxCapacity(booking);
         Integer remainingCapacity = maxCapacity == null ? null : Math.max(0, maxCapacity - currentGuests);
+        AutomaticSurchargeSnapshot automatic = automaticSurchargeSnapshot(booking);
 
         return new BookingSurchargeListResponse(
                 booking.getId(),
@@ -147,8 +148,46 @@ public class BookingSurchargeService {
                 totalAmount,
                 currentGuests,
                 maxCapacity,
-                remainingCapacity);
+                remainingCapacity,
+                booking.getExtraGuestCount(),
+                booking.getExtraPersonFeeSnapshot(),
+                booking.getSurchargeAmount(),
+                automatic.complete(),
+                automatic.warning());
     }
+
+    private static AutomaticSurchargeSnapshot automaticSurchargeSnapshot(Booking booking) {
+        long nights = ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate());
+        List<com.ttcs.homestay.entity.BookingNightlyPriceSnapshot> snapshots = booking.getNightlyPriceSnapshots();
+        if (nights <= 0 || snapshots.size() != nights) {
+            return new AutomaticSurchargeSnapshot(false, "Thiếu snapshot giá theo đêm để xác thực phụ thu đã chốt.");
+        }
+        long calculated;
+        long nightlyTotal = 0;
+        try {
+            calculated = Math.multiplyExact(Math.multiplyExact((long) booking.getExtraGuestCount(),
+                    booking.getExtraPersonFeeSnapshot()), nights);
+            List<com.ttcs.homestay.entity.BookingNightlyPriceSnapshot> ordered = snapshots.stream()
+                    .sorted(java.util.Comparator.comparing(
+                            com.ttcs.homestay.entity.BookingNightlyPriceSnapshot::getNightDate)).toList();
+            for (int i = 0; i < ordered.size(); i++) {
+                if (!booking.getCheckInDate().plusDays(i).equals(ordered.get(i).getNightDate())) {
+                    return new AutomaticSurchargeSnapshot(false, "Snapshot giá theo đêm không khớp thời gian booking.");
+                }
+                nightlyTotal = Math.addExact(nightlyTotal, ordered.get(i).getSurchargeAmount());
+            }
+        } catch (ArithmeticException ex) {
+            return new AutomaticSurchargeSnapshot(false, "Snapshot phụ thu tự động không hợp lệ.");
+        }
+        if (booking.getExtraGuestCount() < 0 || booking.getExtraPersonFeeSnapshot() < 0
+                || booking.getSurchargeAmount() < 0 || calculated != booking.getSurchargeAmount()
+                || nightlyTotal != booking.getSurchargeAmount()) {
+            return new AutomaticSurchargeSnapshot(false, "Snapshot phụ thu tự động không nhất quán.");
+        }
+        return new AutomaticSurchargeSnapshot(true, null);
+    }
+
+    private record AutomaticSurchargeSnapshot(boolean complete, String warning) {}
 
     /** S4-02 Lát 3: số khách hiện tại = khách gốc của booking + số người của các dòng "thêm người" đã lưu. */
     private int currentGuestCount(Booking booking) {

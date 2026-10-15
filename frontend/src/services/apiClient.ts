@@ -20,6 +20,8 @@ export class ApiRequestError extends Error {
   }
 }
 
+export type BlobApiResponse = { blob: Blob; headers: Headers }
+
 let refreshPromise: Promise<string> | null = null
 
 function notifySessionExpired(): void {
@@ -44,7 +46,7 @@ async function refreshOnce(): Promise<string> {
 
 export async function apiRequest<T>(
   path: string,
-  init: RequestInit = {},
+  init: RequestInit & { responseType?: 'blob' } = {},
   hasRetried = false,
 ): Promise<T> {
   const headers = new Headers(init.headers)
@@ -67,7 +69,9 @@ export async function apiRequest<T>(
       throw new AuthSessionExpiredError()
     }
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as { message?: string } | null
+      const bodyText = await response.text().catch(() => '')
+      let body: { message?: string } | null = null
+      try { body = bodyText ? JSON.parse(bodyText) as { message?: string } : null } catch { /* use status fallback */ }
       throw new ApiRequestError(
         response.status,
         body?.message ?? `API request failed with status ${response.status}`,
@@ -75,6 +79,9 @@ export async function apiRequest<T>(
     }
     if (response.status === 204) {
       return undefined as T
+    }
+    if (init.responseType === 'blob') {
+      return { blob: await response.blob(), headers: response.headers } as T
     }
     return (await response.json()) as T
   }

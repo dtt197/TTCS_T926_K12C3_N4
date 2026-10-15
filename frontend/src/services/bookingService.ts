@@ -172,6 +172,30 @@ export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
   return apiRequest<BookingDetailResponse>(`/api/bookings/${id}/details`)
 }
 
+function invoiceFilenameFromDisposition(disposition: string | null, bookingCode: string): string {
+  const encodedName = disposition?.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)?.[1]
+  const plainName = disposition?.match(/filename\s*=\s*"?([^";]+)"?/i)?.[1]
+  const headerName = encodedName ? decodeURIComponent(encodedName.trim()) : plainName?.trim()
+  return headerName || `invoice_${bookingCode}.pdf`
+}
+
+export async function downloadBookingInvoice(id: number, bookingCode: string): Promise<void> {
+  const response = await apiRequest<{ blob: Blob; headers: Headers }>(`/api/bookings/${id}/invoice.pdf`, {
+    responseType: 'blob',
+  })
+  const blob = response.blob.type === 'application/pdf' ? response.blob : new Blob([response.blob], { type: 'application/pdf' })
+  const filename = invoiceFilenameFromDisposition(response.headers.get('Content-Disposition'), bookingCode)
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+}
+
 /** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
 export function getBookingSummary(id: number): Promise<BookingListItem> {
   return apiRequest<BookingListItem>(`/api/bookings/${id}/summary`)
