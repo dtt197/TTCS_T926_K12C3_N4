@@ -73,6 +73,27 @@ public class ApiSecurityPolicyCatalog {
                 "/api/auth/forgot-password",
                 "/api/auth/reset-password");
         add(policies, null, Access.AUTHENTICATED, List.of(), "/api/internal/**");
+        add(policies, "GET", Access.ROLES, List.of("HOUSEKEEPING"),
+                "/api/maintenance-requests/cleaning-room-ids");
+        add(policies, "GET", Access.ROLES,
+                List.of("OWNER", "RECEPTIONIST", "HOUSEKEEPING"),
+                "/api/maintenance-requests",
+                "/api/maintenance-requests/*");
+        add(policies, "POST", Access.ROLES, List.of("OWNER"),
+                "/api/maintenance-requests/*/accept",
+                "/api/maintenance-requests/*/start",
+                "/api/maintenance-requests/*/repair-completed",
+                "/api/maintenance-requests/*/verify");
+        add(policies, "POST", Access.ROLES, List.of("HOUSEKEEPING"),
+                "/api/maintenance-requests/*/cleaning-completed");
+        add(policies, "PUT", Access.ROLES, List.of("OWNER"),
+                "/api/maintenance-requests/*/vendor");
+        add(policies, "GET", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
+                "/api/notifications",
+                "/api/notifications/stream",
+                "/api/notifications/unread-count");
+        add(policies, "PATCH", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
+                "/api/notifications/*/read");
         add(policies, null, Access.ROLES, List.of("ADMIN"),
                 "/api/admin/audit-logs/**");
         add(policies, "GET", Access.ROLES, List.of("ADMIN", "OWNER"),

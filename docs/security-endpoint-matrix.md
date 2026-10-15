@@ -42,6 +42,11 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `GET /api/admin/users` | `ADMIN`, `OWNER` |
 | `POST /api/admin/users`, `PATCH /api/admin/users/{id}/status`, `PUT /api/admin/users/{id}`, `POST /api/admin/users/{id}/resend-temporary-password` | `ADMIN` |
 | `POST /api/admin/reminders/run`, `GET /api/admin/email-logs` | `ADMIN` |
+| `GET /api/maintenance-requests/cleaning-room-ids` | `HOUSEKEEPING` |
+| `GET /api/maintenance-requests`, `GET /api/maintenance-requests/{id}` | `OWNER`, `RECEPTIONIST`, `HOUSEKEEPING` |
+| `POST /api/maintenance-requests/{id}/accept`, `/start`, `/repair-completed`, `/verify`, `PUT /api/maintenance-requests/{id}/vendor` | `OWNER` |
+| `POST /api/maintenance-requests/{id}/cleaning-completed` | `HOUSEKEEPING` |
+| `GET /api/notifications`, `/stream`, `/unread-count`, `PATCH /api/notifications/{id}/read` | `OWNER`, `RECEPTIONIST` |
 | `GET /api/rooms`, `GET /api/rooms/{roomId}/history` | `ADMIN`, `OWNER`, `RECEPTIONIST`, `HOUSEKEEPING` |
 | `GET /api/rooms/calendar` | `RECEPTIONIST` |
 | `PATCH /api/rooms/{roomId}/status` | `RECEPTIONIST`, `HOUSEKEEPING` |
@@ -59,7 +64,7 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `GET /api/price-overrides` | `OWNER`, `ADMIN`, `RECEPTIONIST` |
 | `POST /api/price-overrides`, `POST /api/price-overrides/preview`, `PUT /api/price-overrides/{id}`, `DELETE /api/price-overrides/{id}` | `OWNER` |
 | `GET /api/pricing/quote` | `OWNER`, `ADMIN`, `RECEPTIONIST` |
-| `GET /api/bookings`, `GET /api/bookings/latest`, `GET /api/bookings/check-in-options`, `GET /api/bookings/shortage-alerts`, `GET /api/bookings/shortage-alerts/{date}/{roomTypeCode}`, `GET /api/bookings/{id}/summary`, `GET /api/bookings/{id}/available-rooms`, `GET /api/bookings/{id}/room-change-history`, `GET /api/bookings/{id}/history`, `GET /api/bookings/{id}/details`, `GET /api/bookings/{id}/cancellation-info`, `GET /api/bookings/{bookingCode}/cancellation-preview` | `ADMIN`, `OWNER`, `RECEPTIONIST` |
+| `GET /api/bookings`, `GET /api/bookings/latest`, `GET /api/bookings/check-in-options`, `GET /api/bookings/{id}/summary`, `GET /api/bookings/{id}/available-rooms`, `GET /api/bookings/{id}/room-change-history`, `GET /api/bookings/{id}/history`, `GET /api/bookings/{id}/details`, `GET /api/bookings/{id}/cancellation-info`, `GET /api/bookings/{bookingCode}/cancellation-preview` | `ADMIN`, `OWNER`, `RECEPTIONIST` |
 | `POST /api/bookings`, `POST /api/bookings/{id}/preview`, `POST /api/bookings/{bookingCode}/cancel`, `PUT /api/bookings/{id}/confirm`, `PUT /api/bookings/{id}/room`, `PUT /api/bookings/{id}/room-change`, `PUT /api/bookings/{id}/cancel`, `PUT /api/bookings/{id}` | `RECEPTIONIST` |
 | `POST /api/bookings/{id}/deposit-adjustments` | `OWNER`, `RECEPTIONIST` |
 | `PUT /api/bookings/{id}/deposit`, `PUT /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}/deposit`, `DELETE /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}` | `OWNER`, `RECEPTIONIST` |

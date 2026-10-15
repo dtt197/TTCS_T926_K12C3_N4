@@ -12,6 +12,9 @@ import jakarta.persistence.LockModeType;
 
 public interface RoomRepository extends JpaRepository<Room, Long> {
 
+    @Query("select (count(m) > 0) from MaintenanceRequestEntity m where m.room.id = :roomId and m.status <> 'HOAN_TAT'")
+    boolean hasOpenMaintenanceRequest(@Param("roomId") Long roomId);
+
     List<Room> findAllByActiveTrueOrderByRoomNumberAsc();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

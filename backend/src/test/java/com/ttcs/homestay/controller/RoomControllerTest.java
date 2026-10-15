@@ -3,6 +3,9 @@ package com.ttcs.homestay.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import com.ttcs.homestay.dto.RoomResponse;
@@ -12,6 +15,7 @@ import com.ttcs.homestay.dto.UpdateRoomStatusRequest;
 import com.ttcs.homestay.entity.RoomStatus;
 import com.ttcs.homestay.service.AuditLogService;
 import com.ttcs.homestay.service.RoomService;
+import com.ttcs.homestay.service.MaintenanceWorkflowService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,11 +29,12 @@ import org.springframework.web.server.ResponseStatusException;
 class RoomControllerTest {
 
     private final RoomService roomService = mock(RoomService.class);
+    private final MaintenanceWorkflowService maintenanceWorkflowService = mock(MaintenanceWorkflowService.class);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
     private final HttpServletRequest httpRequest = mock(HttpServletRequest.class);
 
     private final RoomController controller =
-            new RoomController(roomService, auditLogService);
+            new RoomController(roomService, auditLogService, null, maintenanceWorkflowService);
 
     @Test
     void updateStatusUsesAuthenticatedOperatorName() {
@@ -53,6 +58,16 @@ class RoomControllerTest {
                 RoomStatus.TRONG_SACH,
                 "Nguyễn Văn A"
         );
+        verify(auditLogService).recordSensitiveAction(
+                1L, "letan@homestay.local", null, "Phòng #1",
+                "ROOM_STATUS_UPDATED", "127.0.0.1");
+        verify(roomService, never()).updateStatusWithAuditAndNotification(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -96,6 +111,7 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
 
     when(roomService.getRooms())
             .thenReturn(List.of(dirtyRoom));
+    when(roomService.hasOpenMaintenanceRequest(1L)).thenReturn(false);
 
     when(httpRequest.getRemoteAddr())
             .thenReturn("127.0.0.1");
@@ -107,11 +123,21 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
             httpRequest
     );
 
-    verify(roomService).updateStatus(
+    verify(roomService).updateStatusWithAuditAndNotification(
             1L,
             RoomStatus.TRONG_SACH,
-            "Buồng phòng"
+            "Buồng phòng",
+            1L,
+            "buongphong@homestay.local",
+            "127.0.0.1"
     );
+    verify(auditLogService, never()).recordSensitiveAction(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any());
 }
 
     @Test
@@ -184,6 +210,10 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
         ))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(roomService, never()).updateStatus(anyLong(), any(), any());
+        verify(roomService, never()).updateStatusWithAuditAndNotification(
+                anyLong(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -214,6 +244,29 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
         ))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(roomService, never()).updateStatus(anyLong(), any(), any());
+        verify(roomService, never()).updateStatusWithAuditAndNotification(
+                anyLong(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void housekeepingCannotMarkAlreadyCleanRoomClean_againstCurrentStatus_throwsForbiddenWithoutServiceCall() {
+        JwtAuthenticationToken authentication = authentication(
+                "Buồng phòng Demo", "buongphong@homestay.local", "HOUSEKEEPING");
+        RoomResponse cleanRoom = new RoomResponse(
+                1L, "101", 1, "Phòng đôi", RoomStatus.TRONG_SACH, true);
+        when(roomService.getRooms()).thenReturn(List.of(cleanRoom));
+
+        assertThatThrownBy(() -> controller.updateStatus(
+                1L, new UpdateRoomStatusRequest(RoomStatus.TRONG_SACH), authentication, httpRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(roomService, never()).updateStatus(anyLong(), any(), any());
+        verify(roomService, never()).updateStatusWithAuditAndNotification(
+                anyLong(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -287,6 +340,26 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
         assertThat(recepRooms).hasSize(1);
         assertThat(recepRooms.get(0).status()).isEqualTo(RoomStatus.BAO_TRI);
         assertThat(recepRooms.get(0).maintenanceReason()).isEqualTo("Hỏng bình nóng lạnh");
+    }
+
+    @Test
+    void housekeepingRoomListIncludesMaintenanceRoomForExistingCleaningFlow() {
+        JwtAuthenticationToken authentication = authentication("Housekeeper", "hk@example.test", "HOUSEKEEPING");
+        RoomResponse legacyRoom = new RoomResponse(105L, "105", 1, "Phòng đôi", RoomStatus.BAO_TRI, true);
+        when(roomService.getRooms()).thenReturn(List.of(legacyRoom));
+        when(maintenanceWorkflowService.cleaningRoomIds(any())).thenReturn(List.of(105L));
+
+        assertThat(controller.getRooms(authentication)).containsExactly(legacyRoom);
+    }
+
+    @Test
+    void housekeepingDoesNotSeeUnrelatedMaintenanceRoom() {
+        JwtAuthenticationToken authentication = authentication("Housekeeper", "hk@example.test", "HOUSEKEEPING");
+        RoomResponse unrelated = new RoomResponse(106L, "106", 1, "Phòng đôi", RoomStatus.BAO_TRI, true);
+        when(roomService.getRooms()).thenReturn(List.of(unrelated));
+        when(maintenanceWorkflowService.cleaningRoomIds(any())).thenReturn(List.of(105L));
+
+        assertThat(controller.getRooms(authentication)).isEmpty();
     }
 
     @Test

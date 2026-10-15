@@ -182,7 +182,9 @@ void setUp() {
                 .getContentAsString();
         assertThat(response).contains(
                 "\"path\":\"/api/public/rooms/search\",\"access\":\"PUBLIC\"",
-                "\"path\":\"/api/rooms/{roomId}/history\",\"access\":\"ROLES\""
+                "\"path\":\"/api/rooms/{roomId}/history\",\"access\":\"ROLES\"",
+                "\"path\":\"/api/maintenance-requests/cleaning-room-ids\",\"access\":\"ROLES\",\"roles\":[\"HOUSEKEEPING\"]",
+                "\"path\":\"/api/notifications/stream\",\"access\":\"ROLES\",\"roles\":[\"OWNER\",\"RECEPTIONIST\"]"
         );
 
         mockMvc.perform(get("/api/admin/security/endpoint-permissions"))

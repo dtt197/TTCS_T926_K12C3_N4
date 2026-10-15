@@ -13,7 +13,7 @@ export type RoomCalendar = {
   }[]
 }
 
-export function getRoomCalendar(startDate: string, signal: AbortSignal) {
-  const params = new URLSearchParams({ startDate, days: '14' })
+export function getRoomCalendar(startDate: string, days: number, signal: AbortSignal) {
+  const params = new URLSearchParams({ startDate, days: String(days) })
   return apiRequest<RoomCalendar>(`/api/rooms/calendar?${params}`, { signal })
 }

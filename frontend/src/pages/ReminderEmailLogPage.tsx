@@ -26,6 +26,7 @@ export function ReminderEmailLogPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [emailType, setEmailType] = useState<'REMINDER' | 'CANCELLATION'>('REMINDER')
   const [simulatedToday, setSimulatedToday] = useState(todayInVietnam())
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<ReminderRunResult | null>(null)
@@ -33,7 +34,7 @@ export function ReminderEmailLogPage() {
   useEffect(() => {
     let active = true
 
-    getEmailLogs('REMINDER')
+    getEmailLogs(emailType)
       .then((result) => {
         if (active) {
           setLogs(result)
@@ -54,8 +55,7 @@ export function ReminderEmailLogPage() {
     return () => {
       active = false
     }
-  }, [refreshKey])
-
+   }, [refreshKey, emailType])
   function reload() {
     setLoading(true)
     setError(null)
@@ -133,9 +133,20 @@ export function ReminderEmailLogPage() {
         <div className="audit-section-heading">
           <div>
             <span className="audit-kicker">DANH SÁCH</span>
-            <h2>Email nhắc đã gửi</h2>
+            <h2>{emailType === 'REMINDER' ? 'Email nhắc đã gửi' : 'Email huỷ booking đã gửi'}</h2>
             <p>200 email gần nhất, thời gian hiển thị theo múi giờ GMT+7.</p>
           </div>
+                    <select
+            aria-label="Loại email"
+            value={emailType}
+            onChange={(event) => {
+              setLoading(true)
+              setEmailType(event.target.value as 'REMINDER' | 'CANCELLATION')
+            }}
+          >
+            <option value="REMINDER">Email nhắc nhận phòng</option>
+            <option value="CANCELLATION">Email huỷ booking</option>
+          </select>
           <button
             type="button"
             className="secondary-button"
@@ -183,7 +194,7 @@ export function ReminderEmailLogPage() {
           </table>
 
           {!loading && !error && logs.length === 0 && (
-            <p className="audit-empty">Chưa có email nhắc nào được gửi.</p>
+            <p className="audit-empty">Chưa có email nào thuộc loại này.</p>
           )}
           {loading && <p className="audit-empty">Đang tải...</p>}
         </div>
