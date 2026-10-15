@@ -108,9 +108,48 @@ export function putRoomIntoMaintenance(
   })
 }
 
-export function checkOut(roomId: number) {
+export type CheckoutNight = {
+  date: string
+  label: string
+  roomPrice: number
+  surchargeAmount: number
+  total: number
+}
+
+export type CheckoutPreview = {
+  bookingId: number
+  bookingCode: string
+  roomId: number
+  roomNumber: string
+  guestName: string
+  checkInDate: string
+  checkOutDate: string
+  nightlyPrices: CheckoutNight[]
+  nightlyBreakdownReliable: boolean
+  warning: string | null
+  roomTotal: number
+  depositTotal: number
+  settlementType: 'COLLECT' | 'ZERO' | 'REFUND'
+  amount: number
+  previewToken: string
+}
+
+export function getCheckoutPreview(roomId: number) {
+  return request<CheckoutPreview>(`/rooms/${roomId}/checkout-preview`)
+}
+
+export type CheckoutPaymentRequest = {
+  previewToken: string
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER'
+  paymentReference?: string
+  amountReceivedConfirmed?: boolean
+  refundCompletedConfirmed?: boolean
+}
+
+export function checkOut(roomId: number, settlement: CheckoutPaymentRequest) {
   return request<Room>(`/rooms/${roomId}/check-out`, {
     method: 'POST',
+    body: JSON.stringify(settlement),
   })
 }
 

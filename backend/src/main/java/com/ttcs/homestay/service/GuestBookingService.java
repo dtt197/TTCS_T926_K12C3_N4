@@ -10,6 +10,7 @@ import com.ttcs.homestay.dto.booking.PublicRoomTypeOption;
 import com.ttcs.homestay.dto.booking.WalkInBookingResponse;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingDeposit;
 import com.ttcs.homestay.entity.BookingSource;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -59,6 +60,7 @@ public class GuestBookingService {
     private final OperatingSettingsService operatingSettingsService;
     private final BookingCodeGenerator bookingCodeGenerator;
     private final BookingRateLimiter bookingRateLimiter;
+    private BookingDepositService bookingDepositService;
 
     @Autowired
     public GuestBookingService(
@@ -68,7 +70,8 @@ public class GuestBookingService {
             PricingService pricingService,
             OperatingSettingsService operatingSettingsService,
             BookingCodeGenerator bookingCodeGenerator,
-            BookingRateLimiter bookingRateLimiter) {
+            BookingRateLimiter bookingRateLimiter,
+            BookingDepositService bookingDepositService) {
         this.bookingRepository = bookingRepository;
         this.roomTypeRepository = roomTypeRepository;
         this.roomAvailabilityService = roomAvailabilityService;
@@ -76,6 +79,7 @@ public class GuestBookingService {
         this.operatingSettingsService = operatingSettingsService;
         this.bookingCodeGenerator = bookingCodeGenerator;
         this.bookingRateLimiter = bookingRateLimiter;
+        this.bookingDepositService = bookingDepositService;
     }
 
     public GuestBookingService(
@@ -86,14 +90,8 @@ public class GuestBookingService {
             OperatingSettingsService operatingSettingsService,
             BookingCodeGenerator bookingCodeGenerator) {
 
-        this(
-                bookingRepository,
-                roomTypeRepository,
-                roomAvailabilityService,
-                pricingService,
-                operatingSettingsService,
-                bookingCodeGenerator,
-                new BookingRateLimiter());
+        this(bookingRepository, roomTypeRepository, roomAvailabilityService, pricingService,
+                operatingSettingsService, bookingCodeGenerator, new BookingRateLimiter(), null);
     }
 
     /**
@@ -217,6 +215,8 @@ public class GuestBookingService {
         booking.setExtraPersonFeeSnapshot(price.extraPersonFee());
         booking.setSurchargeAmount(price.surchargeAmount());
         booking.setTotalAmount(price.totalAmount());
+        BookingNightlySnapshotFactory.replace(booking, price.nightlyPrices(),
+                Math.multiplyExact((long) price.extraGuests(), price.extraPersonFee()));
         booking.setCreatedAt(createdAt);
         booking.setHoldExpiresAt(createdAt.plus(HOLD_DURATION));
         // S3-03: giữ một suất theo loại phòng; lễ tân gán phòng cụ thể sau khi xác nhận.
@@ -243,6 +243,11 @@ public class GuestBookingService {
     @Transactional
     public WalkInBookingResponse createWalkInBooking(
             WalkInBookingRequest request) {
+        return createWalkInBooking(request, "Lễ tân");
+    }
+
+    @Transactional
+    public WalkInBookingResponse createWalkInBooking(WalkInBookingRequest request, String createdBy) {
 
         validateDates(request.checkInDate(), request.checkOutDate());
 
@@ -332,6 +337,9 @@ public class GuestBookingService {
 
         booking.setTotalAmount(price.totalAmount());
 
+        BookingNightlySnapshotFactory.replace(booking, price.nightlyPrices(),
+                Math.multiplyExact((long) price.extraGuests(), price.extraPersonFee()));
+
         booking.setCreatedAt(createdAt);
 
         // Booking tại quầy đã xác nhận nên không giữ chỗ 24 giờ
@@ -339,7 +347,20 @@ public class GuestBookingService {
 
         // S3-03: booking tại quầy cũng giữ một suất theo loại phòng, chưa gán phòng cụ thể.
 
-                return WalkInBookingResponse.from(saveHoldingRoom(booking, roomType));
+        Booking savedBooking = saveHoldingRoom(booking, roomType);
+        java.math.BigDecimal recordedDeposit = java.math.BigDecimal.ZERO;
+        if (request.depositAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            if (bookingDepositService == null) {
+                throw new IllegalStateException("BookingDepositService is required to record a walk-in deposit");
+            }
+            BookingDeposit deposit = bookingDepositService.recordOriginalDeposit(savedBooking, request.depositAmount(),
+                    request.depositPaymentMethod(), LocalDate.now(HOMESTAY_ZONE),
+                    request.depositPaymentReference(), createdBy);
+            recordedDeposit = deposit.getAmount();
+        } else if (request.depositPaymentMethod() != null || request.depositPaymentReference() != null) {
+            throw new InvalidGuestBookingException("Không nhập phương thức hoặc mã giao dịch khi tiền cọc bằng 0");
+        }
+        return WalkInBookingResponse.from(savedBooking, recordedDeposit);
     }
 
     /**

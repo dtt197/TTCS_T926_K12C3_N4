@@ -7,12 +7,14 @@ import type { CheckInOption } from '../types/booking'
 import {
   checkIn,
   checkOut,
+  getCheckoutPreview,
   getRoomHistory,
   getRooms,
   putRoomIntoMaintenance,
   reportRoomIncident,
   updateRoomStatus,
   type IncidentSeverity,
+  type CheckoutPreview,
 } from '../services/roomService'
 import {
   ROOM_STATUS_HELP,
@@ -28,6 +30,7 @@ const STATUS_OPTIONS: RoomStatus[] = [
   'DANG_O',
   'BAO_TRI',
 ]
+const checkoutMoney = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 })
 function initialGuestCount(booking: CheckInOption | undefined) {
   return booking
     ? Math.min(Math.max(booking.requestedGuestCount ?? 1, 1), booking.maxGuests)
@@ -337,6 +340,14 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   const [earlyCheckInWarningOpen, setEarlyCheckInWarningOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [checkoutDialog, setCheckoutDialog] = useState<{
+    room: Room
+    preview: CheckoutPreview
+    paymentMethod: 'CASH' | 'BANK_TRANSFER'
+    paymentReference: string
+    confirmed: boolean
+    error: string | null
+  } | null>(null)
   const [notice, setNotice] = useState<{
     type: 'error' | 'success'
     text: string
@@ -984,54 +995,65 @@ async function handleViewHistory(room: Room) {
     setIsSaving(true)
     setNotice(null)
     try {
-      const savedRoom = isDemoMode
+      const preview: CheckoutPreview = isDemoMode
         ? {
-            ...room,
-            status: 'TRONG_BAN' as RoomStatus,
-            maintenanceReason: null,
-            maintenanceStartDate: null,
-            maintenanceEndDate: null,
+            bookingId: room.id, bookingCode: `DEMO-${room.id}`, roomId: room.id,
+            roomNumber: room.roomNumber, guestName: 'Khách demo', checkInDate: '', checkOutDate: '',
+            nightlyPrices: [], nightlyBreakdownReliable: false, warning: 'Dữ liệu minh họa.',
+            roomTotal: 0, depositTotal: 0, settlementType: 'ZERO', amount: 0, previewToken: 'demo',
           }
-        : await checkOut(room.id)
-      setRooms((current) =>
-        current.map((item) => (item.id === room.id ? savedRoom : item)),
-      )
-      window.dispatchEvent(new CustomEvent('room-status-changed'))
-      setDraftStatuses((current) => ({
-        ...current,
-        [room.id]: 'TRONG_BAN',
-      }))
-      if (isDemoMode) {
-        const historyRecord: RoomStatusHistory = {
-          id: Date.now(),
-          roomId: room.id,
-          roomNumber: room.roomNumber,
-          previousStatus: 'DANG_O',
-          newStatus: 'TRONG_BAN',
-          changedBy: 'Lễ tân',
-          changedAt: new Date().toISOString(),
-          maintenanceReason: null,
-          maintenanceStartDate: null,
-          maintenanceEndDate: null,
-        }
-        setHistoryByRoom((current) => ({
-          ...current,
-          [room.id]: [
-            ...(current[room.id] ?? DEMO_HISTORY[room.id] ?? []),
-            historyRecord,
-          ],
-        }))
-      }
-      setNotice({
-        type: 'success',
-        text: `Đã trả phòng ${room.roomNumber} thành công. Trạng thái chuyển sang Trống bẩn.`,
-      })
+        : await getCheckoutPreview(room.id)
+      setCheckoutDialog({ room, preview, paymentMethod: 'CASH', paymentReference: '', confirmed: false, error: null })
     } catch (error) {
       showError(
         error instanceof Error
           ? error.message
           : 'Không thể thực hiện trả phòng.',
       )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function reloadCheckoutPreview() {
+    if (!checkoutDialog) return
+    try {
+      const preview = await getCheckoutPreview(checkoutDialog.room.id)
+      setCheckoutDialog((current) => current ? { ...current, preview, confirmed: false, error: null } : current)
+    } catch (error) {
+      setCheckoutDialog((current) => current ? {
+        ...current,
+        error: error instanceof Error ? error.message : 'Không thể tải lại bảng quyết toán.',
+      } : current)
+    }
+  }
+
+  async function confirmCheckout() {
+    if (!checkoutDialog) return
+    const { room, preview } = checkoutDialog
+    setIsSaving(true)
+    try {
+      const savedRoom = isDemoMode
+        ? { ...room, status: 'TRONG_BAN' as RoomStatus, maintenanceReason: null, maintenanceStartDate: null, maintenanceEndDate: null }
+        : await checkOut(room.id, {
+            previewToken: preview.previewToken,
+            ...(preview.settlementType !== 'ZERO' ? {
+              paymentMethod: checkoutDialog.paymentMethod,
+              paymentReference: checkoutDialog.paymentReference,
+              amountReceivedConfirmed: preview.settlementType === 'COLLECT' ? checkoutDialog.confirmed : undefined,
+              refundCompletedConfirmed: preview.settlementType === 'REFUND' ? checkoutDialog.confirmed : undefined,
+            } : {}),
+          })
+      setRooms((current) => current.map((item) => item.id === room.id ? savedRoom : item))
+      window.dispatchEvent(new CustomEvent('room-status-changed'))
+      setDraftStatuses((current) => ({ ...current, [room.id]: 'TRONG_BAN' }))
+      setCheckoutDialog(null)
+      setNotice({ type: 'success', text: `Đã quyết toán và trả phòng ${room.roomNumber}. Trạng thái phòng chuyển sang Trống bẩn.` })
+    } catch (error) {
+      setCheckoutDialog((current) => current ? {
+        ...current,
+        error: error instanceof Error ? error.message : 'Không thể hoàn tất quyết toán.',
+      } : current)
     } finally {
       setIsSaving(false)
     }
@@ -1788,6 +1810,55 @@ async function handleViewHistory(room: Room) {
                 </div>
               </form>
             </div>
+          </div>
+        )}
+        {checkoutDialog && (
+          <div className="checkout-modal-backdrop" role="presentation">
+            <section className="checkout-modal-card" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
+              <h2 id="checkout-modal-title">Quyết toán và trả phòng</h2>
+              <p>{checkoutDialog.preview.guestName} · Booking {checkoutDialog.preview.bookingCode} · Phòng {checkoutDialog.preview.roomNumber}</p>
+              {checkoutDialog.preview.warning && <p className="checkout-warning">{checkoutDialog.preview.warning}</p>}
+              {checkoutDialog.preview.nightlyBreakdownReliable && (
+                <div className="checkout-night-table-wrap">
+                  <table className="checkout-night-table">
+                    <thead><tr><th>Đêm</th><th>Giá phòng</th><th>Phụ thu đã chốt</th><th>Tổng</th></tr></thead>
+                    <tbody>{checkoutDialog.preview.nightlyPrices.map((night) => (
+                      <tr key={night.date}><td>{night.date} · {night.label}</td><td>{checkoutMoney.format(night.roomPrice)} đ</td><td>{checkoutMoney.format(night.surchargeAmount)} đ</td><td>{checkoutMoney.format(night.total)} đ</td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+              <dl className="checkout-totals">
+                <div><dt>Tổng tiền phòng đã chốt</dt><dd>{checkoutMoney.format(checkoutDialog.preview.roomTotal)} đ</dd></div>
+                <div><dt>Tổng cọc hiện tại</dt><dd>{checkoutMoney.format(checkoutDialog.preview.depositTotal)} đ</dd></div>
+                <div><dt>{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Cần thu thêm' : checkoutDialog.preview.settlementType === 'REFUND' ? 'Cần hoàn lại' : 'Quyết toán'}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.amount)} đ</dd></div>
+              </dl>
+              {checkoutDialog.preview.settlementType !== 'ZERO' && (
+                <>
+                  <label className="checkout-field">{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Phương thức thu' : 'Phương thức hoàn'}
+                    <select value={checkoutDialog.paymentMethod} onChange={(event) => setCheckoutDialog((current) => current ? { ...current, paymentMethod: event.target.value as 'CASH' | 'BANK_TRANSFER' } : current)}>
+                      <option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option>
+                    </select>
+                  </label>
+                  {checkoutDialog.paymentMethod === 'BANK_TRANSFER' && (
+                    <label className="checkout-field">Mã giao dịch
+                      <input value={checkoutDialog.paymentReference} onChange={(event) => setCheckoutDialog((current) => current ? { ...current, paymentReference: event.target.value } : current)} maxLength={255} />
+                    </label>
+                  )}
+                  <label className="checkout-confirm"><input type="checkbox" checked={checkoutDialog.confirmed} onChange={(event) => setCheckoutDialog((current) => current ? { ...current, confirmed: event.target.checked } : current)} />
+                    {checkoutDialog.preview.settlementType === 'COLLECT' ? 'Tôi xác nhận đã thu đủ khoản chênh lệch.' : 'Tôi xác nhận đã hoàn khoản tiền dư thực tế.'}
+                  </label>
+                </>
+              )}
+              {checkoutDialog.error && <p className="checkout-error" role="alert">{checkoutDialog.error}</p>}
+              <div className="checkout-actions">
+                {checkoutDialog.error && !isDemoMode && <button type="button" className="secondary-button" onClick={() => void reloadCheckoutPreview()} disabled={isSaving}>Tải lại bảng quyết toán</button>}
+                <button type="button" className="secondary-button" onClick={() => setCheckoutDialog(null)} disabled={isSaving}>Đóng</button>
+                <button type="button" className="primary-button" onClick={() => void confirmCheckout()} disabled={isSaving || (checkoutDialog.preview.settlementType !== 'ZERO' && (!checkoutDialog.confirmed || (checkoutDialog.paymentMethod === 'BANK_TRANSFER' && !checkoutDialog.paymentReference.trim())))}>
+                  {isSaving ? 'Đang xử lý…' : 'Xác nhận quyết toán và trả phòng'}
+                </button>
+              </div>
+            </section>
           </div>
         )}
         {earlyCheckInWarningOpen && (

@@ -21,12 +21,6 @@ public class OccupancyReportController {
     private final OccupancyReportService service;
     public OccupancyReportController(OccupancyReportService service) { this.service = service; }
 
-    @GetMapping("/occupancy")
-    public OccupancyReportResponse report(@RequestParam String startDate, @RequestParam String endDate,
-                                           @RequestParam(required = false) Long roomTypeId) {
-        return getReport(startDate, endDate, roomTypeId);
-    }
-
     @GetMapping(value = "/occupancy.csv", produces = "text/csv")
     public ResponseEntity<byte[]> downloadCsv(@RequestParam String startDate, @RequestParam String endDate,
                                                @RequestParam(required = false) Long roomTypeId) {
@@ -36,6 +30,13 @@ public class OccupancyReportController {
         return ResponseEntity.ok().contentType(new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename, java.nio.charset.StandardCharsets.UTF_8).build().toString())
                 .body(body);
+    }
+
+    /** Detailed occupancy report with per-room-type and daily totals. */
+    @GetMapping("/occupancy/detailed")
+    public OccupancyReportResponse report(@RequestParam String startDate, @RequestParam String endDate,
+                                          @RequestParam(required = false) Long roomTypeId) {
+        return getReport(startDate, endDate, roomTypeId);
     }
 
     private OccupancyReportResponse getReport(String start, String end, Long roomTypeId) {

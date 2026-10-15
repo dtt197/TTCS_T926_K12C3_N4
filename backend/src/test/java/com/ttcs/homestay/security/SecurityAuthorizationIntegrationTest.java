@@ -841,6 +841,14 @@ void housekeepingTruyCapApiCheckOut_biChan403() throws Exception {
 }
 
 @Test
+void housekeepingTruyCapCheckoutPreview_biChan403() throws Exception {
+    mockMvc.perform(
+            get("/api/rooms/4/checkout-preview")
+                    .header("Authorization", "Bearer housekeeping-test-token")
+    ).andExpect(status().isForbidden());
+}
+
+@Test
 void leTanThemLoaiPhong_biChan403() throws Exception {
     mockMvc.perform(
             post("/api/room-types")

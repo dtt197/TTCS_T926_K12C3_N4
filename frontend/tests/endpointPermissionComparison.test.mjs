@@ -81,3 +81,12 @@ test('mismatch filter excludes matched endpoints and retains discrepancies', () 
   assert.equal(filtered.length, 1)
   assert.equal(filtered[0].hasMismatch, true)
 })
+test('occupancy summary, detailed report, and CSV endpoints are owner-only', () => {
+  const endpoints = [
+    '/api/reports/occupancy',
+    '/api/reports/occupancy/detailed',
+    '/api/reports/occupancy.csv',
+  ].map(path => ({ method: 'GET', path, access: 'ROLES', roles: ['OWNER'] }))
+  const comparisons = compareEndpointPermissions(endpoints)
+  assert.ok(comparisons.every(({ hasMismatch }) => !hasMismatch))
+})

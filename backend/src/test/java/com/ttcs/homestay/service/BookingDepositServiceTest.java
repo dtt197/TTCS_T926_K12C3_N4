@@ -15,6 +15,7 @@ import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.exception.DuplicatePaymentException;
 import com.ttcs.homestay.exception.InvalidDepositException;
 import com.ttcs.homestay.repository.BookingDepositRepository;
+import com.ttcs.homestay.repository.BookingDepositAdjustmentRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,13 +33,29 @@ class BookingDepositServiceTest {
     private BookingDepositRepository bookingDepositRepository;
 
     @Mock
+    private BookingDepositAdjustmentRepository adjustmentRepository;
+
+    @Mock
     private BookingRepository bookingRepository;
 
     private BookingDepositService service;
 
     @BeforeEach
     void setUp() {
-        service = new BookingDepositService(bookingDepositRepository, bookingRepository);
+        service = new BookingDepositService(bookingDepositRepository, bookingRepository, adjustmentRepository);
+    }
+
+    @Test
+    void currentDepositTotalAddsSignedAdjustmentsToOriginalExactlyOnce() {
+        Booking booking = new Booking();
+        booking.setId(14L);
+        BookingDeposit original = new BookingDeposit();
+        original.setAmount(new BigDecimal("400000"));
+        when(bookingDepositRepository.findByBooking(booking)).thenReturn(java.util.Optional.of(original));
+        when(adjustmentRepository.sumSignedAmountsByBookingId(14L)).thenReturn(new BigDecimal("125000"));
+
+        assertThat(service.currentDepositTotalExact(booking)).isEqualByComparingTo("525000");
+        verify(adjustmentRepository).sumSignedAmountsByBookingId(14L);
     }
 
     @Test
@@ -171,6 +188,38 @@ class BookingDepositServiceTest {
         assertThat(result.status()).isEqualTo("DA_XAC_NHAN");
         assertThat(result.deposit().createdBy()).isEqualTo("JWT actor");
         assertThat(result.deposit().createdAt()).isNotNull();
+    }
+
+    @Test
+    void ghiCocGoc_chanGhiTrungBooking() {
+        Booking booking = new Booking();
+        booking.setId(1L);
+        booking.setTotalAmount(1_000_000L);
+        when(bookingDepositRepository.existsByBooking(booking)).thenReturn(true);
+        assertThatThrownBy(() -> service.recordOriginalDeposit(booking, BigDecimal.valueOf(100_000),
+                "CASH", LocalDate.now(), null, "Lễ tân"))
+                .isInstanceOf(DuplicatePaymentException.class);
+        verify(bookingDepositRepository, never()).save(any());
+    }
+
+    @Test
+    void ghiCocGoc_tuChoiCocVuotTong() {
+        Booking booking = new Booking();
+        booking.setTotalAmount(100_000L);
+        assertThatThrownBy(() -> service.recordOriginalDeposit(booking, BigDecimal.valueOf(100_001),
+                "CASH", LocalDate.now(), null, "Lễ tân"))
+                .isInstanceOf(InvalidDepositException.class);
+        verify(bookingDepositRepository, never()).save(any());
+    }
+
+    @Test
+    void ghiCocGoc_chuyenKhoanBatBuocMaGiaoDich() {
+        Booking booking = new Booking();
+        booking.setTotalAmount(1_000_000L);
+        assertThatThrownBy(() -> service.recordOriginalDeposit(booking, BigDecimal.valueOf(100_000),
+                "BANK_TRANSFER", LocalDate.now(), "  ", "Lễ tân"))
+                .isInstanceOf(InvalidDepositException.class);
+        verify(bookingDepositRepository, never()).save(any());
     }
 
     @Test

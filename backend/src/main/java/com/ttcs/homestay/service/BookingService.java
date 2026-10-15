@@ -452,8 +452,9 @@ public class BookingService {
         OperatingSettings settings = operatingSettingsService.findEffectiveAt(createdAt);
         Set<DayOfWeek> weekendDays = PricingService.parseWeekendDays(settings.getWeekendDays());
 
-        long totalAmount = PricingService.total(pricingService.priceNights(
-                roomType, request.checkInDate(), request.checkOutDate(), weekendDays));
+        List<NightlyPrice> bookedNightPrices = pricingService.priceNights(
+                roomType, request.checkInDate(), request.checkOutDate(), weekendDays);
+        long totalAmount = PricingService.total(bookedNightPrices);
 
         Booking booking = new Booking();
 
@@ -476,6 +477,7 @@ public class BookingService {
         booking.setWeekendPriceSnapshot(weekendPrice);
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
         booking.setTotalAmount(totalAmount);
+        BookingNightlySnapshotFactory.replace(booking, bookedNightPrices, 0);
         booking.setCreatedAt(createdAt);
         // S3-03: giữ một suất theo loại phòng; lễ tân gán phòng cụ thể sau khi xác nhận.
 
@@ -652,6 +654,7 @@ public class BookingService {
             booking.setWeekendPriceSnapshot(roomType.getWeekendPrice());
         }
         booking.setWeekendDaysSnapshot(settings.getWeekendDays());
+        BookingNightlySnapshotFactory.replace(booking, nightlyPrices, 0);
         // Phòng chưa chốt là phòng giữ tạm: cập nhật ngày/loại phòng thì chọn lại theo yêu cầu mới.
         if (booking.getRoomConfirmedAt() == null) {
             booking.setRoom(null);
