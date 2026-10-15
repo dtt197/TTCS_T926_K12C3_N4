@@ -1832,7 +1832,6 @@ async function handleViewHistory(room: Room) {
                 <div><dt>Số giờ tính phí</dt><dd>{checkoutDialog.preview.lateCheckoutHours}</dd></div>
                 <div><dt>Đơn giá theo giờ</dt><dd>{checkoutDialog.preview.lateCheckoutFeePerHour === null ? '—' : `${checkoutMoney.format(checkoutDialog.preview.lateCheckoutFeePerHour)} đ`}</dd></div>
                 <div><dt>Phụ thu trả muộn ({checkoutDialog.preview.lateCheckoutPricingBasis})</dt><dd>{checkoutMoney.format(checkoutDialog.preview.lateCheckoutFee)} đ</dd></div>
-                <div><dt>Tổng trước khi trừ cọc</dt><dd>{checkoutMoney.format(checkoutDialog.preview.settlementTotalBeforeDeposit)} đ</dd></div>
               </dl>
               {checkoutDialog.preview.nightlyBreakdownReliable && (
                 <div className="checkout-night-table-wrap">
@@ -1863,6 +1862,7 @@ async function handleViewHistory(room: Room) {
                 {checkoutDialog.preview.bookingSurcharges.length > 0 && (
                   <div><dt>Tổng phụ thu phát sinh</dt><dd>{checkoutMoney.format(checkoutDialog.preview.bookingSurchargeTotal)} đ</dd></div>
                 )}
+                                <div><dt><strong>Tổng phải thanh toán (trước khi trừ cọc)</strong></dt><dd><strong>{checkoutMoney.format(checkoutDialog.preview.settlementTotalBeforeDeposit)} đ</strong></dd></div>
                 <div><dt>Tổng cọc hiện tại</dt><dd>{checkoutMoney.format(checkoutDialog.preview.depositTotal)} đ</dd></div>
                 <div><dt>{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Cần thu thêm' : checkoutDialog.preview.settlementType === 'REFUND' ? 'Cần hoàn lại' : 'Đã thanh toán đủ'}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.amount)} đ</dd></div>
               </dl>
