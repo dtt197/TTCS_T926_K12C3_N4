@@ -30,6 +30,8 @@ export function OccupancyReportPage() {
     if (validation) { setError(validation); return }
     setLoading(true)
     setError('')
+    setReport(null)
+    setDetail(null)
     try {
       const [summary, detailed] = await Promise.all([
         getOccupancyReport(startDate, endDate, typeId),
@@ -61,6 +63,7 @@ export function OccupancyReportPage() {
   }
 
   const selected = report?.roomTypes.find(type => type.roomTypeId === Number(roomTypeId))
+  const selectedTypeHasNoData = Boolean(roomTypeId && selected && selected.availableNights === 0)
 
   return <section className="occupancy-report" aria-label="Báo cáo công suất phòng">
     <form className="occupancy-filter" onSubmit={event => { event.preventDefault(); void load() }}>
@@ -76,14 +79,17 @@ export function OccupancyReportPage() {
       </select>
     </label>}
     {error && <p className="occupancy-error" role="alert">{error}</p>}
-    {report && <>
+    {selectedTypeHasNoData ? <div className="occupancy-empty" role="status">
+      <strong>Loại phòng này chưa có dữ liệu trong khoảng ngày đã chọn.</strong>
+      <span>Hãy chọn khoảng ngày khác hoặc đổi loại phòng để xem báo cáo công suất.</span>
+    </div> : report && <>
       <div className="occupancy-summary">
         <article><span>Công suất toàn bộ</span><strong>{formatPercent(report.totalAverageOccupancyPercent)}</strong><small>{report.totalSoldNights} / {report.totalAvailableNights} đêm</small></article>
         {selected && <article><span>{selected.name}</span><strong>{formatPercent(selected.averageOccupancyPercent)}</strong><small>{selected.soldNights} / {selected.availableNights} đêm</small></article>}
       </div>
       <div className="occupancy-types"><h2>Theo loại phòng</h2>{report.roomTypes.map(type => <article key={type.roomTypeId}><span>{type.code} · {type.name}</span><strong>{formatPercent(type.averageOccupancyPercent)}</strong><small>{type.soldNights} đêm bán / {type.availableNights} đêm khả dụng</small></article>)}</div>
     </>}
-    {detail && <div className="occupancy-table-wrap"><table>
+    {detail && !selectedTypeHasNoData && <div className="occupancy-table-wrap"><table>
       <caption>Công suất từng ngày {roomTypeId ? `— ${detail.selectedRoomTypeName}` : `từ ${formatDate(detail.startDate)} đến ${formatDate(detail.endDate)}`}</caption>
       <thead><tr><th>Ngày</th><th>Đêm đã bán</th><th>Đêm khả dụng</th><th>Công suất</th></tr></thead>
       <tbody>{detail.dailyOccupancies.map(day => <tr key={day.date}>
