@@ -102,13 +102,15 @@ class BookingDetailControllerTest {
         when(jdbcTemplate.query(org.mockito.ArgumentMatchers.contains("FROM booking_settlements"),
                 org.mockito.ArgumentMatchers.<RowMapper<Map<String, Object>>>any(), eq(1L)))
                 .thenReturn(List.of(Map.of("checkedOutAt", OffsetDateTime.parse("2026-10-12T18:01:00+07:00"),
-                        "earlyCheckoutReason", "Khách cần về sớm", "transactionStatus", "CONFIRMED")));
+                        "earlyCheckoutReason", "Khách cần về sớm", "settlementType", "COLLECT",
+                        "transactionStatus", "CONFIRMED")));
         when(adjustmentRepository.findAllByBookingIdOrderByCreatedAtAscIdAsc(1L)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/bookings/1/details"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkedOutAt").value("2026-10-12T18:01:00+07:00"))
                 .andExpect(jsonPath("$.earlyCheckoutReason").value("Khách cần về sớm"))
+                .andExpect(jsonPath("$.settlementType").value("COLLECT"))
                 .andExpect(jsonPath("$.settlementTransactionStatus").value("CONFIRMED"));
     }
 
@@ -124,6 +126,7 @@ class BookingDetailControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.checkedOutAt").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.earlyCheckoutReason").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.settlementType").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.settlementTransactionStatus").value(org.hamcrest.Matchers.nullValue()));
     }
 

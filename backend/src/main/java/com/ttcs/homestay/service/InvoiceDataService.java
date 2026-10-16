@@ -49,7 +49,11 @@ public class InvoiceDataService {
         BookingSettlement settlement = settlementRepository.findByBookingId(bookingId)
                 .orElseThrow(() -> error(HttpStatus.CONFLICT,
                         "Booking đã trả phòng nhưng chưa có dữ liệu quyết toán (settlement)."));
-        if (!"CONFIRMED".equals(settlement.getTransactionStatus())) {
+        boolean confirmedPayment = settlement.getSettlementType() != BookingSettlement.SettlementType.ZERO
+                && "CONFIRMED".equals(settlement.getTransactionStatus());
+        boolean zeroBalance = settlement.getSettlementType() == BookingSettlement.SettlementType.ZERO
+                && "NOT_APPLICABLE".equals(settlement.getTransactionStatus());
+        if (!confirmedPayment && !zeroBalance) {
             throw error(HttpStatus.CONFLICT,
                     "Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú.");
         }
