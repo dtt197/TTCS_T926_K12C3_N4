@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { getRoomTypes } from '../services/roomTypeService'
-import { createWalkInBooking } from '../services/guestBookingService'
+import { createWalkInBooking, getGuestQuote } from '../services/guestBookingService'
+import { getCustomerNoShowHistory } from '../services/bookingService'
 import { searchAvailableRooms } from '../services/roomService'
 import type { RoomType } from '../types/roomType'
 import type { WalkInBookingResult } from '../types/guestBooking'
+import type { CustomerNoShowResponse } from '../types/booking'
 import { WalkInBookingReceipt } from '../components/WalkInBookingReceipt'
+import { evaluateNoShowBadge } from './customerNoShowHelper'
 import './WalkInBookingPage.css'
 
 type WalkInForm = {
@@ -16,6 +19,9 @@ type WalkInForm = {
   phone: string
   email: string
   note: string
+  depositAmount: string
+  depositPaymentMethod: 'CASH' | 'BANK_TRANSFER'
+  depositPaymentReference: string
 }
 
 function todayIso() {
@@ -41,6 +47,9 @@ function emptyForm(): WalkInForm {
     phone: '',
     email: '',
     note: '',
+    depositAmount: '0',
+    depositPaymentMethod: 'CASH',
+    depositPaymentReference: '',
   }
 }
 
@@ -56,9 +65,51 @@ export function WalkInBookingPage() {
   // S3-06 Lát 4: booking vừa tạo, hiện ra để lễ tân đọc hoặc in cho khách.
   const [created, setCreated] = useState<WalkInBookingResult | null>(null)
   // Số phòng còn trống theo loại phòng và khoảng ngày đã chọn.
-  const [availableRooms, setAvailableRooms] = useState<number | null>(null)
-  const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [availabilityRefresh, setAvailabilityRefresh] = useState(0)
+  const [availabilityResult, setAvailabilityResult] = useState<{
+    key: string
+    availableRooms: number | null
+  } | null>(null)
+  const [quoteResult, setQuoteResult] = useState<{
+    key: string
+    totalAmount: number | null
+  } | null>(null)
+  // S4-04 (SCRUM-150): Thông tin cảnh báo khách từng bỏ hẹn theo số điện thoại
+  const [noShowInfo, setNoShowInfo] = useState<CustomerNoShowResponse | null>(null)
+  const [noShowLoading, setNoShowLoading] = useState(false)
+
+  useEffect(() => {
+    const trimmedPhone = form.phone.trim()
+    if (trimmedPhone.length < 8) {
+      return
+    }
+
+    let isMounted = true
+    const timer = setTimeout(() => {
+      setNoShowLoading(true)
+      getCustomerNoShowHistory(trimmedPhone)
+        .then((data) => {
+          if (isMounted) {
+            setNoShowInfo(data)
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setNoShowInfo(null)
+          }
+        })
+        .finally(() => {
+          if (isMounted) {
+            setNoShowLoading(false)
+          }
+        })
+    }, 250)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
+  }, [form.phone])
 
   useEffect(() => {
     getRoomTypes()
@@ -82,32 +133,45 @@ export function WalkInBookingPage() {
   )
 
   const guestCount = Number(form.guestCount)
-
+  const depositAmount = Number(form.depositAmount)
+  const quoteQueryKey = Number.isInteger(Number(form.roomTypeId)) &&
+    Number(form.roomTypeId) > 0 &&
+    Boolean(form.checkInDate && form.checkOutDate && form.checkOutDate > form.checkInDate) &&
+    Number.isInteger(guestCount) && guestCount >= 1
+    ? `${form.roomTypeId}|${form.checkInDate}|${form.checkOutDate}|${guestCount}`
+    : null
+  const quotedTotal = quoteQueryKey !== null && quoteResult?.key === quoteQueryKey
+    ? quoteResult.totalAmount
+    : null
+  const availabilityQueryKey = quoteQueryKey === null
+    ? null
+    : `${quoteQueryKey}|${availabilityRefresh}`
+  const currentAvailabilityResult = availabilityQueryKey !== null &&
+    availabilityResult?.key === availabilityQueryKey
+    ? availabilityResult
+    : null
+  const availableRooms = currentAvailabilityResult?.availableRooms ?? null
+  const checkingAvailability = availabilityQueryKey !== null && currentAvailabilityResult === null
 
   useEffect(() => {
+    if (quoteQueryKey === null) return
+    const roomTypeId = Number(form.roomTypeId)
+    let cancelled = false
+    getGuestQuote(roomTypeId, form.checkInDate, form.checkOutDate, guestCount)
+      .then((quote) => {
+        if (!cancelled) setQuoteResult({ key: quoteQueryKey, totalAmount: quote.totalAmount })
+      })
+      .catch(() => {
+        if (!cancelled) setQuoteResult({ key: quoteQueryKey, totalAmount: null })
+      })
+    return () => { cancelled = true }
+  }, [quoteQueryKey, form.roomTypeId, form.checkInDate, form.checkOutDate, guestCount])
+
+  useEffect(() => {
+    if (availabilityQueryKey === null) return
     const roomTypeId = Number(form.roomTypeId)
     const guests = Number(form.guestCount)
-
-    if (
-      !form.roomTypeId ||
-      !Number.isInteger(roomTypeId) ||
-      roomTypeId <= 0 ||
-      !form.checkInDate ||
-      !form.checkOutDate ||
-      form.checkOutDate <= form.checkInDate ||
-      !Number.isInteger(guests) ||
-      guests < 1
-    ) {
-      setAvailableRooms(null)
-      setCheckingAvailability(false)
-      return
-    }
-
     let cancelled = false
-
-    setCheckingAvailability(true)
-    setAvailableRooms(null)
-
     searchAvailableRooms(
       form.checkInDate,
       form.checkOutDate,
@@ -120,16 +184,14 @@ export function WalkInBookingPage() {
           (room) => room.roomTypeId === roomTypeId,
         )
 
-        setAvailableRooms(selected?.availableRooms ?? 0)
+        setAvailabilityResult({
+          key: availabilityQueryKey,
+          availableRooms: selected?.availableRooms ?? 0,
+        })
       })
       .catch(() => {
         if (!cancelled) {
-          setAvailableRooms(null)
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCheckingAvailability(false)
+          setAvailabilityResult({ key: availabilityQueryKey, availableRooms: null })
         }
       })
 
@@ -141,7 +203,7 @@ export function WalkInBookingPage() {
     form.checkInDate,
     form.checkOutDate,
     form.guestCount,
-    availabilityRefresh,
+    availabilityQueryKey,
   ])
 
 
@@ -149,6 +211,16 @@ export function WalkInBookingPage() {
     field: keyof WalkInForm,
     value: string,
   ) {
+    if (
+      (field === 'roomTypeId' || field === 'checkInDate' || field === 'checkOutDate' || field === 'guestCount') &&
+      form[field] !== value
+    ) {
+      setQuoteResult(null)
+      setAvailabilityResult(null)
+    }
+    if (field === 'phone' && value.trim().length < 8) {
+      setNoShowInfo(null)
+    }
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -235,6 +307,23 @@ export function WalkInBookingPage() {
       return
     }
 
+    if (!Number.isSafeInteger(depositAmount) || depositAmount < 0) {
+      setError('Tiền cọc phải là số nguyên không âm.')
+      return
+    }
+    if (quotedTotal === null) {
+      setError('Chưa tính được tổng tiền booking. Vui lòng thử lại.')
+      return
+    }
+    if (depositAmount > quotedTotal) {
+      setError('Tiền cọc không được vượt tổng tiền booking đã chốt.')
+      return
+    }
+    if (depositAmount > 0 && form.depositPaymentMethod === 'BANK_TRANSFER' && !form.depositPaymentReference.trim()) {
+      setError('Chuyển khoản phải có mã giao dịch.')
+      return
+    }
+
     try {
       const result = await createWalkInBooking({
         roomTypeId: Number(form.roomTypeId),
@@ -245,10 +334,12 @@ export function WalkInBookingPage() {
         email: form.email.trim() || undefined,
         guestCount,
         note: form.note.trim() || undefined,
+        depositAmount,
+        depositPaymentMethod: depositAmount > 0 ? form.depositPaymentMethod : undefined,
+        depositPaymentReference: depositAmount > 0 ? form.depositPaymentReference.trim() || undefined : undefined,
       })
 
       setCreated(result)
-      setAvailableRooms(null)
       setAvailabilityRefresh((current) => current + 1)
     } catch (err: unknown) {
       setError(
@@ -262,6 +353,7 @@ export function WalkInBookingPage() {
   function handleCreateAnother() {
     setCreated(null)
     setForm(emptyForm())
+    setNoShowInfo(null)
     setError('')
     setMessage('')
   }
@@ -281,10 +373,10 @@ export function WalkInBookingPage() {
       <div className="walk-in-header">
         <div>
 
-          <h2>Booking tại quầy</h2>
+          <h2>Tạo lịch hẹn mới / Booking tại quầy</h2>
 
           <p>
-            Nhập thông tin lưu trú cho khách vãng lai.
+            Nhập thông tin lưu trú cho khách vãng lai hoặc tạo lịch hẹn mới.
             Ngày nhận phòng mặc định là hôm nay.
           </p>
         </div>
@@ -334,19 +426,56 @@ export function WalkInBookingPage() {
             />
           </label>
 
-          <label>
-            <span>Số điện thoại</span>
+          <div className="walk-in-field-group">
+            <label>
+              <span>Số điện thoại</span>
 
-            <input
-              type="tel"
-              value={form.phone}
-              maxLength={10}
-              placeholder="Nhập số điện thoại"
-              onChange={(event) =>
-                update('phone', event.target.value)
-              }
-            />
-          </label>
+              <input
+                type="tel"
+                value={form.phone}
+                maxLength={10}
+                placeholder="Nhập số điện thoại"
+                onChange={(event) =>
+                  update('phone', event.target.value)
+                }
+              />
+            </label>
+
+            {noShowLoading && (
+              <span className="no-show-checking-hint">Đang kiểm tra lịch sử...</span>
+            )}
+
+            {form.phone.trim().length >= 8 && noShowInfo && noShowInfo.hasWarning && (() => {
+              const badge = evaluateNoShowBadge(noShowInfo.noShowCount)
+              return (
+                <div
+                  className={badge.badgeClassName}
+                  role="alert"
+                  data-testid="no-show-warning-badge"
+                  id="no-show-warning-badge"
+                >
+                  <span className="no-show-warning-icon" aria-hidden="true">⚠️</span>
+                  <div className="no-show-warning-content">
+                    <span className="no-show-warning-title">
+                      {badge.message || noShowInfo.warningMessage}
+                    </span>
+                    <p className="no-show-warning-desc">
+                      {badge.description}
+                    </p>
+                    {noShowInfo.fullName && !form.guestName && (
+                      <button
+                        type="button"
+                        className="no-show-autofill-btn"
+                        onClick={() => update('guestName', noShowInfo.fullName!)}
+                      >
+                        Điền tên theo hồ sơ: <strong>{noShowInfo.fullName}</strong>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
 
               <label>
                 <span>Email</span>
@@ -487,6 +616,28 @@ export function WalkInBookingPage() {
               }
             />
           </label>
+
+          <label>
+            <span>Tiền cọc đã thu (đ)</span>
+            <input type="number" min="0" step="1" value={form.depositAmount}
+              onChange={(event) => update('depositAmount', event.target.value)} />
+            <small>{quotedTotal === null ? 'Tổng tiền booking chưa tính được.' : `Tổng tiền đã chốt: ${new Intl.NumberFormat('vi-VN').format(quotedTotal)} đ`}</small>
+          </label>
+
+          {depositAmount > 0 && <>
+            <label>
+              <span>Phương thức nhận cọc</span>
+              <select value={form.depositPaymentMethod} onChange={(event) => update('depositPaymentMethod', event.target.value)}>
+                <option value="CASH">Tiền mặt</option>
+                <option value="BANK_TRANSFER">Chuyển khoản</option>
+              </select>
+            </label>
+            {form.depositPaymentMethod === 'BANK_TRANSFER' && <label>
+              <span>Mã giao dịch</span>
+              <input type="text" maxLength={255} required value={form.depositPaymentReference}
+                onChange={(event) => update('depositPaymentReference', event.target.value)} />
+            </label>}
+          </>}
 
         </div>
 

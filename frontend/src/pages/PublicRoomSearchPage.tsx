@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { getPublicRoomTypes } from '../services/guestBookingService'
 import { searchAvailableRooms, type RoomAvailabilityResponse } from '../services/roomService'
 import type { PublicRoomTypeOption } from '../types/guestBooking'
@@ -75,7 +75,11 @@ export function PublicRoomSearchPage() {
     }
   }, [])
 
-  async function searchRooms(checkInValue: string, checkOutValue: string, guestCountValue: string) {
+  const searchRooms = useCallback(async (
+    checkInValue: string,
+    checkOutValue: string,
+    guestCountValue: string,
+  ) => {
     setError('')
 
     if (!checkInValue || !checkOutValue) {
@@ -116,7 +120,7 @@ export function PublicRoomSearchPage() {
     } finally {
       setIsSearching(false)
     }
-  }
+  }, [today, maxCheckInDate])
 
   async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -139,7 +143,7 @@ export function PublicRoomSearchPage() {
     }
     autoSearchQuery.current = queryKey
     void searchRooms(checkInParam, checkOutParam, guestCountParam)
-  }, [])
+  }, [searchRooms])
 
   const minCheckOut = checkIn ? addDays(checkIn, 1) : today
   const maxCheckOut = checkIn ? addDays(checkIn, MAX_STAY_NIGHTS) : undefined

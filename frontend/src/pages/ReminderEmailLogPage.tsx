@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import {
   getEmailLogs,
   runReminders,
+  getBookingReminderStatuses,
   type EmailLogItem,
   type ReminderRunResult,
+  type BookingReminderPage,
 } from '../services/emailLogService'
 import './AuditLogPage.css'
 
@@ -30,6 +32,11 @@ export function ReminderEmailLogPage() {
   const [simulatedToday, setSimulatedToday] = useState(todayInVietnam())
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<ReminderRunResult | null>(null)
+    const [bookingPage, setBookingPage] =
+    useState<BookingReminderPage | null>(null)
+  const [page, setPage] = useState(0)
+  const [bookingLoading, setBookingLoading] = useState(true)
+  const [bookingError, setBookingError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -56,6 +63,32 @@ export function ReminderEmailLogPage() {
       active = false
     }
    }, [refreshKey, emailType])
+     useEffect(() => {
+    let active = true
+    setBookingLoading(true)
+    setBookingError(null)
+
+    getBookingReminderStatuses(page)
+      .then((result) => {
+        if (active) setBookingPage(result)
+      })
+      .catch((cause: unknown) => {
+        if (active) {
+          setBookingError(
+            cause instanceof Error
+              ? cause.message
+              : 'Không tải được trạng thái nhắc',
+          )
+        }
+      })
+      .finally(() => {
+        if (active) setBookingLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [page, refreshKey])
   function reload() {
     setLoading(true)
     setError(null)
@@ -128,6 +161,135 @@ export function ReminderEmailLogPage() {
           {error}
         </div>
       )}
+            <section className="audit-panel">
+        <div className="audit-section-heading">
+          <div>
+            <span className="audit-kicker">TRẠNG THÁI NHẮC</span>
+            <h2>Trạng thái theo booking</h2>
+            <p>
+              Bao gồm booking chưa nhắc, đã nhắc và gửi lỗi.
+              Thời gian hiển thị theo GMT+7.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={reload}
+            disabled={bookingLoading || running}
+          >
+            Tải lại
+          </button>
+        </div>
+
+        {bookingError && (
+          <div className="audit-notice error" role="alert">
+            {bookingError}
+          </div>
+        )}
+
+        <div className="audit-table-wrap" aria-busy={bookingLoading}>
+          <table className="audit-table">
+            <thead>
+              <tr>
+                <th>Mã booking</th>
+                <th>Khách hàng</th>
+                <th>Email</th>
+                <th>Ngày nhận phòng</th>
+                <th>Trạng thái booking</th>
+                <th>Trạng thái nhắc</th>
+                <th>Đã nhắc lúc (GMT+7)</th>
+                <th>Thử gần nhất (GMT+7)</th>
+                <th>Lỗi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!bookingLoading && !bookingError &&
+                bookingPage?.content.map((item) => (
+                  <tr key={item.bookingId}>
+                    <td>{item.bookingCode}</td>
+                    <td>{item.guestName}</td>
+                    <td>{item.recipientEmail ?? 'Không có email'}</td>
+                    <td>
+                      {item.checkInDate.split('-').reverse().join('/')}
+                    </td>
+                    <td>
+                      {{
+                        CHO_XAC_NHAN: 'Chờ xác nhận',
+                        DA_XAC_NHAN: 'Đã xác nhận',
+                        DA_HUY: 'Đã huỷ',
+                        DA_NHAN_PHONG: 'Đã nhận phòng',
+                        DA_TRA_PHONG: 'Đã trả phòng',
+                        DA_HET_HAN: 'Đã hết hạn',
+                      }[item.bookingStatus] ?? item.bookingStatus}
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          item.reminderStatus === 'SENT'
+                            ? 'audit-result is-success'
+                            : item.reminderStatus === 'FAILED'
+                              ? 'audit-result is-failure'
+                              : 'audit-result'
+                        }
+                      >
+                        {item.reminderStatus === 'SENT'
+                          ? 'Đã nhắc'
+                          : item.reminderStatus === 'FAILED'
+                            ? 'Gửi lỗi'
+                            : 'Chưa nhắc'}
+                      </span>
+                    </td>
+                    <td>
+                      {item.remindedAt
+                        ? formatDateTime(item.remindedAt)
+                        : '—'}
+                    </td>
+                    <td>
+                      {item.lastAttemptAt
+                        ? formatDateTime(item.lastAttemptAt)
+                        : '—'}
+                    </td>
+                    <td>{item.errorMessage ?? ''}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+
+          {bookingLoading && (
+            <p className="audit-empty">Đang tải trạng thái...</p>
+          )}
+
+          {!bookingLoading && !bookingError &&
+            bookingPage?.content.length === 0 && (
+              <p className="audit-empty">Chưa có booking.</p>
+            )}
+        </div>
+
+        <div className="audit-filter-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={bookingLoading || !bookingPage || bookingPage.first}
+            onClick={() => setPage((value) => Math.max(0, value - 1))}
+          >
+            Trang trước
+          </button>
+
+          <span>
+            Trang {bookingPage && bookingPage.totalPages > 0 ? page + 1 : 0}
+            /{bookingPage?.totalPages ?? 0}
+          </span>
+
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={bookingLoading || !bookingPage || bookingPage.last}
+            onClick={() => setPage((value) => value + 1)}
+          >
+            Trang sau
+          </button>
+        </div>
+      </section>
 
       <section className="audit-panel">
         <div className="audit-section-heading">

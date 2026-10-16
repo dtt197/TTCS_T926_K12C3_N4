@@ -55,7 +55,6 @@ public class SecurityConfig {
             ApiAccessDeniedHandler accessDeniedHandler,
             ApiSecurityPolicyCatalog policyCatalog
     ) throws Exception {
-
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())

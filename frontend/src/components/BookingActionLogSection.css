@@ -1,0 +1,53 @@
+/* S4-04 (SCRUM-151): Styles cho nhật ký thao tác lễ tân */
+.action-logs-table-wrapper {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.action-logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.action-logs-table th,
+.action-logs-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.action-logs-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.action-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.action-badge.action-no-show {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.action-badge.action-undo-no-show {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.receptionist-id-tag {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.action-logs-loading {
+  font-size: 13px;
+  color: #6b7280;
+  font-style: italic;
+}

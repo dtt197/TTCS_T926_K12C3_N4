@@ -43,4 +43,18 @@ public class EmailAdminController {
             @RequestParam(defaultValue = "REMINDER") EmailType type) {
         return emailLogService.list(type);
     }
+        @GetMapping("/reminders/bookings")
+    public org.springframework.data.domain.Page<EmailLogService.BookingReminderItem>
+            listBookingReminderStatuses(
+                    @RequestParam(defaultValue = "0") int page,
+                    @RequestParam(defaultValue = "20") int size) {
+
+        if (page < 0 || size < 1 || size > 100) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "page phải >= 0 và size phải từ 1 đến 100");
+        }
+
+        return emailLogService.listBookingReminderStatuses(page, size);
+    }
 }

@@ -1,18 +1,22 @@
-import { useEffect, useMemo, useState, useRef, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef, type FormEvent } from 'react'
 import '../App.css'
 import { hasPermission } from '../permissions/rolePermissions'
 import { getCheckInOptions } from '../services/bookingService'
+import { getEarlyCheckoutReasonError, getEarlyCheckoutSummary } from '../services/checkoutAc3'
 import { completeCleaning, getMaintenanceCleaningRoomIds, getMaintenanceRequests } from '../services/maintenanceService'
 import type { CheckInOption } from '../types/booking'
 import {
   checkIn,
   checkOut,
+  buildCheckoutPaymentRequest,
+  getCheckoutPreview,
   getRoomHistory,
   getRooms,
   putRoomIntoMaintenance,
   reportRoomIncident,
   updateRoomStatus,
   type IncidentSeverity,
+  type CheckoutPreview,
 } from '../services/roomService'
 import {
   ROOM_STATUS_HELP,
@@ -28,6 +32,7 @@ const STATUS_OPTIONS: RoomStatus[] = [
   'DANG_O',
   'BAO_TRI',
 ]
+const checkoutMoney = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 })
 function initialGuestCount(booking: CheckInOption | undefined) {
   return booking
     ? Math.min(Math.max(booking.requestedGuestCount ?? 1, 1), booking.maxGuests)
@@ -337,6 +342,16 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   const [earlyCheckInWarningOpen, setEarlyCheckInWarningOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [checkoutDialog, setCheckoutDialog] = useState<{
+    room: Room
+    preview: CheckoutPreview
+    paymentMethod: 'CASH' | 'BANK_TRANSFER'
+    paymentReference: string
+    confirmed: boolean
+    earlyCheckoutReason: string
+    earlyCheckoutReasonTouched: boolean
+    error: string | null
+  } | null>(null)
   const [notice, setNotice] = useState<{
     type: 'error' | 'success'
     text: string
@@ -359,6 +374,10 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedHistoryRoomId])
+  const closeStatusModal = useCallback(() => {
+    if (statusSaveLockRef.current || isSaving) return
+    setSelectedStatusRoomId(null)
+  }, [isSaving])
   useEffect(() => {
     if (selectedStatusRoomId === null || isSaving) return
     function handleKeyDown(event: KeyboardEvent) {
@@ -366,7 +385,7 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedStatusRoomId, isSaving])
+  }, [selectedStatusRoomId, isSaving, closeStatusModal])
   useEffect(() => {
     if (openRoomActionsId === null) return
     function onEscape(event: KeyboardEvent) {
@@ -385,11 +404,6 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
       document.removeEventListener('pointerdown', onPointerDown)
     }
   }, [openRoomActionsId])
-
-  function closeStatusModal() {
-    if (statusSaveLockRef.current || isSaving) return
-    setSelectedStatusRoomId(null)
-  }
 
   function openStatusModal(room: Room) {
     if (isSaving) return
@@ -984,48 +998,25 @@ async function handleViewHistory(room: Room) {
     setIsSaving(true)
     setNotice(null)
     try {
-      const savedRoom = isDemoMode
+      const preview: CheckoutPreview = isDemoMode
         ? {
-            ...room,
-            status: 'TRONG_BAN' as RoomStatus,
-            maintenanceReason: null,
-            maintenanceStartDate: null,
-            maintenanceEndDate: null,
+            bookingId: room.id, bookingCode: `DEMO-${room.id}`, roomId: room.id,
+            roomNumber: room.roomNumber, guestName: 'Khách demo', checkInDate: '', checkOutDate: '',
+            nightlyPrices: [], nightlyBreakdownReliable: false, warning: 'Dữ liệu minh họa.',
+            roomTotal: 0, surchargeAmount: 0, surchargeBreakdownComplete: false,
+            extraGuestCount: null, extraPersonFeeSnapshot: null, surchargeNights: null,
+            roomTotalExcludingSurcharge: null, surchargeBreakdownWarning: null,
+            bookingSurcharges: [], bookingSurchargeTotal: 0,
+            depositTotal: 0, checkoutTimeSnapshot: '12:00:00', serverCheckoutTime: new Date().toISOString(),
+            operatingSettingsId: 0, lateCheckoutHours: 0, lateCheckoutFeePerHour: 0,
+            lateCheckoutFee: 0, settlementTotalBeforeDeposit: 0, lateCheckoutPricingBasis: 'NONE',
+            checkoutAllowed: true, checkoutBlockedReason: null,
+            settlementType: 'ZERO', amount: 0, previewToken: 'demo',
+            earlyCheckout: false, bookedNights: 0, usedNights: 0, unusedNights: 0,
+            unusedRoomValue: null, unusedRoomValueWarning: null,
           }
-        : await checkOut(room.id)
-      setRooms((current) =>
-        current.map((item) => (item.id === room.id ? savedRoom : item)),
-      )
-      window.dispatchEvent(new CustomEvent('room-status-changed'))
-      setDraftStatuses((current) => ({
-        ...current,
-        [room.id]: 'TRONG_BAN',
-      }))
-      if (isDemoMode) {
-        const historyRecord: RoomStatusHistory = {
-          id: Date.now(),
-          roomId: room.id,
-          roomNumber: room.roomNumber,
-          previousStatus: 'DANG_O',
-          newStatus: 'TRONG_BAN',
-          changedBy: 'Lễ tân',
-          changedAt: new Date().toISOString(),
-          maintenanceReason: null,
-          maintenanceStartDate: null,
-          maintenanceEndDate: null,
-        }
-        setHistoryByRoom((current) => ({
-          ...current,
-          [room.id]: [
-            ...(current[room.id] ?? DEMO_HISTORY[room.id] ?? []),
-            historyRecord,
-          ],
-        }))
-      }
-      setNotice({
-        type: 'success',
-        text: `Đã trả phòng ${room.roomNumber} thành công. Trạng thái chuyển sang Trống bẩn.`,
-      })
+        : await getCheckoutPreview(room.id)
+      setCheckoutDialog({ room, preview, paymentMethod: 'CASH', paymentReference: '', confirmed: false, earlyCheckoutReason: '', earlyCheckoutReasonTouched: false, error: null })
     } catch (error) {
       showError(
         error instanceof Error
@@ -1036,7 +1027,57 @@ async function handleViewHistory(room: Room) {
       setIsSaving(false)
     }
   }
-    return (
+
+  async function reloadCheckoutPreview() {
+    if (!checkoutDialog) return
+    try {
+      const preview = await getCheckoutPreview(checkoutDialog.room.id)
+      setCheckoutDialog((current) => current ? { ...current, preview, confirmed: false, earlyCheckoutReason: '', earlyCheckoutReasonTouched: false, error: null } : current)
+    } catch (error) {
+      setCheckoutDialog((current) => current ? {
+        ...current,
+        error: error instanceof Error ? error.message : 'Không thể tải lại bảng quyết toán.',
+      } : current)
+    }
+  }
+
+  async function confirmCheckout() {
+    if (!checkoutDialog) return
+    const { room, preview } = checkoutDialog
+    const reasonError = getEarlyCheckoutReasonError(preview.earlyCheckout, checkoutDialog.earlyCheckoutReason)
+    if (reasonError) {
+      setCheckoutDialog((current) => current ? { ...current, error: reasonError } : current)
+      return
+    }
+    setIsSaving(true)
+    try {
+      const savedRoom = isDemoMode
+        ? { ...room, status: 'TRONG_BAN' as RoomStatus, maintenanceReason: null, maintenanceStartDate: null, maintenanceEndDate: null }
+        : await checkOut(room.id, buildCheckoutPaymentRequest(preview, {
+              paymentMethod: checkoutDialog.paymentMethod,
+              paymentReference: checkoutDialog.paymentReference,
+              amountReceivedConfirmed: preview.settlementType === 'COLLECT' ? checkoutDialog.confirmed : undefined,
+              refundCompletedConfirmed: preview.settlementType === 'REFUND' ? checkoutDialog.confirmed : undefined,
+            }, checkoutDialog.earlyCheckoutReason))
+      setRooms((current) => current.map((item) => item.id === room.id ? savedRoom : item))
+      window.dispatchEvent(new CustomEvent('room-status-changed'))
+      setDraftStatuses((current) => ({ ...current, [room.id]: 'TRONG_BAN' }))
+      setCheckoutDialog(null)
+      setNotice({ type: 'success', text: `Đã quyết toán và trả phòng ${room.roomNumber}. Trạng thái phòng chuyển sang Trống bẩn.` })
+    } catch (error) {
+      setCheckoutDialog((current) => current ? {
+        ...current,
+        error: error instanceof Error ? error.message : 'Không thể hoàn tất quyết toán.',
+      } : current)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+  const earlyCheckoutSummary = checkoutDialog?.preview.earlyCheckout
+    ? getEarlyCheckoutSummary(checkoutDialog.preview)
+    : null
+
+  return (
     <div className="app-shell room-status-modern">
       <main className="main-content">
         {/* =========================
@@ -1788,6 +1829,101 @@ async function handleViewHistory(room: Room) {
                 </div>
               </form>
             </div>
+          </div>
+        )}
+        {checkoutDialog && (
+          <div className="checkout-modal-backdrop" role="presentation">
+            <section className="checkout-modal-card" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
+              <h2 id="checkout-modal-title">Quyết toán và trả phòng</h2>
+              <p>{checkoutDialog.preview.guestName} · Booking {checkoutDialog.preview.bookingCode} · Phòng {checkoutDialog.preview.roomNumber}</p>
+              {checkoutDialog.preview.warning && <p className="checkout-warning">{checkoutDialog.preview.warning}</p>}
+              {!checkoutDialog.preview.checkoutAllowed && <p className="checkout-error" role="alert">{checkoutDialog.preview.checkoutBlockedReason}</p>}
+              {checkoutDialog.preview.earlyCheckout && (
+                <section className="checkout-warning" aria-labelledby="early-checkout-title">
+                  <h3 id="early-checkout-title">Trả phòng sớm</h3>
+                  <dl className="checkout-totals">
+                    <div><dt>Số đêm đặt</dt><dd>{earlyCheckoutSummary?.bookedNights}</dd></div>
+                    <div><dt>Số đêm đã sử dụng</dt><dd>{earlyCheckoutSummary?.usedNights}</dd></div>
+                    <div><dt>Số đêm chưa sử dụng</dt><dd>{earlyCheckoutSummary?.unusedNights}</dd></div>
+                    <div><dt>Giá trị phòng chưa sử dụng (tham khảo)</dt><dd>{earlyCheckoutSummary?.unusedRoomValue === null ? 'Không có dữ liệu' : `${checkoutMoney.format(earlyCheckoutSummary?.unusedRoomValue ?? 0)} đ`}</dd></div>
+                  </dl>
+                  {earlyCheckoutSummary?.unusedRoomValueWarning && <p>{earlyCheckoutSummary.unusedRoomValueWarning}</p>}
+                  <p>{earlyCheckoutSummary?.warning}</p>
+                  <label className="checkout-field">Lý do trả phòng sớm
+                    <textarea value={checkoutDialog.earlyCheckoutReason} maxLength={500} rows={3} aria-invalid={checkoutDialog.earlyCheckoutReasonTouched && Boolean(getEarlyCheckoutReasonError(true, checkoutDialog.earlyCheckoutReason))} aria-describedby="early-checkout-reason-error" onChange={(event) => setCheckoutDialog((current) => current ? { ...current, earlyCheckoutReason: event.target.value, earlyCheckoutReasonTouched: true, error: null } : current)} />
+                  </label>
+                  {checkoutDialog.earlyCheckoutReasonTouched && getEarlyCheckoutReasonError(true, checkoutDialog.earlyCheckoutReason) && <p id="early-checkout-reason-error" className="checkout-error" role="alert">{getEarlyCheckoutReasonError(true, checkoutDialog.earlyCheckoutReason)}</p>}
+                  <small>{checkoutDialog.earlyCheckoutReason.length}/500 ký tự</small>
+                </section>
+              )}
+              <dl className="checkout-totals">
+                <div><dt>Giờ checkout chuẩn</dt><dd>{checkoutDialog.preview.checkoutTimeSnapshot.slice(0, 5)}</dd></div>
+                <div><dt>Thời điểm server</dt><dd>{new Date(checkoutDialog.preview.serverCheckoutTime).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</dd></div>
+                {!checkoutDialog.preview.earlyCheckout && <>
+                  <div><dt>Số giờ tính phí</dt><dd>{checkoutDialog.preview.lateCheckoutHours}</dd></div>
+                  <div><dt>Đơn giá theo giờ</dt><dd>{checkoutDialog.preview.lateCheckoutFeePerHour === null ? '—' : `${checkoutMoney.format(checkoutDialog.preview.lateCheckoutFeePerHour)} đ`}</dd></div>
+                  <div><dt>Phụ thu trả muộn ({checkoutDialog.preview.lateCheckoutPricingBasis})</dt><dd>{checkoutMoney.format(checkoutDialog.preview.lateCheckoutFee)} đ</dd></div>
+                </>}
+              </dl>
+              {checkoutDialog.preview.nightlyBreakdownReliable && (
+                <div className="checkout-night-table-wrap">
+                  <table className="checkout-night-table">
+                    <thead><tr><th>Đêm</th><th>Giá phòng</th><th>Phụ thu đã chốt</th><th>Tổng</th></tr></thead>
+                    <tbody>{checkoutDialog.preview.nightlyPrices.map((night) => (
+                      <tr key={night.date}><td>{night.date} · {night.label}</td><td>{checkoutMoney.format(night.roomPrice)} đ</td><td>{checkoutMoney.format(night.surchargeAmount)} đ</td><td>{checkoutMoney.format(night.total)} đ</td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+              <dl className="checkout-totals">
+                <div><dt>Tổng tiền đặt phòng đã chốt (đã bao gồm phụ thu)</dt><dd>{checkoutMoney.format(checkoutDialog.preview.roomTotal)} đ</dd></div>
+                {checkoutDialog.preview.surchargeBreakdownComplete && checkoutDialog.preview.roomTotalExcludingSurcharge !== null && (
+                  <div><dt>Tiền phòng chưa gồm phụ thu</dt><dd>{checkoutMoney.format(checkoutDialog.preview.roomTotalExcludingSurcharge)} đ</dd></div>
+                )}
+                <div><dt>Phụ thu thêm người đã chốt{checkoutDialog.preview.surchargeBreakdownComplete ? ' (đã gồm trong tổng booking)' : ''}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.surchargeAmount)} đ</dd></div>
+                {checkoutDialog.preview.surchargeBreakdownComplete && checkoutDialog.preview.surchargeAmount > 0 && (
+                  <div><dt>Chi tiết phụ thu thêm người</dt><dd>{checkoutDialog.preview.extraGuestCount} khách × {checkoutMoney.format(checkoutDialog.preview.extraPersonFeeSnapshot ?? 0)} đ/người/đêm × {checkoutDialog.preview.surchargeNights} đêm = {checkoutMoney.format(checkoutDialog.preview.surchargeAmount)} đ</dd></div>
+                )}
+                {checkoutDialog.preview.surchargeBreakdownWarning && <div><dt>Chi tiết phụ thu</dt><dd>{checkoutDialog.preview.surchargeBreakdownWarning}</dd></div>}
+                {checkoutDialog.preview.bookingSurcharges.map((line) => (
+                  <div key={line.id}>
+                    <dt>Phụ thu phát sinh: {line.type === 'THEM_NGUOI' ? 'thêm người' : 'thêm giường'}{line.note ? ` · ${line.note}` : ''}{line.priceOverridden ? ` · giá đã sửa (mặc định ${checkoutMoney.format(line.defaultUnitPrice)} đ): ${line.priceOverrideReason}` : ''}</dt>
+                    <dd>{line.quantity} × {checkoutMoney.format(line.unitPrice)} đ × {line.nights} đêm = {checkoutMoney.format(line.amount)} đ</dd>
+                  </div>
+                ))}
+                {checkoutDialog.preview.bookingSurcharges.length > 0 && (
+                  <div><dt>Tổng phụ thu phát sinh</dt><dd>{checkoutMoney.format(checkoutDialog.preview.bookingSurchargeTotal)} đ</dd></div>
+                )}
+                <div><dt><strong>Tổng phải thanh toán (trước khi trừ cọc)</strong></dt><dd><strong>{checkoutMoney.format(checkoutDialog.preview.settlementTotalBeforeDeposit)} đ</strong></dd></div>
+                <div><dt>Tổng cọc hiện tại</dt><dd>{checkoutMoney.format(checkoutDialog.preview.depositTotal)} đ</dd></div>
+                <div><dt>{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Cần thu thêm' : checkoutDialog.preview.settlementType === 'REFUND' ? 'Cần hoàn lại' : 'Đã thanh toán đủ'}</dt><dd>{checkoutMoney.format(checkoutDialog.preview.amount)} đ</dd></div>
+              </dl>
+              {checkoutDialog.preview.settlementType !== 'ZERO' && (
+                <>
+                  <label className="checkout-field">{checkoutDialog.preview.settlementType === 'COLLECT' ? 'Phương thức thu' : 'Phương thức hoàn'}
+                    <select value={checkoutDialog.paymentMethod} onChange={(event) => setCheckoutDialog((current) => current ? { ...current, paymentMethod: event.target.value as 'CASH' | 'BANK_TRANSFER' } : current)}>
+                      <option value="CASH">Tiền mặt</option><option value="BANK_TRANSFER">Chuyển khoản</option>
+                    </select>
+                  </label>
+                  {checkoutDialog.paymentMethod === 'BANK_TRANSFER' && (
+                    <label className="checkout-field">Mã giao dịch
+                      <input value={checkoutDialog.paymentReference} onChange={(event) => setCheckoutDialog((current) => current ? { ...current, paymentReference: event.target.value } : current)} maxLength={255} />
+                    </label>
+                  )}
+                  <label className="checkout-confirm"><input type="checkbox" checked={checkoutDialog.confirmed} onChange={(event) => setCheckoutDialog((current) => current ? { ...current, confirmed: event.target.checked } : current)} />
+                    {checkoutDialog.preview.settlementType === 'COLLECT' ? 'Tôi xác nhận đã thu đủ khoản chênh lệch.' : 'Tôi xác nhận đã hoàn khoản tiền dư thực tế.'}
+                  </label>
+                </>
+              )}
+              {checkoutDialog.error && <p className="checkout-error" role="alert">{checkoutDialog.error}</p>}
+              <div className="checkout-actions">
+                {(checkoutDialog.error || !checkoutDialog.preview.checkoutAllowed) && !isDemoMode && <button type="button" className="secondary-button" onClick={() => void reloadCheckoutPreview()} disabled={isSaving}>Tải lại bảng quyết toán</button>}
+                <button type="button" className="secondary-button" onClick={() => setCheckoutDialog(null)} disabled={isSaving}>Đóng</button>
+                <button type="button" className="primary-button" onClick={() => void confirmCheckout()} disabled={isSaving || !checkoutDialog.preview.checkoutAllowed || (checkoutDialog.preview.earlyCheckout && !checkoutDialog.earlyCheckoutReason.trim()) || (checkoutDialog.preview.settlementType !== 'ZERO' && (!checkoutDialog.confirmed || (checkoutDialog.paymentMethod === 'BANK_TRANSFER' && !checkoutDialog.paymentReference.trim())))}>
+                  {isSaving ? 'Đang xử lý…' : 'Xác nhận quyết toán và trả phòng'}
+                </button>
+              </div>
+            </section>
           </div>
         )}
         {earlyCheckInWarningOpen && (

@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 /**
  * S2-07 Lát 1: API công khai cho khách đặt phòng, không cần đăng nhập (khai báo
@@ -81,10 +83,19 @@ public class PublicBookingController {
 
     @PostMapping("/bookings/walk-in")
     public ResponseEntity<WalkInBookingResponse> createWalkInBooking(
-            @Valid @RequestBody WalkInBookingRequest request) {
+            @Valid @RequestBody WalkInBookingRequest request,
+            Authentication authentication) {
+
+        String createdBy = "Lễ tân";
+        if (authentication instanceof JwtAuthenticationToken token) {
+            String fullName = token.getToken().getClaimAsString("fullName");
+            String email = token.getToken().getClaimAsString("email");
+            createdBy = fullName != null && !fullName.isBlank() ? fullName
+                    : email != null && !email.isBlank() ? email : authentication.getName();
+        }
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(guestBookingService.createWalkInBooking(request));
+                .body(guestBookingService.createWalkInBooking(request, createdBy));
     }
 }

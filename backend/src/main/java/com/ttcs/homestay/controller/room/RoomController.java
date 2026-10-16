@@ -2,6 +2,8 @@ package com.ttcs.homestay.controller.room;
 
 import com.ttcs.homestay.dto.CheckInRequest;
 import com.ttcs.homestay.dto.CheckInResponse;
+import com.ttcs.homestay.dto.CheckoutPaymentRequest;
+import com.ttcs.homestay.dto.CheckoutPreviewResponse;
 import com.ttcs.homestay.dto.IncidentReportRequest;
 import com.ttcs.homestay.dto.MaintenanceRequest;
 import com.ttcs.homestay.dto.RoomResponse;
@@ -12,6 +14,7 @@ import com.ttcs.homestay.service.AuditLogService;
 import com.ttcs.homestay.service.IncidentReportService;
 import com.ttcs.homestay.service.RoomService;
 import com.ttcs.homestay.service.MaintenanceWorkflowService;
+import com.ttcs.homestay.service.CheckoutService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -38,17 +41,25 @@ public class RoomController {
     private final AuditLogService auditLogService;
     private final IncidentReportService incidentReportService;
     private final MaintenanceWorkflowService maintenanceWorkflowService;
+    private final CheckoutService checkoutService;
 
     @Autowired
     public RoomController(
             RoomService roomService,
             AuditLogService auditLogService,
             IncidentReportService incidentReportService,
-            MaintenanceWorkflowService maintenanceWorkflowService) {
+            MaintenanceWorkflowService maintenanceWorkflowService,
+            CheckoutService checkoutService) {
         this.roomService = roomService;
         this.auditLogService = auditLogService;
         this.incidentReportService = incidentReportService;
         this.maintenanceWorkflowService = maintenanceWorkflowService;
+        this.checkoutService = checkoutService;
+    }
+
+    public RoomController(RoomService roomService, AuditLogService auditLogService,
+            IncidentReportService incidentReportService, MaintenanceWorkflowService maintenanceWorkflowService) {
+        this(roomService, auditLogService, incidentReportService, maintenanceWorkflowService, null);
     }
 
     /** Compatibility constructor for existing controller unit tests. */
@@ -89,7 +100,7 @@ public class RoomController {
             return java.util.stream.Stream
         .concat(dirtyRooms.stream(), maintenanceCleaningRooms.stream())
         .collect(java.util.stream.Collectors.toMap(
-                RoomResponse::id,
+                room -> room.id(),
                 java.util.function.Function.identity(),
                 (existing, duplicate) -> existing,
                 java.util.LinkedHashMap::new
@@ -271,13 +282,14 @@ public class RoomController {
     @PostMapping("/{roomId}/check-out")
     public ResponseEntity<RoomResponse> checkOut(
             @PathVariable Long roomId,
+            @Valid @RequestBody CheckoutPaymentRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest) {
 
-        RoomResponse response = roomService.checkOut(
-                roomId,
-                operatorName(authentication)
-        );
+        // The compatibility branch is only for legacy direct controller unit tests; Spring injects CheckoutService.
+        RoomResponse response = checkoutService == null
+                ? roomService.checkOut(roomId, operatorName(authentication))
+                : RoomResponse.from(checkoutService.checkout(roomId, request, operatorName(authentication)));
 
         recordRoomAction(
                 authentication,
@@ -287,6 +299,17 @@ public class RoomController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    /** Compatibility overload for direct legacy unit tests; not a mapped endpoint. */
+    public ResponseEntity<RoomResponse> checkOut(Long roomId, Authentication authentication,
+            HttpServletRequest httpRequest) {
+        return checkOut(roomId, null, authentication, httpRequest);
+    }
+
+    @GetMapping("/{roomId}/checkout-preview")
+    public ResponseEntity<CheckoutPreviewResponse> checkoutPreview(@PathVariable Long roomId) {
+        return ResponseEntity.ok(checkoutService.preview(roomId));
     }
 
     private void recordRoomAction(

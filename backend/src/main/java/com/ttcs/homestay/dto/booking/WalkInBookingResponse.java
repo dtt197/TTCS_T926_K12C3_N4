@@ -5,6 +5,7 @@ import com.ttcs.homestay.entity.BookingSource;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
 
 /**
  * S3-06 Lát 4: thông tin booking tại quầy trả về ngay sau khi tạo, để lễ tân đọc hoặc in cho khách.
@@ -22,9 +23,14 @@ public record WalkInBookingResponse(
         LocalDate checkOutDate,
         long nights,
         int guestCount,
-        OffsetDateTime createdAt) {
+        OffsetDateTime createdAt,
+        BigDecimal depositAmount) {
 
     public static WalkInBookingResponse from(Booking booking) {
+        return from(booking, BigDecimal.ZERO);
+    }
+
+    public static WalkInBookingResponse from(Booking booking, BigDecimal depositAmount) {
         return new WalkInBookingResponse(
                 booking.getBookingCode(),
                 booking.getStatus().name(),
@@ -38,7 +44,8 @@ public record WalkInBookingResponse(
                 booking.getCheckOutDate(),
                 ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate()),
                 booking.getGuestCount() == null ? 0 : booking.getGuestCount(),
-                booking.getCreatedAt());
+                booking.getCreatedAt(),
+                depositAmount);
     }
 
     static String sourceLabel(BookingSource source) {

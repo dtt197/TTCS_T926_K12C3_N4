@@ -1,9 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ApiRequestError } from '../services/apiClient'
-import { getBookingDetails, getBookingSummary, type BookingDetailResponse } from '../services/bookingService'
+import { getBookingDetails, getBookingSummary, markBookingNoShow, type BookingDetailResponse } from '../services/bookingService'
 import { createRoomCalendarPlan, mergeRoomCalendarResponses, type RoomCalendarPlan } from '../services/roomCalendarRanges'
 import { getRoomCalendar, type CalendarStatus, type RoomCalendar } from '../services/roomCalendarService'
 import type { BookingListItem } from '../types/booking'
+import { isNoShowEligible } from './bookingActionVisibility'
+import { BookingNoShowUndoButton } from '../components/BookingNoShowUndoButton'
 import './RoomCalendarPage.css'
 
 const labels: Record<CalendarStatus, string> = {
@@ -17,6 +19,7 @@ const BOOKING_STATUS_LABELS: Record<string, string> = {
   DA_NHAN_PHONG: 'Đã nhận phòng',
   DA_TRA_PHONG: 'Đã trả phòng',
   DA_HET_HAN: 'Đã hết hạn',
+  NO_SHOW: 'Không đến',
 }
 
 function today() {
@@ -24,9 +27,7 @@ function today() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-const MAX_CONCURRENT_CALENDAR_REQUESTS = 3
-const MAX_SELECTED_END_DATE = '9999-12-16'
-const MAX_DEFAULT_START_DATE = '9999-12-03'
+const MAX_SELECTED_END_DATE = '9999-12-31'
 
 function addCalendarDays(value: string, days: number) {
   const [year, month, day] = value.split('-').map(Number)
@@ -142,6 +143,8 @@ export function RoomCalendarPage() {
   const [detail, setDetail] = useState<Detail | null>(null)
   /** S3-10 Lát 4: thời gian từ lúc gửi yêu cầu đến khi lưới hiển thị xong (mili giây). */
   const [loadMs, setLoadMs] = useState<number | null>(null)
+  const [noShowLoading, setNoShowLoading] = useState(false)
+  const [noShowMessage, setNoShowMessage] = useState<string | null>(null)
   const triggerRefs = useRef(new Map<string, HTMLButtonElement>())
   const detailRequest = useRef(0)
   const calendarRequestGeneration = useRef(0)
@@ -192,8 +195,8 @@ export function RoomCalendarPage() {
     }
   }, [startDate, endDate])
   const rangeError = planResult.error ?? null
-  const selectedDays = planResult.plan ? planResult.plan.totalDays - 14 : null
-  const expandedEndDate = planResult.plan?.displayEndDate ?? null
+  const selectedDays = planResult.plan?.totalDays ?? null
+  const displayEndDate = planResult.plan?.displayEndDate ?? null
 
   useEffect(() => {
     if (rangeError || !planResult.plan) return
@@ -203,37 +206,18 @@ export function RoomCalendarPage() {
     const isCurrent = () => calendarRequestGeneration.current === generation && !controller.signal.aborted
     const plan = planResult.plan
     loadStartedAt.current = performance.now()
-    setResult(null)
-    setLoadProgress({ range, completed: 0, total: plan.segments.length })
-    setLoadMs(null)
 
-    const responses: RoomCalendar[] = new Array(plan.segments.length)
-    let nextSegmentIndex = 0
-    let completed = 0
-    const worker = async () => {
-      while (isCurrent()) {
-        const segmentIndex = nextSegmentIndex
-        nextSegmentIndex += 1
-        if (segmentIndex >= plan.segments.length) return
-        const segment = plan.segments[segmentIndex]
-        const response = await getRoomCalendar(segment.startDate, segment.days, controller.signal)
-        if (!isCurrent()) return
-        responses[segmentIndex] = response
-        completed += 1
-        setLoadProgress({ range, completed, total: plan.segments.length })
-      }
-    }
-
-    void Promise.all(Array.from({ length: Math.min(MAX_CONCURRENT_CALENDAR_REQUESTS, plan.segments.length) }, worker)).then(
-      () => {
+    const segment = plan.segments[0]
+    void getRoomCalendar(segment.startDate, segment.days, controller.signal).then(
+      response => {
         if (!isCurrent()) return
         try {
-          const data = mergeRoomCalendarResponses(responses, plan)
+          const data = mergeRoomCalendarResponses([response], plan)
           setOpenCell(null)
           setPopoverPosition(null)
           setResult({ range, data })
         } catch (error) {
-          setLoadProgress({ range, completed, total: plan.segments.length, error: error instanceof Error ? error.message : 'Không thể ghép dữ liệu sơ đồ phòng.' })
+          setLoadProgress({ range, completed: 1, total: 1, error: error instanceof Error ? error.message : 'Không thể ghép dữ liệu sơ đồ phòng.' })
         }
       },
       error => {
@@ -241,7 +225,7 @@ export function RoomCalendarPage() {
         controller.abort()
         setOpenCell(null)
         setPopoverPosition(null)
-        setLoadProgress({ range, completed, total: plan.segments.length, error: error instanceof Error ? error.message : 'Không tải được sơ đồ phòng.' })
+        setLoadProgress({ range, completed: 0, total: 1, error: error instanceof Error ? error.message : 'Không tải được sơ đồ phòng.' })
       },
     )
 
@@ -301,6 +285,7 @@ export function RoomCalendarPage() {
     setDetail(null)
     setOpenCell(null)
     setPopoverPosition(null)
+    setNoShowMessage(null)
     if (cellKey) {
       // Trả focus về ô vừa bấm nhưng không bật lại khung tên khách của Lát 2.
       skipFocusPopover.current = true
@@ -309,7 +294,31 @@ export function RoomCalendarPage() {
     }
   }
 
+  async function handleCalendarNoShow(bookingId: number) {
+    if (noShowLoading) return
+    const confirmed = window.confirm('Bạn có chắc chắn muốn đánh dấu khách không đến cho booking này? Thao tác này sẽ giải phóng phòng trên sơ đồ ngay lập tức.')
+    if (!confirmed) return
+    setNoShowLoading(true)
+    setNoShowMessage(null)
+    try {
+      await markBookingNoShow(bookingId)
+      setNoShowMessage('Đã đánh dấu khách không đến và giải phóng phòng thành công.')
+      setAttempt(v => v + 1)
+      if (detail && detail.booking) {
+        setDetail({
+          ...detail,
+          booking: { ...detail.booking, status: 'NO_SHOW', roomNumber: null },
+        })
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Không thể đánh dấu khách không đến.')
+    } finally {
+      setNoShowLoading(false)
+    }
+  }
+
   const visible = result?.range === range ? result : null
+  const visibleLoadProgress = loadProgress?.range === range ? loadProgress : null
   const loading = !rangeError && !visible
   return (
     <section className="room-calendar" aria-label="Sơ đồ phòng theo ngày" aria-busy={loading}>
@@ -326,14 +335,14 @@ export function RoomCalendarPage() {
             <p>Chọn khoảng ngày cần xem tình trạng phòng.</p>
           </div>
         </div>
+        <div className="room-calendar-controls">
         <div className="room-calendar-date-fields">
           <label htmlFor="room-calendar-start">Ngày bắt đầu
-            <input id="room-calendar-start" type="date" value={startDate} min="0001-01-01" max={MAX_DEFAULT_START_DATE}
+            <input id="room-calendar-start" type="date" value={startDate} min="0001-01-01" max={MAX_SELECTED_END_DATE}
               onChange={event => {
                 const nextStartDate = event.target.value
                 setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null)
                 setStartDate(nextStartDate)
-                if (nextStartDate) setEndDate(addCalendarDays(nextStartDate, 13))
               }} />
           </label>
           <label htmlFor="room-calendar-end">Ngày kết thúc
@@ -341,45 +350,44 @@ export function RoomCalendarPage() {
               onChange={event => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null); setEndDate(event.target.value) }} />
           </label>
         </div>
-        {planResult.plan && selectedDays != null && expandedEndDate && <>
-          <div className="room-calendar-stats" aria-label="Tóm tắt khoảng ngày">
-            <article className="room-calendar-stat"><span>Ngày đã chọn</span><strong>{selectedDays}</strong></article>
-            <article className="room-calendar-stat"><span>Ngày mở rộng</span><strong>14</strong></article>
-            <article className="room-calendar-stat room-calendar-stat--total"><span>Tổng ngày xem</span><strong>{selectedDays + 14}</strong></article>
+        </div>
+        {planResult.plan && selectedDays != null && displayEndDate && <div className="room-calendar-info-bar" aria-label="Tóm tắt sơ đồ phòng">
+          <p className="room-calendar-range-summary">Sơ đồ hiển thị từ <strong>{formatDate(startDate)}</strong> đến <strong>{formatDate(displayEndDate)}</strong></p>
+          <span className="room-calendar-day-count">{selectedDays} ngày</span>
+          <div className="room-calendar-legend" aria-label="Chú giải trạng thái">
+            {Object.entries(labels).map(([status, label]) => <span key={status} className={`calendar-${status}`}>
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                {status === 'AVAILABLE' && <><path d="M8 14s5-2.5 5-7V3L8 1 3 3v4c0 4.5 5 7 5 7Z" /><path d="m5.5 7.5 1.6 1.6 3.4-3.6" /></>}
+                {status === 'BOOKED' && <><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M5 6h6M5 9h4" /></>}
+                {status === 'MAINTENANCE' && <><path d="M9.2 2.2a4 4 0 0 0 4.6 5.1l-6.5 6.5a1.7 1.7 0 0 1-2.4-2.4l6.5-6.5a4 4 0 0 0-5.1-4.6l2.3 2.3-2.1 2.1-2.3-2.3a4 4 0 0 0 5-0.2Z" /></>}
+              </svg>
+              {label}
+            </span>)}
           </div>
-          <p className="room-calendar-range-summary">Sơ đồ hiển thị từ <strong>{formatDate(startDate)}</strong> đến <strong>{formatDate(expandedEndDate)}</strong>.</p>
-        </>}
+        </div>}
       </header>
       <div className="room-calendar-guidance">
-        <div className="room-calendar-legend" aria-label="Chú giải trạng thái">
-          {Object.entries(labels).map(([status, label]) => <span key={status} className={`calendar-${status}`}>
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              {status === 'AVAILABLE' && <><path d="M8 14s5-2.5 5-7V3L8 1 3 3v4c0 4.5 5 7 5 7Z" /><path d="m5.5 7.5 1.6 1.6 3.4-3.6" /></>}
-              {status === 'BOOKED' && <><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M5 6h6M5 9h4" /></>}
-              {status === 'MAINTENANCE' && <><path d="M9.2 2.2a4 4 0 0 0 4.6 5.1l-6.5 6.5a1.7 1.7 0 0 1-2.4-2.4l6.5-6.5a4 4 0 0 0-5.1-4.6l2.3 2.3-2.1 2.1-2.3-2.3a4 4 0 0 0 5-0.2Z" /></>}
-            </svg>
-            {label}
-          </span>)}
-        </div>
-        <aside className="room-calendar-guidance-card" aria-label="Thông tin sơ đồ phòng">
+        <details className="room-calendar-guidance-card">
+          <summary aria-label="Mở hoặc đóng hướng dẫn cách đọc sơ đồ">
           <span className="room-calendar-guidance-icon" aria-hidden="true">
             <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" /><path d="M10 9v4m0-7h.01" /></svg>
           </span>
-          <div className="room-calendar-guidance-content">
             <strong>Cách đọc sơ đồ</strong>
+          </summary>
+          <div className="room-calendar-guidance-content">
             <ul>
               <li>Chỉ hiển thị phòng đang hoạt động; mỗi ô đại diện cho một đêm lưu trú.</li>
               <li>Sơ đồ theo phòng được gán, không thể hiện đầy đủ lịch sử đổi phòng và booking đã trả phòng.</li>
               <li>Ô Trống không bảo đảm có thể nhận booking mới. Nhấn ô Có booking để xem chi tiết.</li>
             </ul>
           </div>
-        </aside>
+        </details>
       </div>
-      {rangeError && <p role="alert">{rangeError}</p>}
-      {loading && loadProgress?.range === range && !loadProgress.error &&
-        <p className="room-calendar-load-status" role="status">Đang tải {loadProgress.completed}/{loadProgress.total} đoạn…</p>}
-      {loadProgress?.range === range && loadProgress.error && <div className="room-calendar-load-status" role="alert">
-        Không tải được đầy đủ sơ đồ phòng: {loadProgress.error} <button type="button"
+      {rangeError && <p className="room-calendar-range-error" role="alert">{rangeError}</p>}
+      {loading && !visibleLoadProgress?.error &&
+        <p className="room-calendar-load-status" role="status">Đang tải {visibleLoadProgress?.completed ?? 0}/{visibleLoadProgress?.total ?? planResult.plan?.segments.length ?? 0} đoạn…</p>}
+      {visibleLoadProgress?.error && <div className="room-calendar-load-status" role="alert">
+        Không tải được đầy đủ sơ đồ phòng: {visibleLoadProgress.error} <button type="button"
           onClick={() => { setOpenCell(null); setPopoverPosition(null); setLoadMs(null); setResult(null); setLoadProgress(null); setAttempt(value => value + 1) }}>Thử lại</button>
       </div>}
       {visible?.data && loadMs != null && (
@@ -436,7 +444,47 @@ export function RoomCalendarPage() {
                 <div><dt>Tiền cọc hiện tại</dt><dd>{detail.extra?.currentDepositTotal != null ? formatCurrency(detail.extra.currentDepositTotal) : 'Chưa ghi nhận'}</dd></div>
               </dl>
             )}
-            <div className="calendar-detail-actions">
+            {noShowMessage && (
+              <p role="status" style={{ color: '#059669', fontWeight: 500, margin: '8px 0', fontSize: '14px' }}>{noShowMessage}</p>
+            )}
+            <div className="calendar-detail-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {detail.booking && (detail.booking.status === 'CHO_XAC_NHAN' || detail.booking.status === 'DA_XAC_NHAN') && (() => {
+                const eligibility = isNoShowEligible(detail.booking)
+                return (
+                  <button
+                    type="button"
+                    id={`calendar-no-show-btn-${detail.bookingId}`}
+                    className={`calendar-no-show-button ${eligibility.eligible ? 'is-active' : ''}`}
+                    disabled={!eligibility.eligible || noShowLoading}
+                    title={eligibility.reason || 'Đánh dấu khách không đến'}
+                    onClick={() => handleCalendarNoShow(detail.bookingId)}
+                    style={{
+                      backgroundColor: eligibility.eligible ? '#d97706' : '#9ca3af',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 14px',
+                      fontWeight: 500,
+                      cursor: eligibility.eligible && !noShowLoading ? 'pointer' : 'not-allowed',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span aria-hidden="true">⏱</span> {noShowLoading ? 'Đang xử lý…' : 'Khách không đến'}
+                  </button>
+                )
+              })()}
+              {detail.booking && detail.booking.status === 'NO_SHOW' && (
+                <BookingNoShowUndoButton
+                  bookingId={detail.bookingId}
+                  variant="detail"
+                  onSuccess={() => {
+                    setAttempt((v) => v + 1)
+                    closeDetail()
+                  }}
+                />
+              )}
               <button type="button" onClick={closeDetail}>Quay lại sơ đồ</button>
             </div>
           </div>

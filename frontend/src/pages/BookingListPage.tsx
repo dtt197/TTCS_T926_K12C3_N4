@@ -1,5 +1,5 @@
 import { canChangeBookingRoom, roomChangeOptions } from './bookingRoomChangeActions'
-import { bookingActionsFor } from './bookingActionVisibility'
+import { bookingActionsFor, isNoShowEligible } from './bookingActionVisibility'
 import './BookingListPage.css'
 import { ApiRequestError } from '../services/apiClient'
 import type {
@@ -12,6 +12,7 @@ import type {
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { BookingDetailResponse } from '../services/bookingService'
+import { getClosedBookingCheckoutDisplay } from '../services/checkoutAc3'
 import { createBookingDepositAdjustment } from '../services/bookingService'
 import { hasPermission } from '../permissions/rolePermissions'
 import {
@@ -24,6 +25,8 @@ import {
   assignBookingRoom,
   changeBookingRoom,
   getBookingRoomChangeHistory,
+  downloadBookingInvoice,
+  markBookingNoShow,
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
 import type { RoomType } from '../types/roomType'
@@ -32,6 +35,9 @@ import { BookingCheckedInCancelNotice } from '../components/BookingCheckedInCanc
 import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as runRoomReload } from './bookingRoomActions.ts'
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 import CancelBookingDialog from '../components/CancelBookingDialog'
+import { BookingSurchargeSection } from '../components/BookingSurchargeSection'
+import { BookingNoShowUndoButton } from '../components/BookingNoShowUndoButton'
+import { BookingActionLogSection } from '../components/BookingActionLogSection'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -40,6 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
   DA_NHAN_PHONG: 'Đã nhận phòng',
   DA_TRA_PHONG: 'Đã trả phòng',
   DA_HET_HAN: 'Đã hết hạn',
+  NO_SHOW: 'Không đến',
 }
 
 const STATUS_CLASS_NAMES: Record<string, string> = {
@@ -49,6 +56,7 @@ const STATUS_CLASS_NAMES: Record<string, string> = {
   DA_NHAN_PHONG: 'checked-in',
   DA_TRA_PHONG: 'checked-out',
   DA_HET_HAN: 'cancelled',
+  NO_SHOW: 'cancelled',
 }
 
 const EMPTY_FILTERS = {
@@ -80,6 +88,8 @@ export function BookingListPage({ role }: { role: string }) {
   const canAdjustDeposit = hasPermission(role, 'bookings:deposit-adjust')
   const canCancel = hasPermission(role, 'bookings:cancel')
   const canManage = hasPermission(role, 'bookings:manage')
+  const canNoShow = canManage || canCancel || role === 'RECEPTIONIST'
+  const canAddSurcharge = hasPermission(role, 'bookings:surcharge-add')
   const [bookings, setBookings] = useState<BookingListItem[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -99,6 +109,8 @@ export function BookingListPage({ role }: { role: string }) {
   const [detailData, setDetailData] = useState<BookingDetailResponse | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const [invoiceDownloading, setInvoiceDownloading] = useState(false)
+  const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [editDetailData, setEditDetailData] = useState<BookingDetailResponse | null>(null)
   const [editDetailLoading, setEditDetailLoading] = useState(false)
   const [editDetailError, setEditDetailError] = useState<string | null>(null)
@@ -122,14 +134,48 @@ export function BookingListPage({ role }: { role: string }) {
     // S3-02 Lát 3: huỷ booking
   const [cancellingBooking, setCancellingBooking] = useState<BookingListItem | null>(null)
 
+  // S4-04 (SCRUM-149): Khách không đến (No-show)
+  const [noShowBooking, setNoShowBooking] = useState<BookingListItem | null>(null)
+  const [noShowLoading, setNoShowLoading] = useState(false)
+  const [noShowError, setNoShowError] = useState<string | null>(null)
+  const [noShowSuccess, setNoShowSuccess] = useState<string | null>(null)
+
+  function startNoShow(booking: BookingListItem) {
+    setNoShowBooking(booking)
+    setNoShowError(null)
+  }
+
+  async function handleConfirmNoShow() {
+    if (!noShowBooking || noShowLoading) return
+    setNoShowLoading(true)
+    setNoShowError(null)
+    try {
+      await markBookingNoShow(noShowBooking.id)
+      setNoShowSuccess(`Đã đánh dấu khách không đến cho booking ${noShowBooking.bookingCode} và giải phóng phòng thành công.`)
+      const updatedId = noShowBooking.id
+      setNoShowBooking(null)
+      if (detailBooking && detailBooking.id === updatedId) {
+        setDetailBooking({ ...detailBooking, status: 'NO_SHOW', roomNumber: null })
+      }
+      setRefreshVersion((v) => v + 1)
+      window.dispatchEvent(new CustomEvent('homestay:booking-changed', { detail: { bookingId: updatedId } }))
+    } catch (err) {
+      setNoShowError(err instanceof Error ? err.message : 'Không thể đánh dấu khách không đến.')
+    } finally {
+      setNoShowLoading(false)
+    }
+  }
+
   const [editForm, setEditForm] = useState({
     checkInDate: '',
     checkOutDate: '',
     roomTypeId: '',
   })
-  const [preview, setPreview] = useState<BookingChangePreview | null>(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewResult, setPreviewResult] = useState<{
+    key: string
+    preview: BookingChangePreview | null
+    error: string | null
+  } | null>(null)
   const [roomBooking, setRoomBooking] = useState<BookingListItem | null>(null)
   const [assignableRooms, setAssignableRooms] = useState<AssignableRoom[]>([])
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
@@ -350,57 +396,44 @@ export function BookingListPage({ role }: { role: string }) {
     }
   }, [page, appliedFilters, refreshVersion])
 
+  const editingBookingId = editingBooking?.id
+  const hasPreviewInputs = editingBookingId !== undefined &&
+    Boolean(editForm.checkInDate && editForm.checkOutDate && editForm.roomTypeId)
+  const hasInvalidPreviewDates = hasPreviewInputs &&
+    editForm.checkInDate >= editForm.checkOutDate
+  const previewRequestKey = hasPreviewInputs && !hasInvalidPreviewDates
+    ? `${editingBookingId}|${editForm.checkInDate}|${editForm.checkOutDate}|${editForm.roomTypeId}`
+    : null
+  const matchingPreviewResult = previewRequestKey !== null && previewResult?.key === previewRequestKey
+    ? previewResult
+    : null
+  const preview = matchingPreviewResult?.preview ?? null
+  const previewError = hasInvalidPreviewDates
+    ? 'Ngày trả phòng phải sau ngày nhận phòng.'
+    : matchingPreviewResult?.error ?? null
+  const previewLoading = previewRequestKey !== null && matchingPreviewResult === null
+
   useEffect(() => {
-    if (!editingBooking) {
-      setPreview(null)
-      setPreviewError(null)
-      setPreviewLoading(false)
-      return
-    }
-
-    if (!editForm.checkInDate || !editForm.checkOutDate || !editForm.roomTypeId) {
-      setPreview(null)
-      setPreviewError(null)
-      setPreviewLoading(false)
-      return
-    }
-
-    if (editForm.checkInDate >= editForm.checkOutDate) {
-      setPreview(null)
-      setPreviewError('Ngày trả phòng phải sau ngày nhận phòng.')
-      setPreviewLoading(false)
-      return
-    }
-
+    if (previewRequestKey === null || editingBookingId === undefined) return
     let cancelled = false
-    setPreviewLoading(true)
-    setPreviewError(null)
-
     const timer = setTimeout(() => {
-      previewBookingChange(editingBooking.id, {
+      previewBookingChange(editingBookingId, {
         checkInDate: editForm.checkInDate,
         checkOutDate: editForm.checkOutDate,
         roomTypeId: Number(editForm.roomTypeId),
       })
         .then((result) => {
-          if (!cancelled) {
-            setPreview(result)
-            setPreviewError(null)
-          }
+          if (!cancelled) setPreviewResult({ key: previewRequestKey, preview: result, error: null })
         })
         .catch((err: unknown) => {
           if (!cancelled) {
-            setPreview(null)
-            setPreviewError(
-              err instanceof Error
+            setPreviewResult({
+              key: previewRequestKey,
+              preview: null,
+              error: err instanceof Error
                 ? err.message
                 : 'Không thể tính toán giá phòng và kiểm tra phòng trống.',
-            )
-          }
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setPreviewLoading(false)
+            })
           }
         })
     }, 250)
@@ -410,10 +443,11 @@ export function BookingListPage({ role }: { role: string }) {
       clearTimeout(timer)
     }
   }, [
-    editingBooking?.id,
+    editingBookingId,
     editForm.checkInDate,
     editForm.checkOutDate,
     editForm.roomTypeId,
+    previewRequestKey,
   ])
 
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
@@ -527,6 +561,11 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     }
   }
 
+  function updateEditForm(update: (current: typeof editForm) => typeof editForm) {
+    setEditForm(update)
+    setPreviewResult(null)
+  }
+
   function startEditing(booking: BookingListItem) {
     setEditingBooking(booking)
     setEditForm({
@@ -534,9 +573,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
       checkOutDate: booking.checkOutDate,
       roomTypeId: booking.roomTypeId === null ? '' : String(booking.roomTypeId),
     })
-    setPreview(null)
-    setPreviewError(null)
-    setPreviewLoading(false)
+    setPreviewResult(null)
     setEditError(null)
     setEditSuccess(null)
     setEditDetailData(null)
@@ -629,6 +666,32 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     }
   }
 
+  const closedCheckoutDisplay = detailData
+    ? getClosedBookingCheckoutDisplay(detailData.status, detailData.checkedOutAt, detailData.earlyCheckoutReason)
+    : null
+
+  async function handleDownloadInvoice() {
+    if (!detailBooking || invoiceDownloading) return
+    setInvoiceDownloading(true)
+    setInvoiceError(null)
+    try {
+      await downloadBookingInvoice(detailBooking.id, detailBooking.bookingCode)
+    } catch (err) {
+      const message = err instanceof ApiRequestError
+        ? err.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err.status === 403 ? 'Bạn không có quyền xuất hóa đơn cho booking này.'
+          : err.message
+        : err instanceof Error && err.name === 'AuthSessionExpiredError'
+          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err instanceof Error ? err.message : 'Không thể tạo hoặc tải hóa đơn PDF. Vui lòng thử lại.'
+      setInvoiceError(message || 'Không thể tạo hóa đơn PDF. Vui lòng thử lại.')
+    } finally {
+      setInvoiceDownloading(false)
+    }
+  }
+
+  const canExportInvoice = (role === 'RECEPTIONIST' || role === 'OWNER') && detailData?.status === 'DA_TRA_PHONG'
+
   return (
     <section className="panel booking-page">
       <div className="panel-heading">
@@ -672,6 +735,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
             <option value="DA_NHAN_PHONG">Đã nhận phòng</option>
             <option value="DA_TRA_PHONG">Đã trả phòng</option>
             <option value="DA_HET_HAN">Đã hết hạn</option>
+            <option value="NO_SHOW">Không đến</option>
           </select>
         </label>
 
@@ -776,6 +840,15 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                           Quá hạn giữ chỗ 24 giờ
                         </span>
                       )}
+                      {booking.status === 'NO_SHOW' && canNoShow && (
+                        <div style={{ marginTop: '4px' }}>
+                          <BookingNoShowUndoButton
+                            bookingId={booking.id}
+                            variant="inline"
+                            onSuccess={() => setRefreshVersion((v) => v + 1)}
+                          />
+                        </div>
+                      )}
                     </td>
                     <td className="booking-actions-cell">
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
@@ -785,7 +858,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                       {(() => {
                         const actions = bookingActionsFor(
                           booking,
-                          { manage: canManage, cancel: canCancel },
+                          { manage: canManage, cancel: canCancel, noShow: canNoShow },
                           canChangeBookingRoom(role, booking, new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' })),
                         )
                         const hasActions = actions.length > 0
@@ -832,6 +905,34 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                               {actions.includes('change-room') && <button type="button" role="menuitem" onClick={() => closeActionMenuAndRun(() => void openRoomChange(booking))}><span aria-hidden="true">⇄</span>Đổi phòng</button>}
                               {actions.includes('edit') && <button type="button" role="menuitem" id={`booking-edit-btn-${booking.id}`} onClick={() => closeActionMenuAndRun(() => startEditing(booking))}><span aria-hidden="true">✎</span>Cập nhật</button>}
                               {actions.includes('cancel') && <button type="button" role="menuitem" className="booking-actions-menu-danger" onClick={() => closeActionMenuAndRun(() => startCancelling(booking))}><span aria-hidden="true">×</span>Huỷ booking</button>}
+                              {actions.includes('no-show') && (() => {
+                                const eligibility = isNoShowEligible(booking)
+                                return (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    id={`booking-no-show-btn-${booking.id}`}
+                                    className={`booking-actions-menu-warning ${eligibility.eligible ? 'is-active' : ''}`}
+                                    disabled={!eligibility.eligible}
+                                    title={eligibility.reason || 'Đánh dấu khách không đến'}
+                                    onClick={() => closeActionMenuAndRun(() => startNoShow(booking))}
+                                  >
+                                    <span aria-hidden="true">⏱</span>Khách không đến
+                                  </button>
+                                )
+                              })()}
+                              {actions.includes('undo-no-show') && (
+                                <div style={{ padding: '4px 8px' }}>
+                                  <BookingNoShowUndoButton
+                                    bookingId={booking.id}
+                                    variant="inline"
+                                    onSuccess={() => {
+                                      closeActionMenuAndRun(() => {})
+                                      setRefreshVersion((v) => v + 1)
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </div>, document.body,
                           )}
                         </>
@@ -891,6 +992,10 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                       <div><dt>Phòng</dt><dd>{detailBooking.roomNumber ?? 'Chưa gán'}</dd></div>
                       <div><dt>Ngày nhận phòng</dt><dd>{formatDate(detailBooking.checkInDate)}</dd></div>
                       <div><dt>Ngày trả phòng</dt><dd>{formatDate(detailBooking.checkOutDate)}</dd></div>
+                      {closedCheckoutDisplay && <>
+                        <div><dt>Thời điểm checkout thực tế</dt><dd>{closedCheckoutDisplay.checkedOutAt ? new Date(closedCheckoutDisplay.checkedOutAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Không có dữ liệu'}</dd></div>
+                        {closedCheckoutDisplay.earlyCheckoutReason && <div className="booking-detail-wide"><dt>Lý do trả phòng sớm</dt><dd>{closedCheckoutDisplay.earlyCheckoutReason}</dd></div>}
+                      </>}
                       <div><dt>Hạn giữ chỗ</dt><dd>{detailData.holdExpiresAt ? new Date(detailData.holdExpiresAt).toLocaleString('vi-VN') : 'Đã gỡ / không có'}</dd></div>
                     </dl>
                   </section>
@@ -918,6 +1023,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                     </>}
                   </section>
                 </div>
+                <BookingSurchargeSection key={detailBooking.id} bookingId={detailBooking.id} canAdd={canAddSurcharge} />
                 {detailData.registeredGuests && detailData.registeredGuests.length > 0 && (
                   <section className="booking-detail-section booking-detail-full" aria-labelledby="booking-guests-title">
                     <h4 id="booking-guests-title">Khách lưu trú</h4>
@@ -997,10 +1103,123 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                   </div>
                 )) : <p className="booking-history-empty">Chưa có lịch sử đổi phòng.</p>}
                 </section>
+                <BookingActionLogSection bookingId={detailBooking.id} />
               </div>
             )}
-            <footer className="booking-detail-footer">
+            <footer className="booking-detail-footer" style={{ flexWrap: 'wrap' }}>
+              {canExportInvoice && <div className="booking-invoice-actions">
+                {invoiceError && <div className="alert" role="alert">{invoiceError}</div>}
+                <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={invoiceDownloading}>
+                  {invoiceDownloading ? 'Đang tạo hóa đơn...' : 'Xuất hóa đơn PDF'}
+                </button>
+              </div>}
+              {canNoShow && (detailBooking.status === 'CHO_XAC_NHAN' || detailBooking.status === 'DA_XAC_NHAN') && (() => {
+                const eligibility = isNoShowEligible(detailBooking)
+                return (
+                  <button
+                    type="button"
+                    id={`booking-detail-no-show-btn-${detailBooking.id}`}
+                    className={`booking-no-show-button ${eligibility.eligible ? 'is-active' : ''}`}
+                    disabled={!eligibility.eligible}
+                    title={eligibility.reason || 'Đánh dấu khách không đến'}
+                    onClick={() => startNoShow(detailBooking)}
+                    style={{
+                      backgroundColor: eligibility.eligible ? '#d97706' : '#9ca3af',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 14px',
+                      fontWeight: 500,
+                      cursor: eligibility.eligible ? 'pointer' : 'not-allowed',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span aria-hidden="true">⏱</span> Khách không đến
+                  </button>
+                )
+              })()}
+              {canNoShow && detailBooking.status === 'NO_SHOW' && (
+                <BookingNoShowUndoButton
+                  bookingId={detailBooking.id}
+                  variant="detail"
+                  onSuccess={() => {
+                    setRefreshVersion((v) => v + 1)
+                    setDetailBooking(null)
+                  }}
+                />
+              )}
               <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
+            </footer>
+          </section>
+        </div>
+      )}
+
+      {noShowSuccess && (
+        <div className="alert alert-success" role="status" style={{ margin: '16px 0', padding: '12px 16px', backgroundColor: '#ecfdf5', border: '1px solid #10b981', color: '#065f46', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{noShowSuccess}</span>
+          <button type="button" onClick={() => setNoShowSuccess(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#065f46' }}>×</button>
+        </div>
+      )}
+
+      {noShowBooking && (
+        <div className="booking-dialog-backdrop">
+          <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="booking-no-show-title">
+            <div className="booking-edit-heading">
+              <div>
+                <h3 id="booking-no-show-title">Xác nhận khách không đến (No-show)</h3>
+                <p className="booking-edit-subheading">
+                  Booking: <strong>{noShowBooking.bookingCode}</strong> — Khách: <strong>{noShowBooking.guestName}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="booking-dialog-close"
+                aria-label="Đóng"
+                disabled={noShowLoading}
+                onClick={() => setNoShowBooking(null)}
+              >×</button>
+            </div>
+
+            <div className="booking-dialog-body" style={{ padding: '16px 24px' }}>
+              <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                Bạn có chắc chắn muốn đánh dấu khách không đến cho booking này?
+              </p>
+              <div style={{ backgroundColor: '#fffbeb', borderLeft: '4px solid #f59e0b', padding: '12px', borderRadius: '4px', fontSize: '14px', color: '#92400e' }}>
+                <strong>Lưu ý:</strong>
+                <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                  <li>Trạng thái booking sẽ chuyển sang <strong>Không đến (NO_SHOW)</strong>.</li>
+                  <li>Phòng <strong>{noShowBooking.roomNumber ? `Phòng ${noShowBooking.roomNumber}` : 'đã gán'}</strong> sẽ được tự động <strong>giải phóng</strong> ngay lập tức.</li>
+                  <li>Hệ thống sẽ tăng số lần không đến (no-show count) của khách hàng và ghi nhận lịch sử thao tác lễ tân.</li>
+                </ul>
+              </div>
+              {noShowError && (
+                <div className="alert alert-error" role="alert" style={{ marginTop: '12px', color: '#dc2626' }}>
+                  {noShowError}
+                </div>
+              )}
+            </div>
+
+            <footer className="booking-edit-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '16px 24px' }}>
+              <button
+                type="button"
+                className="booking-cancel-button"
+                disabled={noShowLoading}
+                onClick={() => setNoShowBooking(null)}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                id="confirm-no-show-btn"
+                className="booking-confirm-submit"
+                disabled={noShowLoading}
+                onClick={handleConfirmNoShow}
+                style={{ backgroundColor: '#d97706', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: 600, cursor: noShowLoading ? 'not-allowed' : 'pointer' }}
+              >
+                {noShowLoading ? 'Đang xử lý…' : 'Xác nhận khách không đến'}
+              </button>
             </footer>
           </section>
         </div>
@@ -1164,9 +1383,9 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
               <section className="booking-update-section booking-update-stay" aria-labelledby="booking-stay-title">
                 <div className="booking-update-section-heading"><h4 id="booking-stay-title">Chỉnh sửa lưu trú</h4></div>
                 <div className="booking-edit-form booking-update-form">
-                  <label htmlFor="booking-edit-checkin">Ngày nhận phòng<input id="booking-edit-checkin" type="date" required min={new Date().toLocaleDateString('en-CA')} value={editForm.checkInDate} onChange={(event) => setEditForm((current) => ({ ...current, checkInDate: event.target.value }))} /></label>
-                  <label htmlFor="booking-edit-checkout">Ngày trả phòng<input id="booking-edit-checkout" type="date" required min={editForm.checkInDate || undefined} value={editForm.checkOutDate} onChange={(event) => setEditForm((current) => ({ ...current, checkOutDate: event.target.value }))} /></label>
-                  <label className="booking-update-roomtype" htmlFor="booking-edit-roomtype">Loại phòng mới<select id="booking-edit-roomtype" required value={editForm.roomTypeId} disabled={roomTypesLoading} onChange={(event) => setEditForm((current) => ({ ...current, roomTypeId: event.target.value }))}>
+                  <label htmlFor="booking-edit-checkin">Ngày nhận phòng<input id="booking-edit-checkin" type="date" required min={new Date().toLocaleDateString('en-CA')} value={editForm.checkInDate} onChange={(event) => updateEditForm((current) => ({ ...current, checkInDate: event.target.value }))} /></label>
+                  <label htmlFor="booking-edit-checkout">Ngày trả phòng<input id="booking-edit-checkout" type="date" required min={editForm.checkInDate || undefined} value={editForm.checkOutDate} onChange={(event) => updateEditForm((current) => ({ ...current, checkOutDate: event.target.value }))} /></label>
+                  <label className="booking-update-roomtype" htmlFor="booking-edit-roomtype">Loại phòng mới<select id="booking-edit-roomtype" required value={editForm.roomTypeId} disabled={roomTypesLoading} onChange={(event) => updateEditForm((current) => ({ ...current, roomTypeId: event.target.value }))}>
                     <option value="">{roomTypesLoading ? 'Đang tải loại phòng...' : 'Chọn loại phòng'}</option>
                     {roomTypes.filter((roomType) => roomType.active || String(roomType.id) === editForm.roomTypeId).map((roomType) => <option key={roomType.id} value={roomType.id}>{roomType.name}{roomType.active ? '' : ' (Ngừng bán)'}</option>)}
                   </select></label>

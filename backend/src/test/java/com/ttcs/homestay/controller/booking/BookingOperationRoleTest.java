@@ -92,7 +92,7 @@ class BookingOperationRoleTest {
     private static String walkInBody() {
         LocalDate checkIn = LocalDate.now().plusDays(1);
         return "{\"roomTypeId\":1,\"checkInDate\":\"" + checkIn + "\",\"checkOutDate\":\"" + checkIn.plusDays(1)
-                + "\",\"guestName\":\"Khách tại quầy\",\"phone\":\"0912345678\",\"guestCount\":1}";
+                + "\",\"guestName\":\"Khách tại quầy\",\"phone\":\"0912345678\",\"guestCount\":1,\"depositAmount\":0}";
     }
 
     private static List<MockHttpServletRequestBuilder> bookingOperations() {

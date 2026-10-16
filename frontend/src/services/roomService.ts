@@ -1,6 +1,7 @@
 import { getAccessToken } from './tokenStore'
 import type { Room, RoomStatus, MaintenanceDraft, RoomStatusHistory } from '../types/room'
 import type { BookingStatus } from '../types/booking'
+import type { BookingSurcharge } from '../types/bookingSurcharge'
 
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/api`
 
@@ -108,9 +109,76 @@ export function putRoomIntoMaintenance(
   })
 }
 
-export function checkOut(roomId: number) {
+export type CheckoutNight = {
+  date: string
+  label: string
+  roomPrice: number
+  surchargeAmount: number
+  total: number
+}
+
+export type CheckoutPreview = {
+  bookingId: number
+  bookingCode: string
+  roomId: number
+  roomNumber: string
+  guestName: string
+  checkInDate: string
+  checkOutDate: string
+  nightlyPrices: CheckoutNight[]
+  nightlyBreakdownReliable: boolean
+  warning: string | null
+  roomTotal: number
+  surchargeAmount: number
+  surchargeBreakdownComplete: boolean
+  extraGuestCount: number | null
+  extraPersonFeeSnapshot: number | null
+  surchargeNights: number | null
+  roomTotalExcludingSurcharge: number | null
+  surchargeBreakdownWarning: string | null
+  bookingSurcharges: BookingSurcharge[]
+  bookingSurchargeTotal: number
+  depositTotal: number
+  checkoutTimeSnapshot: string
+  serverCheckoutTime: string
+  operatingSettingsId: number
+  lateCheckoutHours: number
+  lateCheckoutFeePerHour: number | null
+  lateCheckoutFee: number
+  settlementTotalBeforeDeposit: number
+  lateCheckoutPricingBasis: 'NONE' | 'HOURLY' | 'LAST_NIGHT'
+  checkoutAllowed: boolean
+  checkoutBlockedReason: string | null
+  settlementType: 'COLLECT' | 'ZERO' | 'REFUND'
+  amount: number
+  previewToken: string
+  earlyCheckout: boolean
+  bookedNights: number
+  usedNights: number
+  unusedNights: number
+  unusedRoomValue: number | null
+  unusedRoomValueWarning: string | null
+}
+
+export function getCheckoutPreview(roomId: number) {
+  return request<CheckoutPreview>(`/rooms/${roomId}/checkout-preview`)
+}
+
+export type CheckoutPaymentRequest = {
+  previewToken: string
+  paymentMethod?: 'CASH' | 'BANK_TRANSFER'
+  paymentReference?: string
+  amountReceivedConfirmed?: boolean
+  refundCompletedConfirmed?: boolean
+  earlyCheckoutReason?: string
+}
+
+export { buildCheckoutPaymentRequest } from './checkoutAc3'
+
+export function checkOut(roomId: number, settlement: CheckoutPaymentRequest) {
   return request<Room>(`/rooms/${roomId}/check-out`, {
     method: 'POST',
+    body: JSON.stringify(settlement),
   })
 }
 

@@ -2,6 +2,9 @@ package com.ttcs.homestay.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ttcs.homestay.dto.booking.WalkInBookingRequest;
@@ -9,6 +12,7 @@ import com.ttcs.homestay.dto.booking.WalkInBookingResponse;
 import com.ttcs.homestay.dto.pricing.NightlyPrice;
 import com.ttcs.homestay.dto.pricing.PriceType;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingDeposit;
 import com.ttcs.homestay.entity.BookingSource;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.OperatingSettings;
@@ -42,6 +46,7 @@ class WalkInBookingConfirmationTest {
     @Mock private PricingService pricingService;
     @Mock private OperatingSettingsService operatingSettingsService;
     @Mock private BookingCodeGenerator bookingCodeGenerator;
+    @Mock private BookingDepositService bookingDepositService;
 
     @InjectMocks
     private GuestBookingService guestBookingService;
@@ -83,7 +88,8 @@ class WalkInBookingConfirmationTest {
     }
 
     private static WalkInBookingRequest request(String email) {
-        return new WalkInBookingRequest(1L, CHECK_IN, CHECK_OUT, "  Nguyễn Văn A  ", "0912345678", email, 2, "Khách quen");
+        return new WalkInBookingRequest(1L, CHECK_IN, CHECK_OUT, "  Nguyễn Văn A  ", "0912345678", email, 2, "Khách quen",
+                java.math.BigDecimal.ZERO, null, null);
     }
 
     @Test
@@ -141,6 +147,75 @@ class WalkInBookingConfirmationTest {
     void toInKhongCoSoDienThoaiEmailHayGhiChu() {
         assertThat(Arrays.stream(WalkInBookingResponse.class.getRecordComponents()).map(c -> c.getName()))
                 .doesNotContain("guestPhone", "phone", "guestEmail", "email", "note");
+    }
+
+    @Test
+    void cocKhong_thanhCongKhongTaoBanGhiCoc() {
+        conPhong201();
+        var response = guestBookingService.createWalkInBooking(request(null));
+        assertThat(response.depositAmount()).isEqualByComparingTo("0");
+        verify(bookingDepositService, never()).recordOriginalDeposit(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void cocHopLe_duocGhiTrongBookingVaTraVeResponse() {
+        conPhong201();
+        WalkInBookingRequest base = request(null);
+        WalkInBookingRequest withDeposit = new WalkInBookingRequest(base.roomTypeId(), base.checkInDate(), base.checkOutDate(),
+                base.guestName(), base.phone(), base.email(), base.guestCount(), base.note(),
+                java.math.BigDecimal.valueOf(300_000), "CASH", null);
+        when(bookingDepositService.recordOriginalDeposit(any(), eq(withDeposit.depositAmount()), eq("CASH"), any(),
+                eq(null), eq("receptionist@example.test"))).thenAnswer(invocation -> {
+                    BookingDeposit deposit = new BookingDeposit();
+                    deposit.setAmount(withDeposit.depositAmount());
+                    return deposit;
+                });
+        var response = guestBookingService.createWalkInBooking(withDeposit, "receptionist@example.test");
+        assertThat(response.depositAmount()).isEqualByComparingTo("300000");
+        verify(bookingDepositService).recordOriginalDeposit(any(), eq(withDeposit.depositAmount()), eq("CASH"), any(),
+                eq(null), eq("receptionist@example.test"));
+    }
+
+    @Test
+    void cocVuotTongBiBookingDepositServiceTuChoi() {
+        conPhong201();
+        WalkInBookingRequest base = request(null);
+        WalkInBookingRequest tooMuch = new WalkInBookingRequest(base.roomTypeId(), base.checkInDate(), base.checkOutDate(),
+                base.guestName(), base.phone(), base.email(), base.guestCount(), base.note(),
+                java.math.BigDecimal.valueOf(2_000_000), "CASH", null);
+        when(bookingDepositService.recordOriginalDeposit(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new com.ttcs.homestay.exception.InvalidDepositException("deposit exceeds total"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                guestBookingService.createWalkInBooking(tooMuch, "receptionist@example.test"))
+                .isInstanceOf(com.ttcs.homestay.exception.InvalidDepositException.class);
+    }
+
+    @Test
+    void chuyenKhoanThieuMaBiBookingDepositServiceTuChoi() {
+        conPhong201();
+        WalkInBookingRequest base = request(null);
+        WalkInBookingRequest noReference = new WalkInBookingRequest(base.roomTypeId(), base.checkInDate(), base.checkOutDate(),
+                base.guestName(), base.phone(), base.email(), base.guestCount(), base.note(),
+                java.math.BigDecimal.valueOf(100_000), "BANK_TRANSFER", null);
+        when(bookingDepositService.recordOriginalDeposit(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new com.ttcs.homestay.exception.InvalidDepositException("reference required"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                guestBookingService.createWalkInBooking(noReference, "receptionist@example.test"))
+                .isInstanceOf(com.ttcs.homestay.exception.InvalidDepositException.class);
+    }
+
+    @Test
+    void loiLuuCocPhatSinhExceptionDeTransactionCallerRollbackBooking() {
+        conPhong201();
+        WalkInBookingRequest base = request(null);
+        WalkInBookingRequest withDeposit = new WalkInBookingRequest(base.roomTypeId(), base.checkInDate(), base.checkOutDate(),
+                base.guestName(), base.phone(), base.email(), base.guestCount(), base.note(),
+                java.math.BigDecimal.valueOf(100_000), "CASH", null);
+        when(bookingDepositService.recordOriginalDeposit(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("deposit save failed"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                guestBookingService.createWalkInBooking(withDeposit, "receptionist@example.test"))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 
     @Test

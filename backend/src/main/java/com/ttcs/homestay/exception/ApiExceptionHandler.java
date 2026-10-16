@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice(assignableTypes = RoomController.class)
 public class ApiExceptionHandler {
@@ -18,6 +19,12 @@ public class ApiExceptionHandler {
     @ExceptionHandler(RoomStatusConflictException.class)
     public ResponseEntity<ApiError> handleConflict(RoomStatusConflictException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(exception.getMessage()));
+    }
+
+    /** Trả kèm lý do tiếng Việt cho lỗi nghiệp vụ trả phòng (S4-01, S4-02) để giao diện hiển thị đúng. */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException exception) {
+        return ResponseEntity.status(exception.getStatusCode()).body(ApiError.of(exception.getReason()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

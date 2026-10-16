@@ -8,6 +8,9 @@ import type {
   AssignableRoom,
   BookingRoomChangeHistory,
   CheckInOption,
+  CustomerNoShowResponse,
+  NoShowUndoEligibility,
+  AppointmentActionLog,
 } from '../types/booking'
 
 export type BookingPage = PageResponse<BookingListItem>
@@ -139,6 +142,8 @@ export type BookingDetailResponse = {
   bookingCode: string
   status: string
   holdExpiresAt: string | null
+  checkedOutAt?: string | null
+  earlyCheckoutReason?: string | null
   registeredGuests?: { fullName: string; primary: boolean }[]
   deposit: BookingDepositResponse | null
   history?: BookingAuditLog[]
@@ -168,6 +173,30 @@ export type BookingDepositAdjustmentResult = BookingDepositAdjustment & {
 
 export function getBookingDetails(id: number): Promise<BookingDetailResponse> {
   return apiRequest<BookingDetailResponse>(`/api/bookings/${id}/details`)
+}
+
+function invoiceFilenameFromDisposition(disposition: string | null, bookingCode: string): string {
+  const encodedName = disposition?.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)?.[1]
+  const plainName = disposition?.match(/filename\s*=\s*"?([^";]+)"?/i)?.[1]
+  const headerName = encodedName ? decodeURIComponent(encodedName.trim()) : plainName?.trim()
+  return headerName || `invoice_${bookingCode}.pdf`
+}
+
+export async function downloadBookingInvoice(id: number, bookingCode: string): Promise<void> {
+  const response = await apiRequest<{ blob: Blob; headers: Headers }>(`/api/bookings/${id}/invoice.pdf`, {
+    responseType: 'blob',
+  })
+  const blob = response.blob.type === 'application/pdf' ? response.blob : new Blob([response.blob], { type: 'application/pdf' })
+  const filename = invoiceFilenameFromDisposition(response.headers.get('Content-Disposition'), bookingCode)
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
 }
 
 /** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
@@ -244,3 +273,51 @@ export function getBookingCancellationInfo(
     `/api/bookings/${id}/cancellation-info`,
   )
 }
+
+export type NoShowEligibility = {
+  bookingId: number
+  bookingCode: string
+  eligible: boolean
+  reason: string
+  scheduledCheckIn: string
+  eligibleAfter: string
+  evaluatedAt: string
+  status: string
+  checkedIn: boolean
+}
+
+export function checkBookingNoShowEligibility(id: number): Promise<NoShowEligibility> {
+  return apiRequest<NoShowEligibility>(`/api/bookings/${id}/no-show/eligibility`)
+}
+
+export function markBookingNoShow(id: number): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/no-show`, {
+    method: 'POST',
+  })
+}
+
+/** S4-04 (SCRUM-150): Tra cứu lịch sử khách bỏ hẹn theo số điện thoại */
+export function getCustomerNoShowHistory(phone: string): Promise<CustomerNoShowResponse> {
+  return apiRequest<CustomerNoShowResponse>(
+    `/api/customers/no-show-history?phone=${encodeURIComponent(phone.trim())}`,
+  )
+}
+
+/** S4-04 (SCRUM-151): Kiểm tra điều kiện hoàn tác thao tác không đến (15 phút) */
+export function checkNoShowUndoEligibility(id: number): Promise<NoShowUndoEligibility> {
+  return apiRequest<NoShowUndoEligibility>(`/api/bookings/${id}/no-show/undo-eligibility`)
+}
+
+/** S4-04 (SCRUM-151): Hoàn tác thao tác đánh dấu không đến */
+export function undoBookingNoShow(id: number): Promise<BookingListItem> {
+  return apiRequest<BookingListItem>(`/api/bookings/${id}/no-show/undo`, {
+    method: 'POST',
+  })
+}
+
+/** S4-04 (SCRUM-151): Xem lịch sử nhật ký thao tác lễ tân */
+export function getAppointmentActionLogs(id: number): Promise<AppointmentActionLog[]> {
+  return apiRequest<AppointmentActionLog[]>(`/api/bookings/${id}/action-logs`)
+}
+
+

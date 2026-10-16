@@ -53,6 +53,8 @@ export function WalkInBookingReceipt({ booking, onCreateAnother }: Props) {
           <dd>{formatDate(booking.checkOutDate)} ({booking.nights} đêm)</dd>
           <dt>Số khách</dt>
           <dd>{booking.guestCount}</dd>
+          <dt>Tiền cọc đã thu</dt>
+          <dd>{new Intl.NumberFormat('vi-VN').format(booking.depositAmount)} đ</dd>
           <dt>Trạng thái</dt>
           <dd>{booking.statusLabel}</dd>
           <dt>Nguồn booking</dt>

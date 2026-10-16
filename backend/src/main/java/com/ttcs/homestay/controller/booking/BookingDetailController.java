@@ -74,6 +74,18 @@ public class BookingDetailController {
         result.put("currentDepositTotal", deposits.isEmpty()
                 ? null
                 : adjustmentService.calculateCurrentDepositTotal(id));
+        result.put("checkedOutAt", null);
+        result.put("earlyCheckoutReason", null);
+        List<Map<String, Object>> settlements = jdbcTemplate.query(
+                "SELECT checked_out_at, early_checkout_reason FROM booking_settlements WHERE booking_id = ?",
+                (rs, rowNum) -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("checkedOutAt", rs.getObject("checked_out_at", java.time.OffsetDateTime.class));
+                    row.put("earlyCheckoutReason", rs.getString("early_checkout_reason"));
+                    return row;
+                }, id);
+        result.put("checkedOutAt", settlements.isEmpty() ? null : settlements.get(0).get("checkedOutAt"));
+        result.put("earlyCheckoutReason", settlements.isEmpty() ? null : settlements.get(0).get("earlyCheckoutReason"));
         return result;
     }
 

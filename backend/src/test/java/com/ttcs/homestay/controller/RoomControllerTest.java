@@ -317,7 +317,7 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
         assertThat(hkBefore).hasSize(1);
 
         // Buồng phòng gửi báo sự cố kèm ghi chú
-        IncidentReportRequest req = new IncidentReportRequest("Hỏng bình nóng lạnh");
+        IncidentReportRequest req = new IncidentReportRequest("NHE", "Hỏng bình nóng lạnh");
         RoomResponse maintenance101 = new RoomResponse(
                 1L, "101", 1, "Phòng đôi", RoomStatus.BAO_TRI, true,
                 "Hỏng bình nóng lạnh", LocalDate.of(2026, 10, 8), null, false, null
@@ -370,7 +370,7 @@ void housekeepingCanOnlyMarkDirtyRoomAsClean() {
                 "RECEPTIONIST"
         );
 
-        IncidentReportRequest req = new IncidentReportRequest("Hỏng cửa sổ");
+        IncidentReportRequest req = null;
         assertThatThrownBy(() -> controller.reportIncident(1L, req, recepAuth, httpRequest))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
