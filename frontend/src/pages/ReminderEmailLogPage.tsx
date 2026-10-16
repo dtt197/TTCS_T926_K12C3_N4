@@ -7,6 +7,7 @@ import {
   type ReminderRunResult,
   type BookingReminderPage,
 } from '../services/emailLogService'
+import { ReminderRunHistory } from '../components/ReminderRunHistory'
 import './AuditLogPage.css'
 
 function todayInVietnam() {
@@ -114,6 +115,7 @@ export function ReminderEmailLogPage() {
 
   return (
     <main className="audit-page">
+    <ReminderRunHistory refreshKey={refreshKey} />
       <section className="audit-panel">
         <div className="audit-section-heading">
           <div>

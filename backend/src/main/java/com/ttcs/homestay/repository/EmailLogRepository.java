@@ -32,4 +32,10 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
             Long bookingId,
             EmailType emailType,
             EmailStatus status);
+        org.springframework.data.domain.Page<EmailLog>
+            findByReminderRunIdAndEmailTypeAndStatusOrderBySentAtDescIdDesc(
+                    Long reminderRunId,
+                    EmailType emailType,
+                    EmailStatus status,
+                    org.springframework.data.domain.Pageable pageable);
 }

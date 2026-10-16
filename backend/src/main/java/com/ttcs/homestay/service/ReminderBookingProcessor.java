@@ -34,31 +34,35 @@ public class ReminderBookingProcessor {
     private final BookingRepository bookingRepository;
     private final EmailLogRepository emailLogRepository;
     private final MailService mailService;
+    private final ReminderRunService reminderRunService;
 
-    public ReminderBookingProcessor(
+        public ReminderBookingProcessor(
             BookingRepository bookingRepository,
             EmailLogRepository emailLogRepository,
-            MailService mailService) {
+            MailService mailService,
+            ReminderRunService reminderRunService) {
         this.bookingRepository = bookingRepository;
         this.emailLogRepository = emailLogRepository;
         this.mailService = mailService;
+        this.reminderRunService = reminderRunService;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Outcome process(Long bookingId, LocalDate expectedCheckInDate) {
+    public Outcome process(
+        Long bookingId, LocalDate expectedCheckInDate, Long runId) {
         // Mỗi booking được xử lý trong transaction riêng.
         // Lượt chạy khác phải chờ transaction này kết thúc.
         Booking booking = bookingRepository.findByIdForUpdate(bookingId)
                 .orElse(null);
 
         if (booking == null) {
-            return Outcome.SKIPPED;
+            return recordOutcome(runId, Outcome.SKIPPED);
         }
 
         // Đọc lại trạng thái và ngày sau khi lấy khoá.
         if (booking.getStatus() != BookingStatus.DA_XAC_NHAN
                 || !expectedCheckInDate.equals(booking.getCheckInDate())) {
-            return Outcome.SKIPPED;
+            return recordOutcome(runId, Outcome.SKIPPED);
         }
 
                 // Đã gửi thành công thì không gửi lại.
@@ -67,7 +71,7 @@ public class ReminderBookingProcessor {
                         bookingId, EmailType.REMINDER, EmailStatus.SENT);
 
         if (alreadySent) {
-            return Outcome.SKIPPED;
+            return recordOutcome(runId, Outcome.SKIPPED);
         }
 
         // Giả định nghiệp vụ: tối đa 3 lần gửi tổng cộng mỗi booking.
@@ -76,17 +80,18 @@ public class ReminderBookingProcessor {
                         bookingId, EmailType.REMINDER, EmailStatus.FAILED);
 
         if (failedAttempts >= 3) {
-            return Outcome.SKIPPED;
+           return recordOutcome(runId, Outcome.SKIPPED);
         }
 
         String email = booking.getGuestEmail();
         if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
             writeLog(
+                    runId,
                     booking,
                     email,
                     EmailStatus.FAILED,
                     "Email khách trống hoặc không hợp lệ");
-            return Outcome.FAILED;
+            return recordOutcome(runId, Outcome.FAILED);
         }
 
         // Chỉ bắt lỗi phát sinh từ việc gửi email.
@@ -102,22 +107,24 @@ public class ReminderBookingProcessor {
                     booking.getBookingCode(),
                     message);
 
-            writeLog(booking, email, EmailStatus.FAILED, message);
-            return Outcome.FAILED;
+            writeLog(runId,booking, email, EmailStatus.FAILED, message);
+            return recordOutcome(runId, Outcome.FAILED);
         }
 
         // Nếu lưu kết quả thành công bị lỗi, để lỗi truyền ra ngoài.
         // Không ghi nhầm lỗi database thành lỗi gửi email.
-        writeLog(booking, email, EmailStatus.SENT, null);
-        return Outcome.SENT;
+        writeLog(runId,booking, email, EmailStatus.SENT, null);
+       return recordOutcome(runId, Outcome.SENT);
     }
 
     private void writeLog(
+            Long runId,
             Booking booking,
             String email,
             EmailStatus status,
             String error) {
         EmailLog entry = new EmailLog();
+        entry.setReminderRunId(runId);
         entry.setBookingId(booking.getId());
         entry.setEmailType(EmailType.REMINDER);
         entry.setRecipientEmail(email);
@@ -127,5 +134,9 @@ public class ReminderBookingProcessor {
         entry.setSentAt(OffsetDateTime.now());
 
         emailLogRepository.saveAndFlush(entry);
+    }
+    private Outcome recordOutcome(Long runId, Outcome outcome) {
+        reminderRunService.recordOutcome(runId, outcome);
+        return outcome;
     }
 }

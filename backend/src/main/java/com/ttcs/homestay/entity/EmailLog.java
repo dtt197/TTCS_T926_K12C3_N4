@@ -26,6 +26,8 @@ public class EmailLog {
 
     @Column(name = "booking_id", nullable = false)
     private Long bookingId;
+    @Column(name = "reminder_run_id")
+    private Long reminderRunId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "email_type", nullable = false, length = 30)
