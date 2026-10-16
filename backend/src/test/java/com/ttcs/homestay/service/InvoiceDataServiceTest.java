@@ -209,7 +209,7 @@ class InvoiceDataServiceTest {
         assertThat(data.homestay().address()).isEqualTo("123 Đường A");
         assertThat(data.companyName()).isNull();
         assertThat(data.companyTaxCode()).isNull();
-        assertThat(data.lineItems()).extracting(InvoiceData.LineItem::code).containsExactly(
+        assertThat(data.lineItems()).extracting(lineItem -> lineItem.code()).containsExactly(
                 "ROOM", "EXTRA_PERSON", "EXTRA_BED", "LATE_CHECKOUT",
                 "TOTAL_BEFORE_DEPOSIT", "DEPOSIT", "BALANCE");
         assertThat(data.lineItems().get(1).amount()).isEqualByComparingTo("200000");

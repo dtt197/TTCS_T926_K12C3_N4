@@ -168,8 +168,8 @@ public class BookingSurchargeService {
             calculated = Math.multiplyExact(Math.multiplyExact((long) booking.getExtraGuestCount(),
                     booking.getExtraPersonFeeSnapshot()), nights);
             List<com.ttcs.homestay.entity.BookingNightlyPriceSnapshot> ordered = snapshots.stream()
-                    .sorted(java.util.Comparator.comparing(
-                            com.ttcs.homestay.entity.BookingNightlyPriceSnapshot::getNightDate)).toList();
+                    .sorted(java.util.Comparator.comparing(snapshot -> snapshot.getNightDate()))
+                    .toList();
             for (int i = 0; i < ordered.size(); i++) {
                 if (!booking.getCheckInDate().plusDays(i).equals(ordered.get(i).getNightDate())) {
                     return new AutomaticSurchargeSnapshot(false, "Snapshot giá theo đêm không khớp thời gian booking.");

@@ -1,6 +1,5 @@
 package com.ttcs.homestay.service;
 
-import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.repository.BookingRepository;
 import java.time.LocalDate;
@@ -67,7 +66,7 @@ public class ReminderEmailService {
                     .findByStatusAndCheckInDate(
                             BookingStatus.DA_XAC_NHAN, checkInDate)
                     .stream()
-                    .map(Booking::getId)
+                    .map(booking -> booking.getId())
                     .toList();
 
             reminderRunService.setSelectedCount(runId, bookingIds.size());

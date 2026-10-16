@@ -155,7 +155,7 @@ public class CheckoutService {
                 .toList();
         BigDecimal bookingSurchargeTotal = bookingSurcharges.stream()
                 .map(line -> BigDecimal.valueOf(line.amount()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            .reduce(BigDecimal.ZERO, (total, amount) -> total.add(amount));
         long storedTotal = 0;
         for (BookingNightlyPriceSnapshot line : stored) {
             storedTotal = Math.addExact(storedTotal, Math.addExact(line.getRoomPrice(), line.getSurchargeAmount()));
@@ -196,7 +196,7 @@ public class CheckoutService {
             if (reliable) {
                 LocalDate lastNightDate = booking.getCheckOutDate().minusDays(1);
                 lateFee = orderedStored.stream().filter(line -> lastNightDate.equals(line.getNightDate()))
-                        .mapToLong(BookingNightlyPriceSnapshot::getRoomPrice).findFirst().orElse(-1L);
+                    .mapToLong(line -> line.getRoomPrice()).findFirst().orElse(-1L);
                 if (lateFee < 0) blockedReason = "Thiếu snapshot giá phòng đêm cuối đáng tin cậy; không thể xác nhận checkout.";
             } else blockedReason = "Thiếu snapshot giá phòng đêm cuối đáng tin cậy; không thể xác nhận checkout.";
         }
@@ -223,7 +223,7 @@ public class CheckoutService {
             LocalDate firstUnusedNight = booking.getCheckInDate().plusDays(usedNights);
             long unusedRoomTotal = orderedStored.stream()
                     .filter(line -> !line.getNightDate().isBefore(firstUnusedNight))
-                    .mapToLong(BookingNightlyPriceSnapshot::getRoomPrice)
+                    .mapToLong(line -> line.getRoomPrice())
                     .reduce(0L, Math::addExact);
             unusedRoomValue = BigDecimal.valueOf(unusedRoomTotal);
         } else if (earlyCheckout) {

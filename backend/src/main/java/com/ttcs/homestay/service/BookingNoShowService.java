@@ -10,7 +10,6 @@ import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.Customer;
 import com.ttcs.homestay.entity.OperatingSettings;
-import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.repository.AppointmentActionLogRepository;
 import com.ttcs.homestay.repository.BookingRepository;
 import com.ttcs.homestay.repository.CustomerRepository;
@@ -484,7 +483,7 @@ public class BookingNoShowService {
     private Long resolveCurrentUserId() {
         String email = resolveCurrentUserEmail();
         if (email == null) return null;
-        return userRepository.findByEmail(email).map(User::getId).orElse(null);
+        return userRepository.findByEmail(email).map(user -> user.getId()).orElse(null);
     }
 
     private String resolveCurrentUserEmail() {

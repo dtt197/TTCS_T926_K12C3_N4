@@ -95,7 +95,7 @@ public class InvoiceDataService {
         }
         List<BookingSurcharge> surcharges = surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(bookingId);
         BigDecimal rowsTotal = surcharges.stream().map(line -> BigDecimal.valueOf(line.getAmount()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, (total, amount) -> total.add(amount));
         if (rowsTotal.compareTo(surchargeTotal) != 0) {
             throw error(HttpStatus.CONFLICT,
                     "Chi tiết phụ thu booking không khớp additionalSurchargeTotal trong settlement; "
@@ -153,7 +153,7 @@ public class InvoiceDataService {
         long snapshotSurcharge = 0;
         long roomBase = 0;
         List<BookingNightlyPriceSnapshot> ordered = snapshots.stream()
-                .sorted(java.util.Comparator.comparing(BookingNightlyPriceSnapshot::getNightDate)).toList();
+                .sorted((left, right) -> left.getNightDate().compareTo(right.getNightDate())).toList();
         try {
             if (booking.getExtraGuestCount() < 0 || booking.getExtraPersonFeeSnapshot() < 0
                     || booking.getSurchargeAmount() < 0) throw new ArithmeticException("negative snapshot");
@@ -188,7 +188,7 @@ public class InvoiceDataService {
         List<BookingSurcharge> matching = surcharges.stream()
                 .filter(line -> line.getSurchargeType() == SurchargeType.THEM_NGUOI).toList();
         BigDecimal manualAmount = matching.stream().map(line -> BigDecimal.valueOf(line.getAmount()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, (total, amount) -> total.add(amount));
         String automaticDetails = automatic.amount().signum() == 0 ? "Phụ thu tự động đã chốt: 0"
                 : "Phụ thu tự động đã chốt: " + automatic.extraGuestCount() + " khách × "
                         + automatic.unitPrice() + " đ/khách/đêm × " + automatic.nights() + " đêm = "
@@ -208,7 +208,7 @@ public class InvoiceDataService {
         List<BookingSurcharge> matching = surcharges.stream()
                 .filter(line -> line.getSurchargeType() == type).toList();
         BigDecimal amount = matching.stream().map(line -> BigDecimal.valueOf(line.getAmount()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, (total, value) -> total.add(value));
         String details = java.util.stream.IntStream.range(0, matching.size())
                 .mapToObj(index -> surchargeDescription(index + 1, matching.get(index)))
                 .collect(java.util.stream.Collectors.joining("; "));

@@ -5,7 +5,6 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 
-import com.ttcs.homestay.dto.InvoiceData;
 import com.ttcs.homestay.entity.BookingSettlement;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
