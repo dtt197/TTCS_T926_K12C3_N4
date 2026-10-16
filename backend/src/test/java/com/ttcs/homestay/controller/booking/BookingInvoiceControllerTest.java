@@ -256,6 +256,24 @@ class BookingInvoiceControllerTest {
     }
 
     @Test
+    void allowsZeroSettlementInvoiceThroughEndpoint() throws Exception {
+        InvoiceData data = invoice("BK-44");
+        data = new InvoiceData(data.bookingId(), data.bookingCode(), data.guestName(), data.guestPhone(),
+                data.companyName(), data.companyTaxCode(), data.homestay(), data.room(), data.checkInDate(),
+                data.checkOutDate(), data.nights(), data.lineItems(), data.finalTotal(), data.depositTotal(),
+                BookingSettlement.SettlementType.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, false);
+        when(securedDataService.getInvoiceData(44L)).thenReturn(data);
+        when(securedPdfService.generate(data)).thenReturn(new byte[] { 1, 2, 3 });
+
+        securedMockMvc.perform(securedRequest("receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                        .contentType(org.springframework.http.MediaType.APPLICATION_PDF));
+
+        verify(securedPdfService).generate(data);
+    }
+
+    @Test
     void onlyReceptionistAndOwnerHaveCatalogAccess() {
         ApiSecurityPolicyCatalog catalog = new ApiSecurityPolicyCatalog();
         assertThat(catalog.findPolicy("GET", "/api/bookings/44/invoice.pdf").roles())

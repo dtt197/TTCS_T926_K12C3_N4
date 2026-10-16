@@ -343,6 +343,7 @@ class InvoiceDataServiceTest {
     @Test
     void rejectsCheckedOutBookingWithoutConfirmedSettlementBeforeLoadingInvoiceDetails() {
         when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+        settlement.setSettlementType(BookingSettlement.SettlementType.COLLECT);
         for (String transactionStatus : List.of("NOT_APPLICABLE", "FAILED", "CANCELLED")) {
             settlement.setTransactionStatus(transactionStatus);
             when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
@@ -362,6 +363,45 @@ class InvoiceDataServiceTest {
 
         verify(settingsRepository, never()).findById(7L);
         verify(surchargeRepository, never()).findByBookingIdOrderByCreatedAtAscIdAsc(44L);
+    }
+
+    @Test
+    void allowsZeroSettlementWithNotApplicableTransactionStatus() {
+        settlement.setSettlementType(BookingSettlement.SettlementType.ZERO);
+        settlement.setDepositTotal(BigDecimal.valueOf(1_300_000));
+        settlement.setAmount(BigDecimal.ZERO);
+        settlement.setTransactionStatus("NOT_APPLICABLE");
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
+        when(settingsRepository.findById(7L)).thenReturn(Optional.of(settingsWithAddress()));
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of(
+                surcharge(SurchargeType.THEM_NGUOI, 100_000), surcharge(SurchargeType.THEM_GIUONG, 100_000)));
+
+        InvoiceData data = service.getInvoiceData(44L);
+
+        assertThat(data.bookingId()).isEqualTo(44L);
+        assertThat(data.settlementType()).isEqualTo(BookingSettlement.SettlementType.ZERO);
+    }
+
+    @Test
+    void rejectsInvalidSettlementTypeAndTransactionStatusPairs() {
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
+        for (BookingSettlement.SettlementType type : List.of(
+                BookingSettlement.SettlementType.COLLECT, BookingSettlement.SettlementType.REFUND)) {
+            settlement.setSettlementType(type);
+            settlement.setTransactionStatus("NOT_APPLICABLE");
+            assertThatThrownBy(() -> service.getInvoiceData(44L))
+                    .as("%s must not use NOT_APPLICABLE", type)
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("chưa xác nhận hoàn tất thu/hoàn tiền");
+        }
+        settlement.setSettlementType(BookingSettlement.SettlementType.ZERO);
+        settlement.setTransactionStatus("CONFIRMED");
+        assertThatThrownBy(() -> service.getInvoiceData(44L))
+                .as("ZERO must not use CONFIRMED")
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("chưa xác nhận hoàn tất thu/hoàn tiền");
     }
 
     @Test

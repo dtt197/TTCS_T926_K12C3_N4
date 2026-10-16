@@ -693,8 +693,13 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
 
   const canSeeInvoiceAction = role === 'RECEPTIONIST' || role === 'OWNER'
   const invoiceStatus = detailData?.status ?? detailBooking?.status
+  const invoiceSettlementType = detailData?.settlementType
+  const invoiceTransactionStatus = detailData?.settlementTransactionStatus
+  const invoiceSettlementValid = (invoiceSettlementType === 'COLLECT' || invoiceSettlementType === 'REFUND')
+    ? invoiceTransactionStatus === 'CONFIRMED'
+    : invoiceSettlementType === 'ZERO' && invoiceTransactionStatus === 'NOT_APPLICABLE'
   const invoiceDisabledReason = invoiceStatus === 'DA_TRA_PHONG'
-    ? detailData?.settlementTransactionStatus === 'CONFIRMED'
+    ? invoiceSettlementValid
       ? null
       : 'Chưa xác nhận hoàn tất thu/hoàn tiền nên chưa thể xuất hóa đơn lưu trú.'
     : invoiceStatus === 'DA_NHAN_PHONG'
@@ -711,7 +716,7 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                 ? 'Khách không đến nên không thể xuất hoá đơn lưu trú.'
                 : 'Chưa xác định được trạng thái booking nên chưa thể xuất hóa đơn.'
   const canExportInvoice = canSeeInvoiceAction && detailData?.status === 'DA_TRA_PHONG'
-    && detailData.settlementTransactionStatus === 'CONFIRMED'
+    && invoiceSettlementValid
   const showDisabledInvoiceAction = canSeeInvoiceAction && invoiceDisabledReason !== null
 
   return (

@@ -728,6 +728,18 @@ class CheckoutServiceTest {
     }
 
     @Test
+    void collectSettlementPersistsConfirmedTransactionStatus() {
+        CheckoutPreviewResponse preview = service.preview(12L);
+        service.checkout(12L,
+                new CheckoutPaymentRequest(preview.previewToken(), "CASH", null, true, false), "Lễ tân");
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getSettlementType()).isEqualTo(BookingSettlement.SettlementType.COLLECT);
+        assertThat(captor.getValue().getTransactionStatus()).isEqualTo("CONFIRMED");
+    }
+
+    @Test
     void previewUsesCommittedNightSnapshotsAndDoesNotLookUpCurrentPrices() {
         BookingNightlyPriceSnapshot first = nightly(LocalDate.of(2026, 10, 10), 400_000, "Giá chốt đêm 1");
         BookingNightlyPriceSnapshot second = nightly(LocalDate.of(2026, 10, 11), 600_000, "Giá chốt đêm 2");
