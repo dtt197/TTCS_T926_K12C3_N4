@@ -9,13 +9,14 @@ import {
 
 test('SCRUM-140 / S4-09: Biên bản nghiệm thu có đầy đủ thông tin phiên Staging', () => {
   assert.equal(STAGING_SESSION_METADATA.documentCode, 'BB-NT-S4-09-STAGING')
-  assert.equal(STAGING_SESSION_METADATA.overallStatus, 'APPROVED')
+  assert.equal(STAGING_SESSION_METADATA.overallStatus, 'IN_REVIEW')
   assert.equal(STAGING_SESSION_METADATA.totalTests, 8)
   assert.equal(STAGING_SESSION_METADATA.passedTests, 8)
   assert.equal(STAGING_SESSION_METADATA.failedTests, 0)
   assert.ok(STAGING_SESSION_METADATA.environment.includes('Staging'))
   assert.ok(STAGING_SESSION_METADATA.environment.includes('Docker'))
-  assert.ok(STAGING_SESSION_METADATA.serverDetails.includes('MySQL 8.0'))
+  assert.ok(STAGING_SESSION_METADATA.serverDetails.includes('PostgreSQL 15'))
+  assert.ok(STAGING_SESSION_METADATA.serverDetails.includes('Spring Boot 4.1.1'))
 })
 
 test('SCRUM-140 / S4-09: Chứa đầy đủ 8 kịch bản nghiệm thu trọn luồng', () => {
@@ -61,5 +62,5 @@ test('SCRUM-140 / S4-09: Xuất báo cáo Markdown có đầy đủ bảng biể
   assert.ok(md.includes('TC-01'))
   assert.ok(md.includes('TC-08'))
   assert.ok(md.includes('PRODUCT OWNER'))
-  assert.ok(md.includes('ĐÃ PHÊ DUYỆT (APPROVED)'))
+  assert.ok(md.includes('Chờ Product Owner phê duyệt'))
 })
