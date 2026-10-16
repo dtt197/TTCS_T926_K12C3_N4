@@ -22,6 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mail.MailSendException;
+import java.util.Optional;
+import com.ttcs.homestay.entity.EmailType;
 
 class ReminderEmailServiceTest {
 
@@ -33,12 +35,18 @@ class ReminderEmailServiceTest {
     private MailService mailService;
     private ReminderEmailService service;
 
-    @BeforeEach
+        @BeforeEach
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
         emailLogRepository = mock(EmailLogRepository.class);
         mailService = mock(MailService.class);
-        service = new ReminderEmailService(bookingRepository, emailLogRepository, mailService);
+
+        ReminderBookingProcessor processor = new ReminderBookingProcessor(
+                bookingRepository,
+                emailLogRepository,
+                mailService);
+
+        service = new ReminderEmailService(bookingRepository, processor);
     }
 
     private Booking booking(long id, String email) {
@@ -51,6 +59,8 @@ class ReminderEmailServiceTest {
         b.setCheckInDate(TOMORROW);
         b.setCheckOutDate(TOMORROW.plusDays(2));
         b.setStatus(BookingStatus.DA_XAC_NHAN);
+        when(bookingRepository.findByIdForUpdate(id))
+                  .thenReturn(Optional.of(b));
         return b;
     }
 
@@ -76,7 +86,7 @@ class ReminderEmailServiceTest {
         assertEquals(0, result.failed());
         verify(mailService).sendCheckInReminder(b);
         ArgumentCaptor<EmailLog> captor = ArgumentCaptor.forClass(EmailLog.class);
-        verify(emailLogRepository).save(captor.capture());
+       verify(emailLogRepository).saveAndFlush(captor.capture());
         assertEquals(EmailStatus.SENT, captor.getValue().getStatus());
         assertEquals("khach@example.com", captor.getValue().getRecipientEmail());
     }
@@ -95,7 +105,7 @@ class ReminderEmailServiceTest {
         assertEquals(1, result.failed());
         verify(mailService, never()).sendCheckInReminder(noEmail);
         verify(mailService).sendCheckInReminder(ok);
-        verify(emailLogRepository, times(2)).save(any(EmailLog.class));
+        verify(emailLogRepository, times(2)).saveAndFlush(any(EmailLog.class));
     }
 
     @Test
@@ -124,5 +134,149 @@ class ReminderEmailServiceTest {
         assertTrue(body.contains("BK7"));
         assertTrue(body.contains("Phòng đôi"));
         assertTrue(body.contains("15/10/2026"));
+    }
+    @Test
+    void threeRunsSendOnlyOnceAfterSuccessIsRecorded() {
+        Booking b = booking(1, "khach@example.com");
+
+        when(bookingRepository.findByStatusAndCheckInDate(
+                BookingStatus.DA_XAC_NHAN, TOMORROW))
+                .thenReturn(List.of(b));
+
+        // Giả lập lần đầu chưa gửi, các lần sau đã lưu thành công.
+        when(emailLogRepository.existsByBookingIdAndEmailTypeAndStatus(
+                1L, EmailType.REMINDER, EmailStatus.SENT))
+                .thenReturn(false, true, true);
+
+        ReminderEmailService.ReminderResult first = service.sendReminders(TODAY);
+        ReminderEmailService.ReminderResult second = service.sendReminders(TODAY);
+        ReminderEmailService.ReminderResult third = service.sendReminders(TODAY);
+
+        assertEquals(1, first.sent());
+        assertEquals(0, second.sent());
+        assertEquals(0, third.sent());
+        assertEquals(0, second.failed());
+        assertEquals(0, third.failed());
+
+        verify(mailService, times(1)).sendCheckInReminder(b);
+        verify(emailLogRepository, times(1))
+                .saveAndFlush(any(EmailLog.class));
+    }
+
+    @Test
+    void failedEmailIsRetriedThenSkippedAfterSuccess() {
+        Booking b = booking(1, "khach@example.com");
+
+        when(bookingRepository.findByStatusAndCheckInDate(
+                BookingStatus.DA_XAC_NHAN, TOMORROW))
+                .thenReturn(List.of(b));
+
+        when(emailLogRepository.existsByBookingIdAndEmailTypeAndStatus(
+                1L, EmailType.REMINDER, EmailStatus.SENT))
+                .thenReturn(false, false, true);
+
+        when(emailLogRepository.countByBookingIdAndEmailTypeAndStatus(
+                1L, EmailType.REMINDER, EmailStatus.FAILED))
+                .thenReturn(0L, 1L);
+
+        doThrow(new MailSendException("smtp down"))
+                .doNothing()
+                .when(mailService).sendCheckInReminder(b);
+
+        ReminderEmailService.ReminderResult first = service.sendReminders(TODAY);
+        ReminderEmailService.ReminderResult second = service.sendReminders(TODAY);
+        ReminderEmailService.ReminderResult third = service.sendReminders(TODAY);
+
+        assertEquals(1, first.failed());
+        assertEquals(0, first.sent());
+        assertEquals(1, second.sent());
+        assertEquals(0, second.failed());
+        assertEquals(0, third.sent());
+        assertEquals(0, third.failed());
+
+        verify(mailService, times(2)).sendCheckInReminder(b);
+
+        ArgumentCaptor<EmailLog> captor =
+                ArgumentCaptor.forClass(EmailLog.class);
+        verify(emailLogRepository, times(2))
+                .saveAndFlush(captor.capture());
+
+        assertEquals(EmailStatus.FAILED,
+                captor.getAllValues().get(0).getStatus());
+        assertEquals(EmailStatus.SENT,
+                captor.getAllValues().get(1).getStatus());
+    }
+
+    @Test
+    void threeRecordedFailuresPreventAnotherAttempt() {
+        Booking b = booking(1, "khach@example.com");
+
+        when(bookingRepository.findByStatusAndCheckInDate(
+                BookingStatus.DA_XAC_NHAN, TOMORROW))
+                .thenReturn(List.of(b));
+
+        when(emailLogRepository.countByBookingIdAndEmailTypeAndStatus(
+                1L, EmailType.REMINDER, EmailStatus.FAILED))
+                .thenReturn(3L);
+
+        ReminderEmailService.ReminderResult result =
+                service.sendReminders(TODAY);
+
+        assertEquals(0, result.sent());
+        assertEquals(0, result.failed());
+        verify(mailService, never()).sendCheckInReminder(any(Booking.class));
+        verify(emailLogRepository, never())
+                .saveAndFlush(any(EmailLog.class));
+    }
+
+    @Test
+    void changedCheckInDateIsSkippedAfterReload() {
+        Booking b = booking(1, "khach@example.com");
+
+        // Booking có trong danh sách ban đầu.
+        when(bookingRepository.findByStatusAndCheckInDate(
+                BookingStatus.DA_XAC_NHAN, TOMORROW))
+                .thenReturn(List.of(b));
+
+        // Khi processor đọc lại, ngày nhận phòng đã thay đổi.
+        b.setCheckInDate(TOMORROW.plusDays(2));
+
+        ReminderEmailService.ReminderResult result =
+                service.sendReminders(TODAY);
+
+        assertEquals(0, result.sent());
+        assertEquals(0, result.failed());
+        verify(mailService, never()).sendCheckInReminder(any(Booking.class));
+        verify(emailLogRepository, never())
+                .saveAndFlush(any(EmailLog.class));
+    }
+        @Test
+    void cancelledBookingIsSkippedAfterReload() {
+        Booking selected = booking(1, "khach@example.com");
+
+        when(bookingRepository.findByStatusAndCheckInDate(
+                BookingStatus.DA_XAC_NHAN, TOMORROW))
+                .thenReturn(List.of(selected));
+
+        // Danh sách ban đầu đã chọn booking, nhưng khi lấy khoá
+        // và đọc lại thì booking đã được huỷ.
+        Booking cancelled = new Booking();
+        cancelled.setId(1L);
+        cancelled.setCheckInDate(TOMORROW);
+        cancelled.setStatus(BookingStatus.DA_HUY);
+
+        when(bookingRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(cancelled));
+
+        ReminderEmailService.ReminderResult result =
+                service.sendReminders(TODAY);
+
+        assertEquals(0, result.sent());
+        assertEquals(0, result.failed());
+
+        verify(mailService, never())
+                .sendCheckInReminder(any(Booking.class));
+        verify(emailLogRepository, never())
+                .saveAndFlush(any(EmailLog.class));
     }
 }
