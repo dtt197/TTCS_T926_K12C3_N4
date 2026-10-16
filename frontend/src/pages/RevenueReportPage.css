@@ -1,0 +1,133 @@
+.revenue-page {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.revenue-header {
+  margin-bottom: 22px;
+}
+
+.revenue-header h2 {
+  margin: 0 0 6px;
+  color: #18382d;
+  font-size: 30px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.revenue-header p {
+  margin: 0;
+  color: #68766f;
+  font-size: 14px;
+}
+
+.revenue-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border: 1px solid #e4e0d8;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.revenue-filter label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.revenue-filter label span {
+  color: #18382d;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.revenue-filter input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #c9d3cd;
+  border-radius: 9px;
+  font: inherit;
+}
+
+.revenue-primary {
+  min-height: 44px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 9px;
+  background: #1b4931;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.revenue-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.revenue-message {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.revenue-message.error {
+  border: 1px solid #f0b8b8;
+  background: #fff1f1;
+  color: #9b1c1c;
+}
+
+.revenue-loading,
+.revenue-empty {
+  color: #68766f;
+  font-size: 14px;
+}
+
+.revenue-period {
+  margin: 0 0 12px;
+  color: #68766f;
+  font-size: 14px;
+}
+
+.revenue-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.revenue-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid #e4e0d8;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.revenue-card span {
+  color: #68766f;
+  font-size: 14px;
+}
+
+.revenue-card strong {
+  color: #18382d;
+  font-size: 24px;
+}
+
+.revenue-card--total {
+  grid-column: 1 / -1;
+  border-color: #b8ddc7;
+  background: #effaf2;
+}
+
+.revenue-card--total strong {
+  color: #1b4931;
+  font-size: 34px;
+}

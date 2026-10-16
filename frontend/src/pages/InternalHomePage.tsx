@@ -28,6 +28,7 @@ import { UserManagementPage } from './UserManagementPage'
 
 import { BookingListPage } from './BookingListPage'
 import { WalkInBookingPage } from './WalkInBookingPage'
+import { RevenueReportPage } from './RevenueReportPage'
 import { SecurityEndpointMatrixPage } from './SecurityEndpointMatrixPage'
 
 import { NotificationBell } from '../components/NotificationBell'
@@ -70,6 +71,7 @@ type View =
   | 'bookings'
 
   | 'walkInBooking'
+  | 'revenueReport'
   | 'security-matrix'
 
 type Tab = {
@@ -154,6 +156,15 @@ const TABS: ReadonlyArray<Tab> = [
 
     permission: 'bookings:manage',
 
+  },
+
+  {
+    view: 'revenueReport',
+    path: '/revenue-report',
+    label: 'Doanh thu',
+    title: 'Thống kê doanh thu',
+    icon: '₫',
+    permission: 'reports:revenue',
   },
 
   {
@@ -756,11 +767,15 @@ export function InternalHomePage({
 
             <BookingListPage role={user.role} />
 
-          ) : activeView === 'walkInBooking' ? (
+              ) : activeView === 'walkInBooking' ? (
 
-            <WalkInBookingPage />
+                <WalkInBookingPage />
 
-          ) : activeView === 'audit-logs' ? (
+              ) : activeView === 'revenueReport' ? (
+
+                <RevenueReportPage />
+
+              ) : activeView === 'audit-logs' ? (
 
             <AuditLogPage />
 
