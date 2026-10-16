@@ -17,3 +17,5 @@
 .occupancy-table-wrap caption { padding: 12px; text-align: left; color: #334155; font-weight: 600; }
 .occupancy-table-wrap th, .occupancy-table-wrap td { padding: 12px; border-top: 1px solid #e2e8f0; text-align: left; }
 .occupancy-table-wrap th { color: #334155; background: #f8fafc; }
+.occupancy-empty { display: grid; gap: 6px; padding: 20px; color: #475569; background: #f8fafc; border: 1px dashed #94a3b8; border-radius: 10px; }
+.occupancy-empty strong { color: #1e3a2f; }
