@@ -3,12 +3,15 @@ package com.ttcs.homestay.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.inOrder;
 
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
@@ -34,21 +37,30 @@ class ReminderEmailServiceTest {
     private EmailLogRepository emailLogRepository;
     private MailService mailService;
     private ReminderEmailService service;
+    private ReminderRunService reminderRunService;
 
-        @BeforeEach
+            @BeforeEach
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
         emailLogRepository = mock(EmailLogRepository.class);
         mailService = mock(MailService.class);
+        reminderRunService = mock(ReminderRunService.class);
+
+        // Mỗi lần kích hoạt được cấp một mã lượt chạy riêng.
+        when(reminderRunService.start(TODAY, "MANUAL"))
+                .thenReturn(101L, 102L, 103L);
 
         ReminderBookingProcessor processor = new ReminderBookingProcessor(
                 bookingRepository,
                 emailLogRepository,
-                mailService);
+                mailService,
+                reminderRunService);
 
-        service = new ReminderEmailService(bookingRepository, processor);
+        service = new ReminderEmailService(
+                bookingRepository,
+                processor,
+                reminderRunService);
     }
-
     private Booking booking(long id, String email) {
         Booking b = new Booking();
         b.setId(id);
@@ -278,5 +290,63 @@ class ReminderEmailServiceTest {
                 .sendCheckInReminder(any(Booking.class));
         verify(emailLogRepository, never())
                 .saveAndFlush(any(EmailLog.class));
+    }
+        @Test
+    void emptyRunStillStartsAndFinishesHistory() {
+        when(bookingRepository.findByStatusAndCheckInDate(
+                BookingStatus.DA_XAC_NHAN, TOMORROW))
+                .thenReturn(List.of());
+
+        ReminderEmailService.ReminderResult result =
+                service.sendReminders(TODAY);
+
+        assertEquals(0, result.selected());
+        assertEquals(0, result.sent());
+        assertEquals(0, result.failed());
+
+        var order = inOrder(reminderRunService);
+        order.verify(reminderRunService).start(TODAY, "MANUAL");
+        order.verify(reminderRunService).setSelectedCount(101L, 0);
+        order.verify(reminderRunService).finish(101L);
+
+        verify(reminderRunService, never())
+                .recordOutcome(any(), any());
+    }
+
+    @Test
+    void unexpectedFailureKeepsEarlierOutcomeAndMarksRunFailed() {
+        Booking first = booking(1, "a@example.com");
+        Booking second = booking(2, "b@example.com");
+
+        when(bookingRepository.findByStatusAndCheckInDate(
+                BookingStatus.DA_XAC_NHAN, TOMORROW))
+                .thenReturn(List.of(first, second));
+
+        when(bookingRepository.findByIdForUpdate(2L))
+                .thenThrow(new IllegalStateException("database unavailable"));
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.sendReminders(TODAY));
+
+        verify(mailService).sendCheckInReminder(first);
+        verify(mailService, never()).sendCheckInReminder(second);
+
+        ArgumentCaptor<EmailLog> captor =
+                ArgumentCaptor.forClass(EmailLog.class);
+        verify(emailLogRepository).saveAndFlush(captor.capture());
+
+        assertEquals(101L, captor.getValue().getReminderRunId());
+        assertEquals(EmailStatus.SENT, captor.getValue().getStatus());
+
+        var order = inOrder(reminderRunService);
+        order.verify(reminderRunService).start(TODAY, "MANUAL");
+        order.verify(reminderRunService).setSelectedCount(101L, 2);
+        order.verify(reminderRunService).recordOutcome(
+                101L, ReminderBookingProcessor.Outcome.SENT);
+        order.verify(reminderRunService).fail(
+                101L, "database unavailable");
+
+        verify(reminderRunService, never()).finish(101L);
     }
 }
