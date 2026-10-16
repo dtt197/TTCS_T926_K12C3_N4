@@ -6,6 +6,18 @@ Unmatched API routes are denied; the SPA's non-API routes remain available to
 the frontend so it can render public pages or redirect unauthenticated users to
 login.
 
+## Automated verification
+
+`SecurityAuthorizationIntegrationTest` runs 37 individually reported
+unauthenticated-request cases across the main API modules and asserts each
+protected route returns JSON `401`. A separate guard test ensures the matrix
+never falls below the required 20 cases. The test also verifies that invalid
+bearer tokens are rejected and intentional public routes remain reachable.
+
+These checks run as part of the backend Maven test suite. The
+`Quality checks` GitHub Actions workflow runs backend tests and frontend lint,
+tests, and build on pull requests targeting `develop` and pushes to `develop`.
+
 ## Public API routes
 
 These API routes are intentionally reachable without an access token. A supplied

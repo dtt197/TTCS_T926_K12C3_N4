@@ -95,7 +95,7 @@ class BookingNoShowServiceTest {
     @DisplayName("Kịch bản 1: Bấm nút trước giờ hẹn 30 phút -> Bị khóa / Báo lỗi")
     void markNoShow_before30Minutes_fails() {
         LocalDate today = LocalDate.of(2026, 10, 15);
-        Booking booking = createBooking(1L, BookingStatus.DA_XAC_NHAN, today);
+        createBooking(1L, BookingStatus.DA_XAC_NHAN, today);
 
         // Giờ check-in 14:00. Lúc 14:15 mới trôi qua 15 phút, chưa đủ 30 phút.
         OffsetDateTime evaluationTime = today.atTime(14, 15).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
@@ -115,7 +115,7 @@ class BookingNoShowServiceTest {
     @DisplayName("Kịch bản 2: Bấm nút sau giờ hẹn 30 phút khi đã check-in -> Bị khóa / Báo lỗi")
     void markNoShow_after30Minutes_alreadyCheckedIn_fails() {
         LocalDate today = LocalDate.of(2026, 10, 15);
-        Booking booking = createBooking(2L, BookingStatus.DA_NHAN_PHONG, today);
+        createBooking(2L, BookingStatus.DA_NHAN_PHONG, today);
 
         // Lúc 15:00 đã quá 30 phút sau 14:00 nhưng khách đã check-in
         OffsetDateTime evaluationTime = today.atTime(15, 0).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
@@ -178,7 +178,7 @@ class BookingNoShowServiceTest {
     @DisplayName("Kịch bản 3b: Khách hàng chưa có trong bảng customers thì tự động tạo mới với no_show_count = 1")
     void markNoShow_newCustomer_createsCustomerWithCountOne() {
         LocalDate today = LocalDate.of(2026, 10, 15);
-        Booking booking = createBooking(4L, BookingStatus.CHO_XAC_NHAN, today);
+        createBooking(4L, BookingStatus.CHO_XAC_NHAN, today);
 
         when(customerRepository.findFirstByPhone("0987654321")).thenReturn(Optional.empty());
         when(customerRepository.findFirstByEmail("vana@example.com")).thenReturn(Optional.empty());
@@ -290,7 +290,7 @@ class BookingNoShowServiceTest {
     @DisplayName("S4-04 Lát 3: Hoàn tác ở phút thứ 16 -> Báo lỗi quá thời hạn 15 phút")
     void undoNoShow_atMinute16_throwsBadRequest() {
         LocalDate today = LocalDate.of(2026, 10, 15);
-        Booking booking = createBooking(7L, BookingStatus.NO_SHOW, today);
+        createBooking(7L, BookingStatus.NO_SHOW, today);
 
         OffsetDateTime evaluationTime = today.atTime(14, 56).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
         AppointmentActionLog markLog = new AppointmentActionLog(7L, 101L, "MARK_NO_SHOW", "DA_XAC_NHAN");
@@ -306,7 +306,7 @@ class BookingNoShowServiceTest {
     @DisplayName("S4-04 Lát 3: Kiểm tra quyền hoàn tác trong vòng 15 phút -> Eligible = true kèm số giây còn lại")
     void checkUndoEligibility_within15Minutes_returnsEligibleAndRemainingSeconds() {
         LocalDate today = LocalDate.of(2026, 10, 15);
-        Booking booking = createBooking(8L, BookingStatus.NO_SHOW, today);
+        createBooking(8L, BookingStatus.NO_SHOW, today);
 
         User receptionist = mock(User.class);
         when(receptionist.getFullName()).thenReturn("Lễ tân Hoa");
@@ -329,7 +329,7 @@ class BookingNoShowServiceTest {
     @DisplayName("S4-04 Lát 3: Kiểm tra quyền hoàn tác sau 15 phút -> Eligible = false và remainingSeconds = 0")
     void checkUndoEligibility_after15Minutes_returnsNotEligible() {
         LocalDate today = LocalDate.of(2026, 10, 15);
-        Booking booking = createBooking(9L, BookingStatus.NO_SHOW, today);
+        createBooking(9L, BookingStatus.NO_SHOW, today);
 
         OffsetDateTime evaluationTime = today.atTime(15, 0).atZone(BookingNoShowService.ZONE_VN).toOffsetDateTime();
         AppointmentActionLog markLog = new AppointmentActionLog(9L, 101L, "MARK_NO_SHOW", "DA_XAC_NHAN");

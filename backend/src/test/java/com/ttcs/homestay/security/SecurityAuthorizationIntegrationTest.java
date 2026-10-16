@@ -18,12 +18,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -772,52 +776,60 @@ void setUp() {
                 .andExpect(jsonPath("$.error").value("unauthorized"));
     }
 
-    @Test
-    void protectedApiFamilies_withoutToken_allReturn401() throws Exception {
-        List<MockHttpServletRequestBuilder> requests = List.of(
-                get("/api/internal/me"),
-                get("/api/admin/audit-logs"),
-                get("/api/admin/users"),
-                post("/api/admin/reminders/run"),
-                get("/api/account/profile"),
-                get("/api/rooms"),
-                get("/api/rooms/calendar"),
-                patch("/api/rooms/1/status"),
-                patch("/api/rooms/1/maintenance"),
-                patch("/api/rooms/1/incident"),
-                post("/api/rooms/1/check-in"),
-                post("/api/rooms/1/check-out"),
-                get("/api/room-management/rooms"),
-                get("/api/room-types"),
-                post("/api/room-types"),
-                get("/api/amenities"),
-                post("/api/amenities"),
-                get("/api/settings"),
-                get("/api/settings/history"),
-                put("/api/settings"),
-                get("/api/price-overrides"),
-                post("/api/price-overrides"),
-                post("/api/price-overrides/preview"),
-                get("/api/pricing/quote"),
-                get("/api/bookings"),
-                post("/api/bookings"),
-                get("/api/bookings/check-in-options"),
-                put("/api/bookings/1/confirm"),
-                put("/api/bookings/1/room"),
-                put("/api/bookings/1/room-change"),
-                put("/api/bookings/1/cancel"),
-                post("/api/bookings/1/deposit-adjustments"),
-                get("/api/bookings/1/details"),
-                get("/api/bookings/1/cancellation-info"),
-                post("/api/bookings/BK-TEST/cancel"),
-                get("/api"),
-                get("/api/not-yet-authorized"));
+    @ParameterizedTest(name = "{index}: {0} is rejected without a token")
+    @MethodSource("protectedApiRequests")
+    void protectedApiRoute_withoutToken_returns401(
+            String routeDescription,
+            MockHttpServletRequestBuilder request) throws Exception {
+        mockMvc.perform(request)
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthorized"));
+    }
 
-        for (MockHttpServletRequestBuilder request : requests) {
-            mockMvc.perform(request)
-                    .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.error").value("unauthorized"));
-        }
+    @Test
+    void protectedApiRequestMatrix_containsAtLeastTwentyCases() {
+        assertThat(protectedApiRequests().count()).isGreaterThanOrEqualTo(20);
+    }
+
+    private static Stream<Arguments> protectedApiRequests() {
+        return Stream.of(
+                Arguments.of("internal profile", get("/api/internal/me")),
+                Arguments.of("admin audit logs", get("/api/admin/audit-logs")),
+                Arguments.of("admin users", get("/api/admin/users")),
+                Arguments.of("run reminders", post("/api/admin/reminders/run")),
+                Arguments.of("account profile", get("/api/account/profile")),
+                Arguments.of("rooms", get("/api/rooms")),
+                Arguments.of("room calendar", get("/api/rooms/calendar")),
+                Arguments.of("room status update", patch("/api/rooms/1/status")),
+                Arguments.of("room maintenance update", patch("/api/rooms/1/maintenance")),
+                Arguments.of("room incident update", patch("/api/rooms/1/incident")),
+                Arguments.of("room check-in", post("/api/rooms/1/check-in")),
+                Arguments.of("room check-out", post("/api/rooms/1/check-out")),
+                Arguments.of("room management", get("/api/room-management/rooms")),
+                Arguments.of("room types list", get("/api/room-types")),
+                Arguments.of("room type creation", post("/api/room-types")),
+                Arguments.of("amenities list", get("/api/amenities")),
+                Arguments.of("amenity creation", post("/api/amenities")),
+                Arguments.of("operating settings", get("/api/settings")),
+                Arguments.of("settings history", get("/api/settings/history")),
+                Arguments.of("settings update", put("/api/settings")),
+                Arguments.of("price overrides list", get("/api/price-overrides")),
+                Arguments.of("price override creation", post("/api/price-overrides")),
+                Arguments.of("price override preview", post("/api/price-overrides/preview")),
+                Arguments.of("pricing quote", get("/api/pricing/quote")),
+                Arguments.of("bookings list", get("/api/bookings")),
+                Arguments.of("booking creation", post("/api/bookings")),
+                Arguments.of("booking check-in options", get("/api/bookings/check-in-options")),
+                Arguments.of("booking confirmation", put("/api/bookings/1/confirm")),
+                Arguments.of("booking room assignment", put("/api/bookings/1/room")),
+                Arguments.of("booking room change", put("/api/bookings/1/room-change")),
+                Arguments.of("booking cancellation", put("/api/bookings/1/cancel")),
+                Arguments.of("booking deposit adjustment", post("/api/bookings/1/deposit-adjustments")),
+                Arguments.of("booking details", get("/api/bookings/1/details")),
+                Arguments.of("booking cancellation information", get("/api/bookings/1/cancellation-info")),
+                Arguments.of("booking cancellation by code", post("/api/bookings/BK-TEST/cancel")),
+                Arguments.of("API root", get("/api")),
+                Arguments.of("unmatched API route", get("/api/not-yet-authorized")));
     }
 
     @Test
