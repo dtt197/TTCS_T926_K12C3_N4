@@ -26,6 +26,7 @@ import {
   changeBookingRoom,
   getBookingRoomChangeHistory,
   downloadBookingInvoice,
+  cancelBookingInvoice,
   markBookingNoShow,
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
@@ -111,6 +112,11 @@ export function BookingListPage({ role }: { role: string }) {
   const [detailError, setDetailError] = useState<string | null>(null)
   const [invoiceDownloading, setInvoiceDownloading] = useState(false)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
+  const [invoiceCancelling, setInvoiceCancelling] = useState(false)
+  const [invoiceCancelError, setInvoiceCancelError] = useState<string | null>(null)
+  const [invoiceCancelReason, setInvoiceCancelReason] = useState('')
+  const [invoiceCancelDialogOpen, setInvoiceCancelDialogOpen] = useState(false)
+  const invoiceCancelInFlight = useRef(false)
   const [editDetailData, setEditDetailData] = useState<BookingDetailResponse | null>(null)
   const [editDetailLoading, setEditDetailLoading] = useState(false)
   const [editDetailError, setEditDetailError] = useState<string | null>(null)
@@ -547,6 +553,10 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     setDetailBooking(booking)
     setDetailData(null)
     setDetailError(null)
+    setInvoiceError(null)
+    setInvoiceCancelError(null)
+    setInvoiceCancelDialogOpen(false)
+    setInvoiceCancelReason('')
     setDetailLoading(true)
     try {
       const [data, roomHistory] = await Promise.all([
@@ -671,12 +681,15 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     : null
 
   async function handleDownloadInvoice() {
-    if (!detailBooking || invoiceDownloading || detailData?.status !== 'DA_TRA_PHONG'
-      || detailData.settlementTransactionStatus !== 'CONFIRMED') return
+    const hasIssuedInvoice = Boolean(detailData?.invoiceNumber)
+    if (!detailBooking || invoiceDownloading || !canSeeInvoiceAction
+      || (!hasIssuedInvoice && !canExportInvoice)) return
     setInvoiceDownloading(true)
     setInvoiceError(null)
     try {
       await downloadBookingInvoice(detailBooking.id, detailBooking.bookingCode)
+      const refreshed = await getBookingDetails(detailBooking.id)
+      setDetailData(refreshed)
     } catch (err) {
       const message = err instanceof ApiRequestError
         ? err.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
@@ -688,6 +701,34 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
       setInvoiceError(message || 'Không thể tạo hóa đơn PDF. Vui lòng thử lại.')
     } finally {
       setInvoiceDownloading(false)
+    }
+  }
+
+  async function handleCancelInvoice() {
+    const reason = invoiceCancelReason.trim()
+    if (!detailBooking || !detailData?.invoiceNumber || detailData.invoiceStatus !== 'ISSUED'
+      || !canSeeInvoiceAction || invoiceCancelInFlight.current || !reason || reason.length > 500) return
+    invoiceCancelInFlight.current = true
+    setInvoiceCancelling(true)
+    setInvoiceCancelError(null)
+    try {
+      await cancelBookingInvoice(detailBooking.id, reason)
+      const refreshed = await getBookingDetails(detailBooking.id)
+      setDetailData(refreshed)
+      setInvoiceCancelReason('')
+      setInvoiceCancelDialogOpen(false)
+    } catch (err) {
+      const message = err instanceof ApiRequestError
+        ? err.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err.status === 403 ? 'Bạn không có quyền hủy hóa đơn này.'
+            : err.message
+        : err instanceof Error && err.name === 'AuthSessionExpiredError'
+          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err instanceof Error ? err.message : 'Không thể hủy hóa đơn. Vui lòng kiểm tra kết nối và thử lại.'
+      setInvoiceCancelError(message || 'Không thể hủy hóa đơn. Vui lòng thử lại.')
+    } finally {
+      invoiceCancelInFlight.current = false
+      setInvoiceCancelling(false)
     }
   }
 
@@ -1049,6 +1090,13 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                       </div>}
                     </>}
                   </section>
+                  {detailData.invoiceNumber && <section className="booking-detail-section booking-detail-full" aria-labelledby="booking-invoice-title">
+                    <h4 id="booking-invoice-title">Hóa đơn</h4>
+                    <dl className="booking-detail-grid">
+                      <div><dt>Số hóa đơn</dt><dd>{detailData.invoiceNumber}</dd></div>
+                      <div><dt>Người xuất</dt><dd>{detailData.invoiceIssuedByName || 'Không có thông tin'}</dd></div>
+                    </dl>
+                  </section>}
                 </div>
                 <BookingSurchargeSection key={detailBooking.id} bookingId={detailBooking.id} canAdd={canAddSurcharge} />
                 {detailData.registeredGuests && detailData.registeredGuests.length > 0 && (
@@ -1134,11 +1182,28 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
               </div>
             )}
             <footer className="booking-detail-footer" style={{ flexWrap: 'wrap' }}>
-              {(canExportInvoice || showDisabledInvoiceAction) && <div className="booking-invoice-actions">
+              {(canExportInvoice || showDisabledInvoiceAction || detailData?.invoiceNumber) && <div className="booking-invoice-actions">
                 {invoiceError && <div className="alert" role="alert">{invoiceError}</div>}
-                <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={!canExportInvoice || invoiceDownloading}>
-                  {invoiceDownloading ? 'Đang tạo hóa đơn...' : 'Xuất hóa đơn PDF'}
+                {invoiceCancelError && <div className="alert" role="alert">{invoiceCancelError}</div>}
+                <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={!canSeeInvoiceAction || (!detailData?.invoiceNumber && !canExportInvoice) || invoiceDownloading}>
+                  {invoiceDownloading ? 'Đang tải hóa đơn...' : detailData?.invoiceNumber ? 'Tải lại hóa đơn PDF' : 'Xuất hóa đơn PDF'}
                 </button>
+                {detailData?.invoiceNumber && <div className="booking-invoice-status" role="status">
+                  <strong>{detailData.invoiceStatus === 'CANCELLED' ? 'Hóa đơn đã hủy' : 'Hóa đơn đã phát hành'}</strong>
+                  <span>Số: {detailData.invoiceNumber}</span>
+                  {detailData.invoiceIssuedByName && <span>Người phát hành: {detailData.invoiceIssuedByName}</span>}
+                  {detailData.invoiceStatus === 'CANCELLED' && <>
+                    {detailData.invoiceCancelledAt && <span>Thời điểm hủy: {new Date(detailData.invoiceCancelledAt).toLocaleString('vi-VN')}</span>}
+                    {detailData.invoiceCancelledByName && <span>Người hủy: {detailData.invoiceCancelledByName}</span>}
+                    {detailData.invoiceCancellationReason && <span>Lý do: {detailData.invoiceCancellationReason}</span>}
+                  </>}
+                </div>}
+                {detailData?.invoiceNumber && detailData.invoiceStatus === 'ISSUED' && canSeeInvoiceAction && <button
+                  type="button" className="booking-cancel-button"
+                  disabled={invoiceCancelling}
+                  onClick={() => { setInvoiceCancelError(null); setInvoiceCancelReason(''); setInvoiceCancelDialogOpen(true) }}>
+                  Hủy hóa đơn
+                </button>}
                 {showDisabledInvoiceAction && <p role="status">{invoiceDisabledReason}</p>}
               </div>}
               {canNoShow && (detailBooking.status === 'CHO_XAC_NHAN' || detailBooking.status === 'DA_XAC_NHAN') && (() => {
@@ -1180,6 +1245,27 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
               )}
               <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
             </footer>
+            {invoiceCancelDialogOpen && <div className="booking-dialog-backdrop" role="presentation">
+              <section className="booking-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="invoice-cancel-title">
+                <h3 id="invoice-cancel-title">Xác nhận hủy hóa đơn {detailData?.invoiceNumber}</h3>
+                <p>Hóa đơn sẽ giữ nguyên số và PDF; thao tác hủy không thể đảo ngược.</p>
+                {invoiceCancelError && <div className="alert" role="alert">{invoiceCancelError}</div>}
+                <label className="invoice-cancel-field" htmlFor="invoice-cancel-reason">Lý do hủy
+                  <textarea id="invoice-cancel-reason" required maxLength={500} value={invoiceCancelReason}
+                    onChange={(event) => setInvoiceCancelReason(event.target.value)} rows={4} />
+                </label>
+                <small>{invoiceCancelReason.trim().length}/500 ký tự</small>
+                <div className="booking-edit-actions">
+                  <button type="button" className="booking-cancel-button" disabled={invoiceCancelling}
+                    onClick={() => setInvoiceCancelDialogOpen(false)}>Đóng</button>
+                  <button type="button" className="booking-save-button"
+                    disabled={invoiceCancelling || !invoiceCancelReason.trim() || invoiceCancelReason.trim().length > 500}
+                    onClick={() => void handleCancelInvoice()}>
+                    {invoiceCancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
+                  </button>
+                </div>
+              </section>
+            </div>}
           </section>
         </div>
       )}

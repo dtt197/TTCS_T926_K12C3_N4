@@ -638,6 +638,10 @@
 .booking-detail-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 28px; border-top: 1px solid #e2e9e2; background: #fffdf8; }
 .booking-invoice-actions { display: flex; align-items: center; gap: 10px; margin-right: auto; }
 .booking-invoice-actions .alert { margin: 0; }
+.booking-invoice-status { display: grid; gap: 3px; padding: 8px 10px; border: 1px solid #dce5dc; border-radius: 8px; color: #244a36; font-size: 12px; }
+.booking-invoice-status strong { color: #183e2c; }
+.invoice-cancel-field { display: grid; gap: 6px; margin-top: 14px; color: var(--text, #1c2e26); font-size: 13px; font-weight: 600; }
+.invoice-cancel-field textarea { width: 100%; resize: vertical; padding: 9px 11px; border: 1px solid #cfc8bd; border-radius: 8px; font: inherit; }
 .booking-detail-footer .booking-cancel-button { min-width: 100px; }
 @media (max-width: 700px) {
   .booking-detail-backdrop { padding: 8px; }

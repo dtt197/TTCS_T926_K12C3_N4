@@ -146,6 +146,12 @@ export type BookingDetailResponse = {
   earlyCheckoutReason?: string | null
   settlementType?: 'COLLECT' | 'REFUND' | 'ZERO' | null
   settlementTransactionStatus?: string | null
+  invoiceNumber?: string | null
+  invoiceIssuedByName?: string | null
+  invoiceStatus?: 'ISSUED' | 'CANCELLED' | null
+  invoiceCancelledAt?: string | null
+  invoiceCancelledByName?: string | null
+  invoiceCancellationReason?: string | null
   registeredGuests?: { fullName: string; primary: boolean }[]
   deposit: BookingDepositResponse | null
   history?: BookingAuditLog[]
@@ -199,6 +205,24 @@ export async function downloadBookingInvoice(id: number, bookingCode: string): P
   link.click()
   link.remove()
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+}
+
+export function cancelBookingInvoice(id: number, reason: string): Promise<{
+  invoiceNumber: string
+  status: 'ISSUED' | 'CANCELLED'
+  cancelledAt: string | null
+  cancellationReason: string | null
+}> {
+  return apiRequest<{
+    invoiceNumber: string
+    status: 'ISSUED' | 'CANCELLED'
+    cancelledAt: string | null
+    cancellationReason: string | null
+  }>(`/api/bookings/${id}/invoice/cancel`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  })
 }
 
 /** S3-10 Lát 3: thông tin booking để mở nhanh chi tiết từ sơ đồ phòng. */
