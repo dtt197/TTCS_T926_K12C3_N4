@@ -30,6 +30,7 @@ export type Permission =
   | 'bookings:deposit-adjust'
   | 'bookings:cancel'
   | 'bookings:manage'
+  | 'reports:revenue'
   | 'bookings:surcharge-add'
   | 'reports:occupancy'
   | 'security:matrix:view'
@@ -52,6 +53,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'settings:history',
     'pricing:view',
     'bookings:view',
+    'reports:revenue',
   ],
   OWNER: [
     'accounts:view',
@@ -68,6 +70,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'pricing:manage',
     'bookings:view',
     'bookings:deposit-adjust',
+    'reports:revenue',
     'bookings:surcharge-add',
     'reports:occupancy',
     'sampleData:manage',
@@ -88,6 +91,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'bookings:surcharge-add',
     'bookings:cancel',
     'bookings:manage',
+    'reports:revenue',
   ],
   // S1-04 AC1: Buồng phòng chỉ thấy danh sách phòng cần dọn, không có menu Loại phòng.
   HOUSEKEEPING: [

@@ -49,6 +49,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     /** S2-07: mã booking đã có chưa (sinh lại nếu trùng). */
     boolean existsByBookingCode(String bookingCode);
     
+        /**
+     * S4-07 Lát 1: booking có trạng thái thuộc statuses và ngày trả phòng nằm trong
+     * [start, end], gồm cả hai đầu.
+     */
+    List<Booking> findByStatusInAndCheckOutDateBetween(
+                    Collection<BookingStatus> statuses, LocalDate start, LocalDate end);
+
     /** S2-08: tìm booking theo mã để khách tra cứu. */
     Optional<Booking> findByBookingCode(String bookingCode);
 
