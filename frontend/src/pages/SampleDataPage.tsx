@@ -85,7 +85,7 @@ export interface SampleAccount {
   permissions: string[]
 }
 
-export const SAMPLE_ACCOUNTS: SampleAccount[] = [
+const SAMPLE_ACCOUNTS: SampleAccount[] = [
   {
     roleCode: 'OWNER',
     roleTitle: 'Chủ homestay',
@@ -166,7 +166,7 @@ export interface FlowStep {
   tips: string
 }
 
-export const FLOW_STEPS: FlowStep[] = [
+const FLOW_STEPS: FlowStep[] = [
   {
     step: 1,
     title: 'Nạp bộ dữ liệu mẫu chuẩn',

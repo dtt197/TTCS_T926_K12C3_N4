@@ -33,11 +33,12 @@ export function ReminderEmailLogPage() {
   const [simulatedToday, setSimulatedToday] = useState(todayInVietnam())
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<ReminderRunResult | null>(null)
-    const [bookingPage, setBookingPage] =
-    useState<BookingReminderPage | null>(null)
   const [page, setPage] = useState(0)
-  const [bookingLoading, setBookingLoading] = useState(true)
-  const [bookingError, setBookingError] = useState<string | null>(null)
+  const [bookingResult, setBookingResult] = useState<{
+    key: string
+    data: BookingReminderPage | null
+    error: string | null
+  } | null>(null)
 
   useEffect(() => {
     let active = true
@@ -64,32 +65,35 @@ export function ReminderEmailLogPage() {
       active = false
     }
    }, [refreshKey, emailType])
-     useEffect(() => {
+  const bookingRequestKey = `${page}|${refreshKey}`
+  const currentBookingResult = bookingResult?.key === bookingRequestKey ? bookingResult : null
+  const bookingPage = currentBookingResult?.data ?? null
+  const bookingLoading = currentBookingResult === null
+  const bookingError = currentBookingResult?.error ?? null
+
+  useEffect(() => {
     let active = true
-    setBookingLoading(true)
-    setBookingError(null)
 
     getBookingReminderStatuses(page)
-      .then((result) => {
-        if (active) setBookingPage(result)
+      .then((data) => {
+        if (active) setBookingResult({ key: bookingRequestKey, data, error: null })
       })
       .catch((cause: unknown) => {
         if (active) {
-          setBookingError(
-            cause instanceof Error
+          setBookingResult({
+            key: bookingRequestKey,
+            data: null,
+            error: cause instanceof Error
               ? cause.message
               : 'Không tải được trạng thái nhắc',
-          )
+          })
         }
-      })
-      .finally(() => {
-        if (active) setBookingLoading(false)
       })
 
     return () => {
       active = false
     }
-  }, [page, refreshKey])
+  }, [page, refreshKey, bookingRequestKey])
   function reload() {
     setLoading(true)
     setError(null)

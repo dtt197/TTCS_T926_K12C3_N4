@@ -13,9 +13,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingSettlement;
+import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.IssuedInvoice;
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
+import com.ttcs.homestay.exception.BookingInvoiceExceptionHandler;
 import com.ttcs.homestay.security.ApiSecurityPolicyCatalog;
 import com.ttcs.homestay.service.InvoiceIssuanceService;
 import java.time.Instant;
@@ -193,12 +197,12 @@ class BookingInvoiceControllerTest {
         when(securedIssuanceService.downloadOrIssue(44L))
                 .thenThrow(new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.CONFLICT,
-                        "Thiếu địa chỉ homestay trong cấu hình."));
+                        "Thiáº¿u Ä‘á»‹a chá»‰ homestay trong cáº¥u hÃ¬nh."));
 
         securedMockMvc.perform(securedRequest("receptionist-token"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message")
-                        .value("Thiếu địa chỉ homestay trong cấu hình."));
+                        .value("Thiáº¿u Ä‘á»‹a chá»‰ homestay trong cáº¥u hÃ¬nh."));
     }
 
     @Test
@@ -206,12 +210,12 @@ class BookingInvoiceControllerTest {
         when(securedIssuanceService.downloadOrIssue(44L))
                 .thenThrow(new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.CONFLICT,
-                        "Booking chưa trả phòng nên chưa xuất được hoá đơn"));
+                        "Booking chÆ°a tráº£ phÃ²ng nÃªn chÆ°a xuáº¥t Ä‘Æ°á»£c hoÃ¡ Ä‘Æ¡n"));
 
         securedMockMvc.perform(securedRequest("receptionist-token"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message")
-                        .value("Booking chưa trả phòng nên chưa xuất được hoá đơn"));
+                        .value("Booking chÆ°a tráº£ phÃ²ng nÃªn chÆ°a xuáº¥t Ä‘Æ°á»£c hoÃ¡ Ä‘Æ¡n"));
     }
 
     @Test
@@ -219,12 +223,12 @@ class BookingInvoiceControllerTest {
         when(securedIssuanceService.downloadOrIssue(44L))
                 .thenThrow(new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND,
-                        "Không tìm thấy booking để lập hoá đơn."));
+                        "KhÃ´ng tÃ¬m tháº¥y booking Ä‘á»ƒ láº­p hoÃ¡ Ä‘Æ¡n."));
 
         securedMockMvc.perform(securedRequest("receptionist-token"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message")
-                        .value("Không tìm thấy booking để lập hoá đơn."));
+                        .value("KhÃ´ng tÃ¬m tháº¥y booking Ä‘á»ƒ láº­p hoÃ¡ Ä‘Æ¡n."));
     }
 
     @Test

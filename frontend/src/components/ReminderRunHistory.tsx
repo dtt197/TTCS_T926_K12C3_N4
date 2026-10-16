@@ -34,65 +34,78 @@ export function ReminderRunHistory({
   refreshKey: number
 }) {
   const [page, setPage] = useState(0)
-  const [runs, setRuns] = useState<RunPage<ReminderRun> | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [runsResult, setRunsResult] = useState<{
+    key: string
+    data: RunPage<ReminderRun> | null
+    error: string | null
+  } | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   const [selectedRun, setSelectedRun] = useState<ReminderRun | null>(null)
   const [emailPage, setEmailPage] = useState(0)
-  const [emails, setEmails] = useState<RunPage<RunEmailItem> | null>(null)
-  const [emailLoading, setEmailLoading] = useState(false)
-  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailResult, setEmailResult] = useState<{
+    key: string
+    data: RunPage<RunEmailItem> | null
+    error: string | null
+  } | null>(null)
 
+  const runsRequestKey = `${page}|${refreshKey}|${reloadKey}`
+  const currentRunsResult = runsResult?.key === runsRequestKey ? runsResult : null
+  const runs = currentRunsResult?.data ?? null
+  const loading = currentRunsResult === null
+  const error = currentRunsResult?.error ?? null
   useEffect(() => {
     let active = true
-    setLoading(true)
-    setError(null)
 
     getReminderRuns(page)
-      .then((result) => {
-        if (active) setRuns(result)
+      .then((data) => {
+        if (active) setRunsResult({ key: runsRequestKey, data, error: null })
       })
       .catch((cause: unknown) => {
         if (active) {
-          setError(cause instanceof Error ? cause.message : 'Không tải được lịch sử')
+          setRunsResult({
+            key: runsRequestKey,
+            data: null,
+            error: cause instanceof Error ? cause.message : 'Không tải được lịch sử',
+          })
         }
-      })
-      .finally(() => {
-        if (active) setLoading(false)
       })
 
     return () => { active = false }
-  }, [page, refreshKey, reloadKey])
+  }, [page, refreshKey, reloadKey, runsRequestKey])
 
   const selectedRunId = selectedRun?.id
+  const emailRequestKey = selectedRunId === undefined
+    ? null
+    : `${selectedRunId}|${emailPage}|${refreshKey}|${reloadKey}`
+  const currentEmailResult = emailRequestKey !== null && emailResult?.key === emailRequestKey
+    ? emailResult
+    : null
+  const emails = currentEmailResult?.data ?? null
+  const emailLoading = selectedRunId !== undefined && currentEmailResult === null
+  const emailError = currentEmailResult?.error ?? null
 
   useEffect(() => {
-    if (selectedRunId === undefined) return
+    if (selectedRunId === undefined || emailRequestKey === null) return
 
     let active = true
-    setEmailLoading(true)
-    setEmailError(null)
-    setEmails(null)
 
     getReminderRunEmails(selectedRunId, emailPage)
-      .then((result) => {
-        if (active) setEmails(result)
+      .then((data) => {
+        if (active) setEmailResult({ key: emailRequestKey, data, error: null })
       })
       .catch((cause: unknown) => {
         if (active) {
-          setEmailError(
-            cause instanceof Error ? cause.message : 'Không tải được email',
-          )
+          setEmailResult({
+            key: emailRequestKey,
+            data: null,
+            error: cause instanceof Error ? cause.message : 'Không tải được email',
+          })
         }
-      })
-      .finally(() => {
-        if (active) setEmailLoading(false)
       })
 
     return () => { active = false }
-  }, [selectedRunId, emailPage, refreshKey, reloadKey])
+  }, [selectedRunId, emailPage, refreshKey, reloadKey, emailRequestKey])
 
   return (
     <section className="audit-panel">
@@ -156,7 +169,6 @@ export function ReminderRunHistory({
                         onClick={() => {
                           setSelectedRun(run)
                           setEmailPage(0)
-                          setEmails(null)
                         }}
                       >
                         Xem email
