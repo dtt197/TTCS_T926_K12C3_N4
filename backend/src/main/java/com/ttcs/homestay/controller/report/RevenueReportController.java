@@ -1,6 +1,7 @@
 package com.ttcs.homestay.controller.report;
 
 import com.ttcs.homestay.dto.report.RevenueReportResponse;
+import com.ttcs.homestay.dto.report.RevenueByRoomTypeResponse;
 import com.ttcs.homestay.service.RevenueReportService;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 /** S4-07 Lát 1: thống kê doanh thu theo khoảng ngày. Quyền truy cập khai báo trong SecurityConfig. */
 @RestController
@@ -26,4 +28,26 @@ public class RevenueReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return revenueReportService.getReport(startDate, endDate);
     }
+
+    /**
+     * S4-07 Lát 2:
+     * GET /api/reports/revenue/by-room-type
+     *
+     * Có thể truyền roomTypeId để lọc một loại phòng.
+     * Bỏ roomTypeId để lấy tất cả loại phòng.
+     */
+    @GetMapping("/revenue/by-room-type")
+    public List<RevenueByRoomTypeResponse> revenueByRoomType(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+
+            @RequestParam(required = false) Long roomTypeId) {
+
+        return revenueReportService.getReportByRoomType(
+                startDate,
+                endDate,
+                roomTypeId);
+    }
+
 }

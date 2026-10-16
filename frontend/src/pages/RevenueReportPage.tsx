@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { getRevenueReport } from '../services/revenueReportService'
+import { getRevenueByRoomType } from '../services/revenueReportService'
+import { getRoomTypes } from '../services/roomTypeService'
 import type { RevenueReport } from '../types/revenueReport'
+import type { RevenueByRoomType } from '../types/revenueReport'
+import type { RoomType } from '../types/roomType'
 import './RevenueReportPage.css'
 
 /** Cùng giới hạn với backend (S4-07 Lát 1). */
@@ -9,13 +13,18 @@ const MAX_RANGE_DAYS = 366
 type DateRange = {
   startDate: string
   endDate: string
+  roomTypeId: string
 }
 
-type AppliedRange = DateRange & { id: number }
+type AppliedRange = DateRange & {
+  id: number
+  roomTypeId: string
+}
 
 type LoadState = {
   id: number
   report?: RevenueReport
+  roomTypeRows?: RevenueByRoomType[]
   error?: string
 }
 
@@ -30,6 +39,7 @@ function defaultRange(): DateRange {
   return {
     startDate: toIso(new Date(now.getFullYear(), now.getMonth(), 1)),
     endDate: toIso(now),
+    roomTypeId: '',
   }
 }
 
@@ -65,16 +75,64 @@ function formatDate(isoDate: string) {
 export function RevenueReportPage() {
   const [initialRange] = useState(defaultRange)
   const [form, setForm] = useState<DateRange>(initialRange)
-  const [applied, setApplied] = useState<AppliedRange>({ ...initialRange, id: 1 })
+  const [applied, setApplied] = useState<AppliedRange>({
+    ...initialRange,
+    roomTypeId: '',
+    id: 1,
+  })
   const [formError, setFormError] = useState('')
   const [state, setState] = useState<LoadState>({ id: 0 })
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>([])
+  const [roomTypesError, setRoomTypesError] = useState('')
 
   useEffect(() => {
     let cancelled = false
 
-    getRevenueReport(applied.startDate, applied.endDate)
-      .then((report) => {
-        if (!cancelled) setState({ id: applied.id, report })
+    getRoomTypes()
+      .then((items) => {
+        if (!cancelled) {
+          setRoomTypes(items)
+          setRoomTypesError('')
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setRoomTypesError(
+            err instanceof Error
+              ? err.message
+              : 'Không tải được danh sách loại phòng.',
+          )
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const roomTypeId = applied.roomTypeId
+      ? Number(applied.roomTypeId)
+      : undefined
+
+    Promise.all([
+      getRevenueReport(applied.startDate, applied.endDate),
+      getRevenueByRoomType(
+        applied.startDate,
+        applied.endDate,
+        roomTypeId,
+      ),
+    ])
+      .then(([report, roomTypeRows]) => {
+        if (!cancelled) {
+          setState({
+            id: applied.id,
+            report,
+            roomTypeRows,
+          })
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -95,6 +153,7 @@ export function RevenueReportPage() {
 
   const loading = state.id !== applied.id
   const report = loading ? undefined : state.report
+  const roomTypeRows = loading ? undefined : state.roomTypeRows
   const loadError = loading ? '' : (state.error ?? '')
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -108,7 +167,11 @@ export function RevenueReportPage() {
     }
 
     setFormError('')
-    setApplied((current) => ({ ...form, id: current.id + 1 }))
+    setApplied((current) => ({
+      ...form,
+      roomTypeId: form.roomTypeId,
+      id: current.id + 1,
+    }))
   }
 
   return (
@@ -149,10 +212,39 @@ export function RevenueReportPage() {
           />
         </label>
 
+        <label>
+          <span>Loại phòng</span>
+
+          <select
+            value={form.roomTypeId}
+            onChange={(event) => {
+              setForm((current) => ({
+                ...current,
+                roomTypeId: event.target.value,
+              }))
+              setFormError('')
+            }}
+          >
+            <option value="">Tất cả loại phòng</option>
+
+            {roomTypes.map((roomType) => (
+              <option key={roomType.id} value={String(roomType.id)}>
+                {roomType.code} - {roomType.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <button type="submit" className="revenue-primary" disabled={loading}>
           Xem thống kê
         </button>
       </form>
+      
+      {roomTypesError && (
+        <div className="revenue-message error" role="alert">
+          {roomTypesError}
+        </div>
+      )}
 
       {formError && (
         <div className="revenue-message error" role="alert">
@@ -204,6 +296,91 @@ export function RevenueReportPage() {
               <strong>{formatMoney(report.surchargeRevenue)}</strong>
             </article>
           </div>
+
+          {roomTypeRows && (
+            <section className="revenue-room-types">
+              <h3>Doanh thu theo loại phòng</h3>
+
+              <p className="revenue-room-types-description">
+                Các số liệu được tính từ booking đã trả phòng
+                trong khoảng ngày đã chọn.
+              </p>
+
+              <div className="revenue-table-wrapper">
+                <table className="revenue-table">
+                  <thead>
+                    <tr>
+                      <th>Mã phòng</th>
+                      <th>Loại phòng</th>
+                      <th>Booking đã đóng</th>
+                      <th>Số đêm</th>
+                      <th>Tiền phòng</th>
+                      <th>Phụ thu</th>
+                      <th>Tổng doanh thu</th>
+                      <th>Trung bình/đêm</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {roomTypeRows.map((item) => (
+                      <tr key={item.roomTypeId}>
+                        <td>{item.roomTypeCode}</td>
+                        <td>{item.roomTypeName}</td>
+                        <td>{item.closedBookingCount}</td>
+                        <td>{item.totalNights}</td>
+                        <td>{formatMoney(item.roomRevenue)}</td>
+                        <td>{formatMoney(item.surchargeRevenue)}</td>
+                        <td className="revenue-table-total">
+                          {formatMoney(item.totalRevenue)}
+                        </td>
+                        <td>
+                          {item.averageNightlyRate === null
+                            ? '—'
+                            : formatMoney(item.averageNightlyRate)}
+                        </td>
+                      </tr>
+                    ))}
+
+                    {roomTypeRows.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="revenue-table-empty">
+                          Không tìm thấy loại phòng phù hợp.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {applied.roomTypeId === '' && (
+                <div className="revenue-reconciliation">
+                  <span>Tổng doanh thu theo loại phòng</span>
+
+                  <strong>
+                    {formatMoney(
+                      roomTypeRows.reduce(
+                        (sum, item) => sum + item.totalRevenue,
+                        0,
+                      ),
+                    )}
+                  </strong>
+
+                  <span>Tổng doanh thu toàn homestay</span>
+
+                  <strong>{formatMoney(report.totalRevenue)}</strong>
+
+                  <p>
+                    {roomTypeRows.reduce(
+                      (sum, item) => sum + item.totalRevenue,
+                      0,
+                    ) === report.totalRevenue
+                      ? 'Đối chiếu thành công: hai tổng doanh thu khớp nhau.'
+                      : 'Cảnh báo: tổng doanh thu theo loại phòng chưa khớp tổng doanh thu toàn homestay.'}
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
 
           {report.closedBookingCount === 0 && (
             <p className="revenue-empty">

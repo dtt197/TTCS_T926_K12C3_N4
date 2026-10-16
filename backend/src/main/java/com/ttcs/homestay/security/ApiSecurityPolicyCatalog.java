@@ -181,7 +181,8 @@ public class ApiSecurityPolicyCatalog {
         // S4-07 Lát 1: thống kê doanh thu (Chủ, Admin, Lễ tân xem được; Buồng phòng
         // không)
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
-                        "/api/reports/revenue");
+                        "/api/reports/revenue",
+                        "/api/reports/revenue/by-room-type");
 
         add(policies, "GET", Access.PUBLIC, List.of(),
                 "/api/public/room-types/**",
