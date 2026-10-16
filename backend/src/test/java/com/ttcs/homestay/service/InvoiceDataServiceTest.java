@@ -72,6 +72,7 @@ class InvoiceDataServiceTest {
         settlement.setLateCheckoutFee(100_000L);
         settlement.setSettlementType(BookingSettlement.SettlementType.COLLECT);
         settlement.setAmount(BigDecimal.valueOf(1_000_000));
+        settlement.setTransactionStatus("CONFIRMED");
         settlement.setOperatingSettingsId(7L);
         settlement.setCheckedOutAt(OffsetDateTime.parse("2026-10-12T13:00:00+07:00"));
     }
@@ -307,6 +308,60 @@ class InvoiceDataServiceTest {
         assertThatThrownBy(() -> service.getInvoiceData(44L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("DA_TRA_PHONG");
+    }
+
+    @Test
+    void rejectsEveryBookingStatusExceptCheckedOutBeforeReadingSettlement() {
+        for (BookingStatus status : List.of(BookingStatus.CHO_XAC_NHAN, BookingStatus.DA_XAC_NHAN,
+                BookingStatus.DA_NHAN_PHONG, BookingStatus.DA_HUY, BookingStatus.DA_HET_HAN,
+                BookingStatus.NO_SHOW)) {
+            booking.setStatus(status);
+            when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+
+            assertThatThrownBy(() -> service.getInvoiceData(44L))
+                    .as("status %s must not be invoiced", status)
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("DA_TRA_PHONG");
+            verify(settlementRepository, never()).findByBookingId(44L);
+        }
+    }
+
+    @Test
+    void allowsCheckedOutBookingWithValidSettlement() {
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
+        when(settingsRepository.findById(7L)).thenReturn(Optional.of(settingsWithAddress()));
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of(
+                surcharge(SurchargeType.THEM_NGUOI, 100_000), surcharge(SurchargeType.THEM_GIUONG, 100_000)));
+
+        InvoiceData data = service.getInvoiceData(44L);
+
+        assertThat(data.bookingId()).isEqualTo(44L);
+        assertThat(data.finalTotal()).isEqualByComparingTo("1300000");
+    }
+
+    @Test
+    void rejectsCheckedOutBookingWithoutConfirmedSettlementBeforeLoadingInvoiceDetails() {
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+        for (String transactionStatus : List.of("NOT_APPLICABLE", "FAILED", "CANCELLED")) {
+            settlement.setTransactionStatus(transactionStatus);
+            when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
+
+            assertThatThrownBy(() -> service.getInvoiceData(44L))
+                    .as("transaction status %s must not be invoiced", transactionStatus)
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("chưa xác nhận hoàn tất thu/hoàn tiền");
+        }
+
+        settlement.setTransactionStatus(null);
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
+        assertThatThrownBy(() -> service.getInvoiceData(44L))
+                .as("missing transaction status must not be invoiced")
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("chưa xác nhận hoàn tất thu/hoàn tiền");
+
+        verify(settingsRepository, never()).findById(7L);
+        verify(surchargeRepository, never()).findByBookingIdOrderByCreatedAtAscIdAsc(44L);
     }
 
     @Test

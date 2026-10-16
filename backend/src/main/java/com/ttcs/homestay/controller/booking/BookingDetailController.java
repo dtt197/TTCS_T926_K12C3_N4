@@ -76,16 +76,21 @@ public class BookingDetailController {
                 : adjustmentService.calculateCurrentDepositTotal(id));
         result.put("checkedOutAt", null);
         result.put("earlyCheckoutReason", null);
+        result.put("settlementTransactionStatus", null);
         List<Map<String, Object>> settlements = jdbcTemplate.query(
-                "SELECT checked_out_at, early_checkout_reason FROM booking_settlements WHERE booking_id = ?",
+                "SELECT checked_out_at, early_checkout_reason, transaction_status " +
+                        "FROM booking_settlements WHERE booking_id = ?",
                 (rs, rowNum) -> {
                     Map<String, Object> row = new LinkedHashMap<>();
                     row.put("checkedOutAt", rs.getObject("checked_out_at", java.time.OffsetDateTime.class));
                     row.put("earlyCheckoutReason", rs.getString("early_checkout_reason"));
+                    row.put("transactionStatus", rs.getString("transaction_status"));
                     return row;
                 }, id);
         result.put("checkedOutAt", settlements.isEmpty() ? null : settlements.get(0).get("checkedOutAt"));
         result.put("earlyCheckoutReason", settlements.isEmpty() ? null : settlements.get(0).get("earlyCheckoutReason"));
+        result.put("settlementTransactionStatus", settlements.isEmpty()
+                ? null : settlements.get(0).get("transactionStatus"));
         return result;
     }
 

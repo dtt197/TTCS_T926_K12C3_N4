@@ -2,14 +2,23 @@ package com.ttcs.homestay.controller.booking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 import com.ttcs.homestay.dto.InvoiceData;
 import com.ttcs.homestay.entity.BookingSettlement;
+import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingStatus;
+import com.ttcs.homestay.exception.BookingInvoiceExceptionHandler;
 import com.ttcs.homestay.security.ApiSecurityPolicyCatalog;
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.service.InvoiceDataService;
 import com.ttcs.homestay.service.InvoicePdfService;
+import com.ttcs.homestay.repository.BookingRepository;
+import com.ttcs.homestay.repository.BookingSettlementRepository;
+import com.ttcs.homestay.repository.BookingSurchargeRepository;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -132,6 +141,118 @@ class BookingInvoiceControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
                         .value("Thiếu địa chỉ homestay trong cấu hình."));
+    }
+
+    @Test
+    void rejectsDirectInvoiceRequestWhenBookingIsNotClosedBeforeGeneratingPdf() throws Exception {
+        when(securedDataService.getInvoiceData(44L)).thenThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT, "Booking chưa trả phòng nên chưa xuất được hoá đơn"));
+
+        securedMockMvc.perform(securedRequest("receptionist-token"))
+                .andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Booking chưa trả phòng nên chưa xuất được hoá đơn"));
+        verify(securedDataService).getInvoiceData(44L);
+        verify(securedPdfService, never()).generate(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void rejectsInvoiceWhenSettlementIsNotConfirmedBeforeGeneratingPdf() throws Exception {
+        when(securedDataService.getInvoiceData(44L)).thenThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú."));
+
+        securedMockMvc.perform(securedRequest("receptionist-token"))
+                .andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú."));
+
+        verify(securedPdfService, never()).generate(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void returnsNotFoundWhenBookingDoesNotExist() throws Exception {
+        when(securedDataService.getInvoiceData(44L)).thenThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy booking để lập hoá đơn."));
+
+        securedMockMvc.perform(securedRequest("receptionist-token"))
+                .andExpect(status().isNotFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Không tìm thấy booking để lập hoá đơn."));
+        verify(securedPdfService, never()).generate(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void realInvoiceDataServiceRejectsCheckedInBookingThroughEndpoint() throws Exception {
+        BookingRepository bookingRepository = mock(BookingRepository.class);
+        BookingSettlementRepository settlementRepository = mock(BookingSettlementRepository.class);
+        BookingSurchargeRepository surchargeRepository = mock(BookingSurchargeRepository.class);
+        OperatingSettingsRepository settingsRepository = mock(OperatingSettingsRepository.class);
+        InvoiceDataService realDataService = new InvoiceDataService(bookingRepository, settlementRepository,
+                surchargeRepository, settingsRepository);
+        InvoicePdfService pdfService = mock(InvoicePdfService.class);
+        Booking checkedIn = new Booking();
+        checkedIn.setStatus(BookingStatus.DA_NHAN_PHONG);
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(checkedIn));
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookingInvoiceController(realDataService, pdfService))
+                .setControllerAdvice(new BookingInvoiceExceptionHandler()).build();
+
+        mvc.perform(get("/api/bookings/44/invoice.pdf"))
+                .andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value(org.hamcrest.Matchers.containsString("DA_TRA_PHONG")));
+
+        verify(settlementRepository, never()).findByBookingId(44L);
+        verify(pdfService, never()).generate(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void realInvoiceDataServiceReturnsNotFoundWhenBookingDoesNotExistThroughEndpoint() throws Exception {
+        BookingRepository bookingRepository = mock(BookingRepository.class);
+        BookingSettlementRepository settlementRepository = mock(BookingSettlementRepository.class);
+        BookingSurchargeRepository surchargeRepository = mock(BookingSurchargeRepository.class);
+        OperatingSettingsRepository settingsRepository = mock(OperatingSettingsRepository.class);
+        InvoiceDataService realDataService = new InvoiceDataService(bookingRepository, settlementRepository,
+                surchargeRepository, settingsRepository);
+        InvoicePdfService pdfService = mock(InvoicePdfService.class);
+        when(bookingRepository.findById(44L)).thenReturn(Optional.empty());
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookingInvoiceController(realDataService, pdfService))
+                .setControllerAdvice(new BookingInvoiceExceptionHandler()).build();
+
+        mvc.perform(get("/api/bookings/44/invoice.pdf"))
+                .andExpect(status().isNotFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Không tìm thấy booking để lập hóa đơn."));
+
+        verify(settlementRepository, never()).findByBookingId(44L);
+        verify(pdfService, never()).generate(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void realInvoiceDataServiceRejectsUnconfirmedSettlementThroughEndpoint() throws Exception {
+        BookingRepository bookingRepository = mock(BookingRepository.class);
+        BookingSettlementRepository settlementRepository = mock(BookingSettlementRepository.class);
+        BookingSurchargeRepository surchargeRepository = mock(BookingSurchargeRepository.class);
+        OperatingSettingsRepository settingsRepository = mock(OperatingSettingsRepository.class);
+        InvoiceDataService realDataService = new InvoiceDataService(bookingRepository, settlementRepository,
+                surchargeRepository, settingsRepository);
+        InvoicePdfService pdfService = mock(InvoicePdfService.class);
+        Booking checkedOut = new Booking();
+        checkedOut.setStatus(BookingStatus.DA_TRA_PHONG);
+        BookingSettlement unconfirmed = new BookingSettlement();
+        unconfirmed.setTransactionStatus("NOT_APPLICABLE");
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(checkedOut));
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(unconfirmed));
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookingInvoiceController(realDataService, pdfService))
+                .setControllerAdvice(new BookingInvoiceExceptionHandler()).build();
+
+        mvc.perform(get("/api/bookings/44/invoice.pdf"))
+                .andExpect(status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
+                        .value("Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú."));
+
+        verify(settingsRepository, never()).findById(org.mockito.ArgumentMatchers.any());
+        verify(pdfService, never()).generate(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
