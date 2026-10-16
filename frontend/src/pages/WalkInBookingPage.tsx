@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { getRoomTypes } from '../services/roomTypeService'
 import { createWalkInBooking, getGuestQuote } from '../services/guestBookingService'
+import { getCustomerNoShowHistory } from '../services/bookingService'
 import { searchAvailableRooms } from '../services/roomService'
 import type { RoomType } from '../types/roomType'
 import type { WalkInBookingResult } from '../types/guestBooking'
+import type { CustomerNoShowResponse } from '../types/booking'
 import { WalkInBookingReceipt } from '../components/WalkInBookingReceipt'
+import { evaluateNoShowBadge } from './customerNoShowHelper'
 import './WalkInBookingPage.css'
 
 type WalkInForm = {
@@ -71,6 +74,42 @@ export function WalkInBookingPage() {
     key: string
     totalAmount: number | null
   } | null>(null)
+  // S4-04 (SCRUM-150): Thông tin cảnh báo khách từng bỏ hẹn theo số điện thoại
+  const [noShowInfo, setNoShowInfo] = useState<CustomerNoShowResponse | null>(null)
+  const [noShowLoading, setNoShowLoading] = useState(false)
+
+  useEffect(() => {
+    const trimmedPhone = form.phone.trim()
+    if (trimmedPhone.length < 8) {
+      return
+    }
+
+    let isMounted = true
+    const timer = setTimeout(() => {
+      setNoShowLoading(true)
+      getCustomerNoShowHistory(trimmedPhone)
+        .then((data) => {
+          if (isMounted) {
+            setNoShowInfo(data)
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setNoShowInfo(null)
+          }
+        })
+        .finally(() => {
+          if (isMounted) {
+            setNoShowLoading(false)
+          }
+        })
+    }, 250)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
+  }, [form.phone])
 
   useEffect(() => {
     getRoomTypes()
@@ -178,6 +217,9 @@ export function WalkInBookingPage() {
     ) {
       setQuoteResult(null)
       setAvailabilityResult(null)
+    }
+    if (field === 'phone' && value.trim().length < 8) {
+      setNoShowInfo(null)
     }
     setForm((current) => ({
       ...current,
@@ -311,6 +353,7 @@ export function WalkInBookingPage() {
   function handleCreateAnother() {
     setCreated(null)
     setForm(emptyForm())
+    setNoShowInfo(null)
     setError('')
     setMessage('')
   }
@@ -330,10 +373,10 @@ export function WalkInBookingPage() {
       <div className="walk-in-header">
         <div>
 
-          <h2>Booking tại quầy</h2>
+          <h2>Tạo lịch hẹn mới / Booking tại quầy</h2>
 
           <p>
-            Nhập thông tin lưu trú cho khách vãng lai.
+            Nhập thông tin lưu trú cho khách vãng lai hoặc tạo lịch hẹn mới.
             Ngày nhận phòng mặc định là hôm nay.
           </p>
         </div>
@@ -383,19 +426,56 @@ export function WalkInBookingPage() {
             />
           </label>
 
-          <label>
-            <span>Số điện thoại</span>
+          <div className="walk-in-field-group">
+            <label>
+              <span>Số điện thoại</span>
 
-            <input
-              type="tel"
-              value={form.phone}
-              maxLength={10}
-              placeholder="Nhập số điện thoại"
-              onChange={(event) =>
-                update('phone', event.target.value)
-              }
-            />
-          </label>
+              <input
+                type="tel"
+                value={form.phone}
+                maxLength={10}
+                placeholder="Nhập số điện thoại"
+                onChange={(event) =>
+                  update('phone', event.target.value)
+                }
+              />
+            </label>
+
+            {noShowLoading && (
+              <span className="no-show-checking-hint">Đang kiểm tra lịch sử...</span>
+            )}
+
+            {form.phone.trim().length >= 8 && noShowInfo && noShowInfo.hasWarning && (() => {
+              const badge = evaluateNoShowBadge(noShowInfo.noShowCount)
+              return (
+                <div
+                  className={badge.badgeClassName}
+                  role="alert"
+                  data-testid="no-show-warning-badge"
+                  id="no-show-warning-badge"
+                >
+                  <span className="no-show-warning-icon" aria-hidden="true">⚠️</span>
+                  <div className="no-show-warning-content">
+                    <span className="no-show-warning-title">
+                      {badge.message || noShowInfo.warningMessage}
+                    </span>
+                    <p className="no-show-warning-desc">
+                      {badge.description}
+                    </p>
+                    {noShowInfo.fullName && !form.guestName && (
+                      <button
+                        type="button"
+                        className="no-show-autofill-btn"
+                        onClick={() => update('guestName', noShowInfo.fullName!)}
+                      >
+                        Điền tên theo hồ sơ: <strong>{noShowInfo.fullName}</strong>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
 
               <label>
                 <span>Email</span>

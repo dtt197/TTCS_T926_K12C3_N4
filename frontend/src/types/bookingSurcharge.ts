@@ -28,6 +28,11 @@ export type BookingSurchargeList = {
   currentGuestCount: number | null
   maxCapacity: number | null
   remainingCapacity: number | null
+  automaticExtraGuestCount: number
+  automaticExtraPersonFeeSnapshot: number
+  automaticSurchargeAmount: number
+  automaticSurchargeBreakdownComplete: boolean
+  automaticSurchargeBreakdownWarning: string | null
 }
 
 export type BookingSurchargeRequest = {

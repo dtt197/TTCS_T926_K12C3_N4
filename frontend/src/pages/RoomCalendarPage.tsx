@@ -5,6 +5,7 @@ import { createRoomCalendarPlan, mergeRoomCalendarResponses, type RoomCalendarPl
 import { getRoomCalendar, type CalendarStatus, type RoomCalendar } from '../services/roomCalendarService'
 import type { BookingListItem } from '../types/booking'
 import { isNoShowEligible } from './bookingActionVisibility'
+import { BookingNoShowUndoButton } from '../components/BookingNoShowUndoButton'
 import './RoomCalendarPage.css'
 
 const labels: Record<CalendarStatus, string> = {
@@ -474,6 +475,16 @@ export function RoomCalendarPage() {
                   </button>
                 )
               })()}
+              {detail.booking && detail.booking.status === 'NO_SHOW' && (
+                <BookingNoShowUndoButton
+                  bookingId={detail.bookingId}
+                  variant="detail"
+                  onSuccess={() => {
+                    setAttempt((v) => v + 1)
+                    closeDetail()
+                  }}
+                />
+              )}
               <button type="button" onClick={closeDetail}>Quay lại sơ đồ</button>
             </div>
           </div>

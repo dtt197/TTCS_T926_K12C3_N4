@@ -26,6 +26,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,7 @@ import org.springframework.web.server.ResponseStatusException;
     "spring.flyway.enabled=false"
 })
 class CheckoutConcurrencyIntegrationTest {
+    private static final Logger log = LoggerFactory.getLogger(CheckoutConcurrencyIntegrationTest.class);
     @Autowired private CheckoutService checkoutService;
     @Autowired private RoomRepository rooms;
     @Autowired private BookingRepository bookings;
@@ -78,8 +81,10 @@ class CheckoutConcurrencyIntegrationTest {
         Booking booking = new Booking();
         booking.setRoom(rooms.findById(roomId).orElseThrow());
         booking.setRoomTypeNameSnapshot("Test");
-        booking.setCheckInDate(LocalDate.of(2026, 10, 14));
-        booking.setCheckOutDate(LocalDate.of(2026, 10, 15));
+        LocalDate checkOutDate = LocalDate.now();
+        LocalDate checkInDate = checkOutDate.minusDays(1);
+        booking.setCheckInDate(checkInDate);
+        booking.setCheckOutDate(checkOutDate);
         booking.setWeekdayPriceSnapshot(100_000);
         booking.setWeekendPriceSnapshot(100_000);
         booking.setWeekendDaysSnapshot("SATURDAY,SUNDAY");
@@ -89,7 +94,7 @@ class CheckoutConcurrencyIntegrationTest {
         booking.setTotalAmount(150_000);
         BookingNightlyPriceSnapshot nightly = new BookingNightlyPriceSnapshot();
         nightly.setBooking(booking);
-        nightly.setNightDate(LocalDate.of(2026, 10, 14));
+        nightly.setNightDate(checkInDate);
         nightly.setPriceType("WEEKDAY");
         nightly.setPriceLabel("Weekday");
         nightly.setRoomPrice(100_000);
@@ -126,8 +131,11 @@ class CheckoutConcurrencyIntegrationTest {
             Future<Boolean> first = executor.submit(() -> checkout(start, request));
             Future<Boolean> second = executor.submit(() -> checkout(start, request));
             start.countDown();
-            assertThat(first.get(15, TimeUnit.SECONDS).booleanValue()
-                    ^ second.get(15, TimeUnit.SECONDS).booleanValue()).isTrue();
+            boolean firstSucceeded = first.get(15, TimeUnit.SECONDS);
+            boolean secondSucceeded = second.get(15, TimeUnit.SECONDS);
+            log.info("Checkout race outcomes: first={}, second={}", firstSucceeded ? "SUCCESS" : "CONFLICT",
+                    secondSucceeded ? "SUCCESS" : "CONFLICT");
+            assertThat(firstSucceeded ^ secondSucceeded).isTrue();
         } finally {
             executor.shutdownNow();
         }
@@ -167,6 +175,8 @@ class CheckoutConcurrencyIntegrationTest {
             checkoutService.checkout(roomId, request, "Receptionist");
             return true;
         } catch (ResponseStatusException expectedConflict) {
+            log.info("Checkout call rejected: HTTP status={}, reason={}",
+                    expectedConflict.getStatusCode().value(), expectedConflict.getReason());
             return false;
         }
     }

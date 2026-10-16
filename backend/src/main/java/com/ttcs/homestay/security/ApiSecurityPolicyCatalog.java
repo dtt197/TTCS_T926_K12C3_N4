@@ -149,7 +149,9 @@ public class ApiSecurityPolicyCatalog {
                 "/api/bookings", "/api/bookings/*/preview",
                 "/api/bookings/*/cancel",
                 "/api/bookings/*/no-show",
-                "/api/appointments/*/no-show");
+                "/api/appointments/*/no-show",
+                "/api/bookings/*/no-show/undo",
+                "/api/appointments/*/no-show/undo");
         add(policies, "POST", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
                 "/api/bookings/*/deposit-adjustments",
                 "/api/bookings/*/surcharges");
@@ -162,6 +164,8 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/bookings/*/room-change-history",
                 "/api/bookings/*/available-rooms");
+        add(policies, "GET", Access.ROLES, List.of("RECEPTIONIST", "OWNER"),
+                "/api/bookings/*/invoice.pdf");
         add(policies, "PUT", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
                 "/api/bookings/*/deposit", "/api/bookings/*/deposits/**");
         add(policies, "DELETE", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
@@ -172,7 +176,8 @@ public class ApiSecurityPolicyCatalog {
                 "/api/pricing/**");
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/bookings", "/api/bookings/**",
-                "/api/appointments/**");
+                "/api/appointments/**",
+                "/api/customers", "/api/customers/**");
         add(policies, "GET", Access.PUBLIC, List.of(),
                 "/api/public/room-types/**",
                 "/api/public/room-types-catalog",

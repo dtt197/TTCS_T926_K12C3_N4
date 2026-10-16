@@ -25,6 +25,7 @@ import {
   assignBookingRoom,
   changeBookingRoom,
   getBookingRoomChangeHistory,
+  downloadBookingInvoice,
   markBookingNoShow,
 } from '../services/bookingService'
 import { getRoomTypes } from '../services/roomTypeService'
@@ -35,6 +36,8 @@ import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as run
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 import CancelBookingDialog from '../components/CancelBookingDialog'
 import { BookingSurchargeSection } from '../components/BookingSurchargeSection'
+import { BookingNoShowUndoButton } from '../components/BookingNoShowUndoButton'
+import { BookingActionLogSection } from '../components/BookingActionLogSection'
 
 const STATUS_LABELS: Record<string, string> = {
   CHO_XAC_NHAN: 'Chờ xác nhận',
@@ -106,6 +109,8 @@ export function BookingListPage({ role }: { role: string }) {
   const [detailData, setDetailData] = useState<BookingDetailResponse | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const [invoiceDownloading, setInvoiceDownloading] = useState(false)
+  const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [editDetailData, setEditDetailData] = useState<BookingDetailResponse | null>(null)
   const [editDetailLoading, setEditDetailLoading] = useState(false)
   const [editDetailError, setEditDetailError] = useState<string | null>(null)
@@ -665,6 +670,28 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     ? getClosedBookingCheckoutDisplay(detailData.status, detailData.checkedOutAt, detailData.earlyCheckoutReason)
     : null
 
+  async function handleDownloadInvoice() {
+    if (!detailBooking || invoiceDownloading) return
+    setInvoiceDownloading(true)
+    setInvoiceError(null)
+    try {
+      await downloadBookingInvoice(detailBooking.id, detailBooking.bookingCode)
+    } catch (err) {
+      const message = err instanceof ApiRequestError
+        ? err.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err.status === 403 ? 'Bạn không có quyền xuất hóa đơn cho booking này.'
+          : err.message
+        : err instanceof Error && err.name === 'AuthSessionExpiredError'
+          ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+          : err instanceof Error ? err.message : 'Không thể tạo hoặc tải hóa đơn PDF. Vui lòng thử lại.'
+      setInvoiceError(message || 'Không thể tạo hóa đơn PDF. Vui lòng thử lại.')
+    } finally {
+      setInvoiceDownloading(false)
+    }
+  }
+
+  const canExportInvoice = (role === 'RECEPTIONIST' || role === 'OWNER') && detailData?.status === 'DA_TRA_PHONG'
+
   return (
     <section className="panel booking-page">
       <div className="panel-heading">
@@ -813,6 +840,15 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                           Quá hạn giữ chỗ 24 giờ
                         </span>
                       )}
+                      {booking.status === 'NO_SHOW' && canNoShow && (
+                        <div style={{ marginTop: '4px' }}>
+                          <BookingNoShowUndoButton
+                            bookingId={booking.id}
+                            variant="inline"
+                            onSuccess={() => setRefreshVersion((v) => v + 1)}
+                          />
+                        </div>
+                      )}
                     </td>
                     <td className="booking-actions-cell">
                       <button type="button" className="booking-detail-button" onClick={() => void openDetails(booking)}>
@@ -885,6 +921,18 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                                   </button>
                                 )
                               })()}
+                              {actions.includes('undo-no-show') && (
+                                <div style={{ padding: '4px 8px' }}>
+                                  <BookingNoShowUndoButton
+                                    bookingId={booking.id}
+                                    variant="inline"
+                                    onSuccess={() => {
+                                      closeActionMenuAndRun(() => {})
+                                      setRefreshVersion((v) => v + 1)
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </div>, document.body,
                           )}
                         </>
@@ -1055,9 +1103,16 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                   </div>
                 )) : <p className="booking-history-empty">Chưa có lịch sử đổi phòng.</p>}
                 </section>
+                <BookingActionLogSection bookingId={detailBooking.id} />
               </div>
             )}
-            <footer className="booking-detail-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <footer className="booking-detail-footer" style={{ flexWrap: 'wrap' }}>
+              {canExportInvoice && <div className="booking-invoice-actions">
+                {invoiceError && <div className="alert" role="alert">{invoiceError}</div>}
+                <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={invoiceDownloading}>
+                  {invoiceDownloading ? 'Đang tạo hóa đơn...' : 'Xuất hóa đơn PDF'}
+                </button>
+              </div>}
               {canNoShow && (detailBooking.status === 'CHO_XAC_NHAN' || detailBooking.status === 'DA_XAC_NHAN') && (() => {
                 const eligibility = isNoShowEligible(detailBooking)
                 return (
@@ -1085,6 +1140,16 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                   </button>
                 )
               })()}
+              {canNoShow && detailBooking.status === 'NO_SHOW' && (
+                <BookingNoShowUndoButton
+                  bookingId={detailBooking.id}
+                  variant="detail"
+                  onSuccess={() => {
+                    setRefreshVersion((v) => v + 1)
+                    setDetailBooking(null)
+                  }}
+                />
+              )}
               <button type="button" className="booking-cancel-button" onClick={() => setDetailBooking(null)}>Đóng</button>
             </footer>
           </section>

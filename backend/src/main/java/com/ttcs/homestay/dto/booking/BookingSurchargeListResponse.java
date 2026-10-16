@@ -17,13 +17,28 @@ public record BookingSurchargeListResponse(
         long totalAmount,
         Integer currentGuestCount,
         Integer maxCapacity,
-        Integer remainingCapacity) {
+        Integer remainingCapacity,
+        int automaticExtraGuestCount,
+        long automaticExtraPersonFeeSnapshot,
+        long automaticSurchargeAmount,
+        boolean automaticSurchargeBreakdownComplete,
+        String automaticSurchargeBreakdownWarning) {
 
     /** Giữ constructor của lát 1 cho code và test hiện có. */
     public BookingSurchargeListResponse(Long bookingId, boolean canAddSurcharge, int maxNights,
             long defaultExtraPersonPrice, long defaultExtraBedPrice,
             List<BookingSurchargeResponse> items, long totalAmount) {
         this(bookingId, canAddSurcharge, maxNights, defaultExtraPersonPrice, defaultExtraBedPrice,
-                items, totalAmount, null, null, null);
+                items, totalAmount, null, null, null, 0, 0L, 0L, false,
+                "Không có dữ liệu snapshot phụ thu tự động.");
+    }
+
+    public BookingSurchargeListResponse(Long bookingId, boolean canAddSurcharge, int maxNights,
+            long defaultExtraPersonPrice, long defaultExtraBedPrice,
+            List<BookingSurchargeResponse> items, long totalAmount,
+            Integer currentGuestCount, Integer maxCapacity, Integer remainingCapacity) {
+        this(bookingId, canAddSurcharge, maxNights, defaultExtraPersonPrice, defaultExtraBedPrice,
+                items, totalAmount, currentGuestCount, maxCapacity, remainingCapacity, 0, 0L, 0L, false,
+                "Không có dữ liệu snapshot phụ thu tự động.");
     }
 }
