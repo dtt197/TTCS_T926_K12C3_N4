@@ -68,6 +68,8 @@ public class SampleDataService {
         jdbcTemplate.execute("DELETE FROM booking_audit_logs");
         jdbcTemplate.execute("DELETE FROM booking_room_change_history");
         jdbcTemplate.execute("DELETE FROM booking_settlements");
+        jdbcTemplate.execute("DELETE FROM email_logs");
+        jdbcTemplate.execute("DELETE FROM appointment_action_logs");
         jdbcTemplate.execute("DELETE FROM bookings");
         jdbcTemplate.execute("DELETE FROM price_overrides");
         jdbcTemplate.execute("DELETE FROM notifications");

@@ -449,7 +449,7 @@ export function SampleDataPage() {
           onClick={() => setActiveTab('acceptance-test')}
         >
           <span aria-hidden="true">📋</span>
-          <span>Biên bản nghiệm thu Staging (SCRUM-140)</span>
+          <span>Biên bản nghiệm thu trọn luồng (SCRUM-140)</span>
           <span className="sdp-tab-pill">{passedCount}/{testCases.length} ĐẠT</span>
         </button>
       </div>
@@ -820,10 +820,10 @@ export function SampleDataPage() {
               <div className="sdp-report-tags">
                 <span className="sdp-badge sdp-badge--s409">#S4-09</span>
                 <span className="sdp-badge sdp-badge--scrum">SCRUM-140</span>
-                <span className="sdp-badge sdp-badge--status-pass">✓ ĐÃ NGHIỆM THU STAGING</span>
+                <span className="sdp-badge sdp-badge--status-pass">⏳ CHỜ PO PHÊ DUYỆT</span>
               </div>
               <h2 className="sdp-report-title">
-                Biên bản nghiệm thu trọn luồng trên môi trường Staging
+                Biên bản nghiệm thu trọn luồng (Kiểm thử trên máy local)
               </h2>
               <p className="sdp-report-doc-id">
                 Mã văn bản: <strong>{STAGING_SESSION_METADATA.documentCode}</strong> • Phê duyệt: <strong>{STAGING_SESSION_METADATA.poSignoff}</strong>
@@ -842,7 +842,7 @@ export function SampleDataPage() {
               </div>
               <div className="sdp-stat-box">
                 <span className="sdp-stat-label">Môi trường</span>
-                <span className="sdp-stat-num sdp-stat-num--text">Staging Docker</span>
+                <span className="sdp-stat-num sdp-stat-num--text">Máy local</span>
               </div>
               <div className="sdp-stat-box">
                 <span className="sdp-stat-label">Thời gian chạy</span>
@@ -986,7 +986,7 @@ export function SampleDataPage() {
                     </div>
 
                     <div className="sdp-tc-col sdp-tc-col--highlight">
-                      <span className="sdp-field-label">Kết quả thực tế ghi nhận trên Staging:</span>
+                      <span className="sdp-field-label">Kết quả thực tế ghi nhận trên máy local:</span>
                       <p className="sdp-field-val sdp-field-val--actual">{tc.actual}</p>
                     </div>
                   </div>
@@ -1018,7 +1018,7 @@ export function SampleDataPage() {
             </p>
             <ul className="sdp-repeat-list">
               <li>
-                <strong>Bước 1:</strong> Thực hiện chạy trọn vẹn luồng từ đặt phòng đến trả phòng và xuất hóa đơn trên Staging.
+                <strong>Bước 1:</strong> Thực hiện chạy trọn vẹn luồng từ đặt phòng đến trả phòng và xuất hóa đơn trên máy local.
               </li>
               <li>
                 <strong>Bước 2:</strong> Gọi lệnh <code>POST /api/admin/sample-data/reload</code> để xóa toàn bộ booking mới sinh và nạp lại trạng thái ban đầu. Thời gian đo được: <strong>1.8 giây</strong> (&lt; 2 phút).
@@ -1031,7 +1031,7 @@ export function SampleDataPage() {
 
           {/* ── Staging Defect Log Table ─────────────────────────────────── */}
           <section className="sdp-section sdp-defect-panel">
-            <h3 className="sdp-section-heading">Nhật ký lỗi & Biện pháp khắc phục trong phiên chạy Staging (Defect Log)</h3>
+            <h3 className="sdp-section-heading">Nhật ký lỗi & Biện pháp khắc phục trong phiên chạy kiểm thử (Defect Log)</h3>
             <div className="sdp-table-wrap">
               <table className="sdp-table">
                 <thead>
@@ -1074,19 +1074,19 @@ export function SampleDataPage() {
               <div className="sdp-signoff-text">
                 <h4 className="sdp-signoff-title">Xác nhận phê duyệt nghiệm thu từ Product Owner</h4>
                 <p className="sdp-signoff-desc">
-                  Biên bản nghiệm thu trọn luồng Sprint 4 (#S4-09 / SCRUM-140) đã được kiểm thử thực tế và đối chiếu 100% khớp với kết quả mong đợi trên môi trường Staging.
+                  Biên bản nghiệm thu trọn luồng Sprint 4 (#S4-09 / SCRUM-140) đã được kiểm thử thực tế và đối chiếu 100% khớp với kết quả mong đợi trên máy local (chờ nghiệm thu lại trên Staging sau khi hoàn tất S4-10).
                 </p>
                 <div className="sdp-signoff-details">
                   <span><strong>Người phê duyệt:</strong> {STAGING_SESSION_METADATA.poSignoff}</span>
                   <span><strong>Ngày xác nhận:</strong> {STAGING_SESSION_METADATA.executionDate}</span>
-                  <span><strong>Kết luận:</strong> Đủ điều kiện đóng Epic S4-09</span>
+                  <span><strong>Kết luận:</strong> Chờ Product Owner phê duyệt</span>
                 </div>
               </div>
               <div className="sdp-stamp-box" aria-hidden="true">
                 <div className="sdp-stamp-inner">
                   <span>PRODUCT OWNER</span>
-                  <strong>APPROVED</strong>
-                  <small>STAGING PASS</small>
+                  <strong>IN REVIEW</strong>
+                  <small>CHỜ PO DUYỆT</small>
                 </div>
               </div>
             </div>

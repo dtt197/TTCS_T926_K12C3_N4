@@ -1,9 +1,9 @@
-# BIÊN BẢN NGHIỆM THU KỊCH BẢN TRỌN LUỒNG TRÊN MÔI TRƯỜNG STAGING
+# BIÊN BẢN NGHIỆM THU KỊCH BẢN TRỌN LUỒNG (KIỂM THỬ TRÊN MÁY LOCAL)
 **Mã tài liệu:** BB-NT-S4-09-STAGING  
 **Dự án:** Hệ thống Quản lý Homestay (TTCS_T926_K12C3_N4)  
 **Hạng mục / Sprint:** Sprint 4 - Epic S4-09 (User Story EP-01 / SCRUM-140)  
 **Thời gian thực hiện nghiệm thu:** 16/10/2026, 09:30 - 10:45 (GMT+7)  
-**Môi trường thử nghiệm:** Staging Environment (Docker Compose v2.x, Ubuntu 22.04 LTS, MySQL 8.0.36, Java 17 Temurin, Spring Boot 3.4.x, React 18 + Vite)  
+**Môi trường thử nghiệm:** Máy local của nhóm (PostgreSQL 15, Java 17 Temurin, Spring Boot 4.1.1, React 18 + Vite). Lưu ý: chưa có staging/Docker Compose (thuộc S4-10); biên bản sẽ chạy lại trên staging khi S4-10 hoàn thành.  
 
 ---
 
@@ -23,9 +23,9 @@
 
 ---
 
-## 3. KẾT QUẢ THỰC HIỆN CHI TIẾT TỪNG BƯỚC TRÊN STAGING
+## 3. KẾT QUẢ THỰC HIỆN CHI TIẾT TỪNG BƯỚC (TRÊN MÁY LOCAL)
 
-| Mã TC | Tên kịch bản / Bước thực hiện | Vai trò | Dữ liệu đầu vào (Inputs) | Kết quả mong đợi (Expected Result) | Kết quả thực tế trên Staging (Actual Result) | Thời gian chạy | Kết luận |
+| Mã TC | Tên kịch bản / Bước thực hiện | Vai trò | Dữ liệu đầu vào (Inputs) | Kết quả mong đợi (Expected Result) | Kết quả thực tế (Actual Result) | Thời gian chạy | Kết luận |
 |---|---|---|---|---|---|---|---|
 | **TC-01** | **Khởi tạo & Nạp lại dữ liệu mẫu về ban đầu** | Chủ homestay (`OWNER`) | Bấm nút "Nạp lại dữ liệu mẫu" tại `/sample-data` | Xóa sạch dữ liệu phát sinh cũ; nạp lại đúng 4 loại phòng, 20 phòng, bảng giá lễ, 30 booking. Thời gian < 2 phút. | Đã nạp thành công: 4 loại phòng, 20 phòng, 16 bản ghi giá đè, 30 booking rải đều 3 tháng. Thời gian thực tế: **1.8 giây**. | 09:32:15 | **ĐẠT (PASS)** |
 | **TC-02** | **Tra cứu phòng trống & Đặt phòng trực tuyến** | Khách hàng (`PUBLIC`) | Tra cứu phòng đôi ngày `18/10` - `20/10` (2 đêm), 2 khách. Họ tên: Trần Nam, SĐT: `0988776655`. | Hiển thị loại phòng Phòng đôi (DOI) còn trống; tính đúng tổng tiền 2 đêm ngày thường = 1,000,000 VND. Tạo booking `BK-STG-001`. | Hệ thống lọc đúng danh sách phòng trống, tính snapshot giá chính xác 1,000,000 VND, booking sinh mã `BK-STG-001` trạng thái `DA_XAC_NHAN`. | 09:37:40 | **ĐẠT (PASS)** |
@@ -47,10 +47,10 @@
 
 ---
 
-## 5. NHẬT KÝ LỖI & BIỆN PHÁP KHẮC PHỤC TRÊN STAGING (DEFECT LOG)
+## 5. NHẬT KÝ LỖI & BIỆN PHÁP KHẮC PHỤC (DEFECT LOG)
 | Mã Defect | Mô tả hiện tượng | Mức độ | Nguyên nhân | Biện pháp khắc phục đã áp dụng | Tình trạng |
 |---|---|---|---|---|---|
-| **DEF-01** | Tài khoản demo đăng nhập báo sai mật khẩu trên Staging | Medium | Hash mật khẩu demo ban đầu chưa khớp cost factor BCrypt của hệ thống | Đã cập nhật hash chuẩn `$2a$10$...` trong `DemoAccountInitializer` và `SampleDataService`. | **ĐÃ GIẢI QUYẾT** |
+| **DEF-01** | Tài khoản demo đăng nhập báo sai mật khẩu khi nạp mẫu | Medium | Hash mật khẩu demo ban đầu chưa khớp cost factor BCrypt của hệ thống | Đã cập nhật hash chuẩn `$2a$10$...` trong `DemoAccountInitializer` và `SampleDataService`. | **ĐÃ GIẢI QUYẾT** |
 | **DEF-02** | Lưới lịch phòng 14 ngày bị lệch 1 ngày khi người dùng ở timezone khác UTC | Low | Hàm tạo dải ngày dùng `toISOString()` chuyển ngày về UTC | Đã chuẩn hóa chuỗi ngày dạng local `YYYY-MM-DD` trong `roomCalendarRanges.ts`. | **ĐÃ GIẢI QUYẾT** |
 | **DEF-03** | Thiếu bậc hoàn tiền khi hủy phòng Studio Người Lớn | Low | Bảng `room_type_cancellation_tiers` chưa được seed cho phòng Studio | Đã bổ sung chính sách hủy 48h hoàn 80% cho Studio trong kịch bản nạp mẫu. | **ĐÃ GIẢI QUYẾT** |
 
@@ -60,9 +60,9 @@
 - **Tổng số kịch bản kiểm thử:** 08 kịch bản.
 - **Số kịch bản đạt (Pass):** 08 / 08 (100%).
 - **Số kịch bản không đạt (Fail):** 00 / 08 (0%).
-- **Kết luận:** Hệ thống đáp ứng hoàn toàn và xuất sắc các tiêu chí nghiệm thu của Epic **S4-09** (SCRUM-140 & EP-01). Bộ dữ liệu mẫu, hướng dẫn sử dụng và kịch bản trọn luồng đã được chạy thử nghiệm thành công trên môi trường Staging. Đủ điều kiện để bàn giao và đóng sprint.
+- **Kết luận:** Hệ thống đáp ứng hoàn toàn các tiêu chí kiểm thử của Epic **S4-09** (SCRUM-140 & EP-01). Bộ dữ liệu mẫu, hướng dẫn sử dụng và kịch bản trọn luồng đã được chạy thử nghiệm thành công trên máy local (chờ nghiệm thu lại trên Staging sau khi hoàn tất S4-10).
 
 **ĐẠI DIỆN PRODUCT OWNER (PO)**  
 *(Ký và ghi rõ họ tên)*  
 
-*Đã phê duyệt nghiệm thu ngày 16/10/2026*
+*Chờ Product Owner phê duyệt*

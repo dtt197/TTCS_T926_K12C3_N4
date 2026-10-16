@@ -48,9 +48,9 @@ export const STAGING_SESSION_METADATA: StagingAcceptanceSession = {
   documentCode: 'BB-NT-S4-09-STAGING',
   project: 'Hệ thống Quản lý Homestay (TTCS K12C3 N4)',
   epic: '#S4-09: Quản lý dữ liệu mẫu & Nghiệm thu trọn luồng',
-  story: 'SCRUM-140 (EP-01): Có kết quả nghiệm thu ghi nhận được sau khi chạy thử kịch bản trọn luồng trên staging',
-  environment: 'Staging Environment (Linux x86_64, Docker Compose v2.x)',
-  serverDetails: 'Ubuntu 22.04 LTS, MySQL 8.0.36, OpenJDK 17 Temurin, Spring Boot 3.4.x, React 18 + Vite',
+  story: 'SCRUM-140 (EP-01): Có kết quả nghiệm thu ghi nhận được sau khi chạy thử kịch bản trọn luồng trên máy local (chờ S4-10)',
+  environment: 'Máy local (Staging Environment và Docker Compose chưa có, chờ S4-10)',
+  serverDetails: 'PostgreSQL 15, OpenJDK 17 Temurin, Spring Boot 4.1.1, React 18 + Vite',
   executionDate: '16/10/2026',
   executionTimeRange: '09:30 - 10:45 (GMT+7)',
   tester: 'Nhóm phát triển & QA (TTCS K12C3 Nhóm 4)',
@@ -59,7 +59,7 @@ export const STAGING_SESSION_METADATA: StagingAcceptanceSession = {
   passedTests: 8,
   failedTests: 0,
   repeatabilityStatus: 'Đã kiểm thử nạp lại dữ liệu mẫu và chạy lại 100% thành công không lỗi mồ côi',
-  overallStatus: 'APPROVED',
+  overallStatus: 'IN_REVIEW',
 }
 
 export const STAGING_TEST_CASES: AcceptanceTestCase[] = [
@@ -75,7 +75,7 @@ export const STAGING_TEST_CASES: AcceptanceTestCase[] = [
     executionTime: '09:32:15',
     status: 'PASS',
     criteria: 'Đúng 4 loại phòng, 20 phòng, bảng giá ngày lễ, 30 booking rải đều 3 tháng.',
-    notes: 'Kiểm tra log MySQL: Toàn bộ bảng phụ thuộc được xóa sạch và tái tạo chỉ mục toàn vẹn.',
+    notes: 'Kiểm tra log PostgreSQL: Toàn bộ bảng phụ thuộc được xóa sạch và tái tạo chỉ mục toàn vẹn.',
   },
   {
     id: 'TC-02',
@@ -173,7 +173,7 @@ export const STAGING_TEST_CASES: AcceptanceTestCase[] = [
 export const STAGING_DEFECTS: StagingDefect[] = [
   {
     id: 'DEF-01',
-    description: 'Tài khoản demo đăng nhập báo sai mật khẩu trên Staging',
+    description: 'Tài khoản demo đăng nhập báo sai mật khẩu khi nạp mẫu',
     severity: 'Trung bình',
     rootCause: 'Hash mật khẩu demo ban đầu chưa khớp cost factor BCrypt của hệ thống',
     resolution: 'Đã cập nhật hash chuẩn $2a$10$... trong DemoAccountInitializer và SampleDataService.',
@@ -219,7 +219,7 @@ export function generateAcceptanceReportMarkdown(
       `| **${d.id}** | ${d.description} | ${d.severity} | ${d.rootCause} | ${d.resolution} | **${d.status}** |`
   ).join('\n')
 
-  return `# BIÊN BẢN NGHIỆM THU KỊCH BẢN TRỌN LUỒNG TRÊN MÔI TRƯỜNG STAGING
+  return `# BIÊN BẢN NGHIỆM THU KỊCH BẢN TRỌN LUỒNG (KIỂM THỬ TRÊN MÁY LOCAL)
 **Mã tài liệu:** ${session.documentCode}
 **Dự án:** ${session.project}
 **Hạng mục:** ${session.epic}
@@ -234,7 +234,7 @@ export function generateAcceptanceReportMarkdown(
 
 ## 1. KẾT QUẢ THỰC HIỆN CHI TIẾT TỪNG BƯỚC
 
-| Mã TC | Tên kịch bản | Vai trò | Dữ liệu đầu vào | Kết quả mong đợi | Kết quả thực tế trên Staging | Thời gian | Trạng thái |
+| Mã TC | Tên kịch bản | Vai trò | Dữ liệu đầu vào | Kết quả mong đợi | Kết quả thực tế | Thời gian | Trạng thái |
 |---|---|---|---|---|---|---|---|
 ${rows}
 
@@ -245,7 +245,7 @@ ${session.repeatabilityStatus}
 
 ---
 
-## 3. NHẬT KÝ LỖI & KHẮC PHỤC TRÊN STAGING
+## 3. NHẬT KÝ LỖI & KHẮC PHỤC
 | Mã Lỗi | Mô tả | Mức độ | Nguyên nhân | Biện pháp khắc phục | Tình trạng |
 |---|---|---|---|---|---|
 ${defectRows}
@@ -253,7 +253,7 @@ ${defectRows}
 ---
 
 **XÁC NHẬN CỦA PRODUCT OWNER (PO):**
-- Trạng thái phê duyệt: **ĐÃ PHÊ DUYỆT (APPROVED)**
-- Ngày phê duyệt: ${session.executionDate}
+- Trạng thái phê duyệt: *Chờ Product Owner phê duyệt*
+- Ngày ghi nhận: ${session.executionDate}
 `
 }
