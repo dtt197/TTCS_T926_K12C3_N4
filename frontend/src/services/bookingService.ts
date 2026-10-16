@@ -144,6 +144,7 @@ export type BookingDetailResponse = {
   holdExpiresAt: string | null
   checkedOutAt?: string | null
   earlyCheckoutReason?: string | null
+  settlementTransactionStatus?: string | null
   registeredGuests?: { fullName: string; primary: boolean }[]
   deposit: BookingDepositResponse | null
   history?: BookingAuditLog[]

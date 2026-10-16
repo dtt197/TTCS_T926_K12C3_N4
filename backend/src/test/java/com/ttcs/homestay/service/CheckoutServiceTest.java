@@ -219,6 +219,7 @@ class CheckoutServiceTest {
         org.mockito.ArgumentCaptor<BookingSettlement> captor =
                 org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
         verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getTransactionStatus()).isEqualTo("CONFIRMED");
         assertThat(captor.getValue().getRoomTotal()).isEqualByComparingTo("1000000");
         assertThat(captor.getValue().getAdditionalSurchargeTotal()).isEqualTo(50_000L);
         assertThat(captor.getValue().getDepositTotal()).isEqualByComparingTo("250000");
@@ -720,7 +721,10 @@ class CheckoutServiceTest {
         CheckoutPreviewResponse preview = service.preview(12L);
         assertThat(preview.settlementType()).isEqualTo("ZERO");
         service.checkout(12L, new CheckoutPaymentRequest(preview.previewToken(), null, null, null, null), "Lễ tân");
-        verify(settlementRepository).save(any(BookingSettlement.class));
+        org.mockito.ArgumentCaptor<BookingSettlement> captor =
+                org.mockito.ArgumentCaptor.forClass(BookingSettlement.class);
+        verify(settlementRepository).save(captor.capture());
+        assertThat(captor.getValue().getTransactionStatus()).isEqualTo("NOT_APPLICABLE");
     }
 
     @Test

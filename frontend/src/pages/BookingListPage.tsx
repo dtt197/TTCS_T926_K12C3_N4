@@ -671,7 +671,8 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     : null
 
   async function handleDownloadInvoice() {
-    if (!detailBooking || invoiceDownloading) return
+    if (!detailBooking || invoiceDownloading || detailData?.status !== 'DA_TRA_PHONG'
+      || detailData.settlementTransactionStatus !== 'CONFIRMED') return
     setInvoiceDownloading(true)
     setInvoiceError(null)
     try {
@@ -690,7 +691,28 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
     }
   }
 
-  const canExportInvoice = (role === 'RECEPTIONIST' || role === 'OWNER') && detailData?.status === 'DA_TRA_PHONG'
+  const canSeeInvoiceAction = role === 'RECEPTIONIST' || role === 'OWNER'
+  const invoiceStatus = detailData?.status ?? detailBooking?.status
+  const invoiceDisabledReason = invoiceStatus === 'DA_TRA_PHONG'
+    ? detailData?.settlementTransactionStatus === 'CONFIRMED'
+      ? null
+      : 'Chưa xác nhận hoàn tất thu/hoàn tiền nên chưa thể xuất hóa đơn lưu trú.'
+    : invoiceStatus === 'DA_NHAN_PHONG'
+      ? 'Booking chưa trả phòng nên chưa xuất được hoá đơn'
+      : invoiceStatus === 'CHO_XAC_NHAN'
+        ? 'Booking đang chờ xác nhận nên chưa thể xuất hoá đơn.'
+        : invoiceStatus === 'DA_XAC_NHAN'
+          ? 'Booking chưa nhận phòng nên chưa thể xuất hoá đơn.'
+          : invoiceStatus === 'DA_HUY'
+            ? 'Booking đã huỷ nên không thể xuất hoá đơn lưu trú.'
+            : invoiceStatus === 'DA_HET_HAN'
+              ? 'Booking đã hết hạn nên không thể xuất hoá đơn lưu trú.'
+              : invoiceStatus === 'NO_SHOW'
+                ? 'Khách không đến nên không thể xuất hoá đơn lưu trú.'
+                : 'Chưa xác định được trạng thái booking nên chưa thể xuất hóa đơn.'
+  const canExportInvoice = canSeeInvoiceAction && detailData?.status === 'DA_TRA_PHONG'
+    && detailData.settlementTransactionStatus === 'CONFIRMED'
+  const showDisabledInvoiceAction = canSeeInvoiceAction && invoiceDisabledReason !== null
 
   return (
     <section className="panel booking-page">
@@ -1107,11 +1129,12 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
               </div>
             )}
             <footer className="booking-detail-footer" style={{ flexWrap: 'wrap' }}>
-              {canExportInvoice && <div className="booking-invoice-actions">
+              {(canExportInvoice || showDisabledInvoiceAction) && <div className="booking-invoice-actions">
                 {invoiceError && <div className="alert" role="alert">{invoiceError}</div>}
-                <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={invoiceDownloading}>
+                <button type="button" className="booking-save-button" onClick={() => void handleDownloadInvoice()} disabled={!canExportInvoice || invoiceDownloading}>
                   {invoiceDownloading ? 'Đang tạo hóa đơn...' : 'Xuất hóa đơn PDF'}
                 </button>
+                {showDisabledInvoiceAction && <p role="status">{invoiceDisabledReason}</p>}
               </div>}
               {canNoShow && (detailBooking.status === 'CHO_XAC_NHAN' || detailBooking.status === 'DA_XAC_NHAN') && (() => {
                 const eligibility = isNoShowEligible(detailBooking)

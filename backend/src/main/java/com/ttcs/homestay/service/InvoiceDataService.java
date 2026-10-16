@@ -49,6 +49,10 @@ public class InvoiceDataService {
         BookingSettlement settlement = settlementRepository.findByBookingId(bookingId)
                 .orElseThrow(() -> error(HttpStatus.CONFLICT,
                         "Booking đã trả phòng nhưng chưa có dữ liệu quyết toán (settlement)."));
+        if (!"CONFIRMED".equals(settlement.getTransactionStatus())) {
+            throw error(HttpStatus.CONFLICT,
+                    "Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú.");
+        }
         Long settingsId = settlement.getOperatingSettingsId();
         OperatingSettings settings = settingsId == null ? null : settingsRepository.findById(settingsId).orElse(null);
         boolean contactInfoSupplemented = false;
