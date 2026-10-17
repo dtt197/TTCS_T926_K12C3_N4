@@ -2,6 +2,8 @@ package com.ttcs.homestay.controller.report;
 
 import com.ttcs.homestay.dto.report.RevenueReportResponse;
 import com.ttcs.homestay.dto.report.RevenueByRoomTypeResponse;
+import com.ttcs.homestay.dto.report.RevenueComparisonResponse;
+import com.ttcs.homestay.dto.report.RevenueByRoomTypeComparisonResponse;
 import com.ttcs.homestay.service.RevenueReportService;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -49,5 +51,30 @@ public class RevenueReportController {
                 endDate,
                 roomTypeId);
     }
+    
+    @GetMapping("/comparison")
+    public RevenueComparisonResponse getComparison(
+            @RequestParam("startDate") LocalDate startDate,
+            @RequestParam("endDate") LocalDate endDate) {
 
+        return revenueReportService.getComparison(
+                startDate,
+                endDate);
+    }
+    
+    /**
+     * S4-07 Lát 3:
+     * So sánh doanh thu theo từng loại phòng.
+     */
+    @GetMapping("/revenue/by-room-type/comparison")
+    public List<RevenueByRoomTypeComparisonResponse> getComparisonByRoomType(
+            @RequestParam("startDate") LocalDate startDate,
+            @RequestParam("endDate") LocalDate endDate,
+            @RequestParam(value = "roomTypeId", required = false) Long roomTypeId) {
+
+        return revenueReportService.getComparisonByRoomType(
+                startDate,
+                endDate,
+                roomTypeId);
+    }
 }
