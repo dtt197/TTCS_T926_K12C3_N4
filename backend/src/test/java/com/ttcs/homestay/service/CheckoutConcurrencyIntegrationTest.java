@@ -63,7 +63,7 @@ class CheckoutConcurrencyIntegrationTest {
         OperatingSettings operatingSettings = new OperatingSettings();
         operatingSettings.setHomestayName("Test");
         operatingSettings.setCheckInTime(LocalTime.of(14, 0));
-        operatingSettings.setCheckOutTime(LocalTime.MAX); // <-- sửa ở đây
+        operatingSettings.setCheckOutTime(LocalTime.NOON);
         operatingSettings.setLateCheckoutFeePerHour(100_000);
         operatingSettings.setExtraPersonFee(50_000);
         operatingSettings.setWeekendDays("SATURDAY,SUNDAY");
