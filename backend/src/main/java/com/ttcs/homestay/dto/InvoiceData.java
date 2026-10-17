@@ -14,6 +14,7 @@ public record InvoiceData(
         List<LineItem> lineItems, BigDecimal finalTotal, BigDecimal depositTotal,
         BookingSettlement.SettlementType settlementType, BigDecimal settlementAmount,
         BigDecimal remainingAmount, OffsetDateTime checkedOutAt, boolean contactInfoSupplementedAtExport,
+        BigDecimal checkoutPayment, BigDecimal totalPaid,
         String invoiceNumber, LocalDate issuedDate) {
 
     public InvoiceData(long bookingId, String bookingCode, String guestName, String guestPhone,
@@ -24,14 +25,15 @@ public record InvoiceData(
             BigDecimal remainingAmount, OffsetDateTime checkedOutAt, boolean contactInfoSupplementedAtExport) {
         this(bookingId, bookingCode, guestName, guestPhone, companyName, companyTaxCode, homestay, room,
                 checkInDate, checkOutDate, nights, lineItems, finalTotal, depositTotal, settlementType,
-                settlementAmount, remainingAmount, checkedOutAt, contactInfoSupplementedAtExport, null, null);
+                settlementAmount, remainingAmount, checkedOutAt, contactInfoSupplementedAtExport,
+                BigDecimal.ZERO, depositTotal, null, null);
     }
 
     public InvoiceData withIssuance(String number, LocalDate date) {
         return new InvoiceData(bookingId, bookingCode, guestName, guestPhone, companyName, companyTaxCode,
                 homestay, room, checkInDate, checkOutDate, nights, lineItems, finalTotal, depositTotal,
                 settlementType, settlementAmount, remainingAmount, checkedOutAt, contactInfoSupplementedAtExport,
-                number, date);
+                checkoutPayment, totalPaid, number, date);
     }
 
     public InvoiceData { lineItems = List.copyOf(lineItems); }

@@ -115,21 +115,40 @@ public class InvoiceDataService {
                 ? BookingSettlement.SettlementType.COLLECT
                 : difference.signum() < 0 ? BookingSettlement.SettlementType.REFUND
                         : BookingSettlement.SettlementType.ZERO;
-        if (settlement.getSettlementType() != expectedType || amount.compareTo(difference.abs()) != 0) {
+        if (settlement.getSettlementType() != expectedType
+                || expectedType == BookingSettlement.SettlementType.ZERO && amount.signum() != 0
+                || expectedType != BookingSettlement.SettlementType.ZERO && amount.signum() <= 0
+                || expectedType == BookingSettlement.SettlementType.COLLECT && amount.compareTo(difference) > 0
+                || expectedType == BookingSettlement.SettlementType.REFUND && amount.compareTo(difference.abs()) != 0) {
             throw error(HttpStatus.CONFLICT, "settlementType/amount không khớp finalTotal trừ depositTotal.");
         }
+        BigDecimal checkoutPayment = expectedType == BookingSettlement.SettlementType.COLLECT ? amount : BigDecimal.ZERO;
+        BigDecimal checkoutRefund = expectedType == BookingSettlement.SettlementType.REFUND ? amount : BigDecimal.ZERO;
+        BigDecimal totalPaid = deposit.add(checkoutPayment).subtract(checkoutRefund);
+        BigDecimal remaining = totalBeforeDeposit.subtract(totalPaid);
+        BigDecimal remainingRefund = expectedType == BookingSettlement.SettlementType.REFUND
+                ? difference.abs().subtract(amount).max(BigDecimal.ZERO) : BigDecimal.ZERO;
 
         List<InvoiceData.LineItem> lines = new ArrayList<>();
         lines.add(new InvoiceData.LineItem("ROOM", automatic.amount().signum() > 0
                 ? "Tiền phòng cơ bản (chưa gồm phụ thu)" : "Tiền phòng", roomBaseAmount));
         addExtraPersonLine(lines, surcharges, automatic);
-        addSurchargeLine(lines, surcharges, SurchargeType.THEM_GIUONG, "EXTRA_BED", "Thêm giường");
         lines.add(new InvoiceData.LineItem("LATE_CHECKOUT", "Trả muộn", lateFee));
         lines.add(new InvoiceData.LineItem("TOTAL_BEFORE_DEPOSIT", "Tổng tiền trước cọc", totalBeforeDeposit));
         lines.add(new InvoiceData.LineItem("DEPOSIT", "Trừ tiền cọc", deposit.negate()));
-        String balanceLabel = expectedType == BookingSettlement.SettlementType.REFUND ? "Còn phải hoàn" : "Còn phải thu";
-        lines.add(new InvoiceData.LineItem("BALANCE", balanceLabel,
-                expectedType == BookingSettlement.SettlementType.REFUND ? amount.negate() : amount));
+        lines.add(new InvoiceData.LineItem("CHECKOUT_PAYMENT", "Thu thêm khi trả phòng", checkoutPayment));
+        if (checkoutRefund.signum() > 0) {
+            lines.add(new InvoiceData.LineItem("CHECKOUT_REFUND", "Hoàn tiền khi trả phòng", checkoutRefund.negate()));
+        }
+        lines.add(new InvoiceData.LineItem("TOTAL_PAID", "Tổng đã thanh toán", totalPaid));
+        String balanceLabel = expectedType == BookingSettlement.SettlementType.REFUND ? "Còn phải hoàn"
+                : remaining.signum() == 0 ? "Còn phải thu" : "Còn phải thu";
+        BigDecimal balance = expectedType == BookingSettlement.SettlementType.REFUND
+                ? remainingRefund.negate() : remaining;
+        lines.add(new InvoiceData.LineItem("BALANCE", balanceLabel, balance));
+        if (expectedType != BookingSettlement.SettlementType.REFUND && remaining.signum() == 0) {
+            lines.add(new InvoiceData.LineItem("PAYMENT_STATUS", "Đã thanh toán đủ", BigDecimal.ZERO));
+        }
 
         return new InvoiceData(booking.getId(), booking.getBookingCode(), booking.getGuestName(),
                 booking.getGuestPhone(), null, null,
@@ -139,7 +158,8 @@ public class InvoiceDataService {
                 booking.getCheckInDate(), booking.getCheckOutDate(),
                 ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate()),
                 lines, totalBeforeDeposit, deposit, settlement.getSettlementType(), amount,
-                difference, settlement.getCheckedOutAt(), contactInfoSupplemented);
+                remaining, settlement.getCheckedOutAt(), contactInfoSupplemented, checkoutPayment, totalPaid,
+                null, null);
     }
 
     private static AutomaticSurcharge automaticSurcharge(Booking booking, BigDecimal settledRoomAmount) {

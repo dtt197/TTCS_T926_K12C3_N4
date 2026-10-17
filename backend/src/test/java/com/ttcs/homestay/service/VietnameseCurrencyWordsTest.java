@@ -8,11 +8,25 @@ import org.junit.jupiter.api.Test;
 
 class VietnameseCurrencyWordsTest {
     @Test
+    void formatsAcceptanceAmountsUsingVietnameseCurrencyConventions() {
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("0"))).isEqualTo("Không đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("1000"))).isEqualTo("Một nghìn đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("15000"))).isEqualTo("Mười lăm nghìn đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("21000"))).isEqualTo("Hai mươi mốt nghìn đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("105000"))).isEqualTo("Một trăm linh năm nghìn đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("1005000")))
+                .isEqualTo("Một triệu không trăm linh năm nghìn đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("1250000")))
+                .isEqualTo("Một triệu hai trăm năm mươi nghìn đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("1000000000"))).isEqualTo("Một tỷ đồng");
+    }
+
+    @Test
     void formatsZeroAndVietnameseTensAndHundreds() {
         assertThat(VietnameseCurrencyWords.format(new BigDecimal("0"))).isEqualTo("Không đồng");
-        assertThat(VietnameseCurrencyWords.format(new BigDecimal("101"))).isEqualTo("Một trăm lẻ một đồng");
-        assertThat(VietnameseCurrencyWords.format(new BigDecimal("1005"))).isEqualTo("Một nghìn không trăm lẻ năm đồng");
-        assertThat(VietnameseCurrencyWords.format(new BigDecimal("21001"))).isEqualTo("Hai mươi mốt nghìn không trăm lẻ một đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("101"))).isEqualTo("Một trăm linh một đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("1005"))).isEqualTo("Một nghìn không trăm linh năm đồng");
+        assertThat(VietnameseCurrencyWords.format(new BigDecimal("21001"))).isEqualTo("Hai mươi mốt nghìn không trăm linh một đồng");
         assertThat(VietnameseCurrencyWords.format(new BigDecimal("120045"))).isEqualTo("Một trăm hai mươi nghìn không trăm bốn mươi lăm đồng");
     }
 

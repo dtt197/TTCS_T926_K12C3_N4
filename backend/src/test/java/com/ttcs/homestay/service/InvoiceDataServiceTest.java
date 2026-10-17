@@ -98,7 +98,7 @@ class InvoiceDataServiceTest {
         assertThat(data.lineItems().get(1).amount()).isEqualByComparingTo("200000");
         assertThat(data.lineItems().get(1).description()).contains("Phụ thu tự động đã chốt", "100000", "2 đêm");
         assertThat(data.finalTotal()).isEqualByComparingTo("1100000");
-        assertThat(data.lineItems().get(4).amount()).isEqualByComparingTo("1100000");
+        assertThat(data.lineItems().get(3).amount()).isEqualByComparingTo("1100000");
     }
 
     @Test
@@ -210,20 +210,70 @@ class InvoiceDataServiceTest {
         assertThat(data.companyName()).isNull();
         assertThat(data.companyTaxCode()).isNull();
         assertThat(data.lineItems()).extracting(lineItem -> lineItem.code()).containsExactly(
-                "ROOM", "EXTRA_PERSON", "EXTRA_BED", "LATE_CHECKOUT",
-                "TOTAL_BEFORE_DEPOSIT", "DEPOSIT", "BALANCE");
+                "ROOM", "EXTRA_PERSON", "LATE_CHECKOUT",
+                "TOTAL_BEFORE_DEPOSIT", "DEPOSIT", "CHECKOUT_PAYMENT", "TOTAL_PAID", "BALANCE", "PAYMENT_STATUS");
+        assertThat(data.lineItems()).extracting(lineItem -> lineItem.description()).doesNotContain("Thêm giường");
         assertThat(data.lineItems().get(1).amount()).isEqualByComparingTo("200000");
         assertThat(data.lineItems().get(1).description()).contains("100000", "Price adjusted for guest", "0");
         assertThat(data.lineItems().get(1).description()).contains("Phụ thu tự động đã chốt: 0");
-        assertThat(data.lineItems().get(2).amount()).isEqualByComparingTo("0");
-        assertThat(data.lineItems().get(4).amount()).isEqualByComparingTo("1300000");
-        assertThat(data.lineItems().get(5).amount()).isEqualByComparingTo("-300000");
-        assertThat(data.lineItems().get(6).amount()).isEqualByComparingTo("1000000");
+        assertThat(data.lineItems().get(2).amount()).isEqualByComparingTo("100000");
+        assertThat(data.lineItems().get(3).amount()).isEqualByComparingTo("1300000");
+        assertThat(data.lineItems().get(4).amount()).isEqualByComparingTo("-300000");
+        assertThat(data.lineItems().get(5).amount()).isEqualByComparingTo("1000000");
+        assertThat(data.lineItems().get(6).amount()).isEqualByComparingTo("1300000");
+        assertThat(data.lineItems().get(7).amount()).isEqualByComparingTo("0");
         assertThat(data.finalTotal()).isEqualByComparingTo("1300000");
         assertThat(data.depositTotal()).isEqualByComparingTo("300000");
         assertThat(data.settlementType()).isEqualTo(BookingSettlement.SettlementType.COLLECT);
         assertThat(data.settlementAmount()).isEqualByComparingTo("1000000");
-        assertThat(data.remainingAmount()).isEqualByComparingTo("1000000");
+        assertThat(data.checkoutPayment()).isEqualByComparingTo("1000000");
+        assertThat(data.totalPaid()).isEqualByComparingTo("1300000");
+        assertThat(data.remainingAmount()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void confirmedCheckoutCollectionClearsAmountDueAfterRecordedDeposit() {
+        settlement.setDepositTotal(new BigDecimal("500000"));
+        settlement.setFinalTotal(1_000_000L);
+        settlement.setAmount(new BigDecimal("500000"));
+        settlement.setAdditionalSurchargeTotal(0);
+        settlement.setLateCheckoutFee(0);
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
+        when(settingsRepository.findById(7L)).thenReturn(Optional.of(settingsWithAddress()));
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of());
+
+        InvoiceData data = service.getInvoiceData(44L);
+
+        assertThat(data.finalTotal()).isEqualByComparingTo("1000000");
+        assertThat(data.depositTotal()).isEqualByComparingTo("500000");
+        assertThat(data.settlementAmount()).isEqualByComparingTo("500000");
+        assertThat(data.remainingAmount()).isEqualByComparingTo("0");
+        assertThat(data.checkoutPayment()).isEqualByComparingTo("500000");
+        assertThat(data.totalPaid()).isEqualByComparingTo("1000000");
+        assertThat(data.lineItems().get(7).amount()).isEqualByComparingTo("0");
+        assertThat(data.lineItems().get(7).description()).isEqualTo("Còn phải thu");
+        assertThat(data.lineItems().get(8).description()).isEqualTo("Đã thanh toán đủ");
+    }
+
+    @Test
+    void representsUnpaidBalanceInsteadOfClaimingItWasPaid() {
+        settlement.setDepositTotal(new BigDecimal("500000"));
+        settlement.setFinalTotal(1_000_000L);
+        settlement.setAmount(new BigDecimal("300000"));
+        settlement.setAdditionalSurchargeTotal(0);
+        settlement.setLateCheckoutFee(0);
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
+        when(settingsRepository.findById(7L)).thenReturn(Optional.of(settingsWithAddress()));
+        when(surchargeRepository.findByBookingIdOrderByCreatedAtAscIdAsc(44L)).thenReturn(List.of());
+
+        InvoiceData data = service.getInvoiceData(44L);
+        assertThat(data.checkoutPayment()).isEqualByComparingTo("300000");
+        assertThat(data.totalPaid()).isEqualByComparingTo("800000");
+        assertThat(data.remainingAmount()).isEqualByComparingTo("200000");
+        assertThat(data.lineItems().get(7).description()).isEqualTo("Còn phải thu");
+        assertThat(data.lineItems().get(7).amount()).isEqualByComparingTo("200000");
     }
     @Test
     void rejectsRowsThatDoNotMatchPersistedSettlementTotals() {
@@ -308,6 +358,17 @@ class InvoiceDataServiceTest {
         assertThatThrownBy(() -> service.getInvoiceData(44L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("DA_TRA_PHONG");
+    }
+
+    @Test
+    void doesNotIssueForCheckedInBookingEvenWhenSettlementLooksPaid() {
+        booking.setStatus(BookingStatus.DA_NHAN_PHONG);
+        when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> service.getInvoiceData(44L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("DA_TRA_PHONG");
+        verify(settlementRepository, never()).findByBookingId(44L);
     }
 
     @Test
@@ -415,8 +476,8 @@ class InvoiceDataServiceTest {
     }
 
     @Test
-    void rejectsSettlementAmountInconsistentWithFinalTotalAndDeposit() {
-        settlement.setAmount(BigDecimal.valueOf(999_999));
+    void rejectsCheckoutCollectionGreaterThanOutstandingAmount() {
+        settlement.setAmount(BigDecimal.valueOf(1_000_001));
         when(bookingRepository.findById(44L)).thenReturn(Optional.of(booking));
         when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(settlement));
         when(settingsRepository.findById(7L)).thenReturn(Optional.of(settingsWithAddress()));
