@@ -81,7 +81,8 @@ class CheckoutConcurrencyIntegrationTest {
         Booking booking = new Booking();
         booking.setRoom(rooms.findById(roomId).orElseThrow());
         booking.setRoomTypeNameSnapshot("Test");
-        LocalDate checkOutDate = LocalDate.now();
+        // Cùng múi giờ với CheckoutService (Asia/Ho_Chi_Minh); máy CI chạy UTC nên LocalDate.now() lệch ngày từ 0h–7h sáng giờ VN.
+        LocalDate checkOutDate = LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
         LocalDate checkInDate = checkOutDate.minusDays(1);
         booking.setCheckInDate(checkInDate);
         booking.setCheckOutDate(checkOutDate);
