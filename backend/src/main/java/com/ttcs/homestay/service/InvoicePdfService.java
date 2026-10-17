@@ -99,6 +99,13 @@ public class InvoicePdfService {
         title.setSpacingBefore(10);
         title.setSpacingAfter(3);
         document.add(title);
+        if (data.invoiceNumber() != null && data.issuedDate() != null) {
+            Paragraph issuance = paragraph("Số hóa đơn: " + data.invoiceNumber() + "    Ngày xuất: "
+                    + DATE.format(data.issuedDate()), 10, Font.BOLD);
+            issuance.setAlignment(Element.ALIGN_CENTER);
+            issuance.setSpacingAfter(4);
+            document.add(issuance);
+        }
         PdfPTable ornament = new PdfPTable(1);
         ornament.setWidthPercentage(100);
         ornament.setSpacingAfter(12);
@@ -230,6 +237,11 @@ public class InvoicePdfService {
         total.getPhrase().getFont().setColor(Color.WHITE); total.setHorizontalAlignment(Element.ALIGN_RIGHT);
         total.setPadding(10); total.setBackgroundColor(DEEP_GREEN); total.setBorderColor(DEEP_GREEN);
         conclusion.addCell(total); document.add(conclusion);
+        Paragraph totalInWords = paragraph("Bằng chữ: " + VietnameseCurrencyWords.format(data.settlementAmount()), 9, Font.ITALIC);
+        totalInWords.setAlignment(Element.ALIGN_RIGHT);
+        totalInWords.setSpacingBefore(4);
+        totalInWords.setKeepTogether(true);
+        document.add(totalInWords);
     }
 
     private void addSignatures(Document document) throws DocumentException {
@@ -309,6 +321,7 @@ public class InvoicePdfService {
     private static synchronized String money(BigDecimal amount) {
         return MONEY_FORMAT.format(amount == null ? BigDecimal.ZERO : amount) + " đ";
     }
+    static String formatMoney(BigDecimal amount) { return money(amount); }
     private static String formatMoneyInDescription(String description) {
         if (description == null || description.isEmpty()) return description;
         Matcher matcher = DESCRIBED_MONEY.matcher(description);

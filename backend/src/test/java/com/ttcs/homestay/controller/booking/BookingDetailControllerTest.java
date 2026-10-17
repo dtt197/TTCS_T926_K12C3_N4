@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -14,6 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ttcs.homestay.repository.UserRepository;
+import com.ttcs.homestay.repository.IssuedInvoiceRepository;
+import com.ttcs.homestay.entity.IssuedInvoice;
 import com.ttcs.homestay.repository.BookingDepositAdjustmentRepository;
 import com.ttcs.homestay.service.BookingDepositAdjustmentService;
 import com.ttcs.homestay.entity.BookingDepositAdjustment;
@@ -22,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -49,6 +53,14 @@ class BookingDetailControllerTest {
 
     @MockitoBean
     private UserRepository userRepository;
+
+    @MockitoBean
+    private IssuedInvoiceRepository issuedInvoiceRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void defaultInvoiceAbsent() {
+        when(issuedInvoiceRepository.findByBookingId(1L)).thenReturn(Optional.empty());
+    }
 
     @Test
     void returnsAdjustmentHistoryInRepositoryOrderAndCurrentTotal() throws Exception {
@@ -127,7 +139,43 @@ class BookingDetailControllerTest {
                 .andExpect(jsonPath("$.checkedOutAt").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.earlyCheckoutReason").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.settlementType").value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.settlementTransactionStatus").value(org.hamcrest.Matchers.nullValue()));
+                .andExpect(jsonPath("$.settlementTransactionStatus").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.invoiceNumber").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.invoiceStatus").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void detailReturnsStoredIssuedInvoiceFields() throws Exception {
+        stubBookingAndDeposit(false);
+        when(adjustmentRepository.findAllByBookingIdOrderByCreatedAtAscIdAsc(1L)).thenReturn(List.of());
+        IssuedInvoice invoice = mock(IssuedInvoice.class);
+        when(invoice.getInvoiceNumber()).thenReturn("2026-000007");
+        when(invoice.getIssuedByName()).thenReturn("Issuer");
+        when(invoice.getStatus()).thenReturn(IssuedInvoice.Status.CANCELLED);
+        when(invoice.getCancelledAt()).thenReturn(OffsetDateTime.parse("2026-10-12T18:01:00+07:00"));
+        when(invoice.getCancelledByUser()).thenReturn(null);
+        when(invoice.getCancellationReason()).thenReturn("Duplicate");
+        when(issuedInvoiceRepository.findByBookingId(1L)).thenReturn(Optional.of(invoice));
+
+        mockMvc.perform(get("/api/bookings/1/details"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoiceNumber").value("2026-000007"))
+                .andExpect(jsonPath("$.invoiceIssuedByName").value("Issuer"))
+                .andExpect(jsonPath("$.invoiceStatus").value("CANCELLED"))
+                .andExpect(jsonPath("$.invoiceCancelledAt").value("2026-10-12T18:01:00+07:00"))
+                .andExpect(jsonPath("$.invoiceCancelledByName").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.invoiceCancellationReason").value("Duplicate"));
+    }
+
+    @Test
+    void duplicateInvoiceRowsAreNotSilentlyReducedToOne() throws Exception {
+        stubBookingAndDeposit(false);
+        when(adjustmentRepository.findAllByBookingIdOrderByCreatedAtAscIdAsc(1L)).thenReturn(List.of());
+        when(issuedInvoiceRepository.findByBookingId(1L))
+                .thenThrow(new org.springframework.dao.IncorrectResultSizeDataAccessException(1, 2));
+
+        assertThatThrownBy(() -> mockMvc.perform(get("/api/bookings/1/details")))
+                .hasRootCauseInstanceOf(org.springframework.dao.IncorrectResultSizeDataAccessException.class);
     }
 
     @Test

@@ -1,26 +1,28 @@
+
 package com.ttcs.homestay.controller.booking;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.ttcs.homestay.entity.BookingSettlement;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.BookingSettlement;
 import com.ttcs.homestay.entity.BookingStatus;
-import com.ttcs.homestay.exception.BookingInvoiceExceptionHandler;
-import com.ttcs.homestay.security.ApiSecurityPolicyCatalog;
+import com.ttcs.homestay.entity.IssuedInvoice;
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
-import com.ttcs.homestay.service.InvoiceDataService;
-import com.ttcs.homestay.service.InvoicePdfService;
-import com.ttcs.homestay.repository.BookingRepository;
-import com.ttcs.homestay.repository.BookingSettlementRepository;
-import com.ttcs.homestay.repository.BookingSurchargeRepository;
-import com.ttcs.homestay.repository.OperatingSettingsRepository;
-import java.math.BigDecimal;
+import com.ttcs.homestay.exception.BookingInvoiceExceptionHandler;
+import com.ttcs.homestay.security.ApiSecurityPolicyCatalog;
+import com.ttcs.homestay.service.InvoiceIssuanceService;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,25 +33,27 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import com.ttcs.homestay.repository.UserRepository;
-import com.ttcs.homestay.dto.InvoiceData;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-
-import static org.mockito.Mockito.mock;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 class BookingInvoiceControllerTest {
-    @Autowired private MockMvc securedMockMvc;
-    @MockitoBean private InvoiceDataService securedDataService;
-    @MockitoBean private InvoicePdfService securedPdfService;
-    @MockitoBean private JwtDecoder jwtDecoder;
-    @MockitoBean private UserRepository userRepository;
+
+    @Autowired
+    private MockMvc securedMockMvc;
+
+    @MockitoBean
+    private InvoiceIssuanceService securedIssuanceService;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private com.ttcs.homestay.repository.UserRepository userRepository;
+
+    private final byte[] pdfBytes = new byte[] { 1, 2, 3 };
 
     @BeforeEach
     void setUpSecurityMocks() {
@@ -57,235 +61,242 @@ class BookingInvoiceControllerTest {
         mockActiveUser(302L, "OWNER");
         mockActiveUser(303L, "HOUSEKEEPING");
         mockActiveUser(304L, "ADMIN");
-        when(jwtDecoder.decode("receptionist-token")).thenReturn(jwt("301", "RECEPTIONIST"));
-        when(jwtDecoder.decode("owner-token")).thenReturn(jwt("302", "OWNER"));
-        when(jwtDecoder.decode("housekeeping-token")).thenReturn(jwt("303", "HOUSEKEEPING"));
-        when(jwtDecoder.decode("admin-token")).thenReturn(jwt("304", "ADMIN"));
-        when(securedDataService.getInvoiceData(44L)).thenReturn(invoice("BK-44"));
-        when(securedPdfService.generate(org.mockito.ArgumentMatchers.any())).thenReturn(new byte[] {1, 2, 3});
+
+        when(jwtDecoder.decode("receptionist-token"))
+                .thenReturn(jwt("301", "RECEPTIONIST"));
+        when(jwtDecoder.decode("owner-token"))
+                .thenReturn(jwt("302", "OWNER"));
+        when(jwtDecoder.decode("housekeeping-token"))
+                .thenReturn(jwt("303", "HOUSEKEEPING"));
+        when(jwtDecoder.decode("admin-token"))
+                .thenReturn(jwt("304", "ADMIN"));
+
+        IssuedInvoice invoice = issuedInvoice("2026-000044", pdfBytes);
+        when(securedIssuanceService.downloadOrIssue(44L)).thenReturn(invoice);
     }
 
     private void mockActiveUser(long userId, String roleCode) {
         Role role = mock(Role.class);
         when(role.getCode()).thenReturn(roleCode);
+
         User user = mock(User.class);
         when(user.isActive()).thenReturn(true);
         when(user.isMustChangePassword()).thenReturn(false);
         when(user.getRole()).thenReturn(role);
         when(user.getTokenVersion()).thenReturn(0);
-        when(userRepository.findWithRoleById(userId)).thenReturn(Optional.of(user));
+
+        when(userRepository.findWithRoleById(userId))
+                .thenReturn(Optional.of(user));
     }
 
     private Jwt jwt(String userId, String role) {
         Instant now = Instant.now();
-        return Jwt.withTokenValue("jwt-" + userId).header("alg", "HS256")
-                .issuer("homestay").subject(userId).audience(List.of("homestay-api"))
-                .issuedAt(now).expiresAt(now.plusSeconds(3600)).claim("typ", "access")
-                .claim("role", role).claim("tv", 0).claim("email", userId + "@example.test")
-                .claim("fullName", userId + " Test Actor").build();
+        return Jwt.withTokenValue("jwt-" + userId)
+                .header("alg", "HS256")
+                .issuer("homestay")
+                .subject(userId)
+                .audience(List.of("homestay-api"))
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(3600))
+                .claim("typ", "access")
+                .claim("role", role)
+                .claim("tv", 0)
+                .claim("email", userId + "@example.test")
+                .claim("fullName", userId + " Test Actor")
+                .build();
     }
 
     private MockHttpServletRequestBuilder securedRequest(String token) {
         var request = get("/api/bookings/44/invoice.pdf");
-        return token == null ? request : request.header("Authorization", "Bearer " + token);
+        return token == null
+                ? request
+                : request.header("Authorization", "Bearer " + token);
+    }
+
+    private MockHttpServletRequestBuilder securedCancelRequest(String token) {
+        return put("/api/bookings/44/invoice/cancel")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"Duplicate booking\"}");
+    }
+
+    private IssuedInvoice issuedInvoice(String invoiceNumber, byte[] bytes) {
+        IssuedInvoice invoice = mock(IssuedInvoice.class);
+        when(invoice.getInvoiceNumber()).thenReturn(invoiceNumber);
+        when(invoice.getPdfBytes()).thenReturn(bytes);
+        return invoice;
     }
 
     @Test
     void receptionistCanDownloadInvoiceThroughSecurityFilters() throws Exception {
-        securedMockMvc.perform(securedRequest("receptionist-token")).andExpect(status().isOk());
+        securedMockMvc.perform(securedRequest("receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(content().bytes(pdfBytes));
+
+        verify(securedIssuanceService).downloadOrIssue(44L);
     }
 
     @Test
     void ownerCanDownloadInvoiceThroughSecurityFilters() throws Exception {
-        securedMockMvc.perform(securedRequest("owner-token")).andExpect(status().isOk());
+        securedMockMvc.perform(securedRequest("owner-token"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
     }
 
     @Test
     void housekeepingIsForbiddenFromDownloadingInvoice() throws Exception {
-        securedMockMvc.perform(securedRequest("housekeeping-token")).andExpect(status().isForbidden());
+        securedMockMvc.perform(securedRequest("housekeeping-token"))
+                .andExpect(status().isForbidden());
+
+        verify(securedIssuanceService, never()).downloadOrIssue(44L);
     }
 
     @Test
     void adminIsForbiddenFromDownloadingInvoice() throws Exception {
-        securedMockMvc.perform(securedRequest("admin-token")).andExpect(status().isForbidden());
+        securedMockMvc.perform(securedRequest("admin-token"))
+                .andExpect(status().isForbidden());
+
+        verify(securedIssuanceService, never()).downloadOrIssue(44L);
     }
 
     @Test
     void unauthenticatedRequestIsUnauthorized() throws Exception {
-        securedMockMvc.perform(securedRequest(null)).andExpect(status().isUnauthorized());
+        securedMockMvc.perform(securedRequest(null))
+                .andExpect(status().isUnauthorized());
+
+        verify(securedIssuanceService, never()).downloadOrIssue(44L);
     }
 
     @Test
-    void returnsPdfMimeTypeAndSanitizedAttachmentFilename() throws Exception {
-        InvoiceDataService dataService = org.mockito.Mockito.mock(InvoiceDataService.class);
-        InvoicePdfService pdfService = org.mockito.Mockito.mock(InvoicePdfService.class);
-        when(dataService.getInvoiceData(44L)).thenReturn(invoice("BK/44\r\nX"));
-        when(pdfService.generate(org.mockito.ArgumentMatchers.any())).thenReturn(new byte[] {1, 2, 3});
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookingInvoiceController(dataService, pdfService)).build();
+    void returnsPdfMimeTypeAndInvoiceNumberFilename() throws Exception {
+        byte[] expectedPdf = new byte[] { 9, 8, 7 };
+        InvoiceIssuanceService issuanceService = mock(InvoiceIssuanceService.class);
 
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/bookings/44/invoice.pdf"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .contentType(MediaType.APPLICATION_PDF))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
-                        .string("Content-Disposition", org.hamcrest.Matchers.containsString("invoice_BK_44__X.pdf")));
+        IssuedInvoice invoice = issuedInvoice("2026-000123", expectedPdf);
+        when(issuanceService.downloadOrIssue(44L)).thenReturn(invoice);
+
+        MockMvc mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders
+                .standaloneSetup(new BookingInvoiceController(issuanceService))
+                .build();
+
+        mvc.perform(get("/api/bookings/44/invoice.pdf"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string(
+                        "Content-Disposition",
+                        org.hamcrest.Matchers.containsString(
+                                "invoice_2026-000123.pdf")))
+                .andExpect(content().bytes(expectedPdf));
+
+        verify(issuanceService).downloadOrIssue(44L);
     }
 
     @Test
     void returnsControlledInvoiceReasonInsteadOfGenericConflictBody() throws Exception {
-        when(securedDataService.getInvoiceData(44L)).thenThrow(new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "Thiếu địa chỉ homestay trong cấu hình."));
+        when(securedIssuanceService.downloadOrIssue(44L))
+                .thenThrow(new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "Thiáº¿u Ä‘á»‹a chá»‰ homestay trong cáº¥u hÃ¬nh."));
 
         securedMockMvc.perform(securedRequest("receptionist-token"))
                 .andExpect(status().isConflict())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
-                        .value("Thiếu địa chỉ homestay trong cấu hình."));
+                .andExpect(jsonPath("$.message")
+                        .value("Thiáº¿u Ä‘á»‹a chá»‰ homestay trong cáº¥u hÃ¬nh."));
     }
 
     @Test
-    void rejectsDirectInvoiceRequestWhenBookingIsNotClosedBeforeGeneratingPdf() throws Exception {
-        when(securedDataService.getInvoiceData(44L)).thenThrow(new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT, "Booking chưa trả phòng nên chưa xuất được hoá đơn"));
+    void rejectsInvoiceWhenBookingIsNotEligible() throws Exception {
+        when(securedIssuanceService.downloadOrIssue(44L))
+                .thenThrow(new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "Booking chÆ°a tráº£ phÃ²ng nÃªn chÆ°a xuáº¥t Ä‘Æ°á»£c hoÃ¡ Ä‘Æ¡n"));
 
         securedMockMvc.perform(securedRequest("receptionist-token"))
                 .andExpect(status().isConflict())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
-                        .value("Booking chưa trả phòng nên chưa xuất được hoá đơn"));
-        verify(securedDataService).getInvoiceData(44L);
-        verify(securedPdfService, never()).generate(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void rejectsInvoiceWhenSettlementIsNotConfirmedBeforeGeneratingPdf() throws Exception {
-        when(securedDataService.getInvoiceData(44L)).thenThrow(new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT,
-                "Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú."));
-
-        securedMockMvc.perform(securedRequest("receptionist-token"))
-                .andExpect(status().isConflict())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
-                        .value("Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú."));
-
-        verify(securedPdfService, never()).generate(org.mockito.ArgumentMatchers.any());
+                .andExpect(jsonPath("$.message")
+                        .value("Booking chÆ°a tráº£ phÃ²ng nÃªn chÆ°a xuáº¥t Ä‘Æ°á»£c hoÃ¡ Ä‘Æ¡n"));
     }
 
     @Test
     void returnsNotFoundWhenBookingDoesNotExist() throws Exception {
-        when(securedDataService.getInvoiceData(44L)).thenThrow(new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy booking để lập hoá đơn."));
+        when(securedIssuanceService.downloadOrIssue(44L))
+                .thenThrow(new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND,
+                        "KhÃ´ng tÃ¬m tháº¥y booking Ä‘á»ƒ láº­p hoÃ¡ Ä‘Æ¡n."));
 
         securedMockMvc.perform(securedRequest("receptionist-token"))
                 .andExpect(status().isNotFound())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
-                        .value("Không tìm thấy booking để lập hoá đơn."));
-        verify(securedPdfService, never()).generate(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void realInvoiceDataServiceRejectsCheckedInBookingThroughEndpoint() throws Exception {
-        BookingRepository bookingRepository = mock(BookingRepository.class);
-        BookingSettlementRepository settlementRepository = mock(BookingSettlementRepository.class);
-        BookingSurchargeRepository surchargeRepository = mock(BookingSurchargeRepository.class);
-        OperatingSettingsRepository settingsRepository = mock(OperatingSettingsRepository.class);
-        InvoiceDataService realDataService = new InvoiceDataService(bookingRepository, settlementRepository,
-                surchargeRepository, settingsRepository);
-        InvoicePdfService pdfService = mock(InvoicePdfService.class);
-        Booking checkedIn = new Booking();
-        checkedIn.setStatus(BookingStatus.DA_NHAN_PHONG);
-        when(bookingRepository.findById(44L)).thenReturn(Optional.of(checkedIn));
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookingInvoiceController(realDataService, pdfService))
-                .setControllerAdvice(new BookingInvoiceExceptionHandler()).build();
-
-        mvc.perform(get("/api/bookings/44/invoice.pdf"))
-                .andExpect(status().isConflict())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
-                        .value(org.hamcrest.Matchers.containsString("DA_TRA_PHONG")));
-
-        verify(settlementRepository, never()).findByBookingId(44L);
-        verify(pdfService, never()).generate(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void realInvoiceDataServiceReturnsNotFoundWhenBookingDoesNotExistThroughEndpoint() throws Exception {
-        BookingRepository bookingRepository = mock(BookingRepository.class);
-        BookingSettlementRepository settlementRepository = mock(BookingSettlementRepository.class);
-        BookingSurchargeRepository surchargeRepository = mock(BookingSurchargeRepository.class);
-        OperatingSettingsRepository settingsRepository = mock(OperatingSettingsRepository.class);
-        InvoiceDataService realDataService = new InvoiceDataService(bookingRepository, settlementRepository,
-                surchargeRepository, settingsRepository);
-        InvoicePdfService pdfService = mock(InvoicePdfService.class);
-        when(bookingRepository.findById(44L)).thenReturn(Optional.empty());
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookingInvoiceController(realDataService, pdfService))
-                .setControllerAdvice(new BookingInvoiceExceptionHandler()).build();
-
-        mvc.perform(get("/api/bookings/44/invoice.pdf"))
-                .andExpect(status().isNotFound())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
-                        .value("Không tìm thấy booking để lập hóa đơn."));
-
-        verify(settlementRepository, never()).findByBookingId(44L);
-        verify(pdfService, never()).generate(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void realInvoiceDataServiceRejectsUnconfirmedSettlementThroughEndpoint() throws Exception {
-        BookingRepository bookingRepository = mock(BookingRepository.class);
-        BookingSettlementRepository settlementRepository = mock(BookingSettlementRepository.class);
-        BookingSurchargeRepository surchargeRepository = mock(BookingSurchargeRepository.class);
-        OperatingSettingsRepository settingsRepository = mock(OperatingSettingsRepository.class);
-        InvoiceDataService realDataService = new InvoiceDataService(bookingRepository, settlementRepository,
-                surchargeRepository, settingsRepository);
-        InvoicePdfService pdfService = mock(InvoicePdfService.class);
-        Booking checkedOut = new Booking();
-        checkedOut.setStatus(BookingStatus.DA_TRA_PHONG);
-        BookingSettlement unconfirmed = new BookingSettlement();
-        unconfirmed.setTransactionStatus("NOT_APPLICABLE");
-        when(bookingRepository.findById(44L)).thenReturn(Optional.of(checkedOut));
-        when(settlementRepository.findByBookingId(44L)).thenReturn(Optional.of(unconfirmed));
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new BookingInvoiceController(realDataService, pdfService))
-                .setControllerAdvice(new BookingInvoiceExceptionHandler()).build();
-
-        mvc.perform(get("/api/bookings/44/invoice.pdf"))
-                .andExpect(status().isConflict())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message")
-                        .value("Booking chưa xác nhận hoàn tất thu/hoàn tiền; không thể lập hóa đơn lưu trú."));
-
-        verify(settingsRepository, never()).findById(org.mockito.ArgumentMatchers.any());
-        verify(pdfService, never()).generate(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void allowsZeroSettlementInvoiceThroughEndpoint() throws Exception {
-        InvoiceData data = invoice("BK-44");
-        data = new InvoiceData(data.bookingId(), data.bookingCode(), data.guestName(), data.guestPhone(),
-                data.companyName(), data.companyTaxCode(), data.homestay(), data.room(), data.checkInDate(),
-                data.checkOutDate(), data.nights(), data.lineItems(), data.finalTotal(), data.depositTotal(),
-                BookingSettlement.SettlementType.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, false);
-        when(securedDataService.getInvoiceData(44L)).thenReturn(data);
-        when(securedPdfService.generate(data)).thenReturn(new byte[] { 1, 2, 3 });
-
-        securedMockMvc.perform(securedRequest("receptionist-token"))
-                .andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
-                        .contentType(org.springframework.http.MediaType.APPLICATION_PDF));
-
-        verify(securedPdfService).generate(data);
+                .andExpect(jsonPath("$.message")
+                        .value("KhÃ´ng tÃ¬m tháº¥y booking Ä‘á»ƒ láº­p hoÃ¡ Ä‘Æ¡n."));
     }
 
     @Test
     void onlyReceptionistAndOwnerHaveCatalogAccess() {
         ApiSecurityPolicyCatalog catalog = new ApiSecurityPolicyCatalog();
+
         assertThat(catalog.findPolicy("GET", "/api/bookings/44/invoice.pdf").roles())
+                .containsExactly("RECEPTIONIST", "OWNER");
+        assertThat(catalog.findPolicy("PUT", "/api/bookings/44/invoice/cancel").roles())
                 .containsExactly("RECEPTIONIST", "OWNER");
     }
 
-    private static InvoiceData invoice(String code) {
-        return new InvoiceData(44L, code, "Nguyễn An", null, null, null,
-                new InvoiceData.Homestay("Nhà nghỉ", "Hà Nội", "090", null, null),
-                new InvoiceData.Room(1L, "201", "Phòng đơn"), LocalDate.of(2026, 10, 10),
-                LocalDate.of(2026, 10, 11), 1,
-                List.of(new InvoiceData.LineItem("ROOM", "Tiền phòng", BigDecimal.TEN)),
-                BigDecimal.TEN, BigDecimal.ZERO, BookingSettlement.SettlementType.COLLECT,
-                BigDecimal.TEN, BigDecimal.TEN, null, false);
+    @Test
+    void receptionistCanCancelInvoiceAndResponsePreservesItsNumber() throws Exception {
+        IssuedInvoice cancelled = new IssuedInvoice();
+        cancelled.setInvoiceNumber("2026-000123");
+        cancelled.setStatus(IssuedInvoice.Status.CANCELLED);
+        cancelled.setCancelledAt(java.time.OffsetDateTime.parse("2026-10-16T00:00:00+07:00"));
+        cancelled.setCancellationReason("Duplicate booking");
+        when(securedIssuanceService.cancel(44L,
+                new com.ttcs.homestay.dto.InvoiceCancellationRequest("Duplicate booking")))
+                .thenReturn(cancelled);
+
+        securedMockMvc.perform(securedCancelRequest("receptionist-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoiceNumber").value("2026-000123"))
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.cancellationReason").value("Duplicate booking"));
+    }
+
+    @Test
+    void ownerCanCancelInvoiceThroughSecurityFilters() throws Exception {
+        when(securedIssuanceService.cancel(44L,
+                new com.ttcs.homestay.dto.InvoiceCancellationRequest("Duplicate booking")))
+                .thenReturn(cancelledInvoice());
+
+        securedMockMvc.perform(securedCancelRequest("owner-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        verify(securedIssuanceService).cancel(44L,
+                new com.ttcs.homestay.dto.InvoiceCancellationRequest("Duplicate booking"));
+    }
+
+    @Test
+    void housekeepingIsForbiddenFromCancellingInvoiceThroughSecurityFilters() throws Exception {
+        securedMockMvc.perform(securedCancelRequest("housekeeping-token"))
+                .andExpect(status().isForbidden());
+
+        verify(securedIssuanceService, never()).cancel(org.mockito.ArgumentMatchers.eq(44L),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void adminIsForbiddenFromCancellingInvoiceThroughSecurityFilters() throws Exception {
+        securedMockMvc.perform(securedCancelRequest("admin-token"))
+                .andExpect(status().isForbidden());
+
+        verify(securedIssuanceService, never()).cancel(org.mockito.ArgumentMatchers.eq(44L),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    private IssuedInvoice cancelledInvoice() {
+        IssuedInvoice invoice = new IssuedInvoice();
+        invoice.setInvoiceNumber("2026-000123");
+        invoice.setStatus(IssuedInvoice.Status.CANCELLED);
+        invoice.setCancelledAt(java.time.OffsetDateTime.parse("2026-10-16T00:00:00+07:00"));
+        invoice.setCancellationReason("Duplicate booking");
+        return invoice;
     }
 }

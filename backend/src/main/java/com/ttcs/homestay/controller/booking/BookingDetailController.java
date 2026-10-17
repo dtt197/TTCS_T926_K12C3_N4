@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import com.ttcs.homestay.entity.BookingDepositAdjustment;
 import com.ttcs.homestay.repository.BookingDepositAdjustmentRepository;
+import com.ttcs.homestay.repository.IssuedInvoiceRepository;
 import com.ttcs.homestay.service.BookingDepositAdjustmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,14 +24,17 @@ public class BookingDetailController {
     private final JdbcTemplate jdbcTemplate;
     private final BookingDepositAdjustmentRepository adjustmentRepository;
     private final BookingDepositAdjustmentService adjustmentService;
+    private final IssuedInvoiceRepository issuedInvoiceRepository;
 
     public BookingDetailController(
             JdbcTemplate jdbcTemplate,
             BookingDepositAdjustmentRepository adjustmentRepository,
-            BookingDepositAdjustmentService adjustmentService) {
+            BookingDepositAdjustmentService adjustmentService,
+            IssuedInvoiceRepository issuedInvoiceRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.adjustmentRepository = adjustmentRepository;
         this.adjustmentService = adjustmentService;
+        this.issuedInvoiceRepository = issuedInvoiceRepository;
     }
 
     @GetMapping("/{id}/details")
@@ -94,6 +98,14 @@ public class BookingDetailController {
         result.put("settlementType", settlements.isEmpty() ? null : settlements.get(0).get("settlementType"));
         result.put("settlementTransactionStatus", settlements.isEmpty()
                 ? null : settlements.get(0).get("transactionStatus"));
+        var invoice = issuedInvoiceRepository.findByBookingId(id);
+        result.put("invoiceNumber", invoice.map(i -> i.getInvoiceNumber()).orElse(null));
+        result.put("invoiceIssuedByName", invoice.map(i -> i.getIssuedByName()).orElse(null));
+        result.put("invoiceStatus", invoice.map(i -> i.getStatus().name()).orElse(null));
+        result.put("invoiceCancelledAt", invoice.map(i -> i.getCancelledAt()).orElse(null));
+        result.put("invoiceCancelledByName", invoice.map(i -> i.getCancelledByUser() == null
+                ? null : i.getCancelledByUser().getFullName()).orElse(null));
+        result.put("invoiceCancellationReason", invoice.map(i -> i.getCancellationReason()).orElse(null));
         return result;
     }
 

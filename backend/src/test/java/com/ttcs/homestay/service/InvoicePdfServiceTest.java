@@ -58,6 +58,17 @@ class InvoicePdfServiceTest {
         }
     }
 
+    @Test
+    void formatsVndWithExplicitVietnameseSeparatorsRegardlessOfDefaultLocale() {
+        java.util.Locale previous = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(java.util.Locale.US);
+            assertThat(InvoicePdfService.formatMoney(new BigDecimal("1234567.50"))).isEqualTo("1.234.567,5 \u0111");
+        } finally {
+            java.util.Locale.setDefault(previous);
+        }
+    }
+
     private static int countOccurrences(String text, String token) {
         return (text.length() - text.replace(token, "").length()) / token.length();
     }
@@ -82,6 +93,7 @@ class InvoicePdfServiceTest {
             assertThat(extracted).contains("1.350.000 đ", "200.000 đ", "0 đ", "-300.000 đ", "950.000 đ");
             assertThat(extracted).contains("Th\u00eam ng\u01b0\u1eddi", "T\u1ef1 \u0111\u1ed9ng \u0111\u00e3 ch\u1ed1t");
             assertThat(extracted).doesNotContain("1350000.0000", "1350000 VND");
+            assertThat(extracted).contains("Bằng chữ:", "Chín trăm năm mươi nghìn đồng");
             assertThat(extracted).contains("200.000 đ; hoàn tiền -300.000 đ");
             assertThat(countOccurrences(extracted, "Còn phải thu")).isEqualTo(1);
         } finally {
