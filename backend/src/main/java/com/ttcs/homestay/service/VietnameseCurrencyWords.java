@@ -69,7 +69,7 @@ final class VietnameseCurrencyWords {
             if (units == 5) words.append(" lăm");
             else if (units > 0) words.append(' ').append(DIGITS[units]);
         } else if (units > 0) {
-            if (hundreds > 0 || hasPreviousGroup) words.append(" lẻ");
+            if (hundreds > 0 || hasPreviousGroup) words.append(" linh");
             words.append(' ').append(DIGITS[units]);
         }
         return words.toString().trim();

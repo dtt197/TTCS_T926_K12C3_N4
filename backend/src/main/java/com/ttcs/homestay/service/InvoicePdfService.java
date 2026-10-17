@@ -22,10 +22,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -43,7 +40,6 @@ public class InvoicePdfService {
     private static final Color PALE_GREEN = new Color(229, 239, 230);
     private static final Color SOFT_GREEN = new Color(245, 249, 245);
     private static final Color LINE_GREEN = new Color(194, 215, 198);
-    private static final DecimalFormat MONEY_FORMAT = createMoneyFormat();
     private static final Pattern DESCRIBED_MONEY = Pattern.compile("(?<![\\p{L}\\d.,])-?\\d+(?:[.,]\\d+)?\\s*(?:VND|đ)(?![\\p{L}])|(?<![\\p{L}\\d.,])-\\d+(?:[.,]\\d+)?(?![\\p{L}\\d.,])", Pattern.CASE_INSENSITIVE);
     private final BaseFont baseFont;
 
@@ -224,24 +220,61 @@ public class InvoicePdfService {
         addCell(table, "Thành tiền (VND)", true, Element.ALIGN_RIGHT, 0);
         int index = 1;
         for (InvoiceData.LineItem item : data.lineItems()) {
+            if ("TOTAL_PAID".equals(item.code()) || "BALANCE".equals(item.code())
+                    || "PAYMENT_STATUS".equals(item.code())) continue;
             int stripe = index % 2;
             addCell(table, Integer.toString(index++), false, Element.ALIGN_CENTER, stripe);
             addCell(table, formatMoneyInDescription(item.description()), false, Element.ALIGN_LEFT, stripe);
-            addCell(table, money(item.amount()), false, Element.ALIGN_RIGHT, stripe);
+            addMoneyCell(table, item.amount(), stripe);
         }
         document.add(table);
-        PdfPTable conclusion = new PdfPTable(1);
-        conclusion.setWidthPercentage(49); conclusion.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        PdfPTable conclusion = new PdfPTable(new float[] {0.65f, 4.15f, 1.5f});
+        conclusion.setWidthPercentage(100);
         conclusion.setKeepTogether(true); conclusion.setSpacingBefore(10);
-        PdfPCell total = new PdfPCell(new Phrase(balanceLabel(data) + ": " + money(data.settlementAmount()), font(12, Font.BOLD)));
-        total.getPhrase().getFont().setColor(Color.WHITE); total.setHorizontalAlignment(Element.ALIGN_RIGHT);
-        total.setPadding(10); total.setBackgroundColor(DEEP_GREEN); total.setBorderColor(DEEP_GREEN);
-        conclusion.addCell(total); document.add(conclusion);
-        Paragraph totalInWords = paragraph("Bằng chữ: " + VietnameseCurrencyWords.format(data.settlementAmount()), 9, Font.ITALIC);
+        boolean paidInFull = data.remainingAmount() != null && data.remainingAmount().signum() == 0
+                && data.settlementType() != com.ttcs.homestay.entity.BookingSettlement.SettlementType.REFUND;
+        InvoiceData.LineItem balanceItem = null;
+        for (InvoiceData.LineItem item : data.lineItems()) {
+            if ("TOTAL_PAID".equals(item.code())) {
+                addCell(conclusion, "", false, Element.ALIGN_CENTER, 0);
+                addCell(conclusion, item.description(), false, Element.ALIGN_LEFT, 0);
+                addMoneyCell(conclusion, item.amount(), 0);
+            } else if ("BALANCE".equals(item.code())) {
+                balanceItem = item;
+            }
+        }
+        for (InvoiceData.LineItem item : data.lineItems()) {
+            if ("PAYMENT_STATUS".equals(item.code())) {
+                if (paidInFull) {
+                    PdfPCell status = new PdfPCell(new Phrase(item.description() + ": " + money(data.totalPaid()), font(9, Font.BOLD)));
+                    status.setColspan(3); status.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                    status.setPadding(5); status.setBorder(PdfPCell.NO_BORDER);
+                    conclusion.addCell(status);
+                }
+            }
+        }
+        if (balanceItem != null && !(paidInFull && balanceItem.description().startsWith("Còn phải thu"))) {
+            PdfPCell balance = new PdfPCell(new Phrase(
+                    balanceLabel(data) + ": " + money(balanceItem.amount().abs()), font(12, Font.BOLD)));
+            balance.setColspan(3); balance.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            balance.setPadding(9); balance.setBorderColor(LINE_GREEN);
+            conclusion.addCell(balance);
+        }
+        PdfPTable balanceTable = new PdfPTable(1);
+        balanceTable.setWidthPercentage(100); balanceTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        balanceTable.setKeepTogether(true);
+        Paragraph totalInWords = paragraph("Bằng chữ: " + VietnameseCurrencyWords.format(data.finalTotal()), 9, Font.ITALIC);
         totalInWords.setAlignment(Element.ALIGN_RIGHT);
         totalInWords.setSpacingBefore(4);
         totalInWords.setKeepTogether(true);
-        document.add(totalInWords);
+        PdfPCell wordsCell = new PdfPCell();
+        wordsCell.addElement(totalInWords);
+        wordsCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        wordsCell.setBorder(PdfPCell.NO_BORDER);
+        wordsCell.setPadding(4);
+        balanceTable.addCell(wordsCell);
+        document.add(conclusion);
+        if (balanceTable.size() > 0) document.add(balanceTable);
     }
 
     private void addSignatures(Document document) throws DocumentException {
@@ -307,6 +340,9 @@ public class InvoicePdfService {
     }
 
     private static PdfPCell noBorderCell() { PdfPCell c = new PdfPCell(); c.setBorder(PdfPCell.NO_BORDER); return c; }
+    void addMoneyCell(PdfPTable table, BigDecimal amount, int stripe) {
+        addCell(table, money(amount), false, Element.ALIGN_RIGHT, stripe);
+    }
     private void addCell(PdfPTable table, String text, boolean header, int alignment, int stripe) {
         PdfPCell cell = new PdfPCell(new Phrase(text == null ? "" : text, font(header ? 9 : 8, header ? Font.BOLD : Font.NORMAL)));
         cell.setPadding(6); cell.setHorizontalAlignment(alignment); cell.setBorderColor(LINE_GREEN);
@@ -318,8 +354,18 @@ public class InvoicePdfService {
     private Font font(int size, int style) { return new Font(baseFont, size, style); }
     private static String value(String value) { return value == null ? "" : value; }
     private static String optional(String label, String value) { return value == null || value.isBlank() ? "" : label + value; }
-    private static synchronized String money(BigDecimal amount) {
-        return MONEY_FORMAT.format(amount == null ? BigDecimal.ZERO : amount) + " đ";
+    private static String money(BigDecimal amount) {
+        BigDecimal value = amount == null ? BigDecimal.ZERO : amount;
+        final java.math.BigInteger whole;
+        try {
+            whole = value.toBigIntegerExact();
+        } catch (ArithmeticException fractionalVnd) {
+            throw new IllegalArgumentException("VND amounts must be whole numbers for invoice display.", fractionalVnd);
+        }
+        java.text.DecimalFormatSymbols symbols = java.text.DecimalFormatSymbols.getInstance(java.util.Locale.ROOT);
+        symbols.setGroupingSeparator('.');
+        java.text.DecimalFormat format = new java.text.DecimalFormat("#,##0", symbols);
+        return format.format(whole) + " VND";
     }
     static String formatMoney(BigDecimal amount) { return money(amount); }
     private static String formatMoneyInDescription(String description) {
@@ -333,19 +379,8 @@ public class InvoicePdfService {
         matcher.appendTail(formatted);
         return formatted.toString();
     }
-    private static DecimalFormat createMoneyFormat() {
-        DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.forLanguageTag("vi-VN"));
-        symbols.setGroupingSeparator('.');
-        symbols.setDecimalSeparator(',');
-        DecimalFormat format = new DecimalFormat("#,##0.############################", symbols);
-        format.setGroupingUsed(true);
-        format.setGroupingSize(3);
-        format.setParseBigDecimal(true);
-        return format;
-    }
     private static String balanceLabel(InvoiceData data) {
         return data.settlementType() == com.ttcs.homestay.entity.BookingSettlement.SettlementType.REFUND
-                ? "Còn phải hoàn" : data.settlementType() == com.ttcs.homestay.entity.BookingSettlement.SettlementType.ZERO
-                        ? "Đã thanh toán đủ" : "Còn phải thu";
+                ? "Còn phải hoàn" : "Còn phải thu";
     }
 }
