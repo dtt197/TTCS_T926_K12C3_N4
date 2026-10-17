@@ -10,6 +10,8 @@ import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.repository.UserRepository;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,9 +87,76 @@ class RevenueReportAuthorizationTest {
     }
 
     @Test
-    void leTanXemDuocThongKe() throws Exception {
-        mockMvc.perform(get(URL).header("Authorization", "Bearer receptionist-revenue-token"))
+    void leTanXemDuocThongKeHomNay() throws Exception {
+        LocalDate today = LocalDate.now(
+                ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        String url = "/api/reports/revenue?startDate="
+                + today
+                + "&endDate="
+                + today;
+
+        mockMvc.perform(
+                get(url)
+                        .header(
+                                "Authorization",
+                                "Bearer receptionist-revenue-token"))
                 .andExpect(status().isOk());
+    }
+    @Test
+    void leTanKhongDuocXemDoanhThuHomQua() throws Exception {
+        LocalDate yesterday = LocalDate.now(
+                ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1);
+
+        String url = "/api/reports/revenue?startDate="
+                + yesterday
+                + "&endDate="
+                + yesterday;
+
+        mockMvc.perform(
+                get(url)
+                        .header(
+                                "Authorization",
+                                "Bearer receptionist-revenue-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void leTanKhongDuocLocLoaiPhongNgoaiHomNay()
+            throws Exception {
+
+        LocalDate yesterday = LocalDate.now(
+                ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1);
+
+        String url = "/api/reports/revenue/by-room-type"
+                + "?startDate=" + yesterday
+                + "&endDate=" + yesterday;
+
+        mockMvc.perform(
+                get(url)
+                        .header(
+                                "Authorization",
+                                "Bearer receptionist-revenue-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void leTanKhongDuocXemSoSanhKyTruoc()
+            throws Exception {
+
+        LocalDate today = LocalDate.now(
+                ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        String url = "/api/reports/comparison"
+                + "?startDate=" + today
+                + "&endDate=" + today;
+
+        mockMvc.perform(
+                get(url)
+                        .header(
+                                "Authorization",
+                                "Bearer receptionist-revenue-token"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

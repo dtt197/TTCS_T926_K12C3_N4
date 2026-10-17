@@ -43,12 +43,23 @@ function toIso(date: Date) {
 }
 
 /** Mặc định: từ đầu tháng này đến hôm nay. */
-function defaultRange(): DateRange {
+function defaultRange(role: string): DateRange {
   const now = new Date()
+  const today = toIso(now)
+
+  if (role === 'RECEPTIONIST') {
+    return {
+      startDate: today,
+      endDate: today,
+      roomTypeId: '',
+    }
+  }
 
   return {
-    startDate: toIso(new Date(now.getFullYear(), now.getMonth(), 1)),
-    endDate: toIso(now),
+    startDate: toIso(
+      new Date(now.getFullYear(), now.getMonth(), 1),
+    ),
+    endDate: today,
     roomTypeId: '',
   }
 }
@@ -82,8 +93,12 @@ function formatDate(isoDate: string) {
 }
 
 /** S4-07 Lát 1: chủ homestay chọn khoảng ngày và xem doanh thu của các booking đã đóng. */
-export function RevenueReportPage() {
-  const [initialRange] = useState(defaultRange)
+export function RevenueReportPage({
+  role,
+}: {
+  role: string
+}) {
+  const [initialRange] = useState(() => defaultRange(role))
   const [form, setForm] = useState<DateRange>(initialRange)
   const [applied, setApplied] = useState<AppliedRange>({
     ...initialRange,
@@ -127,8 +142,14 @@ export function RevenueReportPage() {
       ? Number(applied.roomTypeId)
       : undefined
 
+    const canCompare =
+      role === 'OWNER' || role === 'ADMIN'
+
     Promise.all([
-      getRevenueReport(applied.startDate, applied.endDate),
+      getRevenueReport(
+        applied.startDate,
+        applied.endDate,
+      ),
 
       getRevenueByRoomType(
         applied.startDate,
@@ -136,18 +157,29 @@ export function RevenueReportPage() {
         roomTypeId,
       ),
 
-      getRevenueComparison(
-        applied.startDate,
-        applied.endDate,
-      ),
+      canCompare
+        ? getRevenueComparison(
+          applied.startDate,
+          applied.endDate,
+        )
+        : Promise.resolve(undefined),
 
-      getRevenueByRoomTypeComparison(
-        applied.startDate,
-        applied.endDate,
-        roomTypeId,
-      ),
+      canCompare
+        ? getRevenueByRoomTypeComparison(
+          applied.startDate,
+          applied.endDate,
+          roomTypeId,
+        )
+        : Promise.resolve(undefined),
     ])
-      .then(([report, roomTypeRows, comparison, roomTypeComparisonRows]) => {
+      .then((
+        [
+          report,
+          roomTypeRows,
+          comparison,
+          roomTypeComparisonRows,
+        ],
+      ) => {
         if (!cancelled) {
           setState({
             id: applied.id,
@@ -173,7 +205,7 @@ export function RevenueReportPage() {
     return () => {
       cancelled = true
     }
-  }, [applied])
+  }, [applied, role])
 
   const loading = state.id !== applied.id
   const report = loading ? undefined : state.report
@@ -196,8 +228,19 @@ export function RevenueReportPage() {
     }
 
     setFormError('')
+
+    const today = toIso(new Date())
+
     setApplied((current) => ({
       ...form,
+      startDate:
+        role === 'RECEPTIONIST'
+          ? today
+          : form.startDate,
+      endDate:
+        role === 'RECEPTIONIST'
+          ? today
+          : form.endDate,
       roomTypeId: form.roomTypeId,
       id: current.id + 1,
     }))
@@ -220,6 +263,7 @@ export function RevenueReportPage() {
 
           <input
             type="date"
+            disabled={role === 'RECEPTIONIST'}
             value={form.startDate}
             onChange={(event) => {
               setForm((current) => ({ ...current, startDate: event.target.value }))
@@ -233,6 +277,7 @@ export function RevenueReportPage() {
 
           <input
             type="date"
+            disabled={role === 'RECEPTIONIST'}
             value={form.endDate}
             onChange={(event) => {
               setForm((current) => ({ ...current, endDate: event.target.value }))
@@ -325,7 +370,7 @@ export function RevenueReportPage() {
               <strong>{formatMoney(report.surchargeRevenue)}</strong>
             </article>
           </div>
-          {comparison && (
+          {role !== 'RECEPTIONIST' && comparison && (
             <section className="revenue-comparison">
               <h3>So sánh doanh thu với kỳ liền trước</h3>
 
@@ -372,7 +417,8 @@ export function RevenueReportPage() {
             </section>
           )}
           
-          {roomTypeComparisonRows && (
+          {role !== 'RECEPTIONIST' &&
+            roomTypeComparisonRows && (
             <section className="revenue-room-types">
               <h3>So sánh doanh thu theo loại phòng</h3>
 

@@ -798,7 +798,7 @@ export function InternalHomePage({
 
               ) : activeView === 'revenueReport' ? (
 
-                <RevenueReportPage />
+                <RevenueReportPage role={user.role} />
 
               ) : activeView === 'audit-logs' ? (
 
