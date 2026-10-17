@@ -1,3 +1,4 @@
+
 package com.ttcs.homestay.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,15 +22,16 @@ import com.ttcs.homestay.repository.RoomStatusHistoryRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.web.server.ResponseStatusException;
@@ -98,7 +100,8 @@ class CheckoutConcurrencyIntegrationTest {
         booking.setRoom(rooms.findById(roomId).orElseThrow());
         booking.setRoomTypeNameSnapshot("Test");
 
-        LocalDate checkOutDate = LocalDate.now();
+        // Dùng cùng múi giờ với CheckoutService để tránh lệch ngày trên CI.
+        LocalDate checkOutDate = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         LocalDate checkInDate = checkOutDate.minusDays(1);
 
         booking.setCheckInDate(checkInDate);
