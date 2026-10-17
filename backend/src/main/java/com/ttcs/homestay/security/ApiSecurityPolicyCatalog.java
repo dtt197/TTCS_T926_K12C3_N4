@@ -180,11 +180,16 @@ public class ApiSecurityPolicyCatalog {
                 "/api/bookings", "/api/bookings/**",
                 "/api/appointments/**",
                 "/api/customers", "/api/customers/**");
-        // S4-07 Lát 1: thống kê doanh thu (Chủ, Admin, Lễ tân xem được; Buồng phòng
-        // không)
+        // S4-07 Lát 1 và Lát 2: báo cáo doanh thu.
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                         "/api/reports/revenue",
                         "/api/reports/revenue/by-room-type");
+
+        // S4-07 Lát 3: so sánh doanh thu theo kỳ.
+        // Chỉ ADMIN và OWNER được xem báo cáo so sánh toàn kỳ.
+        add(policies, "GET", Access.ROLES, List.of("ADMIN", "OWNER"),
+                        "/api/reports/comparison",
+                        "/api/reports/revenue/by-room-type/comparison");
 
         add(policies, "GET", Access.PUBLIC, List.of(),
                 "/api/public/room-types/**",

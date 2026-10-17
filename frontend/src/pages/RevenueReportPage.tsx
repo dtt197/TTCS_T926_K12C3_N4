@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react'
-import { getRevenueReport } from '../services/revenueReportService'
-import { getRevenueByRoomType } from '../services/revenueReportService'
+import {
+  getRevenueReport,
+  getRevenueByRoomType,
+  getRevenueComparison,
+  getRevenueByRoomTypeComparison,
+} from '../services/revenueReportService'
 import { getRoomTypes } from '../services/roomTypeService'
-import type { RevenueReport } from '../types/revenueReport'
-import type { RevenueByRoomType } from '../types/revenueReport'
+import type {
+  RevenueReport,
+  RevenueByRoomType,
+  RevenueComparison,
+  RevenueByRoomTypeComparison,
+} from '../types/revenueReport'
 import type { RoomType } from '../types/roomType'
 import './RevenueReportPage.css'
 
@@ -25,6 +33,8 @@ type LoadState = {
   id: number
   report?: RevenueReport
   roomTypeRows?: RevenueByRoomType[]
+  comparison?: RevenueComparison
+  roomTypeComparisonRows?: RevenueByRoomTypeComparison[]
   error?: string
 }
 
@@ -119,18 +129,32 @@ export function RevenueReportPage() {
 
     Promise.all([
       getRevenueReport(applied.startDate, applied.endDate),
+
       getRevenueByRoomType(
         applied.startDate,
         applied.endDate,
         roomTypeId,
       ),
+
+      getRevenueComparison(
+        applied.startDate,
+        applied.endDate,
+      ),
+
+      getRevenueByRoomTypeComparison(
+        applied.startDate,
+        applied.endDate,
+        roomTypeId,
+      ),
     ])
-      .then(([report, roomTypeRows]) => {
+      .then(([report, roomTypeRows, comparison, roomTypeComparisonRows]) => {
         if (!cancelled) {
           setState({
             id: applied.id,
             report,
             roomTypeRows,
+            comparison,
+            roomTypeComparisonRows,
           })
         }
       })
@@ -154,6 +178,11 @@ export function RevenueReportPage() {
   const loading = state.id !== applied.id
   const report = loading ? undefined : state.report
   const roomTypeRows = loading ? undefined : state.roomTypeRows
+  const comparison = loading ? undefined : state.comparison
+
+  const roomTypeComparisonRows = loading
+    ? undefined
+    : state.roomTypeComparisonRows
   const loadError = loading ? '' : (state.error ?? '')
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -296,6 +325,110 @@ export function RevenueReportPage() {
               <strong>{formatMoney(report.surchargeRevenue)}</strong>
             </article>
           </div>
+          {comparison && (
+            <section className="revenue-comparison">
+              <h3>So sánh doanh thu với kỳ liền trước</h3>
+
+              <div className="revenue-cards">
+                <article className="revenue-card">
+                  <span>Doanh thu kỳ hiện tại</span>
+                  <strong>
+                    {formatMoney(comparison.currentRevenue)}
+                  </strong>
+                </article>
+
+                <article className="revenue-card">
+                  <span>Doanh thu kỳ trước</span>
+                  <strong>
+                    {formatMoney(comparison.previousRevenue)}
+                  </strong>
+                </article>
+
+                <article
+                  className={`revenue-card revenue-comparison--${comparison.changeDirection.toLowerCase()}`}
+                >
+                  <span>Chênh lệch doanh thu</span>
+                  <strong>
+                    {comparison.differenceAmount > 0 ? '+' : ''}
+                    {formatMoney(comparison.differenceAmount)}
+                  </strong>
+                </article>
+
+                <article
+                  className={`revenue-card revenue-comparison--${comparison.changeDirection.toLowerCase()}`}
+                >
+                  <span>Tỷ lệ thay đổi</span>
+                  <strong>
+                    {comparison.changePercent === null
+                      ? 'Không xác định'
+                      : `${comparison.changePercent}%`}
+                  </strong>
+                </article>
+              </div>
+
+              <p className="revenue-comparison-message">
+                {comparison.message}
+              </p>
+            </section>
+          )}
+          
+          {roomTypeComparisonRows && (
+            <section className="revenue-room-types">
+              <h3>So sánh doanh thu theo loại phòng</h3>
+
+              <div className="revenue-table-wrapper">
+                <table className="revenue-table">
+                  <thead>
+                    <tr>
+                      <th>Mã phòng</th>
+                      <th>Loại phòng</th>
+                      <th>Doanh thu kỳ này</th>
+                      <th>Doanh thu kỳ trước</th>
+                      <th>Chênh lệch</th>
+                      <th>Tỷ lệ thay đổi</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {roomTypeComparisonRows.map((item) => (
+                      <tr key={item.roomTypeId}>
+                        <td>{item.roomTypeCode}</td>
+                        <td>{item.roomTypeName}</td>
+
+                        <td>{formatMoney(item.currentRevenue)}</td>
+
+                        <td>{formatMoney(item.previousRevenue)}</td>
+
+                        <td
+                          className={`revenue-comparison--${item.changeDirection.toLowerCase()}`}
+                        >
+                          {item.differenceAmount > 0 ? '+' : ''}
+                          {formatMoney(item.differenceAmount)}
+                        </td>
+
+                        <td>
+                          {item.changePercent === null
+                            ? 'Không xác định'
+                            : `${item.changePercent}%`}
+                        </td>
+
+                        <td>{item.message}</td>
+                      </tr>
+                    ))}
+
+                    {roomTypeComparisonRows.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="revenue-table-empty">
+                          Không tìm thấy loại phòng phù hợp.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {roomTypeRows && (
             <section className="revenue-room-types">

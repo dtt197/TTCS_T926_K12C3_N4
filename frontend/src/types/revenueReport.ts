@@ -23,3 +23,30 @@ export type RevenueByRoomType = {
   totalRevenue: number
   averageNightlyRate: number | null
 }
+
+/** S4-07 Lát 3: So sánh tổng doanh thu với kỳ liền trước. */
+export interface RevenueComparison {
+  currentStartDate: string
+  currentEndDate: string
+  previousStartDate: string
+  previousEndDate: string
+  currentRevenue: number
+  previousRevenue: number
+  differenceAmount: number
+  changePercent: number | null
+  changeDirection: 'INCREASE' | 'DECREASE' | 'UNCHANGED' | 'NO_BASELINE'
+  message: string
+}
+
+/** S4-07 Lát 3: So sánh doanh thu theo từng loại phòng. */
+export interface RevenueByRoomTypeComparison {
+  roomTypeId: number
+  roomTypeCode: string
+  roomTypeName: string
+  currentRevenue: number
+  previousRevenue: number
+  differenceAmount: number
+  changePercent: number | null
+  changeDirection: 'INCREASE' | 'DECREASE' | 'UNCHANGED' | 'NO_BASELINE'
+  message: string
+}
