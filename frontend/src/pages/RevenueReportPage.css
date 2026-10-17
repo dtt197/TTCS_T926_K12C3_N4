@@ -131,3 +131,110 @@
   color: #1b4931;
   font-size: 34px;
 }
+
+/* S4-07 Lát 2: bộ lọc loại phòng */
+.revenue-filter select {
+  min-height: 42px;
+  min-width: 210px;
+  padding: 0 12px;
+  border: 1px solid #c9d3cd;
+  border-radius: 9px;
+  background: #fff;
+  color: #18382d;
+  font: inherit;
+}
+
+/* Bảng doanh thu theo loại phòng */
+.revenue-room-types {
+  margin-top: 28px;
+}
+
+.revenue-room-types h3 {
+  margin: 0 0 8px;
+  color: #18382d;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.revenue-room-types-description {
+  margin: 0 0 16px;
+  color: #68766f;
+  font-size: 14px;
+}
+
+.revenue-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e4e0d8;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.revenue-table {
+  width: 100%;
+  min-width: 1050px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.revenue-table th,
+.revenue-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #e8e8e8;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.revenue-table th {
+  background: #f3f7f4;
+  color: #18382d;
+  font-weight: 700;
+}
+
+.revenue-table tbody tr:hover {
+  background: #f8fbf9;
+}
+
+.revenue-table-total {
+  color: #1b4931;
+  font-weight: 700;
+}
+
+.revenue-table-empty {
+  padding: 24px !important;
+  color: #68766f;
+  text-align: center !important;
+}
+
+.revenue-reconciliation {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 20px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #e4e0d8;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.revenue-reconciliation strong {
+  color: #18382d;
+  text-align: right;
+}
+
+.revenue-reconciliation p {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: #1b4931;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .revenue-filter select {
+    width: 100%;
+  }
+
+  .revenue-reconciliation {
+    gap: 10px;
+  }
+}

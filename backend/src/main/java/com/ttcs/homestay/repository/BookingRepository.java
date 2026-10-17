@@ -56,6 +56,23 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     List<Booking> findByStatusInAndCheckOutDateBetween(
                     Collection<BookingStatus> statuses, LocalDate start, LocalDate end);
 
+    /**
+     * S4-07 Lát 2:
+     * Lấy booking theo trạng thái và khoảng ngày trả phòng,
+     * đồng thời tải thông tin loại phòng để phân nhóm doanh thu.
+     */
+    @Query("""
+                    select b
+                    from Booking b
+                    join fetch b.roomType
+                    where b.status in :statuses
+                      and b.checkOutDate between :start and :end
+                    """)
+    List<Booking> findRevenueBookingsByStatusAndCheckOutDateBetween(
+                    @Param("statuses") Collection<BookingStatus> statuses,
+                    @Param("start") LocalDate start,
+                    @Param("end") LocalDate end);
+
     /** S2-08: tìm booking theo mã để khách tra cứu. */
     Optional<Booking> findByBookingCode(String bookingCode);
 
