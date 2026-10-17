@@ -3,7 +3,7 @@ import type { Room, RoomStatus, MaintenanceDraft, RoomStatusHistory } from '../t
 import type { BookingStatus } from '../types/booking'
 import type { BookingSurcharge } from '../types/bookingSurcharge'
 
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/api`
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api`
 
 type ApiError = {
   message?: string

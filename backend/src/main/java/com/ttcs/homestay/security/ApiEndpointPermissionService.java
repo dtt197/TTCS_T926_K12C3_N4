@@ -2,7 +2,7 @@ package com.ttcs.homestay.security;
 
 import java.util.Comparator;
 import java.util.List;
-
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -29,7 +29,8 @@ public class ApiEndpointPermissionService {
     private final ApiSecurityPolicyCatalog policyCatalog;
 
     public ApiEndpointPermissionService(
-            RequestMappingHandlerMapping handlerMapping,
+            // S4-10: actuator thêm controllerEndpointHandlerMapping cùng loại, nên chỉ rõ bộ quản lý API chính.
+            @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping,
             ApiSecurityPolicyCatalog policyCatalog
     ) {
         this.handlerMapping = handlerMapping;

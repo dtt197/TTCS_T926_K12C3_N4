@@ -22,7 +22,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
+import org.springframework.beans.factory.annotation.Value;
 import com.ttcs.homestay.repository.UserRepository;
 import com.ttcs.homestay.security.AccountStatusFilter;
 import com.ttcs.homestay.security.ApiAccessDeniedHandler;
@@ -32,6 +32,9 @@ import com.ttcs.homestay.security.ApiSecurityPolicyCatalog;
 @Configuration
 public class SecurityConfig {
 
+    /** S4-10: địa chỉ giao diện được phép gọi API, lấy từ biến môi trường CORS_ALLOWED_ORIGINS. */
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174}")
+    private List<String> allowedOrigins;
     @Bean
     ApiAuthenticationEntryPoint apiAuthenticationEntryPoint() {
         return new ApiAuthenticationEntryPoint();
@@ -170,12 +173,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://127.0.0.1:5173",
-                "http://127.0.0.1:5174"
-        ));
+        configuration.setAllowedOrigins(allowedOrigins);
 
         configuration.setAllowedMethods(List.of(
                 "GET",

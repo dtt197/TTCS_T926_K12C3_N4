@@ -1,0 +1,52 @@
+# S4-10: chạy cơ sở dữ liệu, backend và frontend bằng một lệnh: docker compose up -d
+name: homestay
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-homestay_db}
+      POSTGRES_USER: ${DB_USERNAME:-homestay_app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Thieu bien DB_PASSWORD trong file .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-homestay_db}
+      DB_USERNAME: ${DB_USERNAME:-homestay_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Thieu bien DB_PASSWORD trong file .env}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Thieu bien JWT_ACCESS_SECRET trong file .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Thieu bien JWT_REFRESH_SECRET trong file .env}
+      JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false}
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_FROM: ${MAIL_FROM:-HomeStay <no-reply@homestay.local>}
+      FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8088}
+      CORS_ALLOWED_ORIGINS: http://localhost:${APP_PORT:-8088},${PUBLIC_URL:-http://localhost:8088}
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
+    volumes:
+      - uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${APP_PORT:-8088}:80"
+
+volumes:
+  db-data:
+  uploads:

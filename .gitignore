@@ -8,3 +8,9 @@ dist/
 *.log
 hs_err_pid*
 replay_pid*
+
+# S4-10: biến môi trường thật và bản sao lưu không đưa lên kho mã
+.env
+.env.*
+!.env.example
+backups/

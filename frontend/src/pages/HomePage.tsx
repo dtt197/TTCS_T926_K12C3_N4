@@ -13,7 +13,7 @@ import './RoomTypeListPage.css'
 import './HomePage.css'
 
 const money = new Intl.NumberFormat('vi-VN')
-const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 const DECORATIVE_IMAGE = 'https://images.unsplash.com/photo-1707064148934-0e09c2fb32b2?auto=format&fit=crop&w=1500&q=85'
 
 function roomImageUrl(value: string | null | undefined): string | null {
