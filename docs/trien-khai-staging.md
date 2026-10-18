@@ -68,3 +68,16 @@ Nằm trong volume `homestay_db-data` và `homestay_uploads`, còn nguyên khi c
 - Log từng dịch vụ: `docker compose logs --tail 200 backend` (tương tự `db`, `frontend`), theo dõi liên tục thêm `-f`. Mỗi dịch vụ giữ tối đa 5 tệp × 10 MB.
 - Log backend còn ghi ra tệp trong volume `homestay_backend-logs`: `docker compose exec backend tail -n 200 /app/logs/homestay.log` (trên Git Bash thêm `MSYS_NO_PATHCONV=1` ở đầu lệnh để không bị đổi đường dẫn).
 - Số lần dịch vụ tự chạy lại: `docker inspect -f "{{.RestartCount}}" homestay-backend-1`.
+
+## 11. Sao lưu cơ sở dữ liệu tự động (S4-10 Lát 3)
+- Dịch vụ `backup` chạy `pg_dump` lúc **2:00 hằng ngày** (giờ Asia/Ho_Chi_Minh), lưu tệp nén `homestay_YYYYMMDD_HHMMSS.dump` vào thư mục `backups/` (đổi bằng `BACKUP_DIR`), **giữ 7 bản** mới nhất (`BACKUP_KEEP`).
+- Chỉ xoá bản cũ khi lần sao lưu mới **thành công**; sao lưu lỗi thì giữ nguyên các bản cũ.
+- Nhật ký: `backups/backup.log` (mỗi dòng: bắt đầu | kết thúc | THANH_CONG/THAT_BAI | tệp | dung lượng), hoặc `docker compose logs backup`.
+- Chạy sao lưu ngay bằng tay: `docker compose exec backup backup.sh`.
+- Đổi lịch (ví dụ để thử): đặt `BACKUP_SCHEDULE` trong `.env` (cú pháp cron: `phút giờ * * *`) rồi `docker compose up -d backup`. Nhớ trả về `0 2 * * *`.
+- Quyền: trong container thư mục `/backups` là `700`, tệp `600`. Trên máy chủ Linux đặt quyền thư mục sao lưu cho riêng quản trị: `sudo chown root:root backups && sudo chmod 700 backups`.
+- Lịch sao lưu tự chạy lại sau khi khởi động lại máy (`restart: unless-stopped`).
+- Đã chốt với PO:
+  - **Nơi lưu:** thư mục `backups/` trên chính máy chạy staging. Muốn chép sang ổ hoặc máy khác thì đổi `BACKUP_DIR` trong `.env`.
+  - **Phạm vi:** chỉ sao lưu cơ sở dữ liệu. Ảnh và tệp người dùng tải lên (volume `uploads`) không nằm trong bản sao lưu.
+  - **Khi thất bại:** ghi dòng `THAT_BAI` kèm lý do vào `backups/backup.log` và `docker compose logs backup`, giữ nguyên các bản cũ. Hệ thống không gửi email hay tin nhắn báo lỗi; quản trị kiểm tra nhật ký.
