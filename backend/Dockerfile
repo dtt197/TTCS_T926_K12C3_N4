@@ -9,6 +9,9 @@ RUN mvn -B -q -DskipTests package
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /build/target/*.jar app.jar
-RUN mkdir -p /app/uploads
+# S4-10 Lát 2: curl dùng cho health check; thư mục logs lưu nhật ký chạy
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/uploads /app/logs
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
