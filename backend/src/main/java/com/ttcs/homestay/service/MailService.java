@@ -43,7 +43,7 @@ public class MailService {
 				+ "Quản trị viên vừa tạo tài khoản cho bạn trên hệ thống HomeStay.\n"
 				+ "Email đăng nhập: " + user.getEmail() + "\n"
 				+ "Mật khẩu tạm: " + temporaryPassword + "\n\n"
-				+ "Đăng nhập tại: " + frontendUrl + "\n"
+				+ "Đăng nhập tại: " + frontendUrl + "/dang-nhap\n"
 				+ "Bạn sẽ được yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên.");
 		try {
 			mailSender.send(message);

@@ -35,6 +35,7 @@ export function PublicHeader() {
           </a>
           <a className="customer-nav__link" href="/tim-phong">Tra phòng trống</a>
           <a className="customer-nav__link" href="/tra-cuu-dat-phong">Tra cứu booking</a>
+          <a className="customer-nav__link" href="/dang-nhap">Đăng nhập nội bộ</a>
         </nav>
         <div className="customer-header__contact">
           <a href="tel:0389123456">0389 123 456</a>

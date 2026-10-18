@@ -18,6 +18,13 @@ type AppRoutesProps = {
   onLogout: () => void
   onPasswordChanged: () => void
 }
+/** Đường dẫn cũ → đường dẫn mới; null nếu không cần đổi. */
+function legacyRedirectTarget(pathname: string): string | null {
+  if (pathname === '/') return '/trang-chu'
+  if (pathname === '/loai-phong') return '/danh-sach-loai-phong'
+  if (pathname.startsWith('/phong/')) return pathname.replace('/phong/', '/loai-phong/')
+  return null
+}
 
 export function AppRoutes({
   user,
@@ -33,31 +40,17 @@ export function AppRoutes({
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  const pathname = window.location.pathname
-  const needsLegacyRedirect =
-    pathname === '/' ||
-    pathname === '/loai-phong' ||
-    pathname.startsWith('/phong/')
+  const currentPath = window.location.pathname
+  const redirectTarget = legacyRedirectTarget(currentPath)
+  // Vẽ ngay theo đường dẫn mới. Trước đây chỉ đổi thanh địa chỉ nên form đăng nhập vẫn hiện dưới /trang-chu,
+  // đăng nhập xong bị đưa sang trang chủ của khách.
+  const pathname = redirectTarget ?? currentPath
 
   useEffect(() => {
-    if (!needsLegacyRedirect) {
-      return
+    if (redirectTarget) {
+      window.history.replaceState(null, '', redirectTarget)
     }
-
-    if (pathname === '/') {
-      window.history.replaceState(null, '', '/trang-chu')
-      return
-    }
-
-    if (pathname === '/loai-phong') {
-      window.history.replaceState(null, '', '/danh-sach-loai-phong')
-      return
-    }
-
-    if (pathname.startsWith('/phong/')) {
-      window.history.replaceState(null, '', pathname.replace('/phong/', '/loai-phong/'))
-    }
-  }, [needsLegacyRedirect, pathname])
+  }, [redirectTarget])
 
   let page
 
@@ -83,6 +76,7 @@ export function AppRoutes({
   } else if (pathname === '/danh-sach-loai-phong') {
     // S2-03: trang danh sách loại phòng công khai, khách không cần đăng nhập
     page = <RoomTypeListPage />
+    // Nhân viên đăng nhập qua /dang-nhap (hoặc bất kỳ đường dẫn nội bộ nào); đăng nhập xong vào trang quản lý.
   } else if (!user) {
     page = <LoginPage onLogin={onLogin} />
   } else if (user.mustChangePassword) {
