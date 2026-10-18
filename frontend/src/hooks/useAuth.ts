@@ -65,6 +65,8 @@ export function useAuth() {
   async function handleLogout() {
   await logout()
   clearAccessToken()
+  // Đăng xuất xong luôn về trang đăng nhập nhân viên, không giữ địa chỉ trang nội bộ cũ.
+  window.history.replaceState(null, '', '/dang-nhap')
   setUser(null)
   setStatus('unauthenticated')
 }
