@@ -81,3 +81,18 @@ Nằm trong volume `homestay_db-data` và `homestay_uploads`, còn nguyên khi c
   - **Nơi lưu:** thư mục `backups/` trên chính máy chạy staging. Muốn chép sang ổ hoặc máy khác thì đổi `BACKUP_DIR` trong `.env`.
   - **Phạm vi:** chỉ sao lưu cơ sở dữ liệu. Ảnh và tệp người dùng tải lên (volume `uploads`) không nằm trong bản sao lưu.
   - **Khi thất bại:** ghi dòng `THAT_BAI` kèm lý do vào `backups/backup.log` và `docker compose logs backup`, giữ nguyên các bản cũ. Hệ thống không gửi email hay tin nhắn báo lỗi; quản trị kiểm tra nhật ký.
+  
+## 12. Phục hồi cơ sở dữ liệu từ bản sao lưu (S4-10 Lát 4)
+Đã chốt với PO: thời gian phục hồi tối đa **15 phút**; thử trước trên CSDL riêng, phục hồi thật trên staging ngoài giờ demo.
+
+1. Xem các bản sao lưu: `ls -l backups/` (chọn tệp `homestay_YYYYMMDD_HHMMSS.dump`, thường là bản mới nhất).
+2. (Nên làm) Kiểm tra tệp trên CSDL riêng, không ảnh hưởng hệ thống đang chạy:
+   `bash backup/restore-staging.sh <tệp> --chi-kiem-tra` → so dòng `TRUOC` và `SAU` (số dòng tài khoản, loại phòng, phòng, booking, hoá đơn).
+3. Phục hồi thật: `bash backup/restore-staging.sh <tệp>`. Script sẽ:
+   - dừng backend → dựng CSDL từ tệp vào CSDL tạm → nếu thành công mới thay CSDL đang dùng (bản cũ giữ ở `homestay_db_truoc_phuc_hoi`) → bật lại backend và chờ sẵn sàng;
+   - in thời gian hệ thống chạy lại; nếu lỗi thì CSDL cũ giữ nguyên và backend được bật lại.
+4. Mở `http://<máy staging>:8088/dang-nhap`, đăng nhập và mở lại vài booking để kiểm tra.
+5. Nhật ký mọi lần phục hồi: `backups/restore.log`. Biên bản phục hồi thử: `docs/bien-ban-phuc-hoi-thu.md`.
+- Chỉ phục hồi cơ sở dữ liệu (ảnh/tệp tải lên không nằm trong bản sao lưu, xem mục 11).
+- Dữ liệu tạo **sau** thời điểm sao lưu sẽ mất sau khi phục hồi.
+- Quay về CSDL trước khi phục hồi (nếu cần): dừng backend rồi đổi tên lại `homestay_db_truoc_phuc_hoi` → `homestay_db`.
