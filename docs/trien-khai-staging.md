@@ -23,7 +23,7 @@ docker compose up -d --build
 ## 3. Nạp dữ liệu mẫu cho nghiệm thu
 1. Mở `http://localhost:<APP_PORT>`, bấm ô **Chủ homestay** trong "Tài khoản mẫu thử nghiệm" để đăng nhập.
 2. Menu **Dữ liệu mẫu** → **Nạp lại dữ liệu mẫu** (4 loại phòng, 20 phòng, bảng giá, 30 booking).
-
+- Nhân viên đăng nhập qua `http://<IP>:<APP_PORT>/quan-tri` (đường dẫn `/` là trang chủ cho khách).
 ## 4. Cho máy khác truy cập
 - Các máy cùng mạng Wi-Fi mở `http://<IP máy chạy>:<APP_PORT>`.
 - Nếu không mở được: cho phép Docker Desktop qua Windows Defender Firewall (mạng Private).
@@ -49,3 +49,22 @@ Xem `.env.example`. Thiếu biến bắt buộc (`DB_PASSWORD`, `JWT_ACCESS_SECR
 ## 9. Lưu ý bảo mật
 - Mật khẩu và khoá từng nằm trong kho mã (giá trị mặc định cũ trong `application.properties`) vẫn còn trong lịch sử git, nên **phải dùng giá trị mới** trong `.env` của staging và đổi mật khẩu DB trên các máy cá nhân.
 - 4 tài khoản mẫu (S4-09) dùng mật khẩu mặc định công khai để phục vụ nghiệm thu; cần PO quyết định có tắt sau nghiệm thu không.
+
+## 10. Tự khởi động lại và giữ dữ liệu (S4-10 Lát 2)
+### Cài đặt một lần trên máy chạy staging
+- Docker Desktop → **Settings → General** → bật **"Start Docker Desktop when you sign in to your computer"** → **Apply & restart**.
+- Khi Docker khởi động, cả 3 dịch vụ tự chạy lại nhờ `restart: unless-stopped` (không cần gõ lệnh).
+- **Không** chạy `docker compose down` trước khi tắt máy (lệnh này xoá container, khởi động lại máy sẽ không tự chạy). Muốn tắt hẳn hệ thống mới dùng `down`.
+- Trên Windows, Docker Desktop chỉ chạy sau khi có người **đăng nhập Windows**. Máy chủ Linux thì bật `sudo systemctl enable docker` để Docker chạy ngay khi bật máy.
+
+### Thứ tự khởi động
+`db` (chờ `pg_isready`) → `backend` (chờ db healthy, tự khởi động lại khi db khởi động lại; healthy khi `/actuator/health` = UP) → `frontend` (chờ backend healthy).
+Xem trạng thái: `docker compose ps` (cột STATUS có `healthy`).
+
+### Dữ liệu và ảnh
+Nằm trong volume `homestay_db-data` và `homestay_uploads`, còn nguyên khi container bị dừng, tạo lại (`docker compose up -d --force-recreate`) hoặc khi khởi động lại máy. Chỉ mất khi chạy `docker compose down -v`.
+
+### Xem nhật ký (log) sau khi khởi động lại
+- Log từng dịch vụ: `docker compose logs --tail 200 backend` (tương tự `db`, `frontend`), theo dõi liên tục thêm `-f`. Mỗi dịch vụ giữ tối đa 5 tệp × 10 MB.
+- Log backend còn ghi ra tệp trong volume `homestay_backend-logs`: `docker compose exec backend tail -n 200 /app/logs/homestay.log` (trên Git Bash thêm `MSYS_NO_PATHCONV=1` ở đầu lệnh để không bị đổi đường dẫn).
+- Số lần dịch vụ tự chạy lại: `docker inspect -f "{{.RestartCount}}" homestay-backend-1`.

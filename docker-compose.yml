@@ -1,10 +1,20 @@
 # S4-10: chạy cơ sở dữ liệu, backend và frontend bằng một lệnh: docker compose up -d
+# Lát 2: mọi dịch vụ tự chạy lại khi bị dừng bất thường hoặc khi Docker khởi động lại cùng máy,
+#        dữ liệu nằm trong volume, log xoay vòng để xem lại được sau khi khởi động lại.
 name: homestay
+
+# Giữ tối đa 5 tệp log x 10 MB cho mỗi dịch vụ
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
 
 services:
   db:
     image: postgres:15-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${DB_NAME:-homestay_db}
       POSTGRES_USER: ${DB_USERNAME:-homestay_app}
@@ -20,9 +30,11 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       db:
         condition: service_healthy
+        restart: true
     environment:
       DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-homestay_db}
       DB_USERNAME: ${DB_USERNAME:-homestay_app}
@@ -36,17 +48,29 @@ services:
       FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8088}
       CORS_ALLOWED_ORIGINS: http://localhost:${APP_PORT:-8088},${PUBLIC_URL:-http://localhost:8088}
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
+      # Lát 2: ghi thêm log ra tệp trong volume logs (còn nguyên khi container bị tạo lại)
+      LOGGING_FILE_NAME: /app/logs/homestay.log
     volumes:
       - uploads:/app/uploads
+      - backend-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   frontend:
     build: ./frontend
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "${APP_PORT:-8088}:80"
 
 volumes:
   db-data:
   uploads:
+  backend-logs:
