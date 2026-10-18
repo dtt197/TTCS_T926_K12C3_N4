@@ -83,7 +83,7 @@ export function ForgotPasswordPage() {
             </>
           )}
 
-          <p><a href="/">Quay lại đăng nhập</a></p>
+          <a href="/dang-nhap">Quay lại đăng nhập</a>
         </form>
       </section>
     </main>
