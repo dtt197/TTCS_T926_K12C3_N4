@@ -37,6 +37,7 @@ import { confirmRoomSelection as runRoomAssignment, reloadAssignableRooms as run
 import { submitRoomChange as runRoomChange } from './bookingRoomChangeActions.ts'
 import CancelBookingDialog from '../components/CancelBookingDialog'
 import { BookingSurchargeSection } from '../components/BookingSurchargeSection'
+import { GuestDocumentsSection } from '../components/GuestDocumentsSection'
 import { BookingNoShowUndoButton } from '../components/BookingNoShowUndoButton'
 import { BookingActionLogSection } from '../components/BookingActionLogSection'
 
@@ -91,6 +92,7 @@ export function BookingListPage({ role }: { role: string }) {
   const canManage = hasPermission(role, 'bookings:manage')
   const canNoShow = canManage || canCancel || role === 'RECEPTIONIST'
   const canAddSurcharge = hasPermission(role, 'bookings:surcharge-add')
+  const canViewGuestIdentity = hasPermission(role, 'guests:identity:view')
   const [bookings, setBookings] = useState<BookingListItem[]>([])
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -1099,18 +1101,8 @@ function handleCancelled(result: { bookingCode: string; refundAmount: number }) 
                   </section>}
                 </div>
                 <BookingSurchargeSection key={detailBooking.id} bookingId={detailBooking.id} canAdd={canAddSurcharge} />
-                {detailData.registeredGuests && detailData.registeredGuests.length > 0 && (
-                  <section className="booking-detail-section booking-detail-full" aria-labelledby="booking-guests-title">
-                    <h4 id="booking-guests-title">Khách lưu trú</h4>
-                    <ul className="booking-guest-list">
-                      {detailData.registeredGuests.map((guest, index) => (
-                        <li key={`${guest.primary ? 'primary' : 'guest'}-${index}`}>
-                          {guest.fullName}{guest.primary ? ' (khách chính)' : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
+                {/* Khách lưu trú: số giấy tờ che 4 số cuối, Lễ tân/Chủ homestay xem đầy đủ có ghi nhật ký */}
+                <GuestDocumentsSection key={`guests-${detailBooking.id}`} bookingId={detailBooking.id} canViewFull={canViewGuestIdentity} />
                 {(detailBooking.status === 'DA_HUY' || detailBooking.status === 'DA_NHAN_PHONG') && <section className="booking-detail-section booking-detail-full booking-detail-alerts" aria-labelledby="booking-alerts-title">
                   <h4 id="booking-alerts-title">Cảnh báo nghiệp vụ</h4>
                   {detailBooking.status === 'DA_HUY' && <BookingCancellationInfoSection bookingId={detailBooking.id} />}

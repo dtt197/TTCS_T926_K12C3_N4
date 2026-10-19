@@ -189,9 +189,9 @@ void setUp() {
                 "\"path\":\"/api/public/rooms/search\",\"access\":\"PUBLIC\"",
                 "\"path\":\"/api/rooms/{roomId}/history\",\"access\":\"ROLES\"",
                 "\"path\":\"/api/admin/security/endpoint-discrepancies\",\"access\":\"ROLES\",\"roles\":[\"ADMIN\"]",
-                "\"path\":\"/api/reports/occupancy\",\"access\":\"ROLES\",\"roles\":[\"OWNER\"]",
-                "\"path\":\"/api/reports/occupancy.csv\",\"access\":\"ROLES\",\"roles\":[\"OWNER\"]",
-                "\"path\":\"/api/reports/occupancy/detailed\",\"access\":\"ROLES\",\"roles\":[\"OWNER\"]",
+                "\"path\":\"/api/reports/occupancy\",\"access\":\"ROLES\",\"roles\":[\"ADMIN\",\"OWNER\",\"RECEPTIONIST\"]",
+                "\"path\":\"/api/reports/occupancy.csv\",\"access\":\"ROLES\",\"roles\":[\"ADMIN\",\"OWNER\",\"RECEPTIONIST\"]",
+                "\"path\":\"/api/reports/occupancy/detailed\",\"access\":\"ROLES\",\"roles\":[\"ADMIN\",\"OWNER\",\"RECEPTIONIST\"]",
                 "\"path\":\"/api/rooms/{roomId}/checkout-preview\",\"access\":\"ROLES\",\"roles\":[\"RECEPTIONIST\"]",
                 "\"path\":\"/api/bookings/{id}/surcharges\",\"access\":\"ROLES\",\"roles\":[\"OWNER\",\"RECEPTIONIST\"]",
                 "\"path\":\"/api/maintenance-requests/cleaning-room-ids\",\"access\":\"ROLES\",\"roles\":[\"HOUSEKEEPING\"]",
@@ -237,6 +237,22 @@ void setUp() {
                 .andExpect(jsonPath("$.roomTypeCount").value(4))
                 .andExpect(jsonPath("$.roomCount").value(20))
                 .andExpect(jsonPath("$.bookingCount").value(30));
+    }
+
+    @Test
+    void giayToKhachChiLeTanVaChuXemDayDu() throws Exception {
+        // Bảo vệ dữ liệu cá nhân: Buồng phòng không xem giấy tờ khách; Quản trị chỉ xem bản đã che
+        mockMvc.perform(get("/api/bookings/1/guests"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/bookings/1/guests")
+                        .header("Authorization", "Bearer housekeeping-test-token"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/bookings/1/guests/1/identity-view")
+                        .header("Authorization", "Bearer admin-test-token"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/bookings/1/guests/1/identity-view")
+                        .header("Authorization", "Bearer housekeeping-test-token"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

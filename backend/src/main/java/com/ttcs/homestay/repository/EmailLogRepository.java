@@ -3,6 +3,8 @@ package com.ttcs.homestay.repository;
 import com.ttcs.homestay.entity.EmailLog;
 import com.ttcs.homestay.entity.EmailStatus;
 import com.ttcs.homestay.entity.EmailType;
+import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +12,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface EmailLogRepository extends JpaRepository<EmailLog, Long> {
 
     List<EmailLog> findTop200ByEmailTypeOrderBySentAtDesc(EmailType emailType);
+
+    // S4-04 AC3: các lần gửi thất bại gần đây để tác vụ tự gửi lại.
+    List<EmailLog> findByEmailTypeInAndStatusAndSentAtAfter(
+            Collection<EmailType> emailTypes,
+            EmailStatus status,
+            OffsetDateTime sentAfter);
 
     // Kiểm tra booking đã có email loại này gửi thành công chưa.
     boolean existsByBookingIdAndEmailTypeAndStatus(

@@ -135,12 +135,12 @@ test('only treats a ticket matching the current permission snapshot as recorded'
   }, comparison), false)
 })
 
-test('occupancy summary, detailed report, and CSV endpoints are owner-only', () => {
+test('occupancy summary, detailed report, and CSV endpoints are readable by admin, owner and receptionist', () => {
   const endpoints = [
     '/api/reports/occupancy',
     '/api/reports/occupancy/detailed',
     '/api/reports/occupancy.csv',
-  ].map(path => ({ method: 'GET', path, access: 'ROLES', roles: ['OWNER'] }))
+  ].map(path => ({ method: 'GET', path, access: 'ROLES', roles: ['ADMIN', 'OWNER', 'RECEPTIONIST'] }))
   const comparisons = compareEndpointPermissions(endpoints)
   assert.ok(comparisons.every(({ hasMismatch }) => !hasMismatch))
 })

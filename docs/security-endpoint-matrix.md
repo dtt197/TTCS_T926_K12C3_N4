@@ -56,7 +56,7 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `POST /api/admin/sample-data/reload` | `OWNER` |
 | `POST /api/admin/users`, `PATCH /api/admin/users/{id}/status`, `PUT /api/admin/users/{id}`, `POST /api/admin/users/{id}/resend-temporary-password` | `ADMIN` |
 | `POST /api/admin/reminders/run`, `GET /api/admin/email-logs` | `ADMIN` |
-| `GET /api/reports/occupancy`, `/api/reports/occupancy.csv`, `/api/reports/occupancy/detailed` | `OWNER` |
+| `GET /api/reports/occupancy`, `/api/reports/occupancy.csv`, `/api/reports/occupancy/detailed` | `ADMIN`, `OWNER`, `RECEPTIONIST` |
 | `GET /api/reports/comparison`, `/api/reports/revenue/by-room-type/comparison` | `ADMIN`, `OWNER` |
 | `GET /api/maintenance-requests/cleaning-room-ids` | `HOUSEKEEPING` |
 | `GET /api/maintenance-requests`, `GET /api/maintenance-requests/{id}` | `OWNER`, `RECEPTIONIST`, `HOUSEKEEPING` |
@@ -84,7 +84,8 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `GET /api/bookings/{id}/invoice.pdf` | `ADMIN`, `OWNER`, `RECEPTIONIST` |
 | `PUT /api/bookings/{id}/invoice/cancel` | `OWNER`, `RECEPTIONIST` |
 | `POST /api/bookings`, `POST /api/bookings/{id}/preview`, `POST /api/bookings/{bookingCode}/cancel`, `PUT /api/bookings/{id}/confirm`, `PUT /api/bookings/{id}/room`, `PUT /api/bookings/{id}/room-change`, `PUT /api/bookings/{id}/cancel`, `PUT /api/bookings/{id}` | `RECEPTIONIST` |
-| `POST /api/bookings/{id}/deposit-adjustments`, `POST /api/bookings/{id}/surcharges` | `OWNER`, `RECEPTIONIST` |
+| `POST /api/bookings/{id}/deposit-adjustments`, `POST /api/bookings/{id}/surcharges`, `POST /api/bookings/{id}/guests/{guestId}/identity-view` | `OWNER`, `RECEPTIONIST` |
+| `GET /api/bookings/{id}/guests` (số giấy tờ đã che 4 ký tự cuối) | `ADMIN`, `OWNER`, `RECEPTIONIST` |
 | `PUT /api/bookings/{id}/deposit`, `PUT /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}/deposit`, `DELETE /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}` | `OWNER`, `RECEPTIONIST` |
 | `POST /api/public/bookings/walk-in` | `RECEPTIONIST` |
 
