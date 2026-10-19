@@ -469,7 +469,7 @@ export function RoomManagementPage() {
       )}
 
       <div className="management-grid">
-        <section className="management-card">
+        <section className="management-card create-room-card">
           <div className="management-card-heading">
             <div>
               <span className="management-card-kicker">
@@ -614,138 +614,6 @@ export function RoomManagementPage() {
           </form>
         </section>
 
-        <section className="management-card">
-          <div className="management-card-heading">
-            <div>
-              <span className="management-card-kicker">
-                TRA CỨU
-              </span>
-
-              <h2>Tìm kiếm & lọc</h2>
-
-              <p>
-                Thu hẹp danh sách theo loại
-                phòng, tầng và trạng thái.
-              </p>
-            </div>
-          </div>
-
-          <div className="management-filters">
-            <label>
-              Loại phòng
-
-              <select
-                value={roomTypeFilter}
-                onChange={(event) =>
-                  setRoomTypeFilter(
-                    event.target.value,
-                  )
-                }
-              >
-                <option value="">
-                  Tất cả
-                </option>
-
-                {roomTypes.map(
-                  (type) => (
-                    <option
-                      key={type}
-                      value={type}
-                    >
-                      {type}
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
-
-            <label>
-              Tầng
-
-              <select
-                value={floorFilter}
-                onChange={(event) =>
-                  setFloorFilter(
-                    event.target.value,
-                  )
-                }
-              >
-                <option value="">
-                  Tất cả
-                </option>
-
-                {floors.map(
-                  (floor) => (
-                    <option
-                      key={floor}
-                      value={floor}
-                    >
-                      {floor}
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
-
-            <label>
-              Trạng thái
-
-              <select
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(
-                    event.target
-                      .value as
-                      | ''
-                      | RoomStatus,
-                  )
-                }
-              >
-                <option value="">
-                  Tất cả
-                </option>
-
-                {STATUS_OPTIONS.map(
-                  (status) => (
-                    <option
-                      key={status}
-                      value={status}
-                    >
-                      {
-                        STATUS_LABELS[
-                          status
-                        ]
-                      }
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
-          </div>
-
-          <div className="filter-actions">
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() =>
-                void loadRooms()
-              }
-              disabled={loading}
-            >
-              {loading
-                ? 'Đang tìm...'
-                : 'Tìm kiếm'}
-            </button>
-
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={clearFilters}
-            >
-              Xóa bộ lọc
-            </button>
-          </div>
-        </section>
       </div>
 
       <section className="management-card room-list-card">
@@ -765,9 +633,38 @@ export function RoomManagementPage() {
             </p>
           </div>
 
-          <span className="room-list-count">
-            {rooms.length} phòng
-          </span>
+          <div className="room-list-tools">
+            <div className="management-filters">
+              <label>
+                Loại phòng
+                <select value={roomTypeFilter} onChange={(event) => setRoomTypeFilter(event.target.value)}>
+                  <option value="">Tất cả</option>
+                  {roomTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </label>
+              <label>
+                Tầng
+                <select value={floorFilter} onChange={(event) => setFloorFilter(event.target.value)}>
+                  <option value="">Tất cả</option>
+                  {floors.map((floor) => <option key={floor} value={floor}>{floor}</option>)}
+                </select>
+              </label>
+              <label>
+                Trạng thái
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as '' | RoomStatus)}>
+                  <option value="">Tất cả</option>
+                  {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
+                </select>
+              </label>
+              <div className="filter-actions">
+                <button className="primary-button" type="button" onClick={() => void loadRooms()} disabled={loading}>
+                  {loading ? 'Đang tìm...' : 'Tìm kiếm'}
+                </button>
+                <button className="secondary-button" type="button" onClick={clearFilters}>Xóa bộ lọc</button>
+              </div>
+            </div>
+            <span className="room-list-count">{rooms.length} phòng</span>
+          </div>
         </div>
 
         {rooms.length === 0 &&

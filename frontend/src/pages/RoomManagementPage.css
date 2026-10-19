@@ -119,7 +119,7 @@
 
 .room-management-page .management-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 20px;
   margin-bottom: 20px;
@@ -177,9 +177,12 @@
 .room-management-page .management-form,
 .room-management-page .management-form.two-columns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
+  grid-template-columns: repeat(4, minmax(0,1fr));
   gap: 14px;
 }
+
+.room-management-page .create-room-card .management-card-heading { margin-bottom: 14px; }
+.room-management-page .create-room-card .management-form .full-width { grid-column: span 3; }
 
 .room-management-page .management-filters {
   display: grid;
@@ -303,13 +306,18 @@
 
 .room-management-page .section-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 18px;
   padding-bottom: 15px;
   border-bottom: 1px solid rgba(37,92,71,.08);
 }
+
+.room-management-page .room-list-tools { display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0; }
+.room-management-page .room-list-tools .management-filters { display:flex; align-items:end; gap:10px; }
+.room-management-page .room-list-tools .management-filters label { min-width:132px; }
+.room-management-page .room-list-tools .filter-actions { margin:0; flex-wrap:nowrap; }
 
 .room-management-page .managed-room-list {
   display: grid;
@@ -481,11 +489,15 @@
 @media (max-width: 900px) {
   .room-management-page .management-summary,
   .room-management-page .management-grid,
-  .room-management-page .management-filters,
   .room-management-page .management-form,
   .room-management-page .management-form.two-columns {
     grid-template-columns: 1fr;
   }
+
+  .room-management-page .room-list-tools,
+  .room-management-page .room-list-tools .management-filters { width:100%; flex-wrap:wrap; }
+  .room-management-page .room-list-tools .management-filters label { flex:1 1 145px; }
+  .room-management-page .create-room-card .management-form .full-width { grid-column:1 / -1; }
 
   .room-management-page .management-grid > .management-card:first-child .management-form > button {
     justify-self: stretch;
@@ -497,6 +509,10 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .room-management-page .section-title-row { align-items:stretch; flex-direction:column; }
+  .room-management-page .room-list-tools { align-items:stretch; flex-direction:column; }
+  .room-management-page .room-list-tools .filter-actions { width:100%; }
 
   .room-management-page .management-card,
   .room-management-page .room-list-card {

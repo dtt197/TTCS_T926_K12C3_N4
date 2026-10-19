@@ -469,7 +469,7 @@ export function RevenueReportPage({
           )}
           
           <div className="revenue-report-grid">
-            {roomTypeRows && <section className="revenue-room-types">
+            {roomTypeRows && <section className={`revenue-room-types${role === 'RECEPTIONIST' ? ' revenue-room-types--receptionist' : ''}`}>
               <h3>Doanh thu theo loại phòng</h3>
               <p className="revenue-room-types-description">Các số liệu được tính từ booking đã trả phòng trong khoảng ngày đã chọn.</p>
               <div className="revenue-table-wrapper"><table className="revenue-table"><thead><tr><th>Mã phòng</th><th>Loại phòng</th><th>Booking đã đóng</th><th>Số đêm</th><th>Tiền phòng</th><th>Phụ thu</th><th>Tổng doanh thu</th><th>Trung bình/đêm</th></tr></thead><tbody>
