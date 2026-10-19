@@ -230,13 +230,13 @@ export function RoomTypeListPage() {
                           <a className="room-card__details" href={`/loai-phong/${card.id}`}>
                             Xem chi tiết
                           </a>
-                          {card.activeRoomCount > 0 ? (
+                          {detail && detail.availableRooms > 0 ? (
                             <a className="room-card__book" href={`/dat-phong?roomTypeId=${card.id}`}>
                               Đặt phòng
                             </a>
                           ) : (
                             <button type="button" className="room-card__book" disabled>
-                              Hết phòng
+                              {detail ? 'Hết phòng' : 'Đang kiểm tra phòng'}
                             </button>
                           )}
                         </div>
