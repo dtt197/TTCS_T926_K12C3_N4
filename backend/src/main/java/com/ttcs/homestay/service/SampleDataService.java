@@ -70,6 +70,9 @@ public class SampleDataService {
         jdbcTemplate.execute("DELETE FROM booking_settlements");
         jdbcTemplate.execute("DELETE FROM email_logs");
         jdbcTemplate.execute("DELETE FROM appointment_action_logs");
+        // S4-03: hoá đơn khoá chặt vào booking (ON DELETE RESTRICT), phải xoá trước và đếm lại số hoá đơn từ đầu
+        jdbcTemplate.execute("DELETE FROM issued_invoices");
+        jdbcTemplate.execute("DELETE FROM invoice_number_counters");
         jdbcTemplate.execute("DELETE FROM bookings");
         jdbcTemplate.execute("DELETE FROM price_overrides");
         jdbcTemplate.execute("DELETE FROM notifications");

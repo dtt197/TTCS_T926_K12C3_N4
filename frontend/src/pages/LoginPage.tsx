@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { login } from '../services/authService'
 import type { LoginResponse } from '../types/auth'
 import './AuthPages.css'
+
+// S4-09: chỉ hiện tài khoản mẫu trên staging bật chế độ demo (build với VITE_DEMO_MODE=true)
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 type LoginPageProps = {
   onLogin: (user: LoginResponse) => void
 }
@@ -135,7 +138,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
 
-          {/* S4-09: Tài khoản mẫu thử nghiệm theo vai trò */}
+          {/* S4-09: Tài khoản mẫu thử nghiệm theo vai trò (chỉ trên staging chế độ demo) */}
+          {DEMO_MODE && (
           <div className="demo-accounts-card" aria-label="Tài khoản mẫu theo vai trò">
             <div className="demo-accounts-header">
               <span className="demo-accounts-badge">S4-09</span>
@@ -199,6 +203,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </button>
             </div>
           </div>
+          )}
 
           <div className="customer-links">
             <p>Bạn là khách hàng đang tìm phòng nghỉ?</p>

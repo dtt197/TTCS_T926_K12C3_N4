@@ -28,6 +28,9 @@ import { UserManagementPage } from './UserManagementPage'
 
 import { BookingListPage } from './BookingListPage'
 import { WalkInBookingPage } from './WalkInBookingPage'
+
+// S4-09: menu "Dữ liệu mẫu" chỉ có trên staging bật chế độ demo
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 import { RevenueReportPage } from './RevenueReportPage'
 import { OccupancyReportPage } from './OccupancyReportPage'
 import { SecurityEndpointMatrixPage } from './SecurityEndpointMatrixPage'
@@ -371,9 +374,7 @@ export function InternalHomePage({
   })
 
   const visibleTabs = TABS.filter((tab) =>
-
-    hasPermission(user.role, tab.permission),
-
+    (tab.view !== 'sampleData' || DEMO_MODE) && hasPermission(user.role, tab.permission),
   )
 
   const fallbackTab =
