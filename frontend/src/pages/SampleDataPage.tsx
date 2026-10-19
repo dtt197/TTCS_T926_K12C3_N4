@@ -6,6 +6,7 @@ import {
   STAGING_SESSION_METADATA,
   STAGING_TEST_CASES,
   STAGING_DEFECTS,
+  ACCEPTANCE_STORAGE_KEY,
   generateAcceptanceReportMarkdown,
   type AcceptanceTestCase,
 } from './stagingAcceptanceData'
@@ -255,7 +256,7 @@ export function SampleDataPage() {
   // S4-09: Quản lý trạng thái kịch bản nghiệm thu tương tác
   const [testCases, setTestCases] = useState<AcceptanceTestCase[]>(() => {
     try {
-      const saved = localStorage.getItem('s409_acceptance_test_cases')
+      const saved = localStorage.getItem(ACCEPTANCE_STORAGE_KEY)
       if (saved) return JSON.parse(saved)
     } catch { /* use default */ }
     return STAGING_TEST_CASES
@@ -293,26 +294,30 @@ export function SampleDataPage() {
     window.print()
   }
 
-  function handleToggleTestCase(tcId: string) {
+  /** S4-09 AC4: ghi kết quả từng bước khi chạy thử trên staging (lưu trên trình duyệt, xuất ra biên bản Markdown). */
+  function updateTestCase(tcId: string, change: Partial<AcceptanceTestCase>) {
     setTestCases((prev) => {
-      const updated = prev.map((tc) => {
-        if (tc.id !== tcId) return tc
-        const nextStatus = tc.status === 'PASS' ? 'PENDING' : 'PASS'
-        return { ...tc, status: nextStatus } as AcceptanceTestCase
-      })
+      const updated = prev.map((tc) => (tc.id === tcId ? { ...tc, ...change } : tc))
       try {
-        localStorage.setItem('s409_acceptance_test_cases', JSON.stringify(updated))
+        localStorage.setItem(ACCEPTANCE_STORAGE_KEY, JSON.stringify(updated))
       } catch { /* ignore */ }
       return updated
     })
   }
 
+  function handleStatusChange(tcId: string, status: AcceptanceTestCase['status']) {
+    const executionTime = status === 'PENDING'
+      ? ''
+      : new Date().toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour12: false })
+    updateTestCase(tcId, { status, executionTime })
+  }
+
   function handleResetTestCases() {
     setTestCases(STAGING_TEST_CASES)
     try {
-      localStorage.setItem('s409_acceptance_test_cases', JSON.stringify(STAGING_TEST_CASES))
+      localStorage.setItem(ACCEPTANCE_STORAGE_KEY, JSON.stringify(STAGING_TEST_CASES))
     } catch { /* ignore */ }
-    showToast('Đã đặt lại kịch bản nghiệm thu về kết quả chuẩn Staging (8/8 PASS)!')
+    showToast('Đã xoá kết quả đã ghi, sẵn sàng chạy lại kịch bản trên staging.')
   }
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -467,6 +472,9 @@ export function SampleDataPage() {
               <p className="sdp-hero-desc">
                 Nạp lại bộ dữ liệu mẫu chuẩn về trạng thái ban đầu: 4 loại phòng,
                 20 phòng, bảng giá ngày lễ và 30 booking phân bố trên 3 tháng (thời gian nạp &lt; 2 phút).
+                Có sẵn booking đang ở (1 booking trả phòng hôm nay), 2 booking nhận phòng hôm nay đã chốt phòng,
+                booking đã trả phòng có quyết toán để xuất hoá đơn, và phòng vừa trả cần dọn.
+                Trước khi xuất hoá đơn, Chủ homestay nhập địa chỉ và số điện thoại homestay ở trang Tham số.
               </p>
             </div>
             <button
@@ -823,7 +831,7 @@ export function SampleDataPage() {
                 <span className="sdp-badge sdp-badge--status-pass">⏳ CHỜ PO PHÊ DUYỆT</span>
               </div>
               <h2 className="sdp-report-title">
-                Biên bản nghiệm thu trọn luồng (Kiểm thử trên máy local)
+                Biên bản chạy thử kịch bản nghiệm thu trên staging
               </h2>
               <p className="sdp-report-doc-id">
                 Mã văn bản: <strong>{STAGING_SESSION_METADATA.documentCode}</strong> • Phê duyệt: <strong>{STAGING_SESSION_METADATA.poSignoff}</strong>
@@ -842,7 +850,7 @@ export function SampleDataPage() {
               </div>
               <div className="sdp-stat-box">
                 <span className="sdp-stat-label">Môi trường</span>
-                <span className="sdp-stat-num sdp-stat-num--text">Máy local</span>
+                <span className="sdp-stat-num sdp-stat-num--text">Staging Docker</span>
               </div>
               <div className="sdp-stat-box">
                 <span className="sdp-stat-label">Thời gian chạy</span>
@@ -872,9 +880,9 @@ export function SampleDataPage() {
                 type="button"
                 className="sdp-btn-action sdp-btn-action--secondary"
                 onClick={handleResetTestCases}
-                title="Đặt lại trạng thái checklist về kết quả gốc trên Staging"
+                title="Xoá toàn bộ kết quả đã ghi trên trình duyệt này để chạy lại kịch bản"
               >
-                <span aria-hidden="true">↺</span> Đặt lại kết quả mẫu
+                <span aria-hidden="true">↺</span> Xoá kết quả đã ghi
               </button>
             </div>
           </div>
@@ -924,10 +932,11 @@ export function SampleDataPage() {
               <div className="sdp-role-filter">
                 <span className="sdp-filter-label">Lọc theo vai trò:</span>
                 {[
-                  { code: 'ALL', label: 'Tất cả (8)' },
+                  { code: 'ALL', label: `Tất cả (${testCases.length})` },
                   { code: 'OWNER', label: 'Chủ homestay' },
                   { code: 'RECEPTIONIST', label: 'Lễ tân' },
                   { code: 'HOUSEKEEPING', label: 'Buồng phòng' },
+                  { code: 'ADMIN', label: 'Quản trị' },
                   { code: 'PUBLIC', label: 'Khách hàng' },
                 ].map((f) => (
                   <button
@@ -952,13 +961,16 @@ export function SampleDataPage() {
                   <div className="sdp-tc-top">
                     <div className="sdp-tc-left">
                       <label className="sdp-checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={tc.status === 'PASS'}
-                          onChange={() => handleToggleTestCase(tc.id)}
-                          className="sdp-tc-checkbox"
-                        />
                         <span className="sdp-tc-id">{tc.id}</span>
+                        <select
+                          value={tc.status}
+                          onChange={(event) => handleStatusChange(tc.id, event.target.value as AcceptanceTestCase['status'])}
+                          aria-label={`Kết quả ${tc.id}`}
+                        >
+                          <option value="PENDING">Chưa chạy</option>
+                          <option value="PASS">Đạt</option>
+                          <option value="FAIL">Không đạt</option>
+                        </select>
                       </label>
                       <h4 className="sdp-tc-title">{tc.title}</h4>
                     </div>
@@ -968,7 +980,7 @@ export function SampleDataPage() {
                       <span
                         className={`sdp-status-pill ${tc.status === 'PASS' ? 'sdp-status-pill--pass' : 'sdp-status-pill--pending'}`}
                       >
-                        {tc.status === 'PASS' ? '✓ ĐẠT (PASS)' : 'CHƯA CHẠY'}
+                        {tc.status === 'PASS' ? '✓ ĐẠT' : tc.status === 'FAIL' ? '✗ KHÔNG ĐẠT' : 'CHƯA CHẠY'}
                       </span>
                     </div>
                   </div>
@@ -986,8 +998,15 @@ export function SampleDataPage() {
                     </div>
 
                     <div className="sdp-tc-col sdp-tc-col--highlight">
-                      <span className="sdp-field-label">Kết quả thực tế ghi nhận trên máy local:</span>
-                      <p className="sdp-field-val sdp-field-val--actual">{tc.actual}</p>
+                      <span className="sdp-field-label">Kết quả thực tế trên staging:</span>
+                      <textarea
+                        className="sdp-field-val sdp-field-val--actual"
+                        rows={3}
+                        value={tc.actual}
+                        placeholder="Ghi lại kết quả quan sát được (mã booking, số tiền, thông báo...)"
+                        onChange={(event) => updateTestCase(tc.id, { actual: event.target.value })}
+                        aria-label={`Kết quả thực tế ${tc.id}`}
+                      />
                     </div>
                   </div>
 
@@ -995,7 +1014,7 @@ export function SampleDataPage() {
                   <div className="sdp-tc-footer">
                     <div className="sdp-tc-meta">
                       <span><strong>Tiêu chí đạt:</strong> {tc.criteria}</span>
-                      <span><strong>Thời gian:</strong> {tc.executionTime}</span>
+                      <span><strong>Thời điểm:</strong> {tc.executionTime || '—'}</span>
                     </div>
                     {tc.notes && (
                       <div className="sdp-tc-notes">
@@ -1018,13 +1037,13 @@ export function SampleDataPage() {
             </p>
             <ul className="sdp-repeat-list">
               <li>
-                <strong>Bước 1:</strong> Thực hiện chạy trọn vẹn luồng từ đặt phòng đến trả phòng và xuất hóa đơn trên máy local.
+                <strong>Bước 1:</strong> Chạy trọn luồng TC-01 đến TC-15 trên staging, kể cả trả phòng và xuất hoá đơn.
               </li>
               <li>
-                <strong>Bước 2:</strong> Gọi lệnh <code>POST /api/admin/sample-data/reload</code> để xóa toàn bộ booking mới sinh và nạp lại trạng thái ban đầu. Thời gian đo được: <strong>1.8 giây</strong> (&lt; 2 phút).
+                <strong>Bước 2:</strong> Bấm <strong>Nạp lại dữ liệu mẫu</strong> khi đã có hoá đơn; ghi thời gian nạp (yêu cầu &lt; 2 phút).
               </li>
               <li>
-                <strong>Bước 3:</strong> Chạy lại toàn bộ kịch bản từ TC-02 đến TC-07. Kết quả: 100% các bước đều lặp lại thành công, dữ liệu nhất quán, không tồn tại bản ghi mồ côi hay lỗi ràng buộc dữ liệu.
+                <strong>Bước 3:</strong> Lặp lại TC-07 (nhận phòng) và TC-09 (trả phòng); ghi kết quả vào TC-16.
               </li>
             </ul>
           </section>
@@ -1074,7 +1093,7 @@ export function SampleDataPage() {
               <div className="sdp-signoff-text">
                 <h4 className="sdp-signoff-title">Xác nhận phê duyệt nghiệm thu từ Product Owner</h4>
                 <p className="sdp-signoff-desc">
-                  Biên bản nghiệm thu trọn luồng Sprint 4 (#S4-09 / SCRUM-140) đã được kiểm thử thực tế và đối chiếu 100% khớp với kết quả mong đợi trên máy local (chờ nghiệm thu lại trên Staging sau khi hoàn tất S4-10).
+                  Biên bản chạy thử kịch bản nghiệm thu trọn luồng (#S4-09 AC4) trên staging Docker Compose. Ghi kết quả từng bước ở trên, bấm "Sao chép Biên bản (Markdown)" rồi dán vào docs/staging-acceptance-test-report.md trước khi trình Product Owner.
                 </p>
                 <div className="sdp-signoff-details">
                   <span><strong>Người phê duyệt:</strong> {STAGING_SESSION_METADATA.poSignoff}</span>

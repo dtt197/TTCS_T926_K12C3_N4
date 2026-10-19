@@ -38,6 +38,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
@@ -219,6 +220,8 @@ void setUp() {
     }
 
     @Test
+    // Nạp lại ghi nhiều bảng (cọc, quyết toán...) vào H2 dùng chung: huỷ sau test để không ảnh hưởng test khác
+    @Transactional
     void sampleDataReloadApiChiOwnerDuocTruyCap() throws Exception {
         mockMvc.perform(post("/api/admin/sample-data/reload"))
                 .andExpect(status().isUnauthorized());

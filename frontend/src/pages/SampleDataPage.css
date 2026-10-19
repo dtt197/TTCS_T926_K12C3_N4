@@ -1283,3 +1283,22 @@
 }
 
 
+
+/* S4-09 AC4: ghi kết quả chạy thử trên staging */
+.sdp-checkbox-label select {
+  padding: .2rem .4rem;
+  border-radius: 6px;
+  font: inherit;
+  font-size: .85rem;
+}
+textarea.sdp-field-val--actual {
+  width: 100%;
+  min-height: 4.5rem;
+  box-sizing: border-box;
+  padding: .45rem .55rem;
+  border: 1px solid rgba(167, 243, 208, .35);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, .35);
+  font: inherit;
+  resize: vertical;
+}

@@ -1,8 +1,21 @@
 package com.ttcs.homestay.service;
 
+import com.ttcs.homestay.dto.pricing.NightlyPrice;
+import com.ttcs.homestay.entity.RoomType;
+import com.ttcs.homestay.repository.RoomTypeRepository;
+import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -15,16 +28,24 @@ import org.springframework.transaction.annotation.Transactional;
  * - 4 loại phòng (DON, DOI, GIA_DINH, STUDIO_ADULT)
  * - 20 phòng phân bố đều
  * - Bảng giá ngày thường, cuối tuần và ngày lễ (price_overrides)
- * - 30 booking phân bố trên 3 tháng (tháng trước, hiện tại, tháng sau)
+ * - 30 booking phân bố trên 3 tháng (tháng trước, hiện tại, tháng sau), giá từng đêm theo bảng giá,
+ *   có phòng, tiền cọc; booking đã đóng có quyết toán, booking đang ở có khách và giấy tờ
  * </p>
  */
 @Service
 public class SampleDataService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    public SampleDataService(JdbcTemplate jdbcTemplate) {
+    private final JdbcTemplate jdbcTemplate;
+    private final PricingService pricingService;
+    private final RoomTypeRepository roomTypeRepository;
+
+    public SampleDataService(JdbcTemplate jdbcTemplate, PricingService pricingService,
+            RoomTypeRepository roomTypeRepository) {
         this.jdbcTemplate = jdbcTemplate;
+        this.pricingService = pricingService;
+        this.roomTypeRepository = roomTypeRepository;
     }
 
     /**
@@ -148,7 +169,8 @@ public class SampleDataService {
     // ─────────────────────────────────────────────────────────────────────────
 
     private int seedRooms() {
-        // Phân bố: DON × 5, DOI × 7, GIA_DINH × 5, STUDIO_ADULT × 3 = 20
+        // Phân bố: DON × 5, DOI × 7, GIA_DINH × 5, STUDIO_ADULT × 3 = 20.
+        // Tất cả bắt đầu ở trạng thái trống sạch; trạng thái đang ở / trống bẩn được đặt theo booking ở seedBookings.
         jdbcTemplate.update("""
             INSERT INTO rooms (room_number, floor, room_type, status, active)
             VALUES
@@ -158,25 +180,25 @@ public class SampleDataService {
             -- Tầng 1: Phòng đôi
             ('103', 1, 'Phòng đôi',      'TRONG_SACH', TRUE),
             ('104', 1, 'Phòng đôi',      'TRONG_SACH', TRUE),
-            ('105', 1, 'Phòng đôi',      'TRONG_BAN',  TRUE),
+            ('105', 1, 'Phòng đôi',      'TRONG_SACH', TRUE),
             -- Tầng 2: Phòng đơn
             ('201', 2, 'Phòng đơn',      'TRONG_SACH', TRUE),
             ('202', 2, 'Phòng đơn',      'TRONG_SACH', TRUE),
-            ('203', 2, 'Phòng đơn',      'TRONG_BAN',  TRUE),
+            ('203', 2, 'Phòng đơn',      'TRONG_SACH', TRUE),
             -- Tầng 2: Phòng đôi
-            ('204', 2, 'Phòng đôi',      'DANG_O',     TRUE),
+            ('204', 2, 'Phòng đôi',      'TRONG_SACH', TRUE),
             ('205', 2, 'Phòng đôi',      'TRONG_SACH', TRUE),
             ('206', 2, 'Phòng đôi',      'TRONG_SACH', TRUE),
             ('207', 2, 'Phòng đôi',      'TRONG_SACH', TRUE),
             -- Tầng 3: Phòng gia đình
             ('301', 3, 'Phòng gia đình', 'TRONG_SACH', TRUE),
-            ('302', 3, 'Phòng gia đình', 'DANG_O',     TRUE),
+            ('302', 3, 'Phòng gia đình', 'TRONG_SACH', TRUE),
             ('303', 3, 'Phòng gia đình', 'TRONG_SACH', TRUE),
-            ('304', 3, 'Phòng gia đình', 'TRONG_BAN',  TRUE),
+            ('304', 3, 'Phòng gia đình', 'TRONG_SACH', TRUE),
             ('305', 3, 'Phòng gia đình', 'TRONG_SACH', TRUE),
             -- Tầng 4: Studio Người Lớn
             ('401', 4, 'Studio Người Lớn', 'TRONG_SACH', TRUE),
-            ('402', 4, 'Studio Người Lớn', 'DANG_O',     TRUE),
+            ('402', 4, 'Studio Người Lớn', 'TRONG_SACH', TRUE),
             ('403', 4, 'Studio Người Lớn', 'TRONG_SACH', TRUE)
             """);
         return 20;
@@ -271,85 +293,240 @@ public class SampleDataService {
     // Booking (30 booking phân bố trên 3 tháng)
     // ─────────────────────────────────────────────────────────────────────────
 
-    private int seedBookings() {
-        Long doiId  = getRoomTypeId("DOI");
-        Long donId  = getRoomTypeId("DON");
-        Long giaId  = getRoomTypeId("GIA_DINH");
-        Long stuId  = getRoomTypeId("STUDIO_ADULT");
-
-        LocalDate today = LocalDate.now();
-
-        // ── Tháng trước: 10 booking ──────────────────────────────────────────
-        LocalDate pm = today.minusMonths(1).withDayOfMonth(1);
-
-        insertBooking("BK-S4-001", "Nguyễn Văn An",      "0912345601", "an.nguyen@example.com",    2, doiId, "Phòng đôi",        pm.plusDays(1),  pm.plusDays(3),  500000, 650000, 2);
-        insertBooking("BK-S4-002", "Trần Thị Bình",      "0912345602", "binh.tran@example.com",    1, donId, "Phòng đơn",        pm.plusDays(2),  pm.plusDays(4),  300000, 400000, 1);
-        insertBooking("BK-S4-003", "Lê Hoàng Minh",      "0912345603", "minh.le@example.com",      4, giaId, "Phòng gia đình",   pm.plusDays(5),  pm.plusDays(8),  900000, 1200000, 4);
-        insertBooking("BK-S4-004", "Phạm Thanh Hương",   "0912345604", "huong.pham@example.com",   2, stuId, "Studio Người Lớn", pm.plusDays(6),  pm.plusDays(9),  700000, 900000,  2);
-        insertBooking("BK-S4-005", "Vũ Đức Long",        "0912345605", "long.vu@example.com",      2, doiId, "Phòng đôi",        pm.plusDays(10), pm.plusDays(12), 500000, 650000,  2);
-        insertBooking("BK-S4-006", "Đặng Thu Trang",     "0912345606", "trang.dang@example.com",   1, donId, "Phòng đơn",        pm.plusDays(12), pm.plusDays(14), 300000, 400000,  1);
-        insertBooking("BK-S4-007", "Bùi Quang Huy",      "0912345607", "huy.bui@example.com",      3, giaId, "Phòng gia đình",   pm.plusDays(14), pm.plusDays(17), 900000, 1200000, 3);
-        insertBooking("BK-S4-008", "Hoàng Minh Châu",    "0912345608", "chau.hoang@example.com",   2, doiId, "Phòng đôi",        pm.plusDays(18), pm.plusDays(20), 500000, 650000,  2);
-        insertBooking("BK-S4-009", "Ngô Thị Lan",        "0912345609", "lan.ngo@example.com",      2, stuId, "Studio Người Lớn", pm.plusDays(20), pm.plusDays(22), 700000, 900000,  2);
-        insertBooking("BK-S4-010", "Trịnh Văn Khoa",     "0912345610", "khoa.trinh@example.com",   1, donId, "Phòng đơn",        pm.plusDays(22), pm.plusDays(25), 300000, 400000,  1);
-
-        // ── Tháng hiện tại: 10 booking ───────────────────────────────────────
-        LocalDate cm = today.withDayOfMonth(1);
-
-        insertBooking("BK-S4-011", "Lý Thanh Thảo",      "0912345611", "thao.ly@example.com",      2, doiId, "Phòng đôi",        cm.plusDays(1),  cm.plusDays(4),  500000, 650000,  2);
-        insertBooking("BK-S4-012", "Dương Anh Tú",       "0912345612", "tu.duong@example.com",     1, donId, "Phòng đơn",        cm.plusDays(3),  cm.plusDays(5),  300000, 400000,  1);
-        insertBooking("BK-S4-013", "Đinh Thị Ngọc",      "0912345613", "ngoc.dinh@example.com",    4, giaId, "Phòng gia đình",   cm.plusDays(5),  cm.plusDays(9),  900000, 1200000, 4);
-        insertBooking("BK-S4-014", "Lưu Bảo Nam",        "0912345614", "nam.luu@example.com",      2, stuId, "Studio Người Lớn", cm.plusDays(7),  cm.plusDays(10), 700000, 900000,  2);
-        insertBooking("BK-S4-015", "Hà Phương Thùy",     "0912345615", "thuy.ha@example.com",      2, doiId, "Phòng đôi",        cm.plusDays(10), cm.plusDays(13), 500000, 650000,  2);
-        insertBooking("BK-S4-016", "Tô Minh Đức",        "0912345616", "duc.to@example.com",       1, donId, "Phòng đơn",        cm.plusDays(12), cm.plusDays(14), 300000, 400000,  1);
-        insertBooking("BK-S4-017", "Cao Thị Hoa",        "0912345617", "hoa.cao@example.com",      5, giaId, "Phòng gia đình",   cm.plusDays(14), cm.plusDays(18), 900000, 1200000, 5);
-        insertBooking("BK-S4-018", "Phan Đình Toàn",     "0912345618", "toan.phan@example.com",    2, doiId, "Phòng đôi",        cm.plusDays(17), cm.plusDays(20), 500000, 650000,  2);
-        insertBooking("BK-S4-019", "Mai Thị Thu",        "0912345619", "thu.mai@example.com",      2, stuId, "Studio Người Lớn", cm.plusDays(20), cm.plusDays(23), 700000, 900000,  2);
-        insertBooking("BK-S4-020", "Đỗ Văn Tuyên",       "0912345620", "tuyen.do@example.com",     1, donId, "Phòng đơn",        cm.plusDays(23), cm.plusDays(26), 300000, 400000,  1);
-
-        // ── Tháng tới: 10 booking ────────────────────────────────────────────
-        LocalDate nm = today.plusMonths(1).withDayOfMonth(1);
-
-        insertBooking("BK-S4-021", "Trương Công Danh",   "0912345621", "danh.truong@example.com",  2, doiId, "Phòng đôi",        nm.plusDays(1),  nm.plusDays(4),  500000, 650000,  2);
-        insertBooking("BK-S4-022", "Kiều Thị Nga",       "0912345622", "nga.kieu@example.com",     1, donId, "Phòng đơn",        nm.plusDays(3),  nm.plusDays(6),  300000, 400000,  1);
-        insertBooking("BK-S4-023", "Châu Thanh Phong",   "0912345623", "phong.chau@example.com",   4, giaId, "Phòng gia đình",   nm.plusDays(5),  nm.plusDays(9),  900000, 1200000, 4);
-        insertBooking("BK-S4-024", "Lê Thị Ánh",         "0912345624", "anh.le@example.com",       2, stuId, "Studio Người Lớn", nm.plusDays(7),  nm.plusDays(10), 700000, 900000,  2);
-        insertBooking("BK-S4-025", "Vương Hữu Phúc",     "0912345625", "phuc.vuong@example.com",   2, doiId, "Phòng đôi",        nm.plusDays(10), nm.plusDays(13), 500000, 650000,  2);
-        insertBooking("BK-S4-026", "Tạ Thị Kim",         "0912345626", "kim.ta@example.com",       1, donId, "Phòng đơn",        nm.plusDays(12), nm.plusDays(15), 300000, 400000,  1);
-        insertBooking("BK-S4-027", "Hồ Trung Hiếu",      "0912345627", "hieu.ho@example.com",      3, giaId, "Phòng gia đình",   nm.plusDays(14), nm.plusDays(18), 900000, 1200000, 3);
-        insertBooking("BK-S4-028", "Nguyễn Thị Phương",  "0912345628", "phuong.nguyen@example.com",2, doiId, "Phòng đôi",        nm.plusDays(17), nm.plusDays(20), 500000, 650000,  2);
-        insertBooking("BK-S4-029", "Trần Đăng Khoa",     "0912345629", "khoa.tran@example.com",    2, stuId, "Studio Người Lớn", nm.plusDays(20), nm.plusDays(23), 700000, 900000,  2);
-        insertBooking("BK-S4-030", "Lương Minh Quân",    "0912345630", "quan.luong@example.com",   1, donId, "Phòng đơn",        nm.plusDays(23), nm.plusDays(26), 300000, 400000,  1);
-
-        return 30;
+    /**
+     * Một booking mẫu. fixedStatus null thì suy ra theo ngày so với hôm nay:
+     * đã qua ngày trả → đã trả phòng (có quyết toán), đang trong kỳ lưu trú → đang ở, chưa tới → đã xác nhận.
+     */
+    private record SampleBooking(String code, String guestName, String phone, String email, int guestCount,
+            String roomTypeCode, String roomTypeName, LocalDate checkIn, LocalDate checkOut, String fixedStatus) {
     }
 
-    private void insertBooking(
-            String code, String guestName, String phone, String email,
-            int guestCount, Long roomTypeId, String roomTypeName,
-            LocalDate checkIn, LocalDate checkOut,
-            long weekdayPrice, long weekendPrice, int nights) {
+    private static final String ACTOR = "Lễ tân Demo";
 
-        if (roomTypeId == null) return;
-        long total = weekdayPrice * nights;
+    /**
+     * DoD #8: mỗi bước của luồng đều có dữ liệu để thử ngay sau khi nạp:
+     * booking đã đóng có phòng + quyết toán (xuất hoá đơn S4-03, doanh thu S4-07), booking đang ở có khách và
+     * số giấy tờ (trả phòng S4-01, phụ thu S4-02), booking đã chốt phòng nhận hôm nay (nhận phòng S3-07),
+     * phòng vừa trả cần dọn (buồng phòng S3-09). Giá từng đêm lấy từ PricingService (S2-01, S2-02).
+     */
+    private int seedBookings() {
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
+        List<SampleBooking> samples = new ArrayList<>(sampleBookings(today));
+        samples.sort(Comparator.comparing(SampleBooking::checkIn).thenComparing(SampleBooking::code));
+
+        List<Map<String, Object>> latestSettings = jdbcTemplate.queryForList(
+                "SELECT id, weekend_days FROM operating_settings ORDER BY created_at DESC, id DESC");
+        Long settingsId = latestSettings.isEmpty() ? null : ((Number) latestSettings.get(0).get("id")).longValue();
+        Object weekendValue = latestSettings.isEmpty() ? null : latestSettings.get(0).get("weekend_days");
+        String weekendDays = weekendValue == null || weekendValue.toString().isBlank()
+                ? "FRIDAY,SATURDAY" : weekendValue.toString();
+        Set<DayOfWeek> weekendSet = PricingService.parseWeekendDays(weekendDays);
+        Map<String, List<Long>> roomsByType = new HashMap<>();
+        jdbcTemplate.query("SELECT id, room_type FROM rooms ORDER BY room_number", (rs) -> {
+            roomsByType.computeIfAbsent(rs.getString("room_type"), key -> new ArrayList<>()).add(rs.getLong("id"));
+        });
+
+        Map<Long, List<LocalDate[]>> roomStays = new HashMap<>();
+        Set<Long> occupiedRooms = new HashSet<>();
+        Set<Long> arrivalRooms = new HashSet<>();
+        Map<Long, LocalDate> lastCheckout = new HashMap<>();
+        int index = 0;
+        for (SampleBooking sample : samples) {
+            Long roomTypeId = getRoomTypeId(sample.roomTypeCode());
+            if (roomTypeId == null) {
+                continue;
+            }
+            String status = statusOf(sample, today);
+            // Khách đang ở giữ phòng ít nhất tới hết hôm nay, để khách đến hôm nay không bị xếp trùng phòng chưa dọn.
+            LocalDate holdUntil = "DA_NHAN_PHONG".equals(status) && !sample.checkOut().isAfter(today)
+                    ? today.plusDays(1) : sample.checkOut();
+            Long roomId = pickRoom(roomsByType.getOrDefault(sample.roomTypeName(), List.of()),
+                    roomStays, sample.checkIn(), holdUntil);
+
+            RoomType roomType = roomTypeRepository.findById(roomTypeId).orElseThrow();
+            List<NightlyPrice> nightlyPrices = pricingService.priceNights(
+                    roomType, sample.checkIn(), sample.checkOut(), weekendSet);
+            long total = PricingService.total(nightlyPrices);
+            long deposit = Math.min(total, Math.max(100_000L, total * 3 / 10 / 1_000 * 1_000));
+            Long bookingId = insertBooking(sample, roomType, roomId, status, total, weekendDays);
+            insertNightlySnapshots(bookingId, nightlyPrices);
+            insertDeposit(bookingId, sample, deposit, index);
+
+            if ("DA_NHAN_PHONG".equals(status) && roomId != null) {
+                insertGuestAndCheckIn(bookingId, roomId, sample, index);
+                occupiedRooms.add(roomId);
+            } else if ("DA_XAC_NHAN".equals(status) && roomId != null && sample.checkIn().equals(today)) {
+                arrivalRooms.add(roomId);
+            } else if ("DA_TRA_PHONG".equals(status) && roomId != null) {
+                insertSettlement(bookingId, roomId, sample, total, deposit, settingsId);
+                lastCheckout.merge(roomId, sample.checkOut(), (left, right) -> left.isAfter(right) ? left : right);
+            }
+            index++;
+        }
+        updateRoomStatuses(occupiedRooms, arrivalRooms, lastCheckout);
+        return samples.size();
+    }
+
+    private List<SampleBooking> sampleBookings(LocalDate today) {
+        LocalDate pm = today.minusMonths(1).withDayOfMonth(1);
+        LocalDate cm = today.withDayOfMonth(1);
+        LocalDate nm = today.plusMonths(1).withDayOfMonth(1);
+        return List.of(
+                // ── Tháng trước: 10 booking ──
+                new SampleBooking("BK-S4-001", "Nguyễn Văn An", "0912345601", "an.nguyen@example.com", 2, "DOI", "Phòng đôi", pm.plusDays(1), pm.plusDays(3), null),
+                new SampleBooking("BK-S4-002", "Trần Thị Bình", "0912345602", "binh.tran@example.com", 1, "DON", "Phòng đơn", pm.plusDays(2), pm.plusDays(4), null),
+                new SampleBooking("BK-S4-003", "Lê Hoàng Minh", "0912345603", "minh.le@example.com", 4, "GIA_DINH", "Phòng gia đình", pm.plusDays(5), pm.plusDays(8), null),
+                new SampleBooking("BK-S4-004", "Phạm Thanh Hương", "0912345604", "huong.pham@example.com", 2, "STUDIO_ADULT", "Studio Người Lớn", pm.plusDays(6), pm.plusDays(9), null),
+                new SampleBooking("BK-S4-005", "Vũ Đức Long", "0912345605", "long.vu@example.com", 2, "DOI", "Phòng đôi", pm.plusDays(10), pm.plusDays(12), null),
+                new SampleBooking("BK-S4-006", "Đặng Thu Trang", "0912345606", "trang.dang@example.com", 1, "DON", "Phòng đơn", pm.plusDays(12), pm.plusDays(14), null),
+                new SampleBooking("BK-S4-007", "Bùi Quang Huy", "0912345607", "huy.bui@example.com", 3, "GIA_DINH", "Phòng gia đình", pm.plusDays(14), pm.plusDays(17), null),
+                new SampleBooking("BK-S4-008", "Hoàng Minh Châu", "0912345608", "chau.hoang@example.com", 2, "DOI", "Phòng đôi", pm.plusDays(18), pm.plusDays(20), null),
+                new SampleBooking("BK-S4-009", "Ngô Thị Lan", "0912345609", "lan.ngo@example.com", 2, "STUDIO_ADULT", "Studio Người Lớn", pm.plusDays(20), pm.plusDays(22), null),
+                new SampleBooking("BK-S4-010", "Trịnh Văn Khoa", "0912345610", "khoa.trinh@example.com", 1, "DON", "Phòng đơn", pm.plusDays(22), pm.plusDays(25), null),
+                // ── Tháng hiện tại: 10 booking ──
+                new SampleBooking("BK-S4-011", "Lý Thanh Thảo", "0912345611", "thao.ly@example.com", 2, "DOI", "Phòng đôi", cm.plusDays(1), cm.plusDays(4), null),
+                new SampleBooking("BK-S4-012", "Dương Anh Tú", "0912345612", "tu.duong@example.com", 1, "DON", "Phòng đơn", cm.plusDays(3), cm.plusDays(5), null),
+                new SampleBooking("BK-S4-013", "Đinh Thị Ngọc", "0912345613", "ngoc.dinh@example.com", 4, "GIA_DINH", "Phòng gia đình", cm.plusDays(5), cm.plusDays(9), null),
+                new SampleBooking("BK-S4-014", "Lưu Bảo Nam", "0912345614", "nam.luu@example.com", 2, "STUDIO_ADULT", "Studio Người Lớn", cm.plusDays(7), cm.plusDays(10), null),
+                new SampleBooking("BK-S4-015", "Hà Phương Thùy", "0912345615", "thuy.ha@example.com", 2, "DOI", "Phòng đôi", cm.plusDays(10), cm.plusDays(13), null),
+                // 4 booking tính theo hôm nay để luôn có dữ liệu thử nhận phòng, trả phòng (kể cả trả muộn) và phụ thu
+                new SampleBooking("BK-S4-016", "Tô Minh Đức", "0912345616", "duc.to@example.com", 1, "DON", "Phòng đơn", today.minusDays(2), today, null),
+                new SampleBooking("BK-S4-017", "Cao Thị Hoa", "0912345617", "hoa.cao@example.com", 4, "GIA_DINH", "Phòng gia đình", today.minusDays(1), today.plusDays(2), null),
+                new SampleBooking("BK-S4-018", "Phan Đình Toàn", "0912345618", "toan.phan@example.com", 2, "DOI", "Phòng đôi", today, today.plusDays(2), "DA_XAC_NHAN"),
+                new SampleBooking("BK-S4-019", "Mai Thị Thu", "0912345619", "thu.mai@example.com", 2, "STUDIO_ADULT", "Studio Người Lớn", today, today.plusDays(1), "DA_XAC_NHAN"),
+                new SampleBooking("BK-S4-020", "Đỗ Văn Tuyên", "0912345620", "tuyen.do@example.com", 1, "DON", "Phòng đơn", cm.plusDays(23), cm.plusDays(26), null),
+                // ── Tháng tới: 10 booking ──
+                new SampleBooking("BK-S4-021", "Trương Công Danh", "0912345621", "danh.truong@example.com", 2, "DOI", "Phòng đôi", nm.plusDays(1), nm.plusDays(4), null),
+                new SampleBooking("BK-S4-022", "Kiều Thị Nga", "0912345622", "nga.kieu@example.com", 1, "DON", "Phòng đơn", nm.plusDays(3), nm.plusDays(6), null),
+                new SampleBooking("BK-S4-023", "Châu Thanh Phong", "0912345623", "phong.chau@example.com", 4, "GIA_DINH", "Phòng gia đình", nm.plusDays(5), nm.plusDays(9), null),
+                new SampleBooking("BK-S4-024", "Lê Thị Ánh", "0912345624", "anh.le@example.com", 2, "STUDIO_ADULT", "Studio Người Lớn", nm.plusDays(7), nm.plusDays(10), null),
+                new SampleBooking("BK-S4-025", "Vương Hữu Phúc", "0912345625", "phuc.vuong@example.com", 2, "DOI", "Phòng đôi", nm.plusDays(10), nm.plusDays(13), null),
+                new SampleBooking("BK-S4-026", "Tạ Thị Kim", "0912345626", "kim.ta@example.com", 1, "DON", "Phòng đơn", nm.plusDays(12), nm.plusDays(15), null),
+                new SampleBooking("BK-S4-027", "Hồ Trung Hiếu", "0912345627", "hieu.ho@example.com", 3, "GIA_DINH", "Phòng gia đình", nm.plusDays(14), nm.plusDays(18), null),
+                new SampleBooking("BK-S4-028", "Nguyễn Thị Phương", "0912345628", "phuong.nguyen@example.com", 2, "DOI", "Phòng đôi", nm.plusDays(17), nm.plusDays(20), null),
+                new SampleBooking("BK-S4-029", "Trần Đăng Khoa", "0912345629", "khoa.tran@example.com", 2, "STUDIO_ADULT", "Studio Người Lớn", nm.plusDays(20), nm.plusDays(23), null),
+                new SampleBooking("BK-S4-030", "Lương Minh Quân", "0912345630", "quan.luong@example.com", 1, "DON", "Phòng đơn", nm.plusDays(23), nm.plusDays(26), null));
+    }
+
+    private static String statusOf(SampleBooking sample, LocalDate today) {
+        if (sample.fixedStatus() != null) {
+            return sample.fixedStatus();
+        }
+        if (sample.checkOut().isBefore(today)) {
+            return "DA_TRA_PHONG";
+        }
+        if (!sample.checkIn().isAfter(today)) {
+            return "DA_NHAN_PHONG";
+        }
+        return "DA_XAC_NHAN";
+    }
+
+    /**
+     * Phòng cùng loại không trùng đêm với booking đã xếp (khoảng nửa mở như S3-02); ưu tiên phòng ít booking nhất
+     * để khách xếp đều các phòng, rồi tới số phòng nhỏ.
+     */
+    private static Long pickRoom(List<Long> candidates, Map<Long, List<LocalDate[]>> roomStays,
+            LocalDate checkIn, LocalDate holdUntil) {
+        Long chosen = null;
+        int fewestStays = Integer.MAX_VALUE;
+        for (Long roomId : candidates) {
+            List<LocalDate[]> stays = roomStays.computeIfAbsent(roomId, key -> new ArrayList<>());
+            boolean free = stays.stream().noneMatch(stay -> stay[0].isBefore(holdUntil) && stay[1].isAfter(checkIn));
+            if (free && stays.size() < fewestStays) {
+                chosen = roomId;
+                fewestStays = stays.size();
+            }
+        }
+        if (chosen != null) {
+            roomStays.get(chosen).add(new LocalDate[] {checkIn, holdUntil});
+        }
+        return chosen;
+    }
+
+    private Long insertBooking(SampleBooking sample, RoomType roomType, Long roomId, String status,
+            long total, String weekendDays) {
         OffsetDateTime now = OffsetDateTime.now();
-        String status = checkOut.isBefore(LocalDate.now()) ? "DA_TRA_PHONG" : "DA_XAC_NHAN";
-
         jdbcTemplate.update("""
             INSERT INTO bookings (
                 booking_code, guest_name, guest_phone, guest_email, guest_count,
-                room_type_id, room_type_name_snapshot,
+                room_type_id, room_type_name_snapshot, room_id, room_confirmed_at,
                 check_in_date, check_out_date,
                 weekday_price_snapshot, weekend_price_snapshot, weekend_days_snapshot,
                 total_amount, status, source, created_at,
                 extra_guest_count, extra_person_fee_snapshot, surcharge_amount
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,'FRIDAY,SATURDAY',?,?,'TRUC_TUYEN',?,0,0,0)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'TRUC_TUYEN',?,0,0,0)
             """,
-                code, guestName, phone, email, guestCount,
-                roomTypeId, roomTypeName,
-                checkIn, checkOut,
-                weekdayPrice, weekendPrice,
+                sample.code(), sample.guestName(), sample.phone(), sample.email(), sample.guestCount(),
+                roomType.getId(), sample.roomTypeName(), roomId, roomId == null ? null : now,
+                sample.checkIn(), sample.checkOut(),
+                roomType.getWeekdayPrice(), roomType.getWeekendPrice(), weekendDays,
                 total, status, now);
+        return jdbcTemplate.queryForObject("SELECT id FROM bookings WHERE booking_code = ?", Long.class, sample.code());
+    }
+
+    private void insertNightlySnapshots(Long bookingId, List<NightlyPrice> nightlyPrices) {
+        for (NightlyPrice night : nightlyPrices) {
+            jdbcTemplate.update("""
+                INSERT INTO booking_nightly_price_snapshots
+                    (booking_id, night_date, price_type, price_label, room_price, surcharge_amount)
+                VALUES (?, ?, ?, ?, ?, 0)
+                """, bookingId, night.date(), night.priceType().name(), night.label(), night.price());
+        }
+    }
+
+    private void insertDeposit(Long bookingId, SampleBooking sample, long deposit, int index) {
+        boolean transfer = index % 2 == 1;
+        jdbcTemplate.update("""
+            INSERT INTO booking_deposits
+                (booking_id, amount, payment_method, received_date, payment_reference, created_at, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, bookingId, BigDecimal.valueOf(deposit), transfer ? "BANK_TRANSFER" : "CASH",
+                sample.checkIn().minusDays(3), transfer ? "CK-" + sample.code() : null, OffsetDateTime.now(), ACTOR);
+    }
+
+    /** Khách chính (kèm số giấy tờ mẫu 12 số) và lần nhận phòng lúc 14:30 ngày nhận phòng. */
+    private void insertGuestAndCheckIn(Long bookingId, Long roomId, SampleBooking sample, int index) {
+        jdbcTemplate.update("""
+            INSERT INTO booking_guests (booking_id, guest_order, full_name, identity_number)
+            VALUES (?, 0, ?, ?)
+            """, bookingId, sample.guestName(), String.format("0012%08d", 4_567_800 + index));
+        jdbcTemplate.update("INSERT INTO check_ins (room_id, guest_name, checked_in_at) VALUES (?, ?, ?)",
+                roomId, sample.guestName(), atBusinessTime(sample.checkIn(), 14, 30));
+    }
+
+    /** Quyết toán lúc trả phòng 11:00 đúng giờ: thu tiền mặt phần còn lại sau cọc, không phụ thu. */
+    private void insertSettlement(Long bookingId, Long roomId, SampleBooking sample,
+            long total, long deposit, Long settingsId) {
+        OffsetDateTime checkedOutAt = atBusinessTime(sample.checkOut(), 11, 0);
+        long amount = total - deposit;
+        jdbcTemplate.update("""
+            INSERT INTO booking_settlements (
+                booking_id, room_id, room_total, deposit_total, settlement_type, amount,
+                payment_method, payment_reference, transaction_status, acted_by, settled_at, checked_out_at,
+                late_checkout_fee, additional_surcharge_total, final_total, late_checkout_hours,
+                late_checkout_fee_per_hour, checkout_time_snapshot, operating_settings_id, late_checkout_pricing_basis
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, 0, 0, ?, 0, NULL, ?, ?, 'NONE')
+            """,
+                bookingId, roomId, BigDecimal.valueOf(total), BigDecimal.valueOf(deposit),
+                amount > 0 ? "COLLECT" : "ZERO", BigDecimal.valueOf(amount),
+                amount > 0 ? "CASH" : null, amount > 0 ? "CONFIRMED" : "NOT_APPLICABLE", ACTOR,
+                checkedOutAt, checkedOutAt, total, LocalTime.of(12, 0), settingsId);
+    }
+
+    /** Phòng có khách đang ở → đang ở; 2 phòng vừa trả gần nhất (không phải phòng đón khách hôm nay) → trống bẩn. */
+    private void updateRoomStatuses(Set<Long> occupiedRooms, Set<Long> arrivalRooms, Map<Long, LocalDate> lastCheckout) {
+        for (Long roomId : occupiedRooms) {
+            jdbcTemplate.update("UPDATE rooms SET status = 'DANG_O' WHERE id = ?", roomId);
+        }
+        lastCheckout.entrySet().stream()
+                .filter(entry -> !occupiedRooms.contains(entry.getKey()) && !arrivalRooms.contains(entry.getKey()))
+                .sorted(Map.Entry.<Long, LocalDate>comparingByValue().reversed())
+                .limit(2)
+                .forEach(entry -> jdbcTemplate.update("UPDATE rooms SET status = 'TRONG_BAN' WHERE id = ?", entry.getKey()));
+    }
+
+    private static OffsetDateTime atBusinessTime(LocalDate date, int hour, int minute) {
+        return date.atTime(hour, minute).atZone(BUSINESS_ZONE).toOffsetDateTime();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
