@@ -23,6 +23,8 @@ docker compose up -d --build
 ## 3. Nạp dữ liệu mẫu cho nghiệm thu (S4-09, chỉ trên staging)
 - Bật chế độ demo bằng `DEMO_MODE=true` trong `.env` (mặc định tắt): trang đăng nhập có ô "Tài khoản mẫu thử nghiệm", 4 tài khoản `*.demo` được đặt lại mật khẩu mẫu mỗi lần khởi động, Chủ homestay có menu **Dữ liệu mẫu**. Đổi giá trị thì chạy `docker compose up -d --build` (giao diện cần build lại).
 - Nạp dữ liệu: đăng nhập **Chủ homestay** → **Dữ liệu mẫu** → **Nạp lại dữ liệu mẫu** (4 loại phòng, 20 phòng, bảng giá, 30 booking). **Thao tác này xoá toàn bộ loại phòng, phòng, booking, hoá đơn hiện có trên staging**; chỉ Chủ homestay bấm, một lần trước buổi chạy thử.
+- Bộ dữ liệu có sẵn để thử từng bước (DoD #8): booking đã trả phòng có phòng và quyết toán (xuất hoá đơn, xem doanh thu), 2–3 booking đang ở có khách và số giấy tờ (trong đó `BK-S4-016` trả phòng hôm nay để thử trả muộn), `BK-S4-018`, `BK-S4-019` nhận phòng hôm nay đã chốt phòng, 2 phòng vừa trả ở trạng thái trống bẩn. Giá từng đêm tính theo bảng giá (ngày thường, cuối tuần, lễ).
+- Trước khi xuất hoá đơn: **Chủ homestay** vào **Tham số**, nhập địa chỉ và số điện thoại homestay (hoá đơn bắt buộc có).
 - Nhân viên đăng nhập qua `http://<IP>:<APP_PORT>/dang-nhap` (đường dẫn `/` là trang chủ cho khách).
 - Máy cá nhân (không Docker) mặc định không có chế độ demo: không hiện tài khoản mẫu, không đặt lại mật khẩu, không nạp lại được dữ liệu, nên dữ liệu thử của từng người không bị ảnh hưởng. Ai muốn dùng dữ liệu mẫu trên máy mình thì tự đặt biến `DEMO_MODE=true` (dữ liệu trên máy đó sẽ bị thay khi nạp lại).
 - Bàn giao dùng thật: đặt `DEMO_MODE=false` trong `.env`, `docker compose up -d --build`, rồi Quản trị vô hiệu hoá 4 tài khoản `*.demo` trong Quản lý tài khoản.

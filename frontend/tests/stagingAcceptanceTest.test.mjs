@@ -7,60 +7,62 @@ import {
   generateAcceptanceReportMarkdown,
 } from '../src/pages/stagingAcceptanceData.ts'
 
-test('SCRUM-140 / S4-09: Biên bản nghiệm thu có đầy đủ thông tin phiên Staging', () => {
+test('S4-09 AC4: phiên chạy thử ghi rõ môi trường staging Docker', () => {
   assert.equal(STAGING_SESSION_METADATA.documentCode, 'BB-NT-S4-09-STAGING')
   assert.equal(STAGING_SESSION_METADATA.overallStatus, 'IN_REVIEW')
-  assert.equal(STAGING_SESSION_METADATA.totalTests, 8)
-  assert.equal(STAGING_SESSION_METADATA.passedTests, 8)
-  assert.equal(STAGING_SESSION_METADATA.failedTests, 0)
+  assert.equal(STAGING_SESSION_METADATA.totalTests, STAGING_TEST_CASES.length)
   assert.ok(STAGING_SESSION_METADATA.environment.includes('Staging'))
   assert.ok(STAGING_SESSION_METADATA.environment.includes('Docker'))
+  assert.ok(!STAGING_SESSION_METADATA.environment.includes('local'))
   assert.ok(STAGING_SESSION_METADATA.serverDetails.includes('PostgreSQL 15'))
   assert.ok(STAGING_SESSION_METADATA.serverDetails.includes('Spring Boot 4.1.1'))
 })
 
-test('SCRUM-140 / S4-09: Chứa đầy đủ 8 kịch bản nghiệm thu trọn luồng', () => {
-  assert.equal(STAGING_TEST_CASES.length, 8)
-
-  const expectedIds = ['TC-01', 'TC-02', 'TC-03', 'TC-04', 'TC-05', 'TC-06', 'TC-07', 'TC-08']
-  const actualIds = STAGING_TEST_CASES.map((tc) => tc.id)
-  assert.deepEqual(actualIds, expectedIds)
+test('S4-09 AC4: kịch bản có 16 bước khớp biên bản docs/staging-acceptance-test-report.md', () => {
+  const expectedIds = Array.from({ length: 16 }, (_, index) => `TC-${String(index + 1).padStart(2, '0')}`)
+  assert.deepEqual(STAGING_TEST_CASES.map((tc) => tc.id), expectedIds)
 })
 
-test('SCRUM-140 / S4-09: Mỗi test case đều có đầy đủ inputs, expected, actual và tiêu chí đạt', () => {
+test('S4-09 AC4: mỗi bước có thao tác, kết quả mong đợi, tiêu chí; kết quả thực tế để trống chờ chạy thật', () => {
   for (const tc of STAGING_TEST_CASES) {
-    assert.ok(tc.title.length > 0, `${tc.id} phải có title`)
-    assert.ok(tc.inputs.length > 0, `${tc.id} phải có inputs`)
-    assert.ok(tc.expected.length > 0, `${tc.id} phải có expected outcome`)
-    assert.ok(tc.actual.length > 0, `${tc.id} phải có actual result trên Staging`)
-    assert.ok(tc.criteria.length > 0, `${tc.id} phải có criteria`)
-    assert.equal(tc.status, 'PASS', `${tc.id} phải có trạng thái PASS trên Staging`)
+    assert.ok(tc.title.length > 0, `${tc.id} phải có tên bước`)
+    assert.ok(tc.inputs.length > 0, `${tc.id} phải có thao tác`)
+    assert.ok(tc.expected.length > 0, `${tc.id} phải có kết quả mong đợi`)
+    assert.ok(tc.criteria.length > 0, `${tc.id} phải ghi story/AC kiểm tra`)
+    assert.equal(tc.status, 'PENDING', `${tc.id} chưa chạy thì không được đánh dấu đạt sẵn`)
+    assert.equal(tc.actual, '', `${tc.id} không được điền sẵn kết quả thực tế`)
   }
 })
 
-test('SCRUM-140 / S4-09: Kịch bản bao phủ đầy đủ các vai trò vận hành', () => {
+test('S4-09 AC4: kịch bản bao phủ cả 5 vai trò', () => {
   const roles = new Set(STAGING_TEST_CASES.map((tc) => tc.roleCode))
-  assert.ok(roles.has('OWNER'), 'Phải có vai trò OWNER (Nạp mẫu & Báo cáo)')
-  assert.ok(roles.has('PUBLIC'), 'Phải có vai trò PUBLIC (Tra cứu & Đặt phòng)')
-  assert.ok(roles.has('RECEPTIONIST'), 'Phải có vai trò RECEPTIONIST (Lịch phòng, Check-in, Phụ thu, Check-out)')
-  assert.ok(roles.has('HOUSEKEEPING'), 'Phải có vai trò HOUSEKEEPING (Dọn dẹp & Chuyển phòng sạch)')
+  for (const role of ['PUBLIC', 'RECEPTIONIST', 'HOUSEKEEPING', 'OWNER', 'ADMIN']) {
+    assert.ok(roles.has(role), `Phải có vai trò ${role}`)
+  }
 })
 
-test('SCRUM-140 / S4-09: Nhật ký lỗi (Defect Log) có đầy đủ phương án khắc phục đã giải quyết', () => {
+test('S4-09: nhật ký lỗi đã sửa có đủ cách khắc phục', () => {
   assert.ok(STAGING_DEFECTS.length >= 3)
   for (const defect of STAGING_DEFECTS) {
-    assert.ok(defect.id.startsWith('DEF-'), 'Mã defect phải bắt đầu bằng DEF-')
+    assert.ok(defect.id.startsWith('DEF-'), 'Mã lỗi phải bắt đầu bằng DEF-')
     assert.equal(defect.status, 'Đã giải quyết')
     assert.ok(defect.resolution.length > 0)
   }
 })
 
-test('SCRUM-140 / S4-09: Xuất báo cáo Markdown có đầy đủ bảng biểu và chữ ký PO', () => {
-  const md = generateAcceptanceReportMarkdown(STAGING_TEST_CASES, STAGING_SESSION_METADATA)
-  assert.ok(md.includes('BB-NT-S4-09-STAGING'))
-  assert.ok(md.includes('8/8 Kịch bản ĐẠT'))
-  assert.ok(md.includes('TC-01'))
-  assert.ok(md.includes('TC-08'))
-  assert.ok(md.includes('PRODUCT OWNER'))
-  assert.ok(md.includes('Chờ Product Owner phê duyệt'))
+test('S4-09 AC4: biên bản Markdown xuất đúng kết quả đã ghi', () => {
+  const blank = generateAcceptanceReportMarkdown(STAGING_TEST_CASES, STAGING_SESSION_METADATA)
+  assert.ok(blank.includes('BB-NT-S4-09-STAGING'))
+  assert.ok(blank.includes('0/16 bước ĐẠT'))
+  assert.ok(blank.includes('(chưa ghi)'))
+  assert.ok(blank.includes('TC-16'))
+  assert.ok(blank.includes('Chờ Product Owner phê duyệt'))
+
+  const recorded = STAGING_TEST_CASES.map((tc, index) => index === 0
+    ? { ...tc, status: 'PASS', actual: 'Nạp xong 4 loại phòng | 20 phòng, 30 booking trong 1,9 giây', executionTime: '13:05:10' }
+    : tc)
+  const md = generateAcceptanceReportMarkdown(recorded, STAGING_SESSION_METADATA)
+  assert.ok(md.includes('1/16 bước ĐẠT'))
+  assert.ok(md.includes('Nạp xong 4 loại phòng \\| 20 phòng'))
+  assert.ok(md.includes('13:05:10'))
 })

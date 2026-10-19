@@ -1,5 +1,7 @@
 /**
- * S4-09 (SCRUM-140): Dữ liệu kịch bản và biên bản nghiệm thu trọn luồng trên môi trường Staging.
+ * S4-09 AC4 (SCRUM-140): kịch bản nghiệm thu trọn luồng chạy thử trên staging (Docker Compose, S4-10).
+ * Khớp từng bước với docs/staging-acceptance-test-report.md. Kết quả thực tế để trống, người chạy thử
+ * ghi lại ngay trên trang "Kịch bản nghiệm thu" rồi sao chép biên bản Markdown vào tài liệu.
  */
 
 export interface AcceptanceTestCase {
@@ -44,132 +46,239 @@ export interface StagingAcceptanceSession {
   overallStatus: 'APPROVED' | 'IN_REVIEW' | 'REJECTED'
 }
 
-export const STAGING_SESSION_METADATA: StagingAcceptanceSession = {
-  documentCode: 'BB-NT-S4-09-STAGING',
-  project: 'Hệ thống Quản lý Homestay (TTCS K12C3 N4)',
-  epic: '#S4-09: Quản lý dữ liệu mẫu & Nghiệm thu trọn luồng',
-  story: 'SCRUM-140 (EP-01): Có kết quả nghiệm thu ghi nhận được sau khi chạy thử kịch bản trọn luồng trên máy local (chờ S4-10)',
-  environment: 'Máy local (Staging Environment và Docker Compose chưa có, chờ S4-10)',
-  serverDetails: 'PostgreSQL 15, OpenJDK 17 Temurin, Spring Boot 4.1.1, React 18 + Vite',
-  executionDate: '16/10/2026',
-  executionTimeRange: '09:30 - 10:45 (GMT+7)',
-  tester: 'Nhóm phát triển & QA (TTCS K12C3 Nhóm 4)',
-  poSignoff: 'Product Owner / Giảng viên hướng dẫn',
-  totalTests: 8,
-  passedTests: 8,
-  failedTests: 0,
-  repeatabilityStatus: 'Đã kiểm thử nạp lại dữ liệu mẫu và chạy lại 100% thành công không lỗi mồ côi',
-  overallStatus: 'IN_REVIEW',
-}
+/** Khoá lưu kết quả đang ghi trên trình duyệt (đổi khoá để bỏ kết quả mẫu cũ chạy trên máy local). */
+export const ACCEPTANCE_STORAGE_KEY = 's409_staging_acceptance_v2'
 
 export const STAGING_TEST_CASES: AcceptanceTestCase[] = [
   {
     id: 'TC-01',
-    title: 'Khởi tạo & Nạp lại dữ liệu mẫu chuẩn (Reset Baseline)',
+    title: 'Nạp lại dữ liệu mẫu',
     role: 'Chủ homestay (OWNER)',
     roleCode: 'OWNER',
     roleBadgeClass: 'sdp-badge--owner',
-    inputs: 'Bấm nút "Nạp lại dữ liệu mẫu" từ giao diện /sample-data.',
-    expected: 'Xóa sạch dữ liệu cũ theo đúng thứ tự ràng buộc khóa ngoại; nạp lại 4 loại phòng, 20 phòng, bảng giá ngày lễ, 30 booking rải trên 3 tháng. Thời gian thực thi < 2 phút.',
-    actual: 'Đã nạp thành công 4 loại phòng, 20 phòng, 16 bản ghi giá đè, 30 booking và tài khoản mẫu chuẩn. Thời gian thực tế: 1.8 giây (< 2 phút theo AC).',
-    executionTime: '09:32:15',
-    status: 'PASS',
-    criteria: 'Đúng 4 loại phòng, 20 phòng, bảng giá ngày lễ, 30 booking rải đều 3 tháng.',
-    notes: 'Kiểm tra log PostgreSQL: Toàn bộ bảng phụ thuộc được xóa sạch và tái tạo chỉ mục toàn vẹn.',
+    inputs: 'Menu Dữ liệu mẫu → Nạp lại dữ liệu mẫu (sau khi đã nhập địa chỉ, số điện thoại homestay ở Tham số).',
+    expected: 'Thông báo 4 loại phòng, 20 phòng, bảng giá ngày lễ, 30 booking rải trên 3 tháng; thời gian nạp < 2 phút.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S4-09 AC1, AC2',
   },
   {
     id: 'TC-02',
-    title: 'Tra cứu phòng trống & Đặt phòng trực tuyến (Booking Flow)',
-    role: 'Khách hàng (PUBLIC)',
+    title: 'Xem loại phòng, tra phòng trống và giá tạm tính trên điện thoại',
+    role: 'Khách (PUBLIC)',
     roleCode: 'PUBLIC',
     roleBadgeClass: 'sdp-badge--public',
-    inputs: 'Khách tra cứu phòng đôi từ 18/10 đến 20/10 (2 đêm), 2 khách. Họ tên: Trần Nam, SĐT: 0988776655.',
-    expected: 'Hệ thống hiển thị đúng loại phòng đôi (DOI) còn phòng khả dụng; tính đúng tổng tiền 2 đêm = 1,000,000 VND; tạo booking trạng thái DA_XAC_NHAN.',
-    actual: 'Bộ lọc trả về phòng đôi với snapshot giá 500,000 VND/đêm; tổng tiền chính xác 1,000,000 VND; sinh mã booking BK-STG-001.',
-    executionTime: '09:37:40',
-    status: 'PASS',
-    criteria: 'Tính toán giá chuẩn theo ngày thường/cuối tuần, lưu snapshot giá không bị ảnh hưởng khi giá phòng thay đổi sau này.',
+    inputs: 'Màn hình 360px: Danh sách loại phòng → Tra phòng trống 2 đêm tới, 2 khách → xem giá từng đêm.',
+    expected: 'Danh sách có ảnh và giá; kết quả tra < 2 giây; giá từng đêm có nhãn ngày thường / cuối tuần / lễ.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S2-03, S2-04, S2-05, S2-06',
   },
   {
     id: 'TC-03',
-    title: 'Lễ tân kiểm tra sơ đồ phòng 14 ngày & Giữ chỗ',
-    role: 'Lễ tân (RECEPTIONIST)',
-    roleCode: 'RECEPTIONIST',
-    roleBadgeClass: 'sdp-badge--receptionist',
-    inputs: 'Đăng nhập letan.demo@homestay.local, mở màn hình Lịch phòng (/rooms/calendar).',
-    expected: 'Sơ đồ lưới 14 ngày thể hiện đầy đủ 20 phòng; phòng 103 và 104 ở trạng thái Trống sạch (xanh lá); booking BK-STG-001 hiển thị đúng khung thời gian không lệch ngày.',
-    actual: 'Sơ đồ lưới 14 ngày hiển thị mượt mà, phân loại màu chuẩn, không bị lệch ngày do múi giờ UTC; hiển thị đúng các phòng trống sạch.',
-    executionTime: '09:42:10',
-    status: 'PASS',
-    criteria: 'Sơ đồ phòng trực quan, hiển thị đúng 14 ngày liên tục, không chồng chéo phòng.',
+    title: 'Đặt phòng trực tuyến và nhận email tiếp nhận',
+    role: 'Khách (PUBLIC)',
+    roleCode: 'PUBLIC',
+    roleBadgeClass: 'sdp-badge--public',
+    inputs: 'Đặt phòng với email khach.test@example.com (hoặc email thật của người chạy thử).',
+    expected: 'Có mã booking 8 ký tự, trạng thái chờ xác nhận; Mailpit có email tiếp nhận đặt phòng kèm liên kết tra cứu.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S2-07, S4-04 AC1–AC2',
   },
   {
     id: 'TC-04',
-    title: 'Lễ tân thực hiện Nhận phòng (Check-in)',
-    role: 'Lễ tân (RECEPTIONIST)',
-    roleCode: 'RECEPTIONIST',
-    roleBadgeClass: 'sdp-badge--receptionist',
-    inputs: 'Tại sơ đồ phòng, chọn phòng 103 (Trống sạch), liên kết booking BK-STG-001, bấm "Check-in".',
-    expected: 'Phòng 103 tự động chuyển sang Đang có khách (DANG_O); booking chuyển sang DA_NHAN_PHONG; ghi nhận audit log check-in.',
-    actual: 'Giao diện phòng 103 chuyển ngay sang màu đỏ DANG_O; booking chuyển sang Đã nhận phòng; thời điểm check-in được ghi nhận đầy đủ.',
-    executionTime: '09:48:22',
-    status: 'PASS',
-    criteria: 'Chỉ cho phép check-in phòng Trống sạch; ngăn chặn check-in trùng phòng.',
+    title: 'Tra cứu booking bằng mã và email',
+    role: 'Khách (PUBLIC)',
+    roleCode: 'PUBLIC',
+    roleBadgeClass: 'sdp-badge--public',
+    inputs: 'Bấm liên kết trong email ở TC-03, nhập email đã dùng khi đặt.',
+    expected: 'Trang tra cứu điền sẵn mã; xem được trạng thái, khoảng ngày, số đêm, tổng tiền, tiền cọc.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S2-08',
   },
   {
     id: 'TC-05',
-    title: 'Phát sinh phụ thu lưu trú & Đổi phòng (Surcharges & Room Change)',
+    title: 'Xác nhận booking, ghi cọc và email xác nhận',
     role: 'Lễ tân (RECEPTIONIST)',
     roleCode: 'RECEPTIONIST',
     roleBadgeClass: 'sdp-badge--receptionist',
-    inputs: 'Tại chi tiết booking, thêm phụ thu: Loại DICH_VU_KHAC, số tiền 50,000 VND, lý do "Nước ngọt và snack mini bar".',
-    expected: 'Hệ thống lưu phụ thu theo chuẩn S4-02; cập nhật tổng tiền quyết toán lên 1,050,000 VND; chặn thêm phụ thu nếu thiếu lý do bắt buộc.',
-    actual: 'Phụ thu 50,000 VND hiển thị đầy đủ trong bảng phụ thu; tổng thanh toán cập nhật chính xác 1,050,000 VND; trường lý do bắt buộc hoạt động đúng.',
-    executionTime: '09:55:05',
-    status: 'PASS',
-    criteria: 'Phụ thu tính đúng vào tổng tiền, có lý do bắt buộc và hỗ trợ ghi nhận nhiều dòng phụ thu.',
+    inputs: 'Danh sách booking → xác nhận booking ở TC-03, ghi cọc chuyển khoản kèm mã tham chiếu.',
+    expected: 'Booking đã xác nhận, hạn giữ chỗ gỡ bỏ; Mailpit có email xác nhận có số đêm, giờ nhận/trả phòng.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S3-01, S4-04 AC1–AC2',
   },
   {
     id: 'TC-06',
-    title: 'Trả phòng (Check-out) & Quyết toán / Hóa đơn PDF (S4-01 & S4-03)',
+    title: 'Gán phòng và xem sơ đồ phòng',
     role: 'Lễ tân (RECEPTIONIST)',
     roleCode: 'RECEPTIONIST',
     roleBadgeClass: 'sdp-badge--receptionist',
-    inputs: 'Bấm "Check-out" cho phòng 103. Xác nhận phương thức thanh toán TIEN_MAT, xuất hóa đơn PDF.',
-    expected: 'Booking chuyển DA_TRA_PHONG; phòng 103 chuyển TRONG_BAN; tải về file hóa đơn PDF đầy đủ tiếng Việt UTF-8 và bảng kê phụ thu.',
-    actual: 'Check-out hoàn tất; phòng 103 tự động chuyển Trống bẩn; file PDF hóa đơn tải về đầy đủ chi tiết tiền phòng + phụ thu, font NotoSans tiếng Việt sắc nét.',
-    executionTime: '10:05:18',
-    status: 'PASS',
-    criteria: 'Quyết toán đối trừ chính xác; xuất hóa đơn PDF đúng chuẩn không lỗi tiếng Việt; phòng chuyển bẩn.',
+    inputs: 'Gán phòng cho booking ở TC-03; mở Sơ đồ phòng theo ngày.',
+    expected: 'Chỉ gợi ý phòng đúng loại còn trống cả khoảng ngày; sơ đồ hiện booking đúng ô ngày.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S3-03, S3-10',
   },
   {
     id: 'TC-07',
-    title: 'Buồng phòng dọn dẹp & Chuyển phòng sạch (Housekeeping Flow)',
-    role: 'Buồng phòng (HOUSEKEEPING)',
-    roleCode: 'HOUSEKEEPING',
-    roleBadgeClass: 'sdp-badge--housekeeping',
-    inputs: 'Đăng nhập buongphong.demo@homestay.local, mở danh sách phòng bẩn, chọn phòng 103 bấm "Đã dọn xong".',
-    expected: 'Phòng 103 chuyển từ TRONG_BAN về TRONG_SACH; sẵn sàng đón lượt khách mới; ghi log dọn phòng.',
-    actual: 'Danh sách buồng phòng lọc đúng phòng 103; sau khi bấm cập nhật, phòng 103 trở về màu xanh TRONG_SACH, lễ tân thấy ngay phòng trống.',
-    executionTime: '10:15:40',
-    status: 'PASS',
-    criteria: 'Phòng bẩn chỉ được nhận khách mới sau khi nhân viên buồng phòng xác nhận đã dọn sạch.',
+    title: 'Nhận phòng và xem giấy tờ khách',
+    role: 'Lễ tân (RECEPTIONIST)',
+    roleCode: 'RECEPTIONIST',
+    roleBadgeClass: 'sdp-badge--receptionist',
+    inputs: 'Nhận phòng BK-S4-018 (khách đến hôm nay), nhập CCCD 12 số; mở chi tiết booking → Xem đầy đủ.',
+    expected: 'Booking đang ở, phòng đang ở; giấy tờ hiện ********xxxx, bấm Xem đầy đủ hiện đủ số và có dòng nhật ký.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S3-07, NFR bảo vệ dữ liệu cá nhân, S1-05',
   },
   {
     id: 'TC-08',
-    title: 'Chủ homestay kiểm tra báo cáo công suất & doanh thu (Owner Audit)',
+    title: 'Thêm phụ thu giữa kỳ lưu trú',
+    role: 'Lễ tân (RECEPTIONIST)',
+    roleCode: 'RECEPTIONIST',
+    roleBadgeClass: 'sdp-badge--receptionist',
+    inputs: 'Chi tiết BK-S4-017 → Thêm phụ thu thêm giường, 1 giường, 1 đêm.',
+    expected: 'Dòng phụ thu hiện trong chi tiết booking và trong bảng tính trả phòng.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S4-02',
+  },
+  {
+    id: 'TC-09',
+    title: 'Trả phòng có phụ thu trả muộn',
+    role: 'Lễ tân (RECEPTIONIST)',
+    roleCode: 'RECEPTIONIST',
+    roleBadgeClass: 'sdp-badge--receptionist',
+    inputs: 'Sau 12:00: trả phòng BK-S4-016, thu phần còn lại bằng tiền mặt.',
+    expected: 'Bảng tính có tiền phòng, phụ thu trả muộn, trừ cọc; booking đã trả phòng, phòng chuyển trống bẩn.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S4-01',
+  },
+  {
+    id: 'TC-10',
+    title: 'Xuất hoá đơn PDF',
+    role: 'Lễ tân (RECEPTIONIST)',
+    roleCode: 'RECEPTIONIST',
+    roleBadgeClass: 'sdp-badge--receptionist',
+    inputs: 'Xuất hoá đơn PDF của BK-S4-016.',
+    expected: 'Số hoá đơn dạng năm-số thứ tự, có dòng tổng bằng chữ, in vừa khổ A4.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S4-03',
+  },
+  {
+    id: 'TC-11',
+    title: 'Dọn phòng và kiểm tra phân quyền',
+    role: 'Buồng phòng (HOUSEKEEPING)',
+    roleCode: 'HOUSEKEEPING',
+    roleBadgeClass: 'sdp-badge--housekeeping',
+    inputs: 'Trên điện thoại: báo phòng vừa trả ở TC-09 đã sạch; gõ thẳng đường dẫn /users.',
+    expected: 'Phòng về trống sạch, ghi người thao tác; đường dẫn quản trị bị chặn.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S3-09, S1-04, S4-08',
+  },
+  {
+    id: 'TC-12',
+    title: 'Báo cáo doanh thu và công suất',
     role: 'Chủ homestay (OWNER)',
     roleCode: 'OWNER',
     roleBadgeClass: 'sdp-badge--owner',
-    inputs: 'Đăng nhập owner.demo@homestay.local, mở trang Báo cáo công suất phòng (/reports/occupancy).',
-    expected: 'Doanh thu 1,050,000 VND và lượt lưu trú phòng 103 được phản ánh chính xác trong biểu đồ công suất và bảng kê chi tiết.',
-    actual: 'Báo cáo công suất ghi nhận đầy đủ lượt đặt phòng vừa hoàn tất; số liệu tỷ lệ lấp đầy và doanh thu khớp 100% với hóa đơn thanh toán.',
-    executionTime: '10:25:30',
-    status: 'PASS',
-    criteria: 'Dữ liệu báo cáo đồng bộ thời gian thực từ các giao dịch thanh toán và đặt phòng thực tế.',
+    inputs: 'Doanh thu hôm nay; công suất 30 ngày; tải CSV.',
+    expected: 'Doanh thu có BK-S4-016, tách tiền phòng và phụ thu; CSV mở đúng tiếng Việt trên Excel.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S4-06, S4-07',
+  },
+  {
+    id: 'TC-13',
+    title: 'Lễ tân chỉ xem doanh thu hôm nay',
+    role: 'Lễ tân (RECEPTIONIST)',
+    roleCode: 'RECEPTIONIST',
+    roleBadgeClass: 'sdp-badge--receptionist',
+    inputs: 'Mở Doanh thu, thử đổi khoảng ngày sang cả tháng.',
+    expected: 'Chỉ xem được ngày hiện tại, không đổi được sang toàn kỳ.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S4-07 AC4',
+  },
+  {
+    id: 'TC-14',
+    title: 'Huỷ booking, hoàn cọc và email huỷ',
+    role: 'Lễ tân (RECEPTIONIST)',
+    roleCode: 'RECEPTIONIST',
+    roleBadgeClass: 'sdp-badge--receptionist',
+    inputs: 'Huỷ một booking đã xác nhận còn xa ngày nhận phòng, chọn lý do.',
+    expected: 'Tỷ lệ và số tiền hoàn tự tính theo mốc; Mailpit có email huỷ nêu lý do và số tiền hoàn.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S3-05, S4-05',
+  },
+  {
+    id: 'TC-15',
+    title: 'Nhật ký, lịch sử email và ma trận quyền',
+    role: 'Quản trị (ADMIN)',
+    roleCode: 'ADMIN',
+    roleBadgeClass: 'sdp-badge--admin',
+    inputs: 'Mở Nhật ký, Email đã gửi, Ma trận quyền API.',
+    expected: 'Nhật ký có đăng nhập, xác nhận booking, xem giấy tờ khách; lịch sử email đủ các thư ở trên; ma trận không còn sai lệch.',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S1-05, S4-04 AC5, S4-08',
+  },
+  {
+    id: 'TC-16',
+    title: 'Nạp lại lần 2 và chạy lại',
+    role: 'Chủ homestay (OWNER)',
+    roleCode: 'OWNER',
+    roleBadgeClass: 'sdp-badge--owner',
+    inputs: 'Nạp lại dữ liệu mẫu khi đã có hoá đơn, rồi lặp lại TC-07 và TC-09.',
+    expected: 'Nạp lại không lỗi; nhận phòng, trả phòng chạy lại được (tính tái lập).',
+    actual: '',
+    executionTime: '',
+    status: 'PENDING',
+    criteria: 'S4-09 AC2, tính tái lập',
   },
 ]
 
+export const STAGING_SESSION_METADATA: StagingAcceptanceSession = {
+  documentCode: 'BB-NT-S4-09-STAGING',
+  project: 'Hệ thống đặt phòng HomeStay (TTCS K12C3 N4)',
+  epic: '#S4-09: Dữ liệu mẫu và chạy thử kịch bản nghiệm thu',
+  story: 'S4-09 AC4: kịch bản nghiệm thu được chạy thử ít nhất một lần trên môi trường staging và ghi lại kết quả',
+  environment: 'Staging Docker Compose trên máy nhóm (S4-10), DEMO_MODE=true',
+  serverDetails: 'PostgreSQL 15, Java 17 Temurin, Spring Boot 4.1.1, React 18 + Vite, nginx, Mailpit',
+  executionDate: 'Chưa chạy (ghi ngày khi chạy thử)',
+  executionTimeRange: 'Ghi giờ bắt đầu – kết thúc khi chạy',
+  tester: 'Nhóm phát triển (TTCS K12C3 Nhóm 4)',
+  poSignoff: 'Product Owner / Giảng viên hướng dẫn',
+  totalTests: STAGING_TEST_CASES.length,
+  passedTests: 0,
+  failedTests: 0,
+  repeatabilityStatus: 'Kiểm tra ở TC-16: nạp lại dữ liệu mẫu khi đã có hoá đơn rồi chạy lại nhận phòng, trả phòng',
+  overallStatus: 'IN_REVIEW',
+}
+
+/** Lỗi đã phát hiện và sửa khi chạy thử trên máy local (16/10/2026), trước khi có staging. */
 export const STAGING_DEFECTS: StagingDefect[] = [
   {
     id: 'DEF-01',
@@ -197,20 +306,31 @@ export const STAGING_DEFECTS: StagingDefect[] = [
   },
 ]
 
+function statusLabel(status: AcceptanceTestCase['status']): string {
+  if (status === 'PASS') return 'ĐẠT'
+  if (status === 'FAIL') return 'KHÔNG ĐẠT'
+  return 'CHƯA CHẠY'
+}
+
+function cell(text: string): string {
+  return text.replace(/\n/g, ' ').replace(/\|/g, '\\|')
+}
+
 /**
- * Xuất biên bản nghiệm thu dưới dạng Markdown để dán vào báo cáo hoặc Jira
+ * Xuất biên bản dạng Markdown từ kết quả đang ghi trên trang, để dán vào docs/staging-acceptance-test-report.md.
  */
 export function generateAcceptanceReportMarkdown(
   testCases: AcceptanceTestCase[] = STAGING_TEST_CASES,
   session: StagingAcceptanceSession = STAGING_SESSION_METADATA
 ): string {
   const passed = testCases.filter((tc) => tc.status === 'PASS').length
+  const failed = testCases.filter((tc) => tc.status === 'FAIL').length
   const total = testCases.length
 
   const rows = testCases
     .map(
       (tc) =>
-        `| **${tc.id}** | **${tc.title}** | ${tc.role} | ${tc.inputs.replace(/\n/g, ' ')} | ${tc.expected.replace(/\n/g, ' ')} | ${tc.actual.replace(/\n/g, ' ')} | ${tc.executionTime} | **${tc.status === 'PASS' ? 'ĐẠT (PASS)' : 'CHƯA ĐẠT'}** |`
+        `| **${tc.id}** | ${cell(tc.title)} | ${tc.role} | ${cell(tc.inputs)} | ${cell(tc.expected)} | ${cell(tc.actual) || '(chưa ghi)'} | ${tc.executionTime || '—'} | **${statusLabel(tc.status)}** |`
     )
     .join('\n')
 
@@ -219,40 +339,40 @@ export function generateAcceptanceReportMarkdown(
       `| **${d.id}** | ${d.description} | ${d.severity} | ${d.rootCause} | ${d.resolution} | **${d.status}** |`
   ).join('\n')
 
-  return `# BIÊN BẢN NGHIỆM THU KỊCH BẢN TRỌN LUỒNG (KIỂM THỬ TRÊN MÁY LOCAL)
+  return `# BIÊN BẢN CHẠY THỬ KỊCH BẢN NGHIỆM THU TRÊN STAGING (S4-09 AC4)
 **Mã tài liệu:** ${session.documentCode}
 **Dự án:** ${session.project}
 **Hạng mục:** ${session.epic}
-**Công việc:** ${session.story}
+**Yêu cầu:** ${session.story}
 **Môi trường:** ${session.environment} (${session.serverDetails})
 **Thời gian thực hiện:** ${session.executionDate}, ${session.executionTimeRange}
 **Người thực hiện:** ${session.tester}
 **Đại diện PO xác nhận:** ${session.poSignoff}
-**Kết quả tổng quát:** ${passed}/${total} Kịch bản ĐẠT (${Math.round((passed / total) * 100)}% PASS)
+**Kết quả tổng quát:** ${passed}/${total} bước ĐẠT, ${failed} bước KHÔNG ĐẠT, ${total - passed - failed} bước chưa chạy
 
 ---
 
-## 1. KẾT QUẢ THỰC HIỆN CHI TIẾT TỪNG BƯỚC
+## 1. KẾT QUẢ TỪNG BƯỚC
 
-| Mã TC | Tên kịch bản | Vai trò | Dữ liệu đầu vào | Kết quả mong đợi | Kết quả thực tế | Thời gian | Trạng thái |
+| Mã | Bước | Vai trò | Dữ liệu / thao tác | Kết quả mong đợi | Kết quả thực tế | Thời điểm | Kết quả |
 |---|---|---|---|---|---|---|---|
 ${rows}
 
 ---
 
-## 2. KIỂM THỬ TÍNH TÁI LẬP (REPEATABILITY TEST)
+## 2. TÍNH TÁI LẬP
 ${session.repeatabilityStatus}
 
 ---
 
-## 3. NHẬT KÝ LỖI & KHẮC PHỤC
-| Mã Lỗi | Mô tả | Mức độ | Nguyên nhân | Biện pháp khắc phục | Tình trạng |
+## 3. LỖI ĐÃ PHÁT HIỆN VÀ SỬA (TRƯỚC KHI CÓ STAGING)
+| Mã lỗi | Mô tả | Mức độ | Nguyên nhân | Cách khắc phục | Tình trạng |
 |---|---|---|---|---|---|
 ${defectRows}
 
 ---
 
-**XÁC NHẬN CỦA PRODUCT OWNER (PO):**
+**XÁC NHẬN CỦA PRODUCT OWNER:**
 - Trạng thái phê duyệt: *Chờ Product Owner phê duyệt*
 - Ngày ghi nhận: ${session.executionDate}
 `
