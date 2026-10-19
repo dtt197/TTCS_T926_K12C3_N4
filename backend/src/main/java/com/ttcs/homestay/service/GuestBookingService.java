@@ -62,6 +62,13 @@ public class GuestBookingService {
     private final BookingRateLimiter bookingRateLimiter;
     private BookingDepositService bookingDepositService;
 
+    @Autowired(required = false)
+    private BookingEmailService bookingEmailService;
+
+    public void setBookingEmailService(BookingEmailService bookingEmailService) {
+        this.bookingEmailService = bookingEmailService;
+    }
+
     @Autowired
     public GuestBookingService(
             BookingRepository bookingRepository,
@@ -221,7 +228,11 @@ public class GuestBookingService {
         booking.setHoldExpiresAt(createdAt.plus(HOLD_DURATION));
         // S3-03: giữ một suất theo loại phòng; lễ tân gán phòng cụ thể sau khi xác nhận.
 
-        return GuestBookingResponse.from(saveHoldingRoom(booking, roomType));
+        Booking saved = saveHoldingRoom(booking, roomType);
+        if (bookingEmailService != null) {
+            bookingEmailService.sendBookingCreatedEmail(saved.getBookingCode());
+        }
+        return GuestBookingResponse.from(saved);
     }
 
     /** S3-02: lưu booking đang giữ phòng; cơ sở dữ liệu từ chối do trùng phòng cùng đêm thì báo hết phòng (409). */
