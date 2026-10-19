@@ -93,6 +93,24 @@ export function PriceOverridePage({ role }: PriceOverridePageProps) {
       )}
 
       <section className={canManage ? 'price-workspace' : 'price-workspace readonly'}>
+        {canManage && (
+          <aside className="price-panel price-form-panel">
+            <div className="price-section-heading compact">
+              <div>
+                <span className="price-kicker">{editing ? 'CHỈNH SỬA' : 'THÊM MỚI'}</span>
+                <h2>{editing ? `Sửa "${editing.name}"` : 'Thêm giá đè'}</h2>
+              </div>
+            </div>
+            <PriceOverrideForm
+              key={editing?.id ?? 'create'}
+              initial={editing ?? undefined}
+              roomTypes={roomTypes}
+              onSubmit={editing ? handleUpdate : handleCreate}
+              onCancel={editing ? () => setEditing(null) : undefined}
+            />
+          </aside>
+        )}
+
         <div className="price-panel">
           <div className="price-section-heading">
             <div>
@@ -157,23 +175,6 @@ export function PriceOverridePage({ role }: PriceOverridePageProps) {
           )}
         </div>
 
-        {canManage && (
-          <aside className="price-panel price-form-panel">
-            <div className="price-section-heading compact">
-              <div>
-                <span className="price-kicker">{editing ? 'CHỈNH SỬA' : 'THÊM MỚI'}</span>
-                <h2>{editing ? `Sửa "${editing.name}"` : 'Thêm giá đè'}</h2>
-              </div>
-            </div>
-            <PriceOverrideForm
-              key={editing?.id ?? 'create'}
-              initial={editing ?? undefined}
-              roomTypes={roomTypes}
-              onSubmit={editing ? handleUpdate : handleCreate}
-              onCancel={editing ? () => setEditing(null) : undefined}
-            />
-          </aside>
-        )}
       </section>
     </div>
   )

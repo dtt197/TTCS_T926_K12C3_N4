@@ -307,6 +307,9 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
   const canUseCheckOut = hasPermission(role, 'rooms:check-out')
   const canReportIncident = hasPermission(role, 'rooms:report-incident')
   const [rooms, setRooms] = useState<Room[]>([])
+  const [roomNumberQuery, setRoomNumberQuery] = useState('')
+  const [roomTypeFilter, setRoomTypeFilter] = useState('')
+  const [floorFilter, setFloorFilter] = useState('')
   const [cleaningRoomId, setCleaningRoomId] = useState<number | null>(null)
   const [cleaningMaintenanceIds, setCleaningMaintenanceIds] = useState<Record<number, number>>({})
   const [maintenanceCleaningNotes, setMaintenanceCleaningNotes] = useState<Record<number, string>>({})
@@ -500,7 +503,13 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
     const list = isHousekeeping
       ? rooms.filter((room) => room.status === 'TRONG_BAN' || cleaningMaintenanceIds[room.id] !== undefined)
       : rooms
-    return [...list].sort((a, b) => {
+    const normalizedQuery = roomNumberQuery.trim().toLocaleLowerCase('vi')
+    return [...list].filter((room) => {
+      const matchesRoomNumber = room.roomNumber.toLocaleLowerCase('vi').includes(normalizedQuery)
+      const matchesRoomType = !roomTypeFilter || room.roomType === roomTypeFilter
+      const matchesFloor = floorFilter === '' || room.floor === Number(floorFilter)
+      return matchesRoomNumber && matchesRoomType && matchesFloor
+    }).sort((a, b) => {
       // S3-09: Sắp xếp phòng có khách nhận trong ngày lên trước
       const aToday = Boolean(a.hasGuestCheckInToday)
       const bToday = Boolean(b.hasGuestCheckInToday)
@@ -513,7 +522,15 @@ export function RoomStatusPage({ role, currentUser }: RoomStatusPageProps) {
       }
       return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true })
     })
-  }, [rooms, isHousekeeping, cleaningMaintenanceIds])
+  }, [rooms, isHousekeeping, cleaningMaintenanceIds, roomNumberQuery, roomTypeFilter, floorFilter])
+  const roomTypes = useMemo(
+    () => [...new Set(rooms.map((room) => room.roomType))].sort((a, b) => a.localeCompare(b, 'vi')),
+    [rooms],
+  )
+  const floors = useMemo(
+    () => [...new Set(rooms.map((room) => room.floor))].sort((a, b) => a - b),
+    [rooms],
+  )
 const counts = useMemo(
   () =>
     STATUS_OPTIONS.reduce(
@@ -1332,13 +1349,54 @@ async function handleViewHistory(room: Room) {
                 : `${rooms.length} phòng hoạt động`}
             </span>
           </div>
+          <div className="room-list-filters" role="search" aria-label="Tìm và lọc phòng">
+            <label className="room-list-search">
+              <span>Số phòng</span>
+              <input
+                type="search"
+                value={roomNumberQuery}
+                onChange={(event) => setRoomNumberQuery(event.target.value)}
+                placeholder="Nhập số phòng..."
+                aria-label="Tìm theo số phòng"
+              />
+            </label>
+            <label>
+              <span>Loại phòng</span>
+              <select value={roomTypeFilter} onChange={(event) => setRoomTypeFilter(event.target.value)}>
+                <option value="">Tất cả loại phòng</option>
+                {roomTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Tầng</span>
+              <select value={floorFilter} onChange={(event) => setFloorFilter(event.target.value)}>
+                <option value="">Tất cả tầng</option>
+                {floors.map((floor) => <option key={floor} value={floor}>Tầng {floor}</option>)}
+              </select>
+            </label>
+            {(roomNumberQuery || roomTypeFilter || floorFilter !== '') && (
+              <button
+                className="room-filter-reset"
+                type="button"
+                onClick={() => {
+                  setRoomNumberQuery('')
+                  setRoomTypeFilter('')
+                  setFloorFilter('')
+                }}
+              >
+                Xóa lọc
+              </button>
+            )}
+          </div>
           {isLoading ? (
             <div className="empty-state">
               Đang tải danh sách phòng...
             </div>
           ) : visibleRooms.length === 0 ? (
             <div className="empty-state">
-              {isHousekeeping
+              {roomNumberQuery || roomTypeFilter || floorFilter !== ''
+                ? 'Không tìm thấy phòng phù hợp với bộ lọc.'
+                : isHousekeeping
                 ? 'Hiện không có phòng nào cần dọn.'
                 : 'Chưa có phòng nào trong hệ thống.'}
             </div>
