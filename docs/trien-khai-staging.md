@@ -98,7 +98,9 @@ Nằm trong volume `homestay_db-data` và `homestay_uploads`, còn nguyên khi c
 - Quay về CSDL trước khi phục hồi (nếu cần): dừng backend rồi đổi tên lại `homestay_db_truoc_phuc_hoi` → `homestay_db`.
 
 ## 13. Xem email trên staging (Mailpit)
-- Staging không gửi thư ra ngoài. Mọi email hệ thống gửi (mật khẩu tạm, link đặt lại mật khẩu, nhắc lịch nhận phòng, thông báo huỷ booking) đều vào hộp thư giả **Mailpit**.
+- Mặc định staging không gửi thư ra ngoài. Mọi email hệ thống gửi (xác nhận đặt phòng, xác nhận booking, mật khẩu tạm, link đặt lại mật khẩu, nhắc lịch nhận phòng, thông báo huỷ booking) đều vào hộp thư giả **Mailpit**.
+- Gửi thư thật qua Gmail (đúng backlog "Gmail SMTP ở staging"): trong `.env` bỏ dấu `#` ở các dòng `MAIL_HOST`…`MAIL_STARTTLS`, điền Gmail và **mật khẩu ứng dụng** (Google Account → Bảo mật → Mật khẩu ứng dụng), đặt `MAIL_FROM` cùng địa chỉ Gmail, rồi `docker compose up -d backend`. Muốn quay lại Mailpit thì thêm lại dấu `#`.
+- Không ghi tài khoản/mật khẩu thư vào mã nguồn (S4-10). Máy cá nhân muốn gửi thật thì đặt các biến `MAIL_*` trên máy (`setx`), hoặc tạo `backend/src/main/resources/application-local.properties` (đã bị `.gitignore` chặn) và chạy với profile `local`.
 - Xem thư: mở `http://localhost:8025` trên máy chạy staging. Thư gửi tới địa chỉ nào cũng hiện ở đây.
 - Mặc định chỉ máy chạy staging mở được (thư có link đặt lại mật khẩu). Muốn máy khác cùng mạng xem (ví dụ khi demo): đặt `MAIL_UI_BIND=0.0.0.0` trong `.env` rồi `docker compose up -d mailpit`, mở `http://<IP máy>:8025`. Demo xong trả về `127.0.0.1`.
 - Thư được giữ lại sau khi khởi động lại (volume `mailpit-data`), tối đa 1000 thư.
