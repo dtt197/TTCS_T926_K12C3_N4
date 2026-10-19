@@ -9,6 +9,7 @@ import {
 } from '../services/emailLogService'
 import { ReminderRunHistory } from '../components/ReminderRunHistory'
 import './AuditLogPage.css'
+import './ReminderEmailLogPage.css'
 
 function todayInVietnam() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -120,9 +121,9 @@ export function ReminderEmailLogPage() {
   }
 
   return (
-    <main className="audit-page">
-    <ReminderRunHistory refreshKey={refreshKey} />
-      <section className="audit-panel">
+    <main className="audit-page reminder-email-page">
+      <ReminderRunHistory refreshKey={refreshKey} />
+      <section className="audit-panel reminder-run-now">
         <div className="audit-section-heading">
           <div>
             <span className="audit-kicker">NHẮC NHẬN PHÒNG</span>
@@ -169,7 +170,7 @@ export function ReminderEmailLogPage() {
           {error}
         </div>
       )}
-            <section className="audit-panel">
+            <section className="audit-panel reminder-booking-status">
         <div className="audit-section-heading">
           <div>
             <span className="audit-kicker">TRẠNG THÁI NHẮC</span>
@@ -221,24 +222,28 @@ export function ReminderEmailLogPage() {
                       {item.checkInDate.split('-').reverse().join('/')}
                     </td>
                     <td>
-                      {{
+                      <span
+                        className={`audit-result booking-status ${item.bookingStatus.toLowerCase()}`}
+                      >
+                        {{
                         CHO_XAC_NHAN: 'Chờ xác nhận',
                         DA_XAC_NHAN: 'Đã xác nhận',
                         DA_HUY: 'Đã huỷ',
                         DA_NHAN_PHONG: 'Đã nhận phòng',
                         DA_TRA_PHONG: 'Đã trả phòng',
                         DA_HET_HAN: 'Đã hết hạn',
-                      }[item.bookingStatus] ?? item.bookingStatus}
+                        }[item.bookingStatus] ?? item.bookingStatus}
+                      </span>
                     </td>
                     <td>
                       <span
-                        className={
+                        className={`audit-result reminder-status ${
                           item.reminderStatus === 'SENT'
-                            ? 'audit-result is-success'
+                            ? 'is-success'
                             : item.reminderStatus === 'FAILED'
-                              ? 'audit-result is-failure'
-                              : 'audit-result'
-                        }
+                              ? 'is-failure'
+                              : 'is-pending'
+                        }`}
                       >
                         {item.reminderStatus === 'SENT'
                           ? 'Đã nhắc'
@@ -311,6 +316,7 @@ export function ReminderEmailLogPage() {
             </h2>
             <p>200 email gần nhất, thời gian hiển thị theo múi giờ GMT+7.</p>
           </div>
+          <label className="reminder-email-type-control">
           <select
             aria-label="Loại email"
             value={emailType}
@@ -330,6 +336,7 @@ export function ReminderEmailLogPage() {
             <option value="BOOKING_CREATED">Email tiếp nhận đặt phòng</option>
             <option value="CANCELLATION">Email huỷ booking</option>
           </select>
+          </label>
           <button
             type="button"
             className="secondary-button"

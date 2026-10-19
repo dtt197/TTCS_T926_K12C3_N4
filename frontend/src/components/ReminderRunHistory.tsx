@@ -108,7 +108,7 @@ export function ReminderRunHistory({
   }, [selectedRunId, emailPage, refreshKey, reloadKey, emailRequestKey])
 
   return (
-    <section className="audit-panel">
+    <section className="audit-panel reminder-run-history">
       <div className="audit-section-heading">
         <div>
           <span className="audit-kicker">LỊCH SỬ TÁC VỤ</span>
@@ -156,7 +156,11 @@ export function ReminderRunHistory({
                     <td>{timeVN(run.finishedAt)}</td>
                     <td>{dateVN(run.checkInDate)}</td>
                     <td>{run.triggerType === 'SCHEDULED' ? 'Định kỳ' : 'Thủ công'}</td>
-                    <td>{statusLabels[run.status]}</td>
+                    <td>
+                      <span className="audit-result is-success">
+                        {statusLabels[run.status]}
+                      </span>
+                    </td>
                     <td>{run.selectedCount}</td>
                     <td>{run.sentCount}</td>
                     <td>{run.skippedCount}</td>
