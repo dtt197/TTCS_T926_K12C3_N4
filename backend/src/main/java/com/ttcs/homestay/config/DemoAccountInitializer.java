@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,8 @@ import java.util.List;
  */
 @Component
 @Order(100)
+// Chỉ tạo/đặt lại tài khoản mẫu khi bật chế độ demo (staging trước nghiệm thu), không đụng tài khoản trên máy cá nhân.
+@ConditionalOnProperty(name = "app.demo-mode", havingValue = "true")
 public class DemoAccountInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoAccountInitializer.class);

@@ -44,7 +44,8 @@ import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.repository.UserRepository;
 import com.ttcs.homestay.service.AuditLogService;
 
-@SpringBootTest
+// S4-09: test phân quyền chạy như staging (bật chế độ demo) để API nạp lại dữ liệu mẫu hoạt động cho OWNER
+@SpringBootTest(properties = "app.demo-mode=true")
 @AutoConfigureMockMvc
 class SecurityAuthorizationIntegrationTest {
 

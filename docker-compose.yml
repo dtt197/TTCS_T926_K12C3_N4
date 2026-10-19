@@ -55,6 +55,8 @@ services:
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
       # Lát 2: ghi thêm log ra tệp trong volume logs (còn nguyên khi container bị tạo lại)
       LOGGING_FILE_NAME: /app/logs/homestay.log
+      # S4-09: chế độ demo trước nghiệm thu (tài khoản mẫu, nạp lại dữ liệu mẫu). Mặc định tắt, bật trong .env.
+      DEMO_MODE: ${DEMO_MODE:-false}
     volumes:
       - uploads:/app/uploads
       - backend-logs:/app/logs
@@ -66,7 +68,10 @@ services:
       start_period: 60s
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_DEMO_MODE: ${DEMO_MODE:-false}
     restart: unless-stopped
     logging: *default-logging
     depends_on:

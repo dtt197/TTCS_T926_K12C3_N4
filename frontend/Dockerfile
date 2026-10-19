@@ -4,6 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# S4-09: bật/tắt tài khoản mẫu và menu dữ liệu mẫu theo DEMO_MODE của docker-compose
+ARG VITE_DEMO_MODE=false
+ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
 RUN npm run build
 
 FROM nginx:1.27-alpine
