@@ -1,0 +1,8 @@
+/* Khách lưu trú và giấy tờ (che 4 số cuối, xem đầy đủ có ghi nhật ký) */
+.guest-documents-item { display: flex; flex-direction: column; gap: 4px; }
+.guest-documents-id { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: #44584b; }
+.guest-documents-id strong { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; color: #244a36; }
+.guest-documents-toggle { border: 1px solid #2f6b4a; background: #fff; color: #2f6b4a; border-radius: 8px; padding: 2px 10px; min-height: 28px; cursor: pointer; font-size: 13px; }
+.guest-documents-toggle:disabled { opacity: 0.6; cursor: default; }
+.guest-documents-note { margin: 8px 0 0; color: #6b7c70; font-size: 12px; }
+.guest-documents-error { margin: 6px 0 0; color: #b42318; }

@@ -107,7 +107,8 @@ public class ApiSecurityPolicyCatalog {
         add(policies, "POST", Access.ROLES, List.of("OWNER"),
                 "/api/admin/sample-data/reload");
         add(policies, null, Access.ROLES, List.of("ADMIN"), "/api/admin/**");
-        add(policies, "GET", Access.ROLES, List.of("OWNER"),
+        // S4-06: theo ma trận phân quyền, Lễ tân và Quản trị được xem (R) báo cáo công suất, Chủ homestay toàn quyền.
+        add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                 "/api/reports/occupancy",
                 "/api/reports/occupancy.csv",
                 "/api/reports/occupancy/detailed");
@@ -154,7 +155,9 @@ public class ApiSecurityPolicyCatalog {
                 "/api/appointments/*/no-show/undo");
         add(policies, "POST", Access.ROLES, List.of("OWNER", "RECEPTIONIST"),
                 "/api/bookings/*/deposit-adjustments",
-                "/api/bookings/*/surcharges");
+                "/api/bookings/*/surcharges",
+                // Xem đầy đủ số giấy tờ khách (ghi nhật ký); Quản trị chỉ xem bản đã che qua GET /api/bookings/**
+                "/api/bookings/*/guests/*/identity-view");
         add(policies, "PUT", Access.ROLES, List.of("RECEPTIONIST"),
                 "/api/bookings/*/confirm",
                 "/api/bookings/*/room",

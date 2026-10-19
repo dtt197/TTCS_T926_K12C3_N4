@@ -35,6 +35,7 @@ export type Permission =
   | 'reports:occupancy'
   | 'security:matrix:view'
   | 'sampleData:manage'
+  | 'guests:identity:view'
 
 /** S1-04: ma trận quyền tập trung. S1-06: loại phòng (Chủ homestay, Admin = F; Lễ tân = R). */
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
@@ -54,6 +55,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'pricing:view',
     'bookings:view',
     'reports:revenue',
+    // S4-06: Quản trị được xem báo cáo công suất (R)
+    'reports:occupancy',
   ],
   OWNER: [
     'accounts:view',
@@ -74,6 +77,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'bookings:surcharge-add',
     'reports:occupancy',
     'sampleData:manage',
+    // Xem đầy đủ số giấy tờ khách (có ghi nhật ký)
+    'guests:identity:view',
   ],
   RECEPTIONIST: [
     'rooms:calendar',
@@ -92,6 +97,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'bookings:cancel',
     'bookings:manage',
     'reports:revenue',
+    // S4-06: Lễ tân được xem báo cáo công suất (R)
+    'reports:occupancy',
+    // Xem đầy đủ số giấy tờ khách (có ghi nhật ký)
+    'guests:identity:view',
   ],
   // S1-04 AC1: Buồng phòng chỉ thấy danh sách phòng cần dọn, không có menu Loại phòng.
   HOUSEKEEPING: [
