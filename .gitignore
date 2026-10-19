@@ -14,3 +14,6 @@ replay_pid*
 .env.*
 !.env.example
 backups/
+
+# Cấu hình riêng từng máy (có thể chứa tài khoản, mật khẩu), không đưa lên kho mã
+backend/src/main/resources/application-local.properties

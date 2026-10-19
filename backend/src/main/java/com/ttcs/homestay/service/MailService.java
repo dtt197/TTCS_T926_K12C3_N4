@@ -10,6 +10,12 @@ import org.springframework.stereotype.Service;
 
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.entity.Booking;
+import com.ttcs.homestay.entity.OperatingSettings;
+import com.ttcs.homestay.repository.OperatingSettingsRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter; 
 import java.time.ZoneId;
 import java.text.DecimalFormat;
@@ -34,6 +40,13 @@ public class MailService {
 		this.frontendUrl = frontendUrl;
 	}
 
+	/** S1-09: tham số vận hành để lấy giờ nhận/trả phòng ghi trong email booking. */
+	private OperatingSettingsRepository settingsRepository;
+
+	@Autowired(required = false)
+	public void setOperatingSettingsRepository(OperatingSettingsRepository settingsRepository) {
+		this.settingsRepository = settingsRepository;
+	}
 	/** Gửi lỗi chỉ ghi log, không làm hỏng việc tạo tài khoản. */
 	public void sendTemporaryPassword(User user, String temporaryPassword) {
 		SimpleMailMessage message = new SimpleMailMessage();
@@ -107,34 +120,32 @@ public class MailService {
 		return "Tiếp nhận yêu cầu đặt phòng " + booking.getBookingCode() + " - HomeStay";
 	}
 
-	public static String bookingCreatedBody(Booking booking, String frontendUrl) {
+		public static String bookingCreatedBody(Booking booking, String frontendUrl,
+			LocalTime checkInTime, LocalTime checkOutTime) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("Xin chào ").append(booking.getGuestName()).append(",\n\n")
 				.append("HomeStay đã tiếp nhận yêu cầu đặt phòng trực tuyến của bạn.\n\n")
 				.append("Mã booking: ").append(booking.getBookingCode()).append("\n")
-				.append("Loại phòng: ").append(booking.getRoomTypeNameSnapshot()).append("\n")
-				.append("Ngày nhận phòng: ").append(booking.getCheckInDate().format(DATE_VN)).append(" (từ 14:00)\n")
-				.append("Ngày trả phòng: ").append(booking.getCheckOutDate().format(DATE_VN)).append(" (trước 12:00)\n")
-				.append("Số khách: ").append(booking.getGuestCount()).append(" người\n")
-				.append("Tổng tiền tạm tính: ").append(formatMoneyVnd(booking.getTotalAmount())).append("\n\n");
+				.append("Loại phòng: ").append(booking.getRoomTypeNameSnapshot()).append("\n");
+		appendStay(sb, booking, checkInTime, checkOutTime);
+		sb.append("Tổng tiền tạm tính: ").append(formatMoneyVnd(booking.getTotalAmount())).append("\n\n");
 		if (booking.getHoldExpiresAt() != null) {
 			String expiryStr = booking.getHoldExpiresAt().atZoneSameInstant(HOMESTAY_ZONE).format(DATE_TIME_VN);
 			sb.append("Thời hạn giữ chỗ đến: ").append(expiryStr).append(" (trong vòng 24 giờ).\n")
 					.append("Vui lòng hoàn tất chuyển khoản đặt cọc trước thời hạn trên để lễ tân xác nhận giữ phòng.\n\n");
 		}
-		if (frontendUrl != null && !frontendUrl.isBlank()) {
-			sb.append("Tra cứu thông tin đặt phòng tại: ").append(frontendUrl).append("/tra-cuu\n\n");
-		}
+		appendLookupLink(sb, "Tra cứu thông tin đặt phòng tại: ", booking, frontendUrl);
 		sb.append("Cảm ơn bạn đã lựa chọn HomeStay!");
 		return sb.toString();
 	}
 
 	public void sendBookingCreatedEmail(Booking booking) {
+		LocalTime[] times = checkInOutTimes(booking);
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setFrom(from);
 		message.setTo(booking.getGuestEmail() != null ? booking.getGuestEmail().trim() : "");
 		message.setSubject(bookingCreatedSubject(booking));
-		message.setText(bookingCreatedBody(booking, frontendUrl));
+		message.setText(bookingCreatedBody(booking, frontendUrl, times[0], times[1]));
 		mailSender.send(message);
 	}
 
@@ -142,7 +153,8 @@ public class MailService {
 		return "Xác nhận đặt phòng thành công - Mã booking " + booking.getBookingCode();
 	}
 
-	public static String confirmationBody(Booking booking, Long depositAmount, String frontendUrl) {
+	public static String confirmationBody(Booking booking, Long depositAmount, String frontendUrl,
+			LocalTime checkInTime, LocalTime checkOutTime) {
 		long deposit = depositAmount == null ? 0L : depositAmount;
 		long remaining = Math.max(0L, booking.getTotalAmount() - deposit);
 		StringBuilder sb = new StringBuilder();
@@ -153,27 +165,69 @@ public class MailService {
 		if (booking.getRoom() != null && booking.getRoom().getRoomNumber() != null) {
 			sb.append("Số phòng: ").append(booking.getRoom().getRoomNumber()).append("\n");
 		}
-		sb.append("Ngày nhận phòng: ").append(booking.getCheckInDate().format(DATE_VN)).append(" (từ 14:00)\n")
-				.append("Ngày trả phòng: ").append(booking.getCheckOutDate().format(DATE_VN)).append(" (trước 12:00)\n")
-				.append("Số khách: ").append(booking.getGuestCount()).append(" người\n")
-				.append("Tổng tiền phòng: ").append(formatMoneyVnd(booking.getTotalAmount())).append("\n")
+		appendStay(sb, booking, checkInTime, checkOutTime);
+		sb.append("Tổng tiền phòng: ").append(formatMoneyVnd(booking.getTotalAmount())).append("\n")
 				.append("Tiền cọc đã ghi nhận: ").append(formatMoneyVnd(deposit)).append("\n")
 				.append("Số tiền còn lại thanh toán khi nhận/trả phòng: ").append(formatMoneyVnd(remaining)).append("\n\n");
-		if (frontendUrl != null && !frontendUrl.isBlank()) {
-			sb.append("Tra cứu chi tiết booking tại: ").append(frontendUrl).append("/tra-cuu\n\n");
-		}
+		appendLookupLink(sb, "Tra cứu chi tiết booking tại: ", booking, frontendUrl);
 		sb.append("Chúng tôi rất hân hạnh được đón tiếp bạn tại HomeStay!\n")
 				.append("Nếu cần hỗ trợ thêm, vui lòng liên hệ lễ tân HomeStay.");
 		return sb.toString();
 	}
 
 	public void sendBookingConfirmation(Booking booking, Long depositAmount) {
+		LocalTime[] times = checkInOutTimes(booking);
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setFrom(from);
 		message.setTo(booking.getGuestEmail() != null ? booking.getGuestEmail().trim() : "");
 		message.setSubject(confirmationSubject(booking));
-		message.setText(confirmationBody(booking, depositAmount, frontendUrl));
+		message.setText(confirmationBody(booking, depositAmount, frontendUrl, times[0], times[1]));
 		mailSender.send(message);
+	}
+
+	private static final LocalTime DEFAULT_CHECK_IN_TIME = LocalTime.of(14, 0);
+	private static final LocalTime DEFAULT_CHECK_OUT_TIME = LocalTime.of(12, 0);
+	private static final DateTimeFormatter TIME_VN = DateTimeFormatter.ofPattern("HH:mm");
+
+	/** S4-04 AC2: khoảng ngày kèm giờ nhận/trả, số đêm và số khách. */
+	private static void appendStay(StringBuilder sb, Booking booking, LocalTime checkInTime, LocalTime checkOutTime) {
+		long nights = ChronoUnit.DAYS.between(booking.getCheckInDate(), booking.getCheckOutDate());
+		sb.append("Ngày nhận phòng: ").append(booking.getCheckInDate().format(DATE_VN))
+				.append(" (từ ").append(checkInTime.format(TIME_VN)).append(")\n")
+				.append("Ngày trả phòng: ").append(booking.getCheckOutDate().format(DATE_VN))
+				.append(" (trước ").append(checkOutTime.format(TIME_VN)).append(")\n")
+				.append("Số đêm: ").append(nights).append("\n")
+				.append("Số khách: ").append(booking.getGuestCount()).append(" người\n");
+	}
+
+	/** Liên kết tới trang tra cứu công khai (S2-08) có điền sẵn mã booking; khách tự nhập email để xem chi tiết. */
+	private static void appendLookupLink(StringBuilder sb, String label, Booking booking, String frontendUrl) {
+		if (frontendUrl == null || frontendUrl.isBlank()) {
+			return;
+		}
+		String base = frontendUrl.endsWith("/") ? frontendUrl.substring(0, frontendUrl.length() - 1) : frontendUrl;
+		sb.append(label).append(base).append("/tra-cuu-booking?ma=").append(booking.getBookingCode()).append("\n\n");
+	}
+
+	/** S1-09: giờ nhận/trả theo tham số có hiệu lực lúc tạo booking; chưa khai báo thì dùng 14:00 và 12:00. */
+	private LocalTime[] checkInOutTimes(Booking booking) {
+		LocalTime checkIn = DEFAULT_CHECK_IN_TIME;
+		LocalTime checkOut = DEFAULT_CHECK_OUT_TIME;
+		if (settingsRepository != null) {
+			OffsetDateTime at = booking.getCreatedAt() == null ? OffsetDateTime.now() : booking.getCreatedAt();
+			OperatingSettings settings = settingsRepository.findFirstByCreatedAtLessThanEqualOrderByCreatedAtDescIdDesc(at)
+					.or(settingsRepository::findFirstByOrderByCreatedAtDescIdDesc)
+					.orElse(null);
+			if (settings != null) {
+				if (settings.getCheckInTime() != null) {
+					checkIn = settings.getCheckInTime();
+				}
+				if (settings.getCheckOutTime() != null) {
+					checkOut = settings.getCheckOutTime();
+				}
+			}
+		}
+		return new LocalTime[] { checkIn, checkOut };
 	}
 
 	private static final Map<String, String> CANCEL_REASON_LABELS = Map.of(
