@@ -73,6 +73,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
                     @Param("start") LocalDate start,
                     @Param("end") LocalDate end);
 
+    @Query("select b from Booking b"
+            + " where b.status in :statuses"
+            + " and b.checkOutDate between :start and :end"
+            + " and (:roomTypeId is null or b.roomType.id = :roomTypeId)")
+    List<Booking> findRevenueBookingsByStatusAndCheckOutDateBetweenAndRoomType(
+            @Param("statuses") Collection<BookingStatus> statuses,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end,
+            @Param("roomTypeId") Long roomTypeId);
+
     /** S2-08: tìm booking theo mã để khách tra cứu. */
     Optional<Booking> findByBookingCode(String bookingCode);
 

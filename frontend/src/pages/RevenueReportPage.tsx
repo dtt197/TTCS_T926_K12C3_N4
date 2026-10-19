@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   getRevenueReport,
   getRevenueByRoomType,
+  getRevenueByDay,
   getRevenueComparison,
   getRevenueByRoomTypeComparison,
 } from '../services/revenueReportService'
@@ -9,6 +10,7 @@ import { getRoomTypes } from '../services/roomTypeService'
 import type {
   RevenueReport,
   RevenueByRoomType,
+  RevenueByDay,
   RevenueComparison,
   RevenueByRoomTypeComparison,
 } from '../types/revenueReport'
@@ -33,6 +35,7 @@ type LoadState = {
   id: number
   report?: RevenueReport
   roomTypeRows?: RevenueByRoomType[]
+  dailyRows?: RevenueByDay[]
   comparison?: RevenueComparison
   roomTypeComparisonRows?: RevenueByRoomTypeComparison[]
   error?: string
@@ -157,6 +160,12 @@ export function RevenueReportPage({
         roomTypeId,
       ),
 
+      getRevenueByDay(
+        applied.startDate,
+        applied.endDate,
+        roomTypeId,
+      ),
+
       canCompare
         ? getRevenueComparison(
           applied.startDate,
@@ -176,6 +185,7 @@ export function RevenueReportPage({
         [
           report,
           roomTypeRows,
+          dailyRows,
           comparison,
           roomTypeComparisonRows,
         ],
@@ -185,6 +195,7 @@ export function RevenueReportPage({
             id: applied.id,
             report,
             roomTypeRows,
+            dailyRows,
             comparison,
             roomTypeComparisonRows,
           })
@@ -210,12 +221,16 @@ export function RevenueReportPage({
   const loading = state.id !== applied.id
   const report = loading ? undefined : state.report
   const roomTypeRows = loading ? undefined : state.roomTypeRows
+  const dailyRows = loading ? undefined : state.dailyRows
   const comparison = loading ? undefined : state.comparison
 
   const roomTypeComparisonRows = loading
     ? undefined
     : state.roomTypeComparisonRows
   const loadError = loading ? '' : (state.error ?? '')
+  const roomRevenueShare = report && report.totalRevenue > 0
+    ? (report.roomRevenue / report.totalRevenue) * 100
+    : 0
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -248,15 +263,17 @@ export function RevenueReportPage({
 
   return (
     <section className="revenue-page">
-      <div className="revenue-header">
-        <h2>Thống kê doanh thu</h2>
-
-        <p>
-          Chỉ tính các booking đã đóng (đã trả phòng). Booking thuộc khoảng
-          ngày theo ngày trả phòng.
-        </p>
+      <div className="revenue-topline">
+        <div className="revenue-header">
+          <span className="revenue-title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19V5m0 14h16M8 15v-4m4 4V7m4 8v-6m4 6V9" /></svg>
+          </span>
+          <div>
+            <h2>Doanh thu</h2>
+            <p>Chỉ tính các booking đã đóng (đã trả phòng). Booking thuộc khoảng ngày theo ngày trả phòng.</p>
+          </div>
+        </div>
       </div>
-
       <form className="revenue-filter" onSubmit={handleSubmit} noValidate>
         <label>
           <span>Từ ngày</span>
@@ -336,40 +353,74 @@ export function RevenueReportPage({
 
       {report && (
         <>
+          <div className="revenue-period-row">
           <p className="revenue-period">
             Từ {formatDate(report.startDate)} đến {formatDate(report.endDate)}
           </p>
+          </div>
 
           <div className="revenue-cards">
             <article className="revenue-card revenue-card--total">
-              <span>Tổng doanh thu</span>
-              <strong>{formatMoney(report.totalRevenue)}</strong>
+              <span className="revenue-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3M8 12h8m-8 3h5" /></svg></span>
+              <div className="revenue-card-content"><span>Tổng doanh thu</span><strong>{formatMoney(report.totalRevenue)}</strong></div>
             </article>
-
-            <article className="revenue-card">
-              <span>Số booking đã đóng</span>
-              <strong>{report.closedBookingCount}</strong>
+            <article className="revenue-card revenue-card--bookings">
+              <span className="revenue-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4m8-4v4M4 10h16m-9 4 2 2 4-4" /></svg></span>
+              <div className="revenue-card-content"><span>Số booking đã đóng</span><strong>{report.closedBookingCount}</strong></div>
             </article>
-
-            <article className="revenue-card">
-              <span>Giá bán trung bình mỗi đêm</span>
-              <strong>
+            <article className="revenue-card revenue-card--rate">
+              <span className="revenue-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2m-8-7 1 1" /></svg></span>
+              <div className="revenue-card-content"><span>Giá bán trung bình mỗi đêm</span><strong>
                 {report.averageNightlyRate === null
                   ? '—'
                   : formatMoney(report.averageNightlyRate)}
-              </strong>
+              </strong></div>
             </article>
-
-            <article className="revenue-card">
-              <span>Tiền phòng</span>
-              <strong>{formatMoney(report.roomRevenue)}</strong>
+            <article className="revenue-card revenue-card--rooms">
+              <span className="revenue-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 20V8l9-5 9 5v12M7 20v-7h10v7M8 9h.01M12 9h.01M16 9h.01" /></svg></span>
+              <div className="revenue-card-content"><span>Tiền phòng</span><strong>{formatMoney(report.roomRevenue)}</strong></div>
             </article>
-
-            <article className="revenue-card">
-              <span>Tiền phụ thu</span>
-              <strong>{formatMoney(report.surchargeRevenue)}</strong>
+            <article className="revenue-card revenue-card--surcharge">
+              <span className="revenue-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v18m5-14H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6" /></svg></span>
+              <div className="revenue-card-content"><span>Tiền phụ thu</span><strong>{formatMoney(report.surchargeRevenue)}</strong></div>
             </article>
           </div>
+
+          <div className="revenue-visual-grid">
+            <section className="revenue-chart-panel" aria-labelledby="revenue-chart-title">
+              <div className="revenue-section-heading"><div><span className="revenue-eyebrow">XU HƯỚNG</span><h3 id="revenue-chart-title">Doanh thu theo ngày</h3></div><span className="revenue-chart-caption">Theo ngày trả phòng</span></div>
+              {dailyRows && dailyRows.length > 0 ? (
+                <div className="revenue-daily-chart" role="img" aria-label="Biểu đồ doanh thu theo ngày trả phòng">
+                  <div className="revenue-daily-y-axis"><span>{formatMoney(Math.max(0, ...dailyRows.map((item) => item.totalRevenue)))}</span><span>{formatMoney(Math.max(0, ...dailyRows.map((item) => item.totalRevenue)) / 2)}</span><span>0 ₫</span></div>
+                  <div className="revenue-daily-bars">
+                    {dailyRows.map((item) => {
+                      const maxRevenue = Math.max(1, ...dailyRows.map((row) => row.totalRevenue))
+                      const height = (item.totalRevenue / maxRevenue) * 100
+                      return (
+                        <div className="revenue-daily-point" key={item.date} title={`${formatDate(item.date)}: ${formatMoney(item.totalRevenue)}`}>
+                          <div className="revenue-daily-bar-track"><div className="revenue-daily-bar" style={{ height: `${height}%` }} /></div>
+                          <span className="revenue-daily-date">{item.date.slice(8, 10)}/{item.date.slice(5, 7)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : <div className="revenue-daily-empty">Không có dữ liệu doanh thu trong khoảng ngày đã chọn.</div>}
+            </section>
+            <section className="revenue-chart-panel" aria-labelledby="revenue-mix-title">
+              <div className="revenue-section-heading"><div><span className="revenue-eyebrow">CƠ CẤU DOANH THU</span><h3 id="revenue-mix-title">Tiền phòng và phụ thu</h3></div></div>
+              <div className="revenue-donut-layout">
+                <div className={`revenue-donut${report.totalRevenue <= 0 ? ' revenue-donut--empty' : ''}`} role="img" aria-label={`Tiền phòng ${formatMoney(report.roomRevenue)}, phụ thu ${formatMoney(report.surchargeRevenue)}`} style={{ '--room-share': `${roomRevenueShare}%` } as React.CSSProperties}>
+                  <div className="revenue-donut-hole"><strong>{formatMoney(report.totalRevenue)}</strong><span>Tổng doanh thu</span></div>
+                </div>
+                <div className="revenue-donut-legend">
+                  <div><i className="revenue-donut-dot"/><span>Tiền phòng</span><strong>{formatMoney(report.roomRevenue)}</strong></div>
+                  <div><i className="revenue-donut-dot revenue-donut-dot--surcharge"/><span>Phụ thu</span><strong>{formatMoney(report.surchargeRevenue)}</strong></div>
+                </div>
+              </div>
+            </section>
+          </div>
+
           {role !== 'RECEPTIONIST' && comparison && (
             <section className="revenue-comparison">
               <h3>So sánh doanh thu với kỳ liền trước</h3>
@@ -417,9 +468,18 @@ export function RevenueReportPage({
             </section>
           )}
           
-          {role !== 'RECEPTIONIST' &&
-            roomTypeComparisonRows && (
-            <section className="revenue-room-types">
+          <div className="revenue-report-grid">
+            {roomTypeRows && <section className="revenue-room-types">
+              <h3>Doanh thu theo loại phòng</h3>
+              <p className="revenue-room-types-description">Các số liệu được tính từ booking đã trả phòng trong khoảng ngày đã chọn.</p>
+              <div className="revenue-table-wrapper"><table className="revenue-table"><thead><tr><th>Mã phòng</th><th>Loại phòng</th><th>Booking đã đóng</th><th>Số đêm</th><th>Tiền phòng</th><th>Phụ thu</th><th>Tổng doanh thu</th><th>Trung bình/đêm</th></tr></thead><tbody>
+                {roomTypeRows.map((item) => <tr key={item.roomTypeId}><td>{item.roomTypeCode}</td><td>{item.roomTypeName}</td><td>{item.closedBookingCount}</td><td>{item.totalNights}</td><td>{formatMoney(item.roomRevenue)}</td><td>{formatMoney(item.surchargeRevenue)}</td><td className="revenue-table-total">{formatMoney(item.totalRevenue)}</td><td>{item.averageNightlyRate === null ? '—' : formatMoney(item.averageNightlyRate)}</td></tr>)}
+                {roomTypeRows.length === 0 && <tr><td colSpan={8} className="revenue-table-empty">Không tìm thấy loại phòng phù hợp.</td></tr>}
+              </tbody></table></div>
+              {applied.roomTypeId === '' && <div className="revenue-reconciliation"><span>Tổng doanh thu theo loại phòng</span><strong>{formatMoney(roomTypeRows.reduce((sum, item) => sum + item.totalRevenue, 0))}</strong><span>Tổng doanh thu toàn homestay</span><strong>{formatMoney(report.totalRevenue)}</strong><p>{roomTypeRows.reduce((sum, item) => sum + item.totalRevenue, 0) === report.totalRevenue ? 'Đối chiếu thành công: hai tổng doanh thu khớp nhau.' : 'Cảnh báo: tổng doanh thu theo loại phòng chưa khớp tổng doanh thu toàn homestay.'}</p></div>}
+            </section>}
+            {role !== 'RECEPTIONIST' && roomTypeComparisonRows && (
+            <section className="revenue-room-types revenue-room-types--comparison">
               <h3>So sánh doanh thu theo loại phòng</h3>
 
               <div className="revenue-table-wrapper">
@@ -475,91 +535,7 @@ export function RevenueReportPage({
               </div>
             </section>
           )}
-
-          {roomTypeRows && (
-            <section className="revenue-room-types">
-              <h3>Doanh thu theo loại phòng</h3>
-
-              <p className="revenue-room-types-description">
-                Các số liệu được tính từ booking đã trả phòng
-                trong khoảng ngày đã chọn.
-              </p>
-
-              <div className="revenue-table-wrapper">
-                <table className="revenue-table">
-                  <thead>
-                    <tr>
-                      <th>Mã phòng</th>
-                      <th>Loại phòng</th>
-                      <th>Booking đã đóng</th>
-                      <th>Số đêm</th>
-                      <th>Tiền phòng</th>
-                      <th>Phụ thu</th>
-                      <th>Tổng doanh thu</th>
-                      <th>Trung bình/đêm</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {roomTypeRows.map((item) => (
-                      <tr key={item.roomTypeId}>
-                        <td>{item.roomTypeCode}</td>
-                        <td>{item.roomTypeName}</td>
-                        <td>{item.closedBookingCount}</td>
-                        <td>{item.totalNights}</td>
-                        <td>{formatMoney(item.roomRevenue)}</td>
-                        <td>{formatMoney(item.surchargeRevenue)}</td>
-                        <td className="revenue-table-total">
-                          {formatMoney(item.totalRevenue)}
-                        </td>
-                        <td>
-                          {item.averageNightlyRate === null
-                            ? '—'
-                            : formatMoney(item.averageNightlyRate)}
-                        </td>
-                      </tr>
-                    ))}
-
-                    {roomTypeRows.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="revenue-table-empty">
-                          Không tìm thấy loại phòng phù hợp.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {applied.roomTypeId === '' && (
-                <div className="revenue-reconciliation">
-                  <span>Tổng doanh thu theo loại phòng</span>
-
-                  <strong>
-                    {formatMoney(
-                      roomTypeRows.reduce(
-                        (sum, item) => sum + item.totalRevenue,
-                        0,
-                      ),
-                    )}
-                  </strong>
-
-                  <span>Tổng doanh thu toàn homestay</span>
-
-                  <strong>{formatMoney(report.totalRevenue)}</strong>
-
-                  <p>
-                    {roomTypeRows.reduce(
-                      (sum, item) => sum + item.totalRevenue,
-                      0,
-                    ) === report.totalRevenue
-                      ? 'Đối chiếu thành công: hai tổng doanh thu khớp nhau.'
-                      : 'Cảnh báo: tổng doanh thu theo loại phòng chưa khớp tổng doanh thu toàn homestay.'}
-                  </p>
-                </div>
-              )}
-            </section>
-          )}
+          </div>
 
           {report.closedBookingCount === 0 && (
             <p className="revenue-empty">
@@ -568,6 +544,7 @@ export function RevenueReportPage({
           )}
         </>
       )}
+      <footer>HomeStay Manager · Báo cáo doanh thu</footer>
     </section>
   )
 }

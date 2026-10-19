@@ -50,3 +50,8 @@ export interface RevenueByRoomTypeComparison {
   changeDirection: 'INCREASE' | 'DECREASE' | 'UNCHANGED' | 'NO_BASELINE'
   message: string
 }
+
+export type RevenueByDay = {
+  date: string
+  totalRevenue: number
+}

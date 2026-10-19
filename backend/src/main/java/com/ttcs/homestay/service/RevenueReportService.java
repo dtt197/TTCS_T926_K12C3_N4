@@ -5,6 +5,7 @@ import com.ttcs.homestay.dto.report.RevenueReportResponse;
 import com.ttcs.homestay.dto.report.RevenueByRoomTypeResponse;
 import com.ttcs.homestay.dto.report.RevenueByRoomTypeComparisonResponse;
 import com.ttcs.homestay.dto.report.RevenueComparisonResponse;
+import com.ttcs.homestay.dto.report.RevenueByDayResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.RoomType;
@@ -22,6 +23,7 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -86,6 +88,27 @@ public class RevenueReportService {
                 surchargeRevenue,
                 totalRevenue,
                 averageNightlyRate(totalRevenue, totalNights));
+    }
+
+    /** Daily revenue is recognized on checkout, matching the existing report range. */
+    @Transactional(readOnly = true)
+    public List<RevenueByDayResponse> getReportByDay(
+            LocalDate startDate, LocalDate endDate, Long roomTypeId) {
+        validate(startDate, endDate);
+
+        List<Booking> bookings = bookingRepository
+                .findRevenueBookingsByStatusAndCheckOutDateBetweenAndRoomType(
+                        CLOSED_STATUSES, startDate, endDate, roomTypeId);
+        Map<LocalDate, Long> revenueByDate = new TreeMap<>();
+        for (Booking booking : bookings) {
+            revenueByDate.merge(booking.getCheckOutDate(), booking.getTotalAmount(), Long::sum);
+        }
+
+        List<RevenueByDayResponse> results = new ArrayList<>();
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            results.add(new RevenueByDayResponse(date, revenueByDate.getOrDefault(date, 0L)));
+        }
+        return results;
     }
 
     /**
