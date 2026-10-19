@@ -83,7 +83,7 @@ public class ReminderBookingProcessor {
            return recordOutcome(runId, Outcome.SKIPPED);
         }
 
-        String email = booking.getGuestEmail();
+        String email = booking.getGuestEmail() != null ? booking.getGuestEmail().trim() : null;
         if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
             writeLog(
                     runId,
@@ -136,7 +136,9 @@ public class ReminderBookingProcessor {
         emailLogRepository.saveAndFlush(entry);
     }
     private Outcome recordOutcome(Long runId, Outcome outcome) {
-        reminderRunService.recordOutcome(runId, outcome);
+        if (runId != null) {
+            reminderRunService.recordOutcome(runId, outcome);
+        }
         return outcome;
     }
 }

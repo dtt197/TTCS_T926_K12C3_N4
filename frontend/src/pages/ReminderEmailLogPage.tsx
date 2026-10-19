@@ -29,7 +29,9 @@ export function ReminderEmailLogPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [emailType, setEmailType] = useState<'REMINDER' | 'CANCELLATION'>('REMINDER')
+  const [emailType, setEmailType] = useState<
+    'REMINDER' | 'CANCELLATION' | 'CONFIRMATION' | 'BOOKING_CREATED'
+  >('REMINDER')
   const [simulatedToday, setSimulatedToday] = useState(todayInVietnam())
   const [running, setRunning] = useState(false)
   const [runResult, setRunResult] = useState<ReminderRunResult | null>(null)
@@ -301,18 +303,31 @@ export function ReminderEmailLogPage() {
         <div className="audit-section-heading">
           <div>
             <span className="audit-kicker">DANH SÁCH</span>
-            <h2>{emailType === 'REMINDER' ? 'Email nhắc đã gửi' : 'Email huỷ booking đã gửi'}</h2>
+            <h2>
+              {emailType === 'REMINDER' && 'Email nhắc đã gửi'}
+              {emailType === 'CONFIRMATION' && 'Email xác nhận booking đã gửi'}
+              {emailType === 'BOOKING_CREATED' && 'Email tiếp nhận đặt phòng đã gửi'}
+              {emailType === 'CANCELLATION' && 'Email huỷ booking đã gửi'}
+            </h2>
             <p>200 email gần nhất, thời gian hiển thị theo múi giờ GMT+7.</p>
           </div>
-                    <select
+          <select
             aria-label="Loại email"
             value={emailType}
             onChange={(event) => {
               setLoading(true)
-              setEmailType(event.target.value as 'REMINDER' | 'CANCELLATION')
+              setEmailType(
+                event.target.value as
+                  | 'REMINDER'
+                  | 'CANCELLATION'
+                  | 'CONFIRMATION'
+                  | 'BOOKING_CREATED',
+              )
             }}
           >
             <option value="REMINDER">Email nhắc nhận phòng</option>
+            <option value="CONFIRMATION">Email xác nhận booking</option>
+            <option value="BOOKING_CREATED">Email tiếp nhận đặt phòng</option>
             <option value="CANCELLATION">Email huỷ booking</option>
           </select>
           <button

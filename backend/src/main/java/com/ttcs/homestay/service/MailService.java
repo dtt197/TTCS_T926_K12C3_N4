@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.ttcs.homestay.entity.User;
 import com.ttcs.homestay.entity.Booking;
 import java.time.format.DateTimeFormatter; 
+import java.time.ZoneId;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
@@ -93,9 +94,85 @@ public class MailService {
 	public void sendCheckInReminder(Booking booking) {
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setFrom(from);
-		message.setTo(booking.getGuestEmail());
+		message.setTo(booking.getGuestEmail() != null ? booking.getGuestEmail().trim() : "");
 		message.setSubject(reminderSubject(booking));
 		message.setText(reminderBody(booking));
+		mailSender.send(message);
+	}
+
+	private static final ZoneId HOMESTAY_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+	private static final DateTimeFormatter DATE_TIME_VN = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
+
+	public static String bookingCreatedSubject(Booking booking) {
+		return "Tiếp nhận yêu cầu đặt phòng " + booking.getBookingCode() + " - HomeStay";
+	}
+
+	public static String bookingCreatedBody(Booking booking, String frontendUrl) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("Xin chào ").append(booking.getGuestName()).append(",\n\n")
+				.append("HomeStay đã tiếp nhận yêu cầu đặt phòng trực tuyến của bạn.\n\n")
+				.append("Mã booking: ").append(booking.getBookingCode()).append("\n")
+				.append("Loại phòng: ").append(booking.getRoomTypeNameSnapshot()).append("\n")
+				.append("Ngày nhận phòng: ").append(booking.getCheckInDate().format(DATE_VN)).append(" (từ 14:00)\n")
+				.append("Ngày trả phòng: ").append(booking.getCheckOutDate().format(DATE_VN)).append(" (trước 12:00)\n")
+				.append("Số khách: ").append(booking.getGuestCount()).append(" người\n")
+				.append("Tổng tiền tạm tính: ").append(formatMoneyVnd(booking.getTotalAmount())).append("\n\n");
+		if (booking.getHoldExpiresAt() != null) {
+			String expiryStr = booking.getHoldExpiresAt().atZoneSameInstant(HOMESTAY_ZONE).format(DATE_TIME_VN);
+			sb.append("Thời hạn giữ chỗ đến: ").append(expiryStr).append(" (trong vòng 24 giờ).\n")
+					.append("Vui lòng hoàn tất chuyển khoản đặt cọc trước thời hạn trên để lễ tân xác nhận giữ phòng.\n\n");
+		}
+		if (frontendUrl != null && !frontendUrl.isBlank()) {
+			sb.append("Tra cứu thông tin đặt phòng tại: ").append(frontendUrl).append("/tra-cuu\n\n");
+		}
+		sb.append("Cảm ơn bạn đã lựa chọn HomeStay!");
+		return sb.toString();
+	}
+
+	public void sendBookingCreatedEmail(Booking booking) {
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(from);
+		message.setTo(booking.getGuestEmail() != null ? booking.getGuestEmail().trim() : "");
+		message.setSubject(bookingCreatedSubject(booking));
+		message.setText(bookingCreatedBody(booking, frontendUrl));
+		mailSender.send(message);
+	}
+
+	public static String confirmationSubject(Booking booking) {
+		return "Xác nhận đặt phòng thành công - Mã booking " + booking.getBookingCode();
+	}
+
+	public static String confirmationBody(Booking booking, Long depositAmount, String frontendUrl) {
+		long deposit = depositAmount == null ? 0L : depositAmount;
+		long remaining = Math.max(0L, booking.getTotalAmount() - deposit);
+		StringBuilder sb = new StringBuilder();
+		sb.append("Xin chào ").append(booking.getGuestName()).append(",\n\n")
+				.append("HomeStay xin thông báo booking của bạn đã được XÁC NHẬN THÀNH CÔNG.\n\n")
+				.append("Mã booking: ").append(booking.getBookingCode()).append("\n")
+				.append("Loại phòng: ").append(booking.getRoomTypeNameSnapshot()).append("\n");
+		if (booking.getRoom() != null && booking.getRoom().getRoomNumber() != null) {
+			sb.append("Số phòng: ").append(booking.getRoom().getRoomNumber()).append("\n");
+		}
+		sb.append("Ngày nhận phòng: ").append(booking.getCheckInDate().format(DATE_VN)).append(" (từ 14:00)\n")
+				.append("Ngày trả phòng: ").append(booking.getCheckOutDate().format(DATE_VN)).append(" (trước 12:00)\n")
+				.append("Số khách: ").append(booking.getGuestCount()).append(" người\n")
+				.append("Tổng tiền phòng: ").append(formatMoneyVnd(booking.getTotalAmount())).append("\n")
+				.append("Tiền cọc đã ghi nhận: ").append(formatMoneyVnd(deposit)).append("\n")
+				.append("Số tiền còn lại thanh toán khi nhận/trả phòng: ").append(formatMoneyVnd(remaining)).append("\n\n");
+		if (frontendUrl != null && !frontendUrl.isBlank()) {
+			sb.append("Tra cứu chi tiết booking tại: ").append(frontendUrl).append("/tra-cuu\n\n");
+		}
+		sb.append("Chúng tôi rất hân hạnh được đón tiếp bạn tại HomeStay!\n")
+				.append("Nếu cần hỗ trợ thêm, vui lòng liên hệ lễ tân HomeStay.");
+		return sb.toString();
+	}
+
+	public void sendBookingConfirmation(Booking booking, Long depositAmount) {
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(from);
+		message.setTo(booking.getGuestEmail() != null ? booking.getGuestEmail().trim() : "");
+		message.setSubject(confirmationSubject(booking));
+		message.setText(confirmationBody(booking, depositAmount, frontendUrl));
 		mailSender.send(message);
 	}
 

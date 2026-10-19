@@ -69,6 +69,20 @@ public class BookingService {
     private final RoomRepository roomRepository;
     private final BookingRoomChangeHistoryRepository roomChangeHistoryRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private BookingEmailService bookingEmailService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ReminderEmailService reminderEmailService;
+
+    public void setBookingEmailService(BookingEmailService bookingEmailService) {
+        this.bookingEmailService = bookingEmailService;
+    }
+
+    public void setReminderEmailService(ReminderEmailService reminderEmailService) {
+        this.reminderEmailService = reminderEmailService;
+    }
+
     @org.springframework.beans.factory.annotation.Autowired
     public BookingService(
             BookingRepository bookingRepository,
@@ -380,6 +394,21 @@ public class BookingService {
         auditLogService.recordSensitiveAction(
                 actorId, actorEmail, null, "Booking " + response.bookingCode(),
                 "BOOKING_CONFIRMED", ipAddress);
+
+        if (bookingEmailService != null) {
+            Long depositAmount = response.deposit() != null && response.deposit().amount() != null
+                    ? response.deposit().amount().longValue()
+                    : 0L;
+            bookingEmailService.sendBookingConfirmedEmail(response.bookingCode(), depositAmount);
+        }
+
+        if (reminderEmailService != null) {
+            Booking booking = bookingRepository.findById(id).orElse(null);
+            if (booking != null && booking.getCheckInDate() != null) {
+                reminderEmailService.remindBookingIfCheckingInTomorrow(id, booking.getCheckInDate());
+            }
+        }
+
         return response;
     }
         /** S3-02 Lát 3: chỉ huỷ được booking chưa nhận phòng và còn hiệu lực. */

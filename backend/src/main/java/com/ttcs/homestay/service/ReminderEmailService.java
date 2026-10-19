@@ -2,12 +2,17 @@ package com.ttcs.homestay.service;
 
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.repository.BookingRepository;
+import com.ttcs.homestay.repository.ReminderRunRepository;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -25,14 +30,25 @@ public class ReminderEmailService {
     private final BookingRepository bookingRepository;
     private final ReminderBookingProcessor reminderBookingProcessor;
     private final ReminderRunService reminderRunService;
+    private final ReminderRunRepository reminderRunRepository;
 
     public ReminderEmailService(
             BookingRepository bookingRepository,
             ReminderBookingProcessor reminderBookingProcessor,
             ReminderRunService reminderRunService) {
+        this(bookingRepository, reminderBookingProcessor, reminderRunService, null);
+    }
+
+    @Autowired
+    public ReminderEmailService(
+            BookingRepository bookingRepository,
+            ReminderBookingProcessor reminderBookingProcessor,
+            ReminderRunService reminderRunService,
+            @Autowired(required = false) ReminderRunRepository reminderRunRepository) {
         this.bookingRepository = bookingRepository;
         this.reminderBookingProcessor = reminderBookingProcessor;
         this.reminderRunService = reminderRunService;
+        this.reminderRunRepository = reminderRunRepository;
     }
 
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Ho_Chi_Minh")
@@ -45,6 +61,37 @@ public class ReminderEmailService {
                     result.selected(), result.sent(), result.failed());
         } catch (RuntimeException e) {
             log.error("Tác vụ nhắc nhận phòng kết thúc vì lỗi", e);
+        }
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void onStartup() {
+        try {
+            LocalDate today = LocalDate.now(VN);
+            LocalTime now = LocalTime.now(VN);
+            if (now.isAfter(LocalTime.of(9, 0)) && reminderRunRepository != null) {
+                boolean alreadyRan = reminderRunRepository.existsByProcessingDateAndTriggerType(today, "SCHEDULED");
+                if (!alreadyRan) {
+                    log.info("Phát hiện ứng dụng khởi động sau 9:00 và chưa chạy nhắc tự động cho ngày {}. Đang thực hiện gửi nhắc bù...", today);
+                    ReminderResult result = execute(today, "SCHEDULED");
+                    log.info("Kết quả nhắc bù ngày {}: chọn {}, gửi {}, lỗi {}", today, result.selected(), result.sent(), result.failed());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không thể kiểm tra hoặc gửi nhắc bù khi khởi động: {}", e.getMessage());
+        }
+    }
+
+    public void remindBookingIfCheckingInTomorrow(Long bookingId, LocalDate checkInDate) {
+        try {
+            LocalDate today = LocalDate.now(VN);
+            LocalTime now = LocalTime.now(VN);
+            if (today.plusDays(1).equals(checkInDate) && now.isAfter(LocalTime.of(9, 0))) {
+                log.info("Booking {} nhận phòng ngày mai ({}) được xác nhận sau 9:00 sáng, tự động gửi email nhắc...", bookingId, checkInDate);
+                reminderBookingProcessor.process(bookingId, checkInDate, null);
+            }
+        } catch (Exception e) {
+            log.warn("Lỗi khi tự động gửi email nhắc cho booking {}: {}", bookingId, e.getMessage());
         }
     }
 

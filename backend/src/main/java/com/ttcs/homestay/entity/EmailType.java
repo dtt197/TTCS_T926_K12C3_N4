@@ -2,5 +2,7 @@ package com.ttcs.homestay.entity;
 
 public enum EmailType {
     REMINDER,
-    CANCELLATION
+    CANCELLATION,
+    CONFIRMATION,
+    BOOKING_CREATED
 }
