@@ -13,13 +13,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.ttcs.homestay.entity.Booking;
-import com.ttcs.homestay.entity.BookingSettlement;
-import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.IssuedInvoice;
 import com.ttcs.homestay.entity.Role;
 import com.ttcs.homestay.entity.User;
-import com.ttcs.homestay.exception.BookingInvoiceExceptionHandler;
 import com.ttcs.homestay.security.ApiSecurityPolicyCatalog;
 import com.ttcs.homestay.service.InvoiceIssuanceService;
 import java.time.Instant;
@@ -153,11 +149,12 @@ class BookingInvoiceControllerTest {
     }
 
     @Test
-    void adminIsForbiddenFromDownloadingInvoice() throws Exception {
+    void adminCanDownloadInvoiceThroughSecurityFilters() throws Exception {
         securedMockMvc.perform(securedRequest("admin-token"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
 
-        verify(securedIssuanceService, never()).downloadOrIssue(44L);
+        verify(securedIssuanceService).downloadOrIssue(44L);
     }
 
     @Test
@@ -232,11 +229,11 @@ class BookingInvoiceControllerTest {
     }
 
     @Test
-    void onlyReceptionistAndOwnerHaveCatalogAccess() {
+    void adminReceptionistAndOwnerHaveCatalogAccess() {
         ApiSecurityPolicyCatalog catalog = new ApiSecurityPolicyCatalog();
 
         assertThat(catalog.findPolicy("GET", "/api/bookings/44/invoice.pdf").roles())
-                .containsExactly("RECEPTIONIST", "OWNER");
+                .containsExactly("ADMIN", "OWNER", "RECEPTIONIST");
         assertThat(catalog.findPolicy("PUT", "/api/bookings/44/invoice/cancel").roles())
                 .containsExactly("RECEPTIONIST", "OWNER");
     }

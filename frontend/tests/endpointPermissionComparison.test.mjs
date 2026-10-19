@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { APPROVED_ENDPOINT_MATRIX } from '../src/permissions/approvedEndpointMatrix.ts'
 import {
   compareEndpointPermissions,
   filterEndpointPermissionComparisons,
@@ -141,5 +142,37 @@ test('occupancy summary, detailed report, and CSV endpoints are owner-only', () 
     '/api/reports/occupancy.csv',
   ].map(path => ({ method: 'GET', path, access: 'ROLES', roles: ['OWNER'] }))
   const comparisons = compareEndpointPermissions(endpoints)
+  assert.ok(comparisons.every(({ hasMismatch }) => !hasMismatch))
+})
+
+test('invoice and revenue comparison routes match their approved access policies', () => {
+  const endpoints = [
+    {
+      method: 'GET',
+      path: '/api/bookings/44/invoice.pdf',
+      access: 'ROLES',
+      roles: ['ADMIN', 'OWNER', 'RECEPTIONIST'],
+    },
+    {
+      method: 'PUT',
+      path: '/api/bookings/44/invoice/cancel',
+      access: 'ROLES',
+      roles: ['OWNER', 'RECEPTIONIST'],
+    },
+    {
+      method: 'GET',
+      path: '/api/reports/comparison',
+      access: 'ROLES',
+      roles: ['ADMIN', 'OWNER'],
+    },
+    {
+      method: 'GET',
+      path: '/api/reports/revenue/by-room-type/comparison',
+      access: 'ROLES',
+      roles: ['ADMIN', 'OWNER'],
+    },
+  ]
+  const comparisons = compareEndpointPermissions(endpoints, APPROVED_ENDPOINT_MATRIX)
+
   assert.ok(comparisons.every(({ hasMismatch }) => !hasMismatch))
 })

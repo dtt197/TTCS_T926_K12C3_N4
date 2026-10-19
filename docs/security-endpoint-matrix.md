@@ -57,6 +57,7 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `POST /api/admin/users`, `PATCH /api/admin/users/{id}/status`, `PUT /api/admin/users/{id}`, `POST /api/admin/users/{id}/resend-temporary-password` | `ADMIN` |
 | `POST /api/admin/reminders/run`, `GET /api/admin/email-logs` | `ADMIN` |
 | `GET /api/reports/occupancy`, `/api/reports/occupancy.csv`, `/api/reports/occupancy/detailed` | `OWNER` |
+| `GET /api/reports/comparison`, `/api/reports/revenue/by-room-type/comparison` | `ADMIN`, `OWNER` |
 | `GET /api/maintenance-requests/cleaning-room-ids` | `HOUSEKEEPING` |
 | `GET /api/maintenance-requests`, `GET /api/maintenance-requests/{id}` | `OWNER`, `RECEPTIONIST`, `HOUSEKEEPING` |
 | `POST /api/maintenance-requests/{id}/accept`, `/start`, `/repair-completed`, `/verify`, `PUT /api/maintenance-requests/{id}/vendor` | `OWNER` |
@@ -80,6 +81,8 @@ segment. `**` is used only where nested paths are intentionally covered.
 | `POST /api/price-overrides`, `POST /api/price-overrides/preview`, `PUT /api/price-overrides/{id}`, `DELETE /api/price-overrides/{id}` | `OWNER` |
 | `GET /api/pricing/quote` | `OWNER`, `ADMIN`, `RECEPTIONIST` |
 | `GET /api/bookings`, `GET /api/bookings/latest`, `GET /api/bookings/check-in-options`, `GET /api/bookings/{id}/summary`, `GET /api/bookings/{id}/available-rooms`, `GET /api/bookings/{id}/room-change-history`, `GET /api/bookings/{id}/history`, `GET /api/bookings/{id}/details`, `GET /api/bookings/{id}/cancellation-info`, `GET /api/bookings/{bookingCode}/cancellation-preview` | `ADMIN`, `OWNER`, `RECEPTIONIST` |
+| `GET /api/bookings/{id}/invoice.pdf` | `ADMIN`, `OWNER`, `RECEPTIONIST` |
+| `PUT /api/bookings/{id}/invoice/cancel` | `OWNER`, `RECEPTIONIST` |
 | `POST /api/bookings`, `POST /api/bookings/{id}/preview`, `POST /api/bookings/{bookingCode}/cancel`, `PUT /api/bookings/{id}/confirm`, `PUT /api/bookings/{id}/room`, `PUT /api/bookings/{id}/room-change`, `PUT /api/bookings/{id}/cancel`, `PUT /api/bookings/{id}` | `RECEPTIONIST` |
 | `POST /api/bookings/{id}/deposit-adjustments`, `POST /api/bookings/{id}/surcharges` | `OWNER`, `RECEPTIONIST` |
 | `PUT /api/bookings/{id}/deposit`, `PUT /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}/deposit`, `DELETE /api/bookings/{id}/deposits/**`, `DELETE /api/bookings/{id}` | `OWNER`, `RECEPTIONIST` |
