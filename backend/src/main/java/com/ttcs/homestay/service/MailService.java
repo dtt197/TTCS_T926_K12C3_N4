@@ -25,13 +25,21 @@ public class MailService {
 	private final JavaMailSender mailSender;
 	private final String from;
 	private final String frontendUrl;
+	private final boolean smtpConfigured;
 
 	public MailService(JavaMailSender mailSender,
 			@Value("${app.mail.from}") String from,
-			@Value("${app.frontend-url}") String frontendUrl) {
+			@Value("${app.frontend-url}") String frontendUrl,
+			@Value("${spring.mail.host:}") String mailHost,
+			@Value("${spring.mail.username:}") String mailUsername,
+			@Value("${spring.mail.password:}") String mailPassword,
+			@Value("${spring.mail.properties.mail.smtp.auth:false}") boolean smtpAuth) {
 		this.mailSender = mailSender;
 		this.from = from;
 		this.frontendUrl = frontendUrl;
+		this.smtpConfigured = mailHost != null && !mailHost.isBlank()
+				&& (!smtpAuth || (mailUsername != null && !mailUsername.isBlank()
+						&& mailPassword != null && !mailPassword.isBlank()));
 	}
 
 	/** Gửi lỗi chỉ ghi log, không làm hỏng việc tạo tài khoản. */
@@ -53,6 +61,9 @@ public class MailService {
 		}
 	}
 	public void sendPasswordResetLink(User user, String rawToken) {
+		if (!smtpConfigured) {
+			throw new IllegalStateException("SMTP chưa được cấu hình. Hãy đặt MAIL_HOST; nếu máy chủ yêu cầu xác thực, cần đặt thêm MAIL_AUTH=true, MAIL_USERNAME và MAIL_PASSWORD.");
+		}
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setFrom(from);
 		message.setTo(user.getEmail());

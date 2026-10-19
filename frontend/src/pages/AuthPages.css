@@ -1149,3 +1149,89 @@
   font-weight: 500;
 }
 
+/* S4-01 forgot password: reuse the login screen shell and form styling. */
+.app-shell:has(> .forgot-password-login-page) {
+  min-height: 100vh;
+  padding: 0;
+}
+
+.forgot-password-login-page .forgot-form h2 {
+  margin-bottom: 0;
+}
+
+.forgot-password-login-page .forgot-form .form-intro {
+  margin-bottom: 30px;
+}
+
+.forgot-password-login-page .forgot-success {
+  margin: 0 0 20px;
+  border-left: 3px solid #39735f;
+  padding: 11px 13px;
+  background: #edf6ef;
+  color: #275a43;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.forgot-password-login-page .forgot-back-link {
+  display: block;
+  margin-top: 20px;
+  color: #10513f;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.forgot-password-login-page .forgot-back-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* S4-01 reset password: share the login and forgot-password shell. */
+.app-shell:has(> .reset-password-login-page) {
+  min-height: 100vh;
+  padding: 0;
+}
+
+.reset-password-login-page .reset-password-form h2 {
+  margin-bottom: 0;
+}
+
+.reset-password-login-page .reset-password-form .form-intro {
+  margin-bottom: 26px;
+}
+
+.reset-password-login-page .reset-password-success,
+.reset-password-login-page .reset-password-notice {
+  margin: 20px 0 0;
+  border-left: 3px solid #39735f;
+  border-radius: 0 9px 9px 0;
+  padding: 12px 14px;
+  background: #edf6ef;
+  color: #275a43;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.reset-password-login-page .reset-password-back-link {
+  display: block;
+  margin-top: 22px;
+  color: #10513f;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.reset-password-login-page .reset-password-back-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 767px) {
+  .reset-password-login-page .form-panel {
+    align-items: flex-start;
+  }
+}
+
