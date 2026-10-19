@@ -58,7 +58,8 @@ class MailServiceBookingEmailTest {
         when(settingsRepository.findFirstByCreatedAtLessThanEqualOrderByCreatedAtDescIdDesc(any()))
                 .thenReturn(Optional.of(settings));
 
-        MailService mailService = new MailService(sender, "HomeStay <no-reply@homestay.local>", "http://localhost:8088");
+        MailService mailService = new MailService(sender, "HomeStay <no-reply@homestay.local>",
+                "http://localhost:8088", "", "", "", false);
         mailService.setOperatingSettingsRepository(settingsRepository);
         mailService.sendBookingConfirmation(booking(), 500000L);
 
