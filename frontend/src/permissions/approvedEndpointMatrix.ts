@@ -48,6 +48,9 @@ export const APPROVED_ENDPOINT_MATRIX: readonly EndpointPolicy[] = [
   ...policies('GET', 'ROLES', ADMIN_OWNER_RECEPTION,
     '/api/reports/revenue',
     '/api/reports/revenue/by-room-type'),
+  ...policies('GET', 'ROLES', ['ADMIN', 'OWNER'],
+    '/api/reports/comparison',
+    '/api/reports/revenue/by-room-type/comparison'),
 
   policy('PATCH', '/api/notifications/*/read', 'ROLES', ['OWNER', 'RECEPTIONIST']),
 
@@ -91,6 +94,10 @@ export const APPROVED_ENDPOINT_MATRIX: readonly EndpointPolicy[] = [
     '/api/bookings/*/room-change-history', '/api/bookings/*/available-rooms'),
   ...policies('PUT', 'ROLES', ['OWNER', 'RECEPTIONIST'],
     '/api/bookings/*/deposit', '/api/bookings/*/deposits/**'),
+  ...policies('GET', 'ROLES', ADMIN_OWNER_RECEPTION,
+    '/api/bookings/*/invoice.pdf'),
+  ...policies('PUT', 'ROLES', ['OWNER', 'RECEPTIONIST'],
+    '/api/bookings/*/invoice/cancel'),
   ...policies('DELETE', 'ROLES', ['OWNER', 'RECEPTIONIST'],
     '/api/bookings/*/deposit', '/api/bookings/*/deposits/**', '/api/bookings/*'),
   policy('GET', '/api/pricing/**', 'ROLES', ADMIN_OWNER_RECEPTION),
