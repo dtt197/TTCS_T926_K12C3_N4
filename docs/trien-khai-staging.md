@@ -20,10 +20,12 @@ docker compose up -d --build
 - Xem log backend: `docker compose logs -f backend` (chờ dòng `Started HomestayApplication`).
 - Kiểm tra tình trạng: mở `http://localhost:<APP_PORT>/actuator/health` → `"status":"UP"` và `"db":{"status":"UP"...}`.
 
-## 3. Nạp dữ liệu mẫu cho nghiệm thu
-1. Mở `http://localhost:<APP_PORT>`, bấm ô **Chủ homestay** trong "Tài khoản mẫu thử nghiệm" để đăng nhập.
-2. Menu **Dữ liệu mẫu** → **Nạp lại dữ liệu mẫu** (4 loại phòng, 20 phòng, bảng giá, 30 booking).
-- Nhân viên đăng nhập qua `http://<IP>:<APP_PORT>/quan-tri` (đường dẫn `/` là trang chủ cho khách).
+## 3. Nạp dữ liệu mẫu cho nghiệm thu (S4-09, chỉ trên staging)
+- Bật chế độ demo bằng `DEMO_MODE=true` trong `.env` (mặc định tắt): trang đăng nhập có ô "Tài khoản mẫu thử nghiệm", 4 tài khoản `*.demo` được đặt lại mật khẩu mẫu mỗi lần khởi động, Chủ homestay có menu **Dữ liệu mẫu**. Đổi giá trị thì chạy `docker compose up -d --build` (giao diện cần build lại).
+- Nạp dữ liệu: đăng nhập **Chủ homestay** → **Dữ liệu mẫu** → **Nạp lại dữ liệu mẫu** (4 loại phòng, 20 phòng, bảng giá, 30 booking). **Thao tác này xoá toàn bộ loại phòng, phòng, booking, hoá đơn hiện có trên staging**; chỉ Chủ homestay bấm, một lần trước buổi chạy thử.
+- Nhân viên đăng nhập qua `http://<IP>:<APP_PORT>/dang-nhap` (đường dẫn `/` là trang chủ cho khách).
+- Máy cá nhân (không Docker) mặc định không có chế độ demo: không hiện tài khoản mẫu, không đặt lại mật khẩu, không nạp lại được dữ liệu, nên dữ liệu thử của từng người không bị ảnh hưởng. Ai muốn dùng dữ liệu mẫu trên máy mình thì tự đặt biến `DEMO_MODE=true` (dữ liệu trên máy đó sẽ bị thay khi nạp lại).
+- Bàn giao dùng thật: đặt `DEMO_MODE=false` trong `.env`, `docker compose up -d --build`, rồi Quản trị vô hiệu hoá 4 tài khoản `*.demo` trong Quản lý tài khoản.
 ## 4. Cho máy khác truy cập
 - Các máy cùng mạng Wi-Fi mở `http://<IP máy chạy>:<APP_PORT>`.
 - Nếu không mở được: cho phép Docker Desktop qua Windows Defender Firewall (mạng Private).
