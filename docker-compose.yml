@@ -42,8 +42,9 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Thieu bien JWT_ACCESS_SECRET trong file .env}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Thieu bien JWT_REFRESH_SECRET trong file .env}
       JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false}
-      MAIL_HOST: ${MAIL_HOST:-localhost}
-      MAIL_PORT: ${MAIL_PORT:-1025}
+      # Staging gửi thư vào Mailpit (hộp thư giả, xem ở cổng MAIL_UI_PORT), không gửi ra ngoài thật
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
       MAIL_FROM: ${MAIL_FROM:-HomeStay <no-reply@homestay.local>}
       FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8088}
       CORS_ALLOWED_ORIGINS: http://localhost:${APP_PORT:-8088},${PUBLIC_URL:-http://localhost:8088}
@@ -88,7 +89,24 @@ services:
       BACKUP_KEEP: ${BACKUP_KEEP:-7}
     volumes:
       - ${BACKUP_DIR:-./backups}:/backups
+
+  # Hộp thư giả cho staging: nhận mọi email hệ thống gửi để xem trên trình duyệt (không gửi ra ngoài)
+  mailpit:
+    image: axllent/mailpit:v1.21.0
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 1000
+    volumes:
+      - mailpit-data:/data
+    ports:
+      # Mặc định chỉ mở trên máy chạy staging (thư có link đặt lại mật khẩu).
+      # Muốn máy khác cùng mạng xem được thì đặt MAIL_UI_BIND=0.0.0.0 trong .env
+      - "${MAIL_UI_BIND:-127.0.0.1}:${MAIL_UI_PORT:-8025}:8025"
 volumes:
   db-data:
   uploads:
   backend-logs:
+  mailpit-data:
