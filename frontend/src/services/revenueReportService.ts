@@ -1,6 +1,7 @@
 import { apiRequest } from './apiClient'
 import type { RevenueReport } from '../types/revenueReport'
 import type { RevenueByRoomType } from '../types/revenueReport'
+import type { RevenueByDay } from '../types/revenueReport'
 import type {
   RevenueComparison,
   RevenueByRoomTypeComparison,
@@ -79,4 +80,14 @@ export function getRevenueByRoomTypeComparison(
   return apiRequest<RevenueByRoomTypeComparison[]>(
     `/api/reports/revenue/by-room-type/comparison?${params.toString()}`,
   )
+}
+
+export function getRevenueByDay(
+  startDate: string,
+  endDate: string,
+  roomTypeId?: number,
+): Promise<RevenueByDay[]> {
+  const params = new URLSearchParams({ startDate, endDate })
+  if (roomTypeId !== undefined) params.set('roomTypeId', String(roomTypeId))
+  return apiRequest<RevenueByDay[]>(`/api/reports/revenue/by-day?${params.toString()}`)
 }

@@ -141,6 +141,36 @@ class RevenueReportAuthorizationTest {
     }
 
     @Test
+    void chuHomestayXemDuocDoanhThuTheoNgay() throws Exception {
+        mockMvc.perform(get("/api/reports/revenue/by-day")
+                        .param("startDate", "2088-07-01")
+                        .param("endDate", "2088-07-31")
+                        .header("Authorization", "Bearer owner-revenue-token"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminVaLeTanXemDuocDoanhThuTheoNgay() throws Exception {
+        for (String token : List.of("admin-revenue-token", "receptionist-revenue-token")) {
+            mockMvc.perform(get("/api/reports/revenue/by-day")
+                            .param("startDate", LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).toString())
+                            .param("endDate", LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).toString())
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void leTanKhongDuocXemBieuDoNgayNgoaiHomNay() throws Exception {
+        LocalDate yesterday = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).minusDays(1);
+        mockMvc.perform(get("/api/reports/revenue/by-day")
+                        .param("startDate", yesterday.toString())
+                        .param("endDate", yesterday.toString())
+                        .header("Authorization", "Bearer receptionist-revenue-token"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void leTanKhongDuocXemSoSanhKyTruoc()
             throws Exception {
 

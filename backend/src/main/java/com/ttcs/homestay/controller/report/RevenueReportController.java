@@ -4,6 +4,7 @@ import com.ttcs.homestay.dto.report.RevenueReportResponse;
 import com.ttcs.homestay.dto.report.RevenueByRoomTypeResponse;
 import com.ttcs.homestay.dto.report.RevenueComparisonResponse;
 import com.ttcs.homestay.dto.report.RevenueByRoomTypeComparisonResponse;
+import com.ttcs.homestay.dto.report.RevenueByDayResponse;
 import com.ttcs.homestay.service.RevenueReportService;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -64,6 +65,16 @@ public class RevenueReportController {
                 startDate,
                 endDate,
                 roomTypeId);
+    }
+
+    @GetMapping("/revenue/by-day")
+    public List<RevenueByDayResponse> revenueByDay(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) Long roomTypeId,
+            @AuthenticationPrincipal Jwt jwt) {
+        validateRevenueDateRange(startDate, endDate, jwt);
+        return revenueReportService.getReportByDay(startDate, endDate, roomTypeId);
     }
     
     @GetMapping("/comparison")

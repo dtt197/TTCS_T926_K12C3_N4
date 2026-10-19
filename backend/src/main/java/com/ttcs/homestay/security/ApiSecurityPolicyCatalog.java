@@ -183,7 +183,8 @@ public class ApiSecurityPolicyCatalog {
         // S4-07 Lát 1 và Lát 2: báo cáo doanh thu.
         add(policies, "GET", Access.ROLES, ADMIN_OWNER_RECEPTION,
                         "/api/reports/revenue",
-                        "/api/reports/revenue/by-room-type");
+                        "/api/reports/revenue/by-room-type",
+                        "/api/reports/revenue/by-day");
 
         // S4-07 Lát 3: so sánh doanh thu theo kỳ.
         // Chỉ ADMIN và OWNER được xem báo cáo so sánh toàn kỳ.

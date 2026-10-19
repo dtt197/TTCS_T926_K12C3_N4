@@ -3,6 +3,7 @@ package com.ttcs.homestay.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ttcs.homestay.dto.report.RevenueReportResponse;
+import com.ttcs.homestay.dto.report.RevenueByDayResponse;
 import com.ttcs.homestay.entity.Booking;
 import com.ttcs.homestay.entity.BookingStatus;
 import com.ttcs.homestay.entity.RoomType;
@@ -111,5 +112,25 @@ class RevenueReportRepositoryTest {
         assertThat(report(12, 15).closedBookingCount()).isEqualTo(2);
         assertThat(report(13, 15).closedBookingCount()).isEqualTo(1);
         assertThat(report(12, 14).closedBookingCount()).isEqualTo(1);
+    }
+
+    @Test
+    void doanhThuTheoNgayGhiNhanTheoNgayTraPhongVaTongKhopBaoCao() {
+        var daily = revenueReportService.getReportByDay(
+                LocalDate.of(2088, 7, 1), LocalDate.of(2088, 7, 20), doi.getId());
+        assertThat(daily).hasSize(20);
+        assertThat(daily).filteredOn(item -> item.date().equals(LocalDate.of(2088, 7, 12)))
+                .extracting(RevenueByDayResponse::totalRevenue).containsExactly(1_300_000L);
+        assertThat(daily).filteredOn(item -> item.date().equals(LocalDate.of(2088, 7, 15)))
+                .extracting(RevenueByDayResponse::totalRevenue).containsExactly(1_500_000L);
+        assertThat(daily).filteredOn(item -> item.date().equals(LocalDate.of(2088, 7, 11)))
+                .extracting(RevenueByDayResponse::totalRevenue).containsExactly(0L);
+        assertThat(daily.stream().mapToLong(RevenueByDayResponse::totalRevenue).sum())
+                .isEqualTo(revenueReportService.getReport(
+                        LocalDate.of(2088, 7, 1), LocalDate.of(2088, 7, 20)).totalRevenue());
+
+        var selectedType = revenueReportService.getReportByDay(
+                LocalDate.of(2088, 7, 1), LocalDate.of(2088, 7, 20), -1L);
+        assertThat(selectedType.stream().mapToLong(RevenueByDayResponse::totalRevenue).sum()).isZero();
     }
 }
